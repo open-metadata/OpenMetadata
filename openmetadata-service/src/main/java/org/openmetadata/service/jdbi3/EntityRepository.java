@@ -1154,7 +1154,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // When two tags have the same parent that is mutuallyExclusive, then throw an error
       String parentFqn = FullyQualifiedName.getParentFQN(tagLabel.getTagFQN());
       TagLabel stored = map.put(parentFqn, tagLabel);
-      if (stored != null && TagLabelCache.getInstance().mutuallyExclusive(tagLabel)) {
+      if (stored != null && TagLabelCache.mutuallyExclusive(tagLabel)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
       }
     }
@@ -1598,7 +1598,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
+              : SubjectCache.getSubjectContext(updated.getUpdatedBy()).getUser();
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */

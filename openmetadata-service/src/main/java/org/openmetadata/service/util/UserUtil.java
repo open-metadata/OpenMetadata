@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -37,7 +36,6 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -73,7 +71,7 @@ public final class UserUtil {
       // Fetch Original User, is available
       User originalUser =
           userRepository.getByName(null, EntityInterfaceUtil.quoteName(username), new Fields(fieldList));
-      if (!originalUser.getIsBot() && !originalUser.getIsAdmin()) {
+      if (Boolean.FALSE.equals(originalUser.getIsBot()) && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
         updatedUser = originalUser;
 
         // Update Auth Mechanism if not present, and send mail to the user
@@ -115,7 +113,7 @@ public final class UserUtil {
 
   private static String getPassword() {
     try {
-      EmailUtil.getInstance().testConnection();
+      EmailUtil.testConnection();
       return PasswordUtil.generateRandomPassword();
     } catch (Exception ex) {
       LOG.info("Password set to Default.");
@@ -176,10 +174,8 @@ public final class UserUtil {
    *       </ul>
    * </ul>
    */
-  public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+  public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
-    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
-        openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
     if (authMechanism == null) {

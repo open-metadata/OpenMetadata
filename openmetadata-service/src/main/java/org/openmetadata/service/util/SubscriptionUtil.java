@@ -113,19 +113,19 @@ public class SubscriptionUtil {
             if (type == CreateEventSubscription.SubscriptionType.EMAIL
                 || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
               if (USER.equals(owner.getType())) {
-                User user = SubjectCache.getInstance().getSubjectContext(owner.getId()).getUser();
+                User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
                 data.add(user.getEmail());
               } else {
-                Team team = SubjectCache.getInstance().getTeam(owner.getId());
+                Team team = SubjectCache.getTeam(owner.getId());
                 data.add(team.getEmail());
               }
             } else {
               Profile profile = null;
               if (USER.equals(owner.getType())) {
-                User user = SubjectCache.getInstance().getSubjectContext(owner.getId()).getUser();
+                User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
                 profile = user.getProfile();
               } else if (TEAM.equals(owner.getType())) {
-                Team team = SubjectCache.getInstance().getTeam(owner.getId());
+                Team team = SubjectCache.getTeam(owner.getId());
                 profile = team.getProfile();
               }
               data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));
