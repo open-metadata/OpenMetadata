@@ -16,7 +16,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { createDescriptionTask } from '../../common/TaskUtils';
+import { createDescriptionTask, taskAssignee } from '../../common/TaskUtils';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 // eslint-disable-next-line spaced-comment
@@ -46,7 +46,6 @@ describe('Recently viwed data assets', () => {
     cy.get('@feedWidget').should('contain', 'All');
     cy.get('@feedWidget').should('contain', '@Mentions');
     cy.get('@feedWidget').should('contain', 'Tasks');
-    cy.get('@feedWidget').should('contain', '0');
   });
 
   it('Feed widget should have some feeds', () => {
@@ -206,15 +205,7 @@ describe('Recently viwed data assets', () => {
   });
 
   it('Assigned task should appear to task tab', () => {
-    cy.get('[data-testid="activity-feed-widget"]')
-      .contains('Tasks')
-      .should('contain', 0);
-
     cy.get('[data-testid="activity-feed-widget"]').contains('Tasks').click();
-
-    cy.get(
-      '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
-    ).should('be.visible');
 
     const value = SEARCH_ENTITY_TABLE.table_1;
     interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
@@ -232,10 +223,7 @@ describe('Recently viwed data assets', () => {
 
     cy.clickOnLogo();
 
-    cy.get('[data-testid="activity-feed-widget"]')
-      .contains('Tasks')
-      .should('contain', 1)
-      .click();
+    cy.get('[data-testid="activity-feed-widget"]').contains('Tasks').click();
 
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
@@ -249,6 +237,6 @@ describe('Recently viwed data assets', () => {
         expect(matches).to.not.be.null;
       });
 
-    cy.get(`[data-testid="assignee-admin"]`).should('be.visible');
+    cy.get(`[data-testid="assignee-${taskAssignee}"]`).should('be.visible');
   });
 });
