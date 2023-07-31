@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { RecentlySearchedData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,16 +78,9 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
                         data-testid={`search-term-${item.term}`}
                         type="text">
                         {item.term.length > 20 ? (
-                          <Popover
-                            content={
-                              <div className="d-flex flex-nowrap">
-                                {item.term}
-                              </div>
-                            }
-                            placement="top"
-                            trigger="hover">
+                          <Tooltip placement="top" title={item.term}>
                             <span>{item.term.slice(0, 20)}...</span>
-                          </Popover>
+                          </Tooltip>
                         ) : (
                           item.term
                         )}
