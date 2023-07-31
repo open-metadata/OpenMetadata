@@ -22,6 +22,7 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
   data: MOCK_TABLE_DATA,
   currentTeam: MOCK_CURRENT_TEAM,
   onTeamExpand: jest.fn(),
+  isFetchingAllTeamAdvancedDetails: false,
 };
 
 const mockShowErrorToast = jest.fn();
