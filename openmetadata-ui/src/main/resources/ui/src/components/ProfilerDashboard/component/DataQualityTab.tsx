@@ -401,29 +401,29 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <Row gutter={16}>
       <Col span={24}>
-        <Table
-          bordered
-          className="test-case-table-container"
-          columns={columns}
-          data-testid="test-case-table"
-          dataSource={sortedData}
-          expandable={{
-            ...getTableExpandableConfig<TestCase>(),
-            expandRowByClick: true,
-            rowExpandable: () => true,
-            expandedRowRender: (recode) => <TestSummary data={recode} />,
-          }}
-          loading={{
-            indicator: <Loader size="small" />,
-            spinning: isLoading,
-          }}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Table
+            bordered
+            className="test-case-table-container"
+            columns={columns}
+            data-testid="test-case-table"
+            dataSource={sortedData}
+            expandable={{
+              ...getTableExpandableConfig<TestCase>(),
+              expandRowByClick: true,
+              rowExpandable: () => true,
+              expandedRowRender: (recode) => <TestSummary data={recode} />,
+            }}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        )}
       </Col>
       <Col span={24}>
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
