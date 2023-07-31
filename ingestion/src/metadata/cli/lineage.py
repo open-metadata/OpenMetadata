@@ -22,8 +22,6 @@ from pydantic import BaseModel
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import cli_logger
@@ -33,7 +31,8 @@ logger = cli_logger()
 
 
 class LineageWorkflow(BaseModel):
-    filePath: str
+    filePath: Optional[str]
+    query: Optional[str]
     serviceName: str
     workflowConfig: WorkflowConfig
     parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins
@@ -51,37 +50,25 @@ def run_lineage(config_path: str) -> None:
     try:
         config_dict = load_config_file(config_file)
         workflow = LineageWorkflow.parse_obj(config_dict)
-        # logger.debug(f"Using config: {workflow.config}")
+
     except Exception as exc:
         logger.debug(traceback.format_exc())
         print_init_error(exc, config_dict, WorkflowType.INGEST)
         sys.exit(1)
 
-    with open(workflow.filePath, encoding=UTF_8) as sql_file:
-        sql = sql_file.read()
-        metadata = OpenMetadata(config=workflow.workflowConfig.openMetadataServerConfig)
-        service: DatabaseService = metadata.get_by_name(
-            entity=DatabaseService, fqn=workflow.serviceName
+    if workflow.filePath:
+        with open(workflow.filePath, encoding=UTF_8) as sql_file:
+            sql = sql_file.read()
+    else:
+        sql = workflow.query
+
+    metadata = OpenMetadata(config=workflow.workflowConfig.openMetadataServerConfig)
+    service: DatabaseService = metadata.get_by_name(
+        entity=DatabaseService, fqn=workflow.serviceName
+    )
+    if service:
+        metadata.add_lineage_by_query(
+            database_service=service, timeout=workflow.parseTimeout, sql=sql
         )
-
-        if service:
-            connection_type = service.serviceType.value
-            add_lineage_request = get_lineage_by_query(
-                metadata=metadata,
-                service_name=workflow.serviceName,
-                dialect=ConnectionTypeDialectMapper.dialect_of(connection_type),
-                query=sql,
-                database_name=None,
-                schema_name=None,
-                timeout_seconds=workflow.parseTimeout,
-            )
-            for lineage_request in add_lineage_request or []:
-                resp = metadata.add_lineage(lineage_request)
-                entity_name = resp.get("entity", {}).get("name")
-                for node in resp.get("nodes", []):
-                    logger.info(
-                        f"added lineage between table {node.get('name')} and {entity_name} "
-                    )
-
-        else:
-            logger.error(f"Service not found with name {workflow.filePath}")
+    else:
+        logger.error(f"Service not found with name {workflow.serviceName}")
