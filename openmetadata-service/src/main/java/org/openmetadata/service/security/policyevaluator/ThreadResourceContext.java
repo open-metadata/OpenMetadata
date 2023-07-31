@@ -22,7 +22,7 @@ public class ThreadResourceContext implements ResourceContextInterface {
 
   @Override
   public EntityReference getOwner() {
-    return SubjectCache.getInstance().getUser(createdBy).getEntityReference();
+    return SubjectCache.getUser(createdBy).getEntityReference();
   }
 
   @Override

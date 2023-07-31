@@ -44,8 +44,6 @@ class RuleEvaluatorTest {
     Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
     Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
     Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
-    SubjectCache.initialize();
-    RoleCache.initialize();
 
     TableRepository tableRepository = mock(TableRepository.class);
     Mockito.when(tableRepository.getAllTags(any()))
@@ -255,10 +253,10 @@ class RuleEvaluatorTest {
     Team team = new Team().withName(teamName).withId(teamId);
     if (parentName != null) {
       UUID parentId = UUID.nameUUIDFromBytes(parentName.getBytes(StandardCharsets.UTF_8));
-      Team parentTeam = SubjectCache.getInstance().getTeam(parentId);
+      Team parentTeam = SubjectCache.getTeam(parentId);
       team.setParents(listOf(parentTeam.getEntityReference()));
     }
-    SubjectCache.teamCacheWithId.put(team.getId(), team);
+    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
     return team;
   }
 
@@ -268,7 +266,7 @@ class RuleEvaluatorTest {
     team.setDefaultRoles(listOf(role.getEntityReference()));
     team.setInheritedRoles(new ArrayList<>());
     for (EntityReference parent : listOrEmpty(team.getParents())) {
-      Team parentTeam = SubjectCache.getInstance().getTeam(parent.getId());
+      Team parentTeam = SubjectCache.getTeam(parent.getId());
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getDefaultRoles()));
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getInheritedRoles()));
     }
@@ -278,7 +276,7 @@ class RuleEvaluatorTest {
   private Role createRole(String roleName) {
     UUID roleId = UUID.nameUUIDFromBytes(roleName.getBytes(StandardCharsets.UTF_8));
     Role role = new Role().withName(roleName).withId(roleId);
-    RoleCache.roleCacheWithId.put(role.getId(), role);
+    RoleCache.CACHE_WITH_ID.put(role.getId(), role);
     return role;
   }
 

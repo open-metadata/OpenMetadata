@@ -22,7 +22,7 @@ public class PostResourceContext implements ResourceContextInterface {
 
   @Override
   public EntityReference getOwner() {
-    return SubjectCache.getInstance().getUser(postedBy).getEntityReference();
+    return SubjectCache.getUser(postedBy).getEntityReference();
   }
 
   @Override

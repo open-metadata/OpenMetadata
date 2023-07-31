@@ -37,7 +37,11 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { getServiceDetailsPath, pagingObject } from 'constants/constants';
+import {
+  getServiceDetailsPath,
+  INITIAL_PAGING_VALUE,
+  pagingObject,
+} from 'constants/constants';
 import { OPEN_METADATA } from 'constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs } from 'enums/entity.enum';
@@ -164,9 +168,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
 
   const handleShowDeleted = useCallback((value: boolean) => {
     setShowDeleted(value);
+    setCurrentPage(INITIAL_PAGING_VALUE);
   }, []);
 
   const allowTestConn = useMemo(() => {
@@ -888,6 +894,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceCategory]
   );
 
+  const pagingHandler = useCallback(
+    (cursorType: string | number, activePage?: number) => {
+      getOtherDetails({
+        [cursorType]: paging[cursorType as keyof typeof paging],
+      });
+      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    },
+    [paging, getOtherDetails]
+  );
+
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
     const isOwner = AppState.userDetails.id === serviceDetails?.owner?.id;
@@ -900,10 +916,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
         count: paging.total,
         children: (
           <ServiceMainTabContent
+            currentPage={currentPage}
             data={data}
-            fetchServiceExtraInfo={getOtherDetails}
             isServiceLoading={isServiceLoading}
             paging={paging}
+            pagingHandler={pagingHandler}
             saveUpdatedServiceData={saveUpdatedServiceData}
             serviceDetails={serviceDetails}
             serviceName={serviceCategory}

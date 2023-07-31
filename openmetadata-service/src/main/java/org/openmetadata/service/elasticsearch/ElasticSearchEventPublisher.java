@@ -58,7 +58,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     // needs Db connection
     registerElasticSearchJobs();
     this.searchClient = IndexUtil.getSearchClient(esConfig, dao);
-    ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, dao);
+    ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
     esIndexDefinition.createIndexes(esConfig);
   }
 
