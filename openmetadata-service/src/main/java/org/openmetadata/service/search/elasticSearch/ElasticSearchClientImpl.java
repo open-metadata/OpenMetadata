@@ -403,20 +403,20 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
             .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
             .field("tasks.name", 2.0f)
             .field("tasks.description", 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(EntityBuilderConstant.UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(EntityBuilderConstant.DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
     highlightTasks.highlighterType(EntityBuilderConstant.UNIFIED);
@@ -436,20 +436,20 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 15.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
             .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
             .field("mlFeatures.name", 2.0f)
             .field("mlFeatures.description", 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(EntityBuilderConstant.UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(EntityBuilderConstant.DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
     highlightTasks.highlighterType(EntityBuilderConstant.UNIFIED);
@@ -467,14 +467,14 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 15.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_NAME_NGRAM)
             .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
             .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION, 1.0f)
+            .field(Entity.FIELD_DESCRIPTION, 1.0f)
             .field(EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD, 2.0f)
             .field("messageSchema.schemaFields.description", 1.0f)
             .field("messageSchema.schemaFields.children.name", 2.0f)
@@ -503,14 +503,14 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 15.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_NAME_NGRAM)
             .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
             .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION, 1.0f)
+            .field(Entity.FIELD_DESCRIPTION, 1.0f)
             .field("charts.name", 2.0f)
             .field("charts.description", 1.0f)
             .defaultOperator(Operator.AND)
@@ -541,13 +541,13 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 15.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_NAME_NGRAM)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
             .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION, 1.0f)
+            .field(Entity.FIELD_DESCRIPTION, 1.0f)
             .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field("columns.name.keyword", 10.0f)
             .field("columns.name", 2.0f)
@@ -569,7 +569,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTableName.highlighterType(EntityBuilderConstant.UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(EntityBuilderConstant.DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("columns.name");
@@ -597,7 +597,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildUserOrTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 3.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 3.0f)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 5.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
@@ -610,16 +610,16 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 10.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 10.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(FIELD_NAME, 10.0f)
             .field(EntityBuilderConstant.NAME_KEYWORD, 10.0f)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 10.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 10.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field("synonyms", 5.0f)
             .field("synonyms.ngram")
-            .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
+            .field(FIELD_DESCRIPTION, 3.0f)
             .field("glossary.name", 5.0f)
             .field("glossary.displayName", 5.0f)
             .field("glossary.displayName.ngram")
@@ -658,10 +658,10 @@ public class ElasticSearchClientImpl implements SearchClient {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 10.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 10.0f)
             .field(EntityBuilderConstant.FIELD_NAME_NGRAM, 1.0f)
             .field("classification.name", 1.0f)
-            .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
+            .field(FIELD_DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -684,10 +684,10 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 15.0f)
+            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION, 1.0f)
+            .field(Entity.FIELD_DESCRIPTION, 1.0f)
             .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
             .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
@@ -702,7 +702,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightContainerName.highlighterType(EntityBuilderConstant.UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(EntityBuilderConstant.DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
@@ -728,16 +728,16 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(EntityBuilderConstant.DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
             .field(EntityBuilderConstant.QUERY, 10.0f)
             .field(EntityBuilderConstant.QUERY_NGRAM)
-            .field(EntityBuilderConstant.DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
             .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
-    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(EntityBuilderConstant.DISPLAY_NAME);
+    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightGlossaryName.highlighterType(EntityBuilderConstant.UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
@@ -756,7 +756,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
-            .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
+            .field(FIELD_DESCRIPTION, 3.0f)
             .field("testSuite.fullyQualifiedName", 10.0f)
             .field("testSuite.name", 10.0f)
             .field("testSuite.description", 3.0f)

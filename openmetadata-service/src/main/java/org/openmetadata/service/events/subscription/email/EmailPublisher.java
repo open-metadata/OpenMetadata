@@ -43,7 +43,7 @@ public class EmailPublisher extends SubscriptionPublisher {
   private final CollectionDAO daoCollection;
 
   public EmailPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub, dao);
+    super(eventSub);
     if (eventSub.getSubscriptionType() == EMAIL) {
       this.emailAlertConfig = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), EmailAlertConfig.class);
       this.daoCollection = dao;
