@@ -33,7 +33,7 @@ import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import {
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
@@ -519,22 +519,24 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                       ? t('label.log-plural')
                       : t('message.no-permission-for-action')
                   }>
-                  <Button
-                    className="p-0"
-                    data-testid="logs"
-                    disabled={!viewPermission}
-                    href={getLogsViewerPath(
+                  <Link
+                    to={getLogsViewerPath(
                       EntityType.TEST_SUITE,
                       record.service?.name || '',
                       record.fullyQualifiedName || ''
-                    )}
-                    size="small"
-                    type="link"
-                    onClick={() => {
-                      setSelectedPipeline(record);
-                    }}>
-                    {t('label.log-plural')}
-                  </Button>
+                    )}>
+                    <Button
+                      className="p-0"
+                      data-testid="logs"
+                      disabled={!viewPermission}
+                      size="small"
+                      type="link"
+                      onClick={() => {
+                        setSelectedPipeline(record);
+                      }}>
+                      {t('label.log-plural')}
+                    </Button>
+                  </Link>
                 </Tooltip>
               </Space>
 
