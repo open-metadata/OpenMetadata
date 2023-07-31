@@ -41,6 +41,7 @@ const reactOnFeed = (feedSelector, reaction) => {
 describe('Recently viwed data assets', () => {
   beforeEach(() => {
     cy.login();
+    cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
 
   it('Feed widget should be visible', () => {
