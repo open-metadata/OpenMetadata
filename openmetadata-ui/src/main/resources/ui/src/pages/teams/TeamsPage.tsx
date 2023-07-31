@@ -407,7 +407,11 @@ const TeamsPage = () => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            setSelectedTeam((previous) => ({ ...previous, ...res }));
+            setSelectedTeam((previous) => ({
+              ...previous,
+              ...res,
+              owner: res.owner ?? undefined,
+            }));
             resolve();
           } else {
             throw t('server.unexpected-response');

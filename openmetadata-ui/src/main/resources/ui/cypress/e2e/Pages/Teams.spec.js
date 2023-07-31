@@ -152,6 +152,7 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
+    verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@permissions', 200);
     cy.get('[data-testid="add-new-user"]').should('be.visible').click();
     verifyResponseStatusCode('@getUsers', 200);
@@ -162,6 +163,7 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@updateTeam', 200);
+    verifyResponseStatusCode('@getUserDetails', 200);
     cy.get(`[data-testid="${TEAM_DETAILS.userId}"]`).should('not.exist');
   });
 
