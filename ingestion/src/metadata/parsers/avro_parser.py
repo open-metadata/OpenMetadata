@@ -21,7 +21,7 @@ from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema
 from pydantic.main import ModelMetaclass
 
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.schema import FieldModel
+from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -132,6 +132,26 @@ def _parse_union_children(
     return sub_type, None
 
 
+def parse_record_fields(field: RecordSchema, cls: ModelMetaclass = FieldModel):
+    """
+    Parse the nested record fields for avro
+    """
+    children = cls(
+        name=field.name,
+        dataType=DataTypeTopic.RECORD,
+        children=[
+            cls(
+                name=field.type.name,
+                dataType=DataTypeTopic.RECORD,
+                children=get_avro_fields(field.type, cls),
+                description=field.type.doc,
+            )
+        ],
+        description=field.doc,
+    )
+    return children
+
+
 def parse_union_fields(
     union_field: Schema, cls: ModelMetaclass = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
@@ -231,6 +251,8 @@ def get_avro_fields(
                 field_models.append(parse_array_fields(field, cls=cls))
             elif isinstance(field.type, UnionSchema):
                 field_models.append(parse_union_fields(field, cls=cls))
+            elif isinstance(field.type, RecordSchema):
+                field_models.append(parse_record_fields(field, cls=cls))
             else:
                 field_models.append(parse_single_field(field, cls=cls))
         except Exception as exc:  # pylint: disable=broad-except

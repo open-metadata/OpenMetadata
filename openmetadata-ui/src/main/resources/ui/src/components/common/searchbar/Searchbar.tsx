@@ -32,6 +32,7 @@ type Props = {
   showLoadingStatus?: boolean;
   showClearSearch?: boolean;
   inputProps?: InputProps;
+  searchBarDataTestId?: string;
 };
 
 const Searchbar = ({
@@ -43,6 +44,7 @@ const Searchbar = ({
   removeMargin = false,
   showLoadingStatus = false,
   showClearSearch = false,
+  searchBarDataTestId,
   inputProps,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
@@ -82,7 +84,7 @@ const Searchbar = ({
       {label !== '' && <label>{label}</label>}
       <div className="flex relative">
         <Input
-          data-testid="searchbar"
+          data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
           prefix={
             <SVGIcons

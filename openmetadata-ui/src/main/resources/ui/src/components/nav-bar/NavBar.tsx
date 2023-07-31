@@ -123,12 +123,16 @@ const NavBar = ({
       <Select
         defaultActiveFirstOption
         className="global-search-select"
+        data-testid="global-search-selector"
         listHeight={300}
         popupClassName="global-search-select-menu"
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {globalSearchOptions.map(({ value, label }) => (
-          <Option key={value} value={value}>
+          <Option
+            data-testid={`global-search-select-option-${label}`}
+            key={value}
+            value={value}>
             {label}
           </Option>
         ))}
