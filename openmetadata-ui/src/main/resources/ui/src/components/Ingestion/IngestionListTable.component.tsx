@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Tooltip, Typography } from 'antd';
+import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
@@ -85,19 +85,15 @@ function IngestionListTable({
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
     return record.airflowConfig?.scheduleInterval ? (
-      <Popover
-        content={
-          <div>
-            {cronstrue.toString(record.airflowConfig.scheduleInterval, {
-              use24HourTimeFormat: true,
-              verbose: true,
-            })}
-          </div>
-        }
+      <Tooltip
+        color="#0968da"
         placement="bottom"
-        trigger="hover">
-        <span>{record.airflowConfig.scheduleInterval}</span>
-      </Popover>
+        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
+          use24HourTimeFormat: true,
+          verbose: true,
+        })}>
+        {record.airflowConfig.scheduleInterval}
+      </Tooltip>
     ) : (
       <span>--</span>
     );
