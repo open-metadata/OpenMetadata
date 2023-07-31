@@ -148,7 +148,10 @@ const DataModelDetails = ({
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
       history.push({
-        pathname: getDataModelDetailsPath(dashboardDataModelFQN, tabValue),
+        pathname: getDataModelDetailsPath(
+          decodeURIComponent(dashboardDataModelFQN),
+          tabValue
+        ),
       });
     }
   };

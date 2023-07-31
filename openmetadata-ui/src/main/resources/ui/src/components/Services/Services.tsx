@@ -169,7 +169,9 @@ const Services = ({
                         <div>
                           <Link
                             to={getServiceDetailsPath(
-                              service.fullyQualifiedName ?? service.name,
+                              encodeURIComponent(
+                                service.fullyQualifiedName ?? service.name
+                              ),
                               serviceName
                             )}>
                             <button>

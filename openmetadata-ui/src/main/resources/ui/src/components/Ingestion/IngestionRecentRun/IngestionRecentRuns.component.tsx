@@ -54,7 +54,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     setLoading(true);
     try {
       const response = await getRunHistoryForPipeline(
-        ingestion.fullyQualifiedName || '',
+        encodeURIComponent(ingestion.fullyQualifiedName || ''),
         queryParams
       );
 

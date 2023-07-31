@@ -83,7 +83,9 @@ function PipelineActions({
       getEditIngestionPath(
         serviceCategory,
         serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
+        encodeURIComponent(
+          ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`
+        ),
         ingestion.pipelineType
       )
     );
@@ -214,7 +216,7 @@ function PipelineActions({
           to={getLogsViewerPath(
             serviceCategory,
             record.service?.name || '',
-            record?.fullyQualifiedName || record?.name || ''
+            encodeURIComponent(record?.fullyQualifiedName || record?.name || '')
           )}>
           <Button
             className="p-x-xss"

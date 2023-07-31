@@ -184,7 +184,7 @@ export const getEntityLink = (
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
-      return getDashboardDetailsPath(fullyQualifiedName);
+      return getDashboardDetailsPath(decodeURIComponent(fullyQualifiedName));
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:

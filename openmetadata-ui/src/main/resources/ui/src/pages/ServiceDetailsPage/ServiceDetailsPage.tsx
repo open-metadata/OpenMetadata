@@ -102,7 +102,6 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from 'utils/ServiceUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
@@ -208,11 +207,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     (key: string) => {
       if (key !== activeTab) {
         history.push({
-          pathname: getServiceDetailsPath(
-            getDecodedFqn(serviceFQN),
-            serviceCategory,
-            key
-          ),
+          pathname: getServiceDetailsPath(serviceFQN, serviceCategory, key),
         });
       }
     },
@@ -235,7 +230,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsLoading(true);
         const response = await getIngestionPipelines(
           ['owner', 'pipelineStatuses'],
-          serviceFQN,
+          decodeURIComponent(serviceFQN),
           paging
         );
 
@@ -403,7 +398,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
-        serviceFQN,
+        decodeURIComponent(serviceFQN),
         'owner,usageSummary,tags',
         paging,
         include
@@ -419,7 +414,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       try {
         setIsServiceLoading(true);
         const { data, paging: resPaging } = await getDataModels({
-          service: serviceFQN,
+          service: decodeURIComponent(serviceFQN),
           fields: 'owner,tags,followers',
           include,
           ...params,
@@ -440,7 +435,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
-        serviceFQN,
+        decodeURIComponent(serviceFQN),
         'owner,tags',
         paging,
         include
@@ -454,7 +449,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchMlModal = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
-        serviceFQN,
+        decodeURIComponent(serviceFQN),
         'owner,tags',
         paging,
         include
@@ -468,7 +463,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchContainers = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
-        service: serviceFQN,
+        service: decodeURIComponent(serviceFQN),
         fields: 'owner,tags',
         paging,
         root: true,

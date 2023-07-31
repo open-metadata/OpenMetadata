@@ -219,7 +219,9 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDashboardDetailsPath(dashboardFQN, activeKey));
+      history.push(
+        getDashboardDetailsPath(decodeURIComponent(dashboardFQN), activeKey)
+      );
     }
   };
 

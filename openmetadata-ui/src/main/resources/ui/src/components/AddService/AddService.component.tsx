@@ -171,7 +171,12 @@ const AddService = ({
   // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
-      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
+      history.push(
+        getServiceDetailsPath(
+          encodeURIComponent(newServiceData.name),
+          serviceCategory
+        )
+      );
     }
   };
 

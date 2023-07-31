@@ -957,7 +957,7 @@ export const getBreadcrumbForTable = (
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            service?.name,
+            encodeURIComponent(service?.name),
             ServiceCategory.DATABASE_SERVICES
           )
         : '',
@@ -997,7 +997,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            service?.name,
+            encodeURIComponent(service?.name),
             ServiceCategoryPlural[
               service?.type as keyof typeof ServiceCategoryPlural
             ]
@@ -1009,7 +1009,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
           {
             name: entity.name,
             url: getEntityLinkFromType(
-              entity.fullyQualifiedName ?? '',
+              encodeURIComponent(entity.fullyQualifiedName ?? ''),
               (entity as SourceType).entityType as EntityType
             ),
           },
@@ -1136,7 +1136,9 @@ export const getEntityBreadcrumbs = (
           name: getEntityName((entity as DatabaseSchema).service),
           url: (entity as DatabaseSchema).service?.name
             ? getServiceDetailsPath(
-                (entity as DatabaseSchema).service?.name ?? '',
+                encodeURIComponent(
+                  (entity as DatabaseSchema).service?.name ?? ''
+                ),
                 ServiceCategoryPlural[
                   (entity as DatabaseSchema).service
                     ?.type as keyof typeof ServiceCategoryPlural
