@@ -45,6 +45,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       extra={
         <Button
           className="flex-center welcome-screen-close-btn"
+          data-testid="welcome-screen-close-btn"
           icon={<CloseIcon height={12} width={12} />}
           type="text"
           onClick={onClose}
