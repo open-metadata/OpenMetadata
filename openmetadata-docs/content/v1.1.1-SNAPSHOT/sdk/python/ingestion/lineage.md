@@ -394,3 +394,59 @@ The UI currently supports showing the column lineage information. Data about the
 will be surfaced soon. Thanks!
 
 {% /note %}
+
+# Automated SQL lineage
+
+In case you want OpenMetadata to identify the lineage based on the sql query, then you can make use of the method `add_lineage_by_query` of the python SDK to parser the sql and generate the lineage in OpenMetadata.
+
+
+follow the below code snippet for the example:
+
+```python
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+
+database_service: DatabaseService = metadata.get_by_name(
+    entity=DatabaseService, fqn="my_service"
+)
+
+metadata.add_lineage_by_query(
+    database_service=database_service,
+    timeout=200, # timeout in seconds
+    sql="insert into target_table(id) as select id from source_table" # your sql query
+)
+```
+
+Above example would create a lineage between `target_table` and `source_table` within `my_service` database service.
+
+
+## Automated SQL lineage via CLI
+
+To create the automated sql lineage via CLI, you need to make sure that you have installed the openmetadata-ingestion package in your local environment using command `pip install openmetadata-ingestion`.
+
+Once that is done you will have to prepare a yaml file as follows.
+
+```yaml
+serviceName: local_mysql
+query: insert into target_table(id) as select id from source_table
+# filePath: test.sql
+# parseTimeout: 360 # timeout in seconds
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+- **serviceName**: Name of the database service which contains tha table involved in query.
+- **query**: You can specify the raw sql query within the yaml file itself.
+- **filePath**: In case the query is too big then you can also save query in a file and pass the path to the file in this field. 
+- **parseTimeout**: Timeout for the lineage parsing process.
+- **workflowConfig**: The main property here is the openMetadataServerConfig, where you can define the host and security provider of your OpenMetadata installation.
+
+
+
+Once the yaml file is prepare you can run the command 
+
+```
+metadata lineage -c path/to/your_config_yaml.yaml
+```
