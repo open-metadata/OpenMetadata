@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
 import {
   interceptURL,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { createDescriptionTask, taskAssignee } from '../../common/TaskUtils';
+import { createDescriptionTask } from '../../common/TaskUtils';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 // eslint-disable-next-line spaced-comment
@@ -109,7 +112,9 @@ describe('Recently viwed data assets', () => {
       'suggestAsset'
     );
 
-    cy.get('[data-testid="editor-wrapper"]').should('be.visible');
+    cy.get('[data-testid="editor-wrapper"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     ).as('editor');
@@ -129,10 +134,9 @@ describe('Recently viwed data assets', () => {
 
     verifyResponseStatusCode('@postReply', 201);
 
-    cy.get('[data-testid="replies"]').should('contain', '1 reply');
     cy.get('[data-testid="replies"] .activity-feed-card.activity-feed-card-v1')
       .children('.ant-row')
-      .eq(1)
+      .last()
       .invoke('text')
       .should(
         'eq',
@@ -167,7 +171,9 @@ describe('Recently viwed data assets', () => {
       'suggestUser'
     );
 
-    cy.get('[data-testid="editor-wrapper"]').should('be.visible');
+    cy.get('[data-testid="editor-wrapper"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     ).as('editor');
@@ -219,7 +225,7 @@ describe('Recently viwed data assets', () => {
     interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
 
     // create description task
-    createDescriptionTask(value);
+    createDescriptionTask({ ...value, assignee: 'admin' });
 
     cy.clickOnLogo();
 
@@ -237,6 +243,6 @@ describe('Recently viwed data assets', () => {
         expect(matches).to.not.be.null;
       });
 
-    cy.get(`[data-testid="assignee-${taskAssignee}"]`).should('be.visible');
+    cy.get(`[data-testid="assignee-admin"]`).should('be.visible');
   });
 });

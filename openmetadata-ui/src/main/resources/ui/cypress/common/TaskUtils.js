@@ -18,9 +18,8 @@ import {
 } from './common';
 
 const owner = 'admin';
-
-export const taskAssignee = 'adam_rodriguez9';
-export const taskSecondAssignee = 'aaron_johnson0';
+const assignee = 'adam_rodriguez9';
+const secondAssignee = 'aaron_johnson0';
 
 export const verifyTaskDetails = (regexPattern) => {
   cy.get('#task-panel').should('be.visible');
@@ -34,7 +33,7 @@ export const verifyTaskDetails = (regexPattern) => {
 
   cy.get('[data-testid="owner-link"]').should('contain', owner);
 
-  cy.get(`[data-testid="assignee-${taskAssignee}"]`).should('be.visible');
+  cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
 };
 
 export const editAssignee = () => {
@@ -43,12 +42,12 @@ export const editAssignee = () => {
   cy.get('[data-testid="edit-assignees"]').click();
 
   cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
-    taskSecondAssignee
+    secondAssignee
   );
   // select value from dropdown
   verifyResponseStatusCode('@suggestApi', 200);
 
-  cy.get(`[data-testid="assignee-option-${taskSecondAssignee}"]`)
+  cy.get(`[data-testid="assignee-option-${secondAssignee}"]`)
     .should('be.visible')
     .trigger('mouseover')
     .trigger('click');
@@ -59,7 +58,7 @@ export const editAssignee = () => {
 
   verifyResponseStatusCode('@editAssignee', 200);
 
-  cy.get(`[data-testid="assignee-${taskAssignee}"]`).should('be.visible');
+  cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
 };
 
 export const createDescriptionTask = (value) => {
@@ -71,12 +70,12 @@ export const createDescriptionTask = (value) => {
   );
 
   cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
-    taskAssignee
+    value.assignee ?? assignee
   );
   // select value from dropdown
   verifyResponseStatusCode('@suggestApi', 200);
 
-  cy.get(`[data-testid="assignee-option-${taskAssignee}"]`)
+  cy.get(`[data-testid="assignee-option-${value.assignee ?? assignee}"]`)
     .should('be.visible')
     .trigger('mouseover')
     .trigger('click');
