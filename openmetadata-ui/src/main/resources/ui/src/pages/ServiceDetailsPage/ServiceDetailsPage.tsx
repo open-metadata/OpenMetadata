@@ -97,6 +97,8 @@ import { getPipelines } from 'rest/pipelineAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getEntityMissingError } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getEditConnectionPath } from 'utils/RouterUtils';
@@ -1008,31 +1010,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
       })}>
-      <Row data-testid="service-page" gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
-          <DataAssetsHeader
-            isRecursiveDelete
-            allowSoftDelete={false}
-            dataAsset={serviceDetails}
-            entityType={entityType}
-            permissions={servicePermission}
-            onDisplayNameUpdate={handleUpdateDisplayName}
-            onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={() => Promise.resolve()}
-            onTierUpdate={handleUpdateTier}
-          />
-        </Col>
+      {isEmpty(serviceDetails) ? (
+        <ErrorPlaceHolder className="m-0">
+          {getEntityMissingError(serviceCategory as string, serviceFQN)}
+        </ErrorPlaceHolder>
+      ) : (
+        <Row data-testid="service-page" gutter={[0, 12]}>
+          <Col className="p-x-lg" span={24}>
+            <DataAssetsHeader
+              isRecursiveDelete
+              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              allowSoftDelete={false}
+              dataAsset={serviceDetails}
+              entityType={entityType}
+              permissions={servicePermission}
+              onDisplayNameUpdate={handleUpdateDisplayName}
+              onOwnerUpdate={handleUpdateOwner}
+              onRestoreDataAsset={() => Promise.resolve()}
+              onTierUpdate={handleUpdateTier}
+            />
+          </Col>
 
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={activeTabHandler}
-          />
-        </Col>
-      </Row>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={activeTabHandler}
+            />
+          </Col>
+        </Row>
+      )}
     </PageLayoutV1>
   );
 };
