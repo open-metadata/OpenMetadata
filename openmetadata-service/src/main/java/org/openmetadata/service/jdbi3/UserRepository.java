@@ -121,7 +121,7 @@ public class UserRepository extends EntityRepository<User> {
       return null; // No inherited roles for bots
     }
     getTeams(user);
-    return SubjectCache.getInstance() != null ? SubjectCache.getInstance().getRolesForTeams(getTeams(user)) : null;
+    return SubjectCache.getRolesForTeams(getTeams(user));
   }
 
   @Override
@@ -140,7 +140,7 @@ public class UserRepository extends EntityRepository<User> {
 
     store(user, update);
     if (update) {
-      SubjectCache.getInstance().invalidateUser(user.getName());
+      SubjectCache.invalidateUser(user.getName());
     }
 
     // Restore the relationships
@@ -175,13 +175,13 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   protected void postDelete(User entity) {
-    SubjectCache.getInstance().invalidateUser(entity.getName());
+    SubjectCache.invalidateUser(entity.getName());
   }
 
   @Override
   protected void cleanup(User user) throws IOException {
     super.cleanup(user);
-    SubjectCache.getInstance().invalidateUser(user.getName());
+    SubjectCache.invalidateUser(user.getName());
   }
 
   @Override
@@ -436,7 +436,7 @@ public class UserRepository extends EntityRepository<User> {
           continue; // Team is same as the team to which CSV is being imported, then it is in the same hierarchy
         }
         // Else the parent should already exist
-        if (!SubjectCache.getInstance().isInTeam(team.getName(), teamRef)) {
+        if (!SubjectCache.isInTeam(team.getName(), teamRef)) {
           importFailure(printer, invalidTeam(6, team.getName(), user, teamRef.getName()), csvRecord);
           processRecord = false;
         }

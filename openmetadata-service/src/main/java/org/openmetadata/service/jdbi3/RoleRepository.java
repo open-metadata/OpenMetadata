@@ -92,7 +92,7 @@ public class RoleRepository extends EntityRepository<Role> {
     role.withPolicies(null);
     store(role, update);
     if (update) {
-      RoleCache.getInstance().invalidateRole(role.getId());
+      RoleCache.invalidateRole(role.getId());
     }
     role.withPolicies(policies);
   }
@@ -120,7 +120,7 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   protected void cleanup(Role role) throws IOException {
     super.cleanup(role);
-    RoleCache.getInstance().invalidateRole(role.getId());
+    RoleCache.invalidateRole(role.getId());
   }
 
   /** Handles entity updated from PUT and POST operation. */

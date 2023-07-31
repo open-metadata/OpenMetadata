@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -38,111 +39,79 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.TeamRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectCache {
-  private static SubjectCache instance;
-  private static volatile boolean initialized = false;
-  protected static LoadingCache<String, SubjectContext> userCache;
-  protected static LoadingCache<UUID, SubjectContext> userCacheWihId;
-  protected static LoadingCache<String, Team> teamCache;
-  protected static LoadingCache<UUID, Team> teamCacheWithId;
-  protected static UserRepository userRepository;
-  protected static Fields userFields;
-  protected static TeamRepository teamRepository;
-  protected static Fields teamFields;
+  protected static final LoadingCache<String, SubjectContext> USER_CACHE =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new UserLoader());
+  protected static final LoadingCache<UUID, SubjectContext> USER_CACHE_WITH_ID =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new UserLoaderWithId());
+  protected static final LoadingCache<String, Team> TEAM_CACHE =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new TeamLoader());
+  protected static final LoadingCache<UUID, Team> TEAM_CACHE_WITH_ID =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new TeamLoaderWithId());
+  private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
+  private static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
 
-  // Expected to be called only once from the DefaultAuthorizer
-  public static void initialize() {
-    if (!initialized) {
-      userCache =
-          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new UserLoader());
-      userCacheWihId =
-          CacheBuilder.newBuilder()
-              .maximumSize(1000)
-              .expireAfterWrite(3, TimeUnit.MINUTES)
-              .build(new UserLoaderWithId());
-      teamCache =
-          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new TeamLoader());
-      teamCacheWithId =
-          CacheBuilder.newBuilder()
-              .maximumSize(1000)
-              .expireAfterWrite(3, TimeUnit.MINUTES)
-              .build(new TeamLoaderWithId());
-      userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      userFields = userRepository.getFields("roles, teams, isAdmin, profile");
-      teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
-      teamFields = teamRepository.getFields("defaultRoles, policies, parents, profile");
-      instance = new SubjectCache();
-      initialized = true;
-      LOG.info("Subject cache is initialized");
-    } else {
-      LOG.info("Subject cache is already initialized");
-    }
+  private SubjectCache() {
+    // Private constructor for singleton
   }
 
-  public static SubjectCache getInstance() {
-    return instance;
-  }
-
-  public SubjectContext getSubjectContext(String userName) throws EntityNotFoundException {
+  public static SubjectContext getSubjectContext(String userName) throws EntityNotFoundException {
     try {
-      return userCache.get(userName);
+      return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userName));
     }
   }
 
-  public SubjectContext getSubjectContext(UUID userId) throws EntityNotFoundException {
+  public static SubjectContext getSubjectContext(UUID userId) throws EntityNotFoundException {
     try {
-      return userCacheWihId.get(userId);
+      return USER_CACHE_WITH_ID.get(userId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
-  public User getUser(String userName) throws EntityNotFoundException {
+  public static User getUser(String userName) throws EntityNotFoundException {
     try {
-      return userCache.get(userName).getUser();
+      return USER_CACHE.get(userName).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userName));
     }
   }
 
-  public User getUserById(String userId) throws EntityNotFoundException {
+  public static User getUserById(String userId) throws EntityNotFoundException {
     return getUserById(UUID.fromString(userId));
   }
 
-  public User getUserById(UUID userId) throws EntityNotFoundException {
+  public static User getUserById(UUID userId) throws EntityNotFoundException {
     try {
-      return userCacheWihId.get(userId).getUser();
+      return USER_CACHE_WITH_ID.get(userId).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
-  public Team getTeam(UUID teamId) throws EntityNotFoundException {
+  public static Team getTeam(UUID teamId) throws EntityNotFoundException {
     try {
-      return teamCacheWithId.get(teamId);
+      return TEAM_CACHE_WITH_ID.get(teamId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.TEAM, teamId));
     }
   }
 
-  public Team getTeamByName(String teamName) throws EntityNotFoundException {
+  public static Team getTeamByName(String teamName) throws EntityNotFoundException {
     try {
-      return teamCache.get(teamName);
+      return TEAM_CACHE.get(teamName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.TEAM, teamName));
     }
   }
 
   /** Return true if given list of teams is part of the hierarchy of parentTeam */
-  public boolean isInTeam(String parentTeam, EntityReference team) {
+  public static boolean isInTeam(String parentTeam, EntityReference team) {
     Deque<EntityReference> stack = new ArrayDeque<>();
     stack.push(team); // Start with team and see if the parent matches
     while (!stack.isEmpty()) {
@@ -156,7 +125,7 @@ public class SubjectCache {
   }
 
   /** Return true if the given user has any roles the list of roles */
-  public boolean hasRole(User user, String role) {
+  public static boolean hasRole(User user, String role) {
     Deque<EntityReference> stack = new ArrayDeque<>();
     // If user has one of the roles directly assigned then return true
     if (hasRole(user.getRoles(), role)) {
@@ -179,28 +148,27 @@ public class SubjectCache {
 
   public static void cleanUp() {
     LOG.info("Subject cache is cleaned up");
-    userCache.invalidateAll();
-    teamCacheWithId.invalidateAll();
-    initialized = false;
+    USER_CACHE.invalidateAll();
+    TEAM_CACHE_WITH_ID.invalidateAll();
   }
 
-  public void invalidateUser(String userName) {
+  public static void invalidateUser(String userName) {
     try {
-      userCache.invalidate(userName);
+      USER_CACHE.invalidate(userName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for user {}", userName, ex);
     }
   }
 
-  public void invalidateTeam(UUID teamId) {
+  public static void invalidateTeam(UUID teamId) {
     try {
-      teamCacheWithId.invalidate(teamId);
+      TEAM_CACHE_WITH_ID.invalidate(teamId);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for team {}", teamId, ex);
     }
   }
 
-  public List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
+  public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
       Team team = getTeam(teamRef.getId());
@@ -215,10 +183,9 @@ public class SubjectCache {
   static class UserLoader extends CacheLoader<String, SubjectContext> {
     @Override
     public SubjectContext load(@CheckForNull String userName) throws IOException {
-      // XXX
       try {
-        System.out.println("Loading user by name " + userName);
-        User user = userRepository.getByName(null, EntityInterfaceUtil.quoteName(userName), userFields);
+        User user =
+            Entity.getEntityByName(Entity.USER, EntityInterfaceUtil.quoteName(userName), USER_FIELDS, NON_DELETED);
         LOG.info("Loaded user {}:{}", user.getName(), user.getId());
         return new SubjectContext(user);
       } catch (Exception ex) {
@@ -231,7 +198,7 @@ public class SubjectCache {
   static class UserLoaderWithId extends CacheLoader<UUID, SubjectContext> {
     @Override
     public SubjectContext load(@CheckForNull UUID uid) throws IOException {
-      User user = userRepository.get(null, uid, userFields);
+      User user = Entity.getEntity(Entity.USER, uid, USER_FIELDS, NON_DELETED);
       LOG.info("Loaded user {}:{}", user.getName(), user.getId());
       return new SubjectContext(user);
     }
@@ -239,9 +206,9 @@ public class SubjectCache {
 
   static class TeamLoader extends CacheLoader<String, Team> {
     @Override
-    public Team load(@CheckForNull String userName) throws IOException {
-      Team team = teamRepository.getByName(null, userName, teamFields);
-      LOG.info("Loaded user {}:{}", team.getName(), team.getId());
+    public Team load(@CheckForNull String teamName) throws IOException {
+      Team team = Entity.getEntityByName(Entity.TEAM, teamName, TEAM_FIELDS, NON_DELETED);
+      LOG.info("Loaded team {}:{}", team.getName(), team.getId());
       return team;
     }
   }
@@ -249,7 +216,7 @@ public class SubjectCache {
   static class TeamLoaderWithId extends CacheLoader<UUID, Team> {
     @Override
     public Team load(@NonNull UUID teamId) throws IOException {
-      Team team = teamRepository.get(null, teamId, teamFields);
+      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, NON_DELETED);
       LOG.info("Loaded team {}:{}", team.getName(), team.getId());
       return team;
     }

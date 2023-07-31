@@ -132,7 +132,6 @@ import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -194,8 +193,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    // Keep this before initializeUsers, else getUpdater() will fail
-    SubjectCache.initialize();
     this.repository.initializeUsers(config);
   }
 
@@ -523,7 +520,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         authHandler.sendInviteMailToUser(
             uriInfo,
             user,
-            String.format("Welcome to %s", EmailUtil.getInstance().getEmailingEntity()),
+            String.format("Welcome to %s", EmailUtil.getEmailingEntity()),
             create.getCreatePasswordType(),
             create.getPassword());
       } catch (Exception ex) {
@@ -635,7 +632,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     RestUtil.PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     // Invalidate Bot Token in Cache
-    BotTokenCache.getInstance().invalidateToken(user.getName());
+    BotTokenCache.invalidateToken(user.getName());
     return response.toResponse();
   }
 
@@ -910,10 +907,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       // send a mail to the User with the Update
       authHandler.sendPasswordResetLink(
-          uriInfo,
-          registeredUser,
-          EmailUtil.getInstance().getPasswordResetSubject(),
-          EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+          uriInfo, registeredUser, EmailUtil.getPasswordResetSubject(), EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -1117,7 +1111,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       List<String> ids = request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
       tokenRepository.deleteAllToken(ids);
     }
-    UserTokenCache.getInstance().invalidateToken(user.getName());
+    UserTokenCache.invalidateToken(user.getName());
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
