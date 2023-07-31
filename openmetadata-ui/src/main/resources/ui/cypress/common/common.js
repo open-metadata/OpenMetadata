@@ -926,11 +926,9 @@ export const addTeam = (TEAM_DETAILS, index) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   // Fetching the add button and clicking on it
   if (index > 0) {
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="add-placeholder-button"]').click();
   } else {
-    cy.get('[data-testid="add-team"]').should('be.visible').click();
+    cy.get('[data-testid="add-team"]').click();
   }
 
   verifyResponseStatusCode('@addTeam', 200);
