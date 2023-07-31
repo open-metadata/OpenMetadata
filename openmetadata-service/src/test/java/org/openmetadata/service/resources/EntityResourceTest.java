@@ -198,6 +198,7 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -1686,7 +1687,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
       Awaitility.await().wait(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
       List<String> entityIds = new ArrayList<>();
@@ -1706,7 +1707,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
       Awaitility.await().wait(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
       List<String> entityIds = new ArrayList<>();
@@ -1739,7 +1740,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
       String desc = "";
       String original = JsonUtils.pojoToJson(entity);
       entity.setDescription("update description");
@@ -1766,7 +1767,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
       String origJson = JsonUtils.pojoToJson(entity);
       TagResourceTest tagResourceTest = new TagResourceTest();
       Tag tag = tagResourceTest.createEntity(tagResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);

@@ -7,8 +7,25 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
+import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
@@ -137,7 +154,6 @@ import org.openmetadata.service.elasticsearch.indexes.TeamIndex;
 import org.openmetadata.service.elasticsearch.indexes.UserIndex;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -336,7 +352,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (request.trackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
-      searchSourceBuilder.trackTotalHitsUpTo(EntityBuilderConstant.MAX_RESULT_HITS);
+      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
@@ -359,7 +375,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         .aggregation(
             AggregationBuilders.terms(fieldName)
                 .field(fieldName)
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
+                .size(MAX_AGGREGATE_SIZE)
                 .includeExclude(new IncludeExclude(value, null))
                 .order(BucketOrder.key(true)))
         .query(boolQueryBuilder)
@@ -404,24 +420,24 @@ public class ElasticSearchClientImpl implements SearchClient {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_DISPLAY_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("tasks.name", 2.0f)
             .field("tasks.description", 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightPipelineName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
-    highlightTasks.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("tasks.description");
-    highlightTaskDescriptions.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
@@ -436,25 +452,25 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("mlFeatures.name", 2.0f)
             .field("mlFeatures.description", 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightPipelineName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
-    highlightTasks.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("mlFeatures.description");
-    highlightTaskDescriptions.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
@@ -467,62 +483,56 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_NAME_NGRAM)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(Entity.FIELD_DESCRIPTION, 1.0f)
-            .field(EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD, 2.0f)
+            .field(FIELD_NAME_NGRAM)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
+            .field(ES_MESSAGE_SCHEMA_FIELD, 2.0f)
             .field("messageSchema.schemaFields.description", 1.0f)
             .field("messageSchema.schemaFields.children.name", 2.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTopicName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTopicName);
-    hb.field(
-        new HighlightBuilder.Field("messageSchema.schemaFields.description")
-            .highlighterType(EntityBuilderConstant.UNIFIED));
-    hb.field(
-        new HighlightBuilder.Field("messageSchema.schemaFields.children.name")
-            .highlighterType(EntityBuilderConstant.UNIFIED));
+    hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.description").highlighterType(UNIFIED));
+    hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.children.name").highlighterType(UNIFIED));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms(EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD)
-            .field(EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD));
+    searchSourceBuilder.aggregation(AggregationBuilders.terms(ES_MESSAGE_SCHEMA_FIELD).field(ES_MESSAGE_SCHEMA_FIELD));
     return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_NAME_NGRAM)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(Entity.FIELD_DESCRIPTION, 1.0f)
+            .field(FIELD_NAME_NGRAM)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
             .field("charts.name", 2.0f)
             .field("charts.description", 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightDashboardName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("charts.name");
-    highlightCharts.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightCharts.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightChartDescriptions = new HighlightBuilder.Field("charts.description");
-    highlightChartDescriptions.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightChartDescriptions.highlighterType(UNIFIED);
 
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
@@ -541,15 +551,15 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_NAME_NGRAM)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
-            .field(Entity.FIELD_DESCRIPTION, 1.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field("columns.name.keyword", 10.0f)
+            .field(FIELD_NAME_NGRAM)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(COLUMNS_NAME_KEYWORD, 10.0f)
             .field("columns.name", 2.0f)
             .field("columns.name.ngram")
             .field("columns.displayName", 2.0f)
@@ -568,40 +578,40 @@ public class ElasticSearchClientImpl implements SearchClient {
     FunctionScoreQueryBuilder queryBuilder = QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTableName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("columns.name");
-    highlightColumns.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightColumns.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("columns.description");
-    highlightColumnDescriptions.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightColumnDescriptions.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightColumnChildren = new HighlightBuilder.Field("columns.children.name");
-    highlightColumnDescriptions.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightColumnDescriptions.highlighterType(UNIFIED);
     hb.field(highlightDescription);
     hb.field(highlightTableName);
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
-    hb.preTags(EntityBuilderConstant.PRE_TAG);
-    hb.postTags(EntityBuilderConstant.POST_TAG);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
-        .aggregation(AggregationBuilders.terms("columns.name.keyword").field("columns.name.keyword"));
+        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD));
     return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildUserOrTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(Entity.FIELD_DISPLAY_NAME, 3.0f)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 5.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_DISPLAY_NAME, 3.0f)
+            .field(DISPLAY_NAME_KEYWORD, 5.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 3.0f)
+            .field(NAME_KEYWORD, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
@@ -610,13 +620,13 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(Entity.FIELD_DISPLAY_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM, 1.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(FIELD_NAME, 10.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 10.0f)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 10.0f)
-            .field(Entity.FIELD_DISPLAY_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(NAME_KEYWORD, 10.0f)
+            .field(DISPLAY_NAME_KEYWORD, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field("synonyms", 5.0f)
             .field("synonyms.ngram")
             .field(FIELD_DESCRIPTION, 3.0f)
@@ -627,30 +637,27 @@ public class ElasticSearchClientImpl implements SearchClient {
             .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightGlossaryName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightGlossaryDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightGlossaryDisplayName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightGlossaryDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightGlossaryDisplayName);
     hb.field(highlightSynonym);
 
-    hb.preTags(EntityBuilderConstant.PRE_TAG);
-    hb.postTags(EntityBuilderConstant.POST_TAG);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(EntityBuilderConstant.ES_TAG_FQN_FIELD)
-                .field(EntityBuilderConstant.ES_TAG_FQN_FIELD)
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD).size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"))
-        .aggregation(AggregationBuilders.terms("owner.displayName.keyword").field("owner.displayName.keyword"));
+        .aggregation(AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD).field(OWNER_DISPLAY_NAME_KEYWORD));
     return searchSourceBuilder;
   }
 
@@ -658,25 +665,25 @@ public class ElasticSearchClientImpl implements SearchClient {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
-            .field(Entity.FIELD_DISPLAY_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_NAME_NGRAM, 1.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_NAME_NGRAM, 1.0f)
             .field("classification.name", 1.0f)
             .field(FIELD_DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightTagName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTagName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTagDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTagDisplayName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTagDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
-    hb.preTags(EntityBuilderConstant.PRE_TAG);
-    hb.postTags(EntityBuilderConstant.POST_TAG);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
     return searchBuilder(queryBuilder, hb, from, size)
         .aggregation(AggregationBuilders.terms("classification.name.keyword").field("classification.name.keyword"));
   }
@@ -684,15 +691,15 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(Entity.FIELD_DISPLAY_NAME, 15.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(Entity.FIELD_DESCRIPTION, 1.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(EntityBuilderConstant.DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(EntityBuilderConstant.NAME_KEYWORD, 25.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field("dataModel.columns.name", 2.0f)
-            .field("dataModel.columns.name.keyword", 10.0f)
+            .field(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f)
             .field("dataModel.columns.name.ngram")
             .field("dataModel.columns.displayName", 2.0f)
             .field("dataModel.columns.displayName.ngram")
@@ -701,27 +708,27 @@ public class ElasticSearchClientImpl implements SearchClient {
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightContainerName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightContainerName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
-    highlightColumns.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightColumns.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("dataModel.columns.description");
-    highlightColumnDescriptions.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightColumnDescriptions.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightColumnChildren = new HighlightBuilder.Field("dataModel.columns.children.name");
-    highlightColumnDescriptions.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightColumnDescriptions.highlighterType(UNIFIED);
     hb.field(highlightDescription);
     hb.field(highlightContainerName);
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
-    hb.preTags(EntityBuilderConstant.PRE_TAG);
-    hb.postTags(EntityBuilderConstant.POST_TAG);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("dataModel.columns.name.keyword").field("dataModel.columns.name.keyword"));
+        AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -729,26 +736,26 @@ public class ElasticSearchClientImpl implements SearchClient {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM)
-            .field(EntityBuilderConstant.QUERY, 10.0f)
-            .field(EntityBuilderConstant.QUERY_NGRAM)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field(QUERY, 10.0f)
+            .field(QUERY_NGRAM)
             .field(FIELD_DESCRIPTION, 1.0f)
-            .field(EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightGlossaryName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(EntityBuilderConstant.UNIFIED);
-    HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(EntityBuilderConstant.QUERY);
-    highlightGlossaryName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(QUERY);
+    highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightQuery);
-    hb.preTags(EntityBuilderConstant.PRE_TAG);
-    hb.postTags(EntityBuilderConstant.POST_TAG);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
@@ -766,21 +773,21 @@ public class ElasticSearchClientImpl implements SearchClient {
             .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightTestCaseDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTestCaseDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightTestCaseName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTestCaseName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTestSuiteName = new HighlightBuilder.Field("testSuite.name");
-    highlightTestSuiteName.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTestSuiteName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTestSuiteDescription = new HighlightBuilder.Field("testSuite.description");
-    highlightTestSuiteDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    highlightTestSuiteDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightTestCaseDescription);
     hb.field(highlightTestCaseName);
     hb.field(highlightTestSuiteName);
     hb.field(highlightTestSuiteDescription);
 
-    hb.preTags(EntityBuilderConstant.PRE_TAG);
-    hb.postTags(EntityBuilderConstant.POST_TAG);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
 
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -793,24 +800,17 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   private static SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
+        .aggregation(AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("serviceType.keyword")
-                .field("serviceType.keyword")
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
+            AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("service.name.keyword")
-                .field("service.name.keyword")
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("entityType.keyword")
-                .field("entityType.keyword")
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
+            AggregationBuilders.terms("entityType.keyword").field("entityType.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(
-            AggregationBuilders.terms("owner.displayName.keyword")
-                .field("owner.displayName.keyword")
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN"));
+            AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
+                .field(OWNER_DISPLAY_NAME_KEYWORD)
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD));
 
     return builder;
   }
@@ -818,8 +818,8 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
     SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
     if (hb != null) {
-      hb.preTags(EntityBuilderConstant.PRE_TAG);
-      hb.postTags(EntityBuilderConstant.POST_TAG);
+      hb.preTags(PRE_TAG);
+      hb.postTags(POST_TAG);
       builder.highlighter(hb);
     }
     return builder;
@@ -833,8 +833,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   @Override
   public void updateEntity(ChangeEvent event) throws IOException {
     String entityType = event.getEntityType();
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
 
     switch (event.getEventType()) {
@@ -1052,7 +1051,7 @@ public class ElasticSearchClientImpl implements SearchClient {
 
         do {
           searchRequest =
-              searchRequest(indexes, "tags.tagFQN", event.getEntityFullyQualifiedName(), batchSize, currentHits);
+              searchRequest(indexes, ES_TAG_FQN_FIELD, event.getEntityFullyQualifiedName(), batchSize, currentHits);
           response = client.search(searchRequest, RequestOptions.DEFAULT);
           totalHits = (int) response.getHits().getTotalHits().value;
           for (SearchHit hit : response.getHits()) {
@@ -1199,7 +1198,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   @Override
   public void updateTestSuite(ChangeEvent event) throws IOException {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_CASE);
+        IndexUtil.getIndexMappingByEntityType(Entity.TEST_CASE);
     TestSuite testSuite = (TestSuite) event.getEntity();
     UUID testSuiteId = testSuite.getId();
 
@@ -1345,14 +1344,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     updateRequest.script(script);
   }
 
-  //  @Override
-  //  public void updateESSearch(UpdateRequest updateRequest) throws IOException {
-  //    if (updateRequest != null) {
-  //      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-  //      client.update(updateRequest, RequestOptions.DEFAULT);
-  //    }
-  //  }
-
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
@@ -1372,8 +1363,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   @Override
   public UpdateRequest applyESChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
-    ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
 
     String scriptTxt = "";

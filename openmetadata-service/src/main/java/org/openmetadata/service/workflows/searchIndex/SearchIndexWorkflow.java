@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexFields;
 import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
@@ -48,6 +47,7 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchDataInsightProcessor;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchEntitiesProcessor;
@@ -86,7 +86,8 @@ public class SearchIndexWorkflow implements Runnable {
               if (!isDataInsightIndex(entityType)) {
                 List<String> fields =
                     new ArrayList<>(
-                        Objects.requireNonNull(getIndexFields(entityType, jobData.getSearchIndexMappingLanguage())));
+                        Objects.requireNonNull(
+                            IndexUtil.getIndexFields(entityType, jobData.getSearchIndexMappingLanguage())));
                 PaginatedEntitiesSource source =
                     new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
                 if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
@@ -351,8 +352,7 @@ public class SearchIndexWorkflow implements Runnable {
       return;
     }
 
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     // Delete index
     searchClient.deleteIndex(indexType);
     // Create index
