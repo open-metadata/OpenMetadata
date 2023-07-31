@@ -115,6 +115,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
   const [isEdit, setIsEdit] = useState(false);
+  const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
   const [databaseSchemaPaging, setSchemaPaging] =
     useState<Paging>(pagingObject);
@@ -138,7 +139,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const fetchDatabasePermission = useCallback(async () => {
+  const fetchDatabasePermission = async () => {
     setIsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
@@ -146,178 +147,178 @@ const DatabaseDetails: FunctionComponent = () => {
         databaseFQN
       );
       setDatabasePermission(response);
-    } catch {
+    } catch (error) {
       // Error
     } finally {
       setIsLoading(false);
     }
-  }, [databaseFQN]);
+  };
 
-  const fetchDatabaseSchemas = useCallback(
-    async (pagingObj?: string) => {
-      try {
-        setSchemaDataLoading(true);
-        const response = await getDatabaseSchemas(
-          databaseFQN,
-          pagingObj,
-          ['owner', 'usageSummary'],
-          showDeletedSchemas ? Include.Deleted : Include.NonDeleted
-        );
-
-        if (response.data) {
-          setSchemaData(response.data);
-          setSchemaPaging(response.paging);
-          setSchemaInstanceCount(response.paging.total);
-        } else {
-          setSchemaData([]);
-          setSchemaPaging(pagingObject);
-        }
-      } catch {
-        // Error
-      } finally {
-        setSchemaDataLoading(false);
-      }
-    },
-    [databaseFQN, showDeletedSchemas]
-  );
-
-  const onThreadLinkSelect = useCallback((link: string) => {
-    setThreadLink(link);
-  }, []);
-
-  const onThreadPanelClose = useCallback(() => {
-    setThreadLink('');
-  }, []);
-
-  const getEntityFeedCount = useCallback(async () => {
-    try {
-      const response = await getFeedCount(
-        getEntityFeedLink(EntityType.DATABASE, databaseFQN)
-      );
-      if (response) {
-        setFeedCount(response.totalCount);
-        setEntityFieldThreadCount(response.counts);
-      } else {
-        setFeedCount(0);
-        setEntityFieldThreadCount([]);
-      }
-    } catch {
-      // Error
-    }
-  }, []);
-
-  const getDetailsByFQN = useCallback(async () => {
-    try {
-      setIsDatabaseDetailsLoading(true);
-      const response = await getDatabaseDetailsByFQN(
-        databaseFQN,
-        ['owner', 'tags'],
-        Include.All
-      );
-
-      if (response) {
-        const { id, name, serviceType } = response;
-        setDatabase(response);
-        setDatabaseId(id ?? '');
-        setDatabaseName(name);
-        setServiceType(serviceType);
-        setShowDeletedSchemas(response.deleted ?? false);
-      }
-    } catch {
-      // Error
-    } finally {
-      setIsLoading(false);
-      setIsDatabaseDetailsLoading(false);
-    }
-  }, [databaseFQN]);
-
-  const onCancel = useCallback(() => {
-    setIsEdit(false);
-  }, []);
-
-  const saveUpdatedDatabaseData = useCallback(
-    (updatedData: Database) => {
-      let jsonPatch: Operation[] = [];
-      if (database) {
-        jsonPatch = compare(database, updatedData);
-      }
-
-      return patchDatabaseDetails(databaseId, jsonPatch);
-    },
-    [database, databaseId]
-  );
-
-  const onDescriptionUpdate = useCallback(
-    async (updatedHTML: string) => {
-      if (database.description !== updatedHTML && database) {
-        const updatedDatabaseDetails = {
-          ...database,
-          description: updatedHTML,
-        };
-        try {
-          const response = await saveUpdatedDatabaseData(
-            updatedDatabaseDetails
-          );
-          if (response) {
-            setDatabase(updatedDatabaseDetails);
-            getEntityFeedCount();
-          }
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }
-      setIsEdit(false);
-    },
-    [database, getEntityFeedCount, saveUpdatedDatabaseData]
-  );
-
-  const onDescriptionEdit = useCallback((): void => {
-    setIsEdit(true);
-  }, []);
-
-  const activeTabHandler = useCallback(
-    (key: string) => {
-      if (key !== activeTab) {
-        history.push({
-          pathname: getDatabaseDetailsPath(databaseFQN, key),
-        });
-      }
-    },
-    [activeTab, databaseFQN]
-  );
-
-  const databaseSchemaPagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      const pagingString = `&${cursorType}=${
-        databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-      }`;
+  const fetchDatabaseSchemas = (pagingObj?: string) => {
+    return new Promise<void>((resolve, reject) => {
       setSchemaDataLoading(true);
-      fetchDatabaseSchemas(pagingString).finally(() => {
-        setSchemaDataLoading(false);
+      getDatabaseSchemas(
+        databaseFQN,
+        pagingObj,
+        ['owner', 'usageSummary'],
+        showDeletedSchemas ? Include.Deleted : Include.NonDeleted
+      )
+        .then((res) => {
+          if (res.data) {
+            setSchemaData(res.data);
+            setSchemaPaging(res.paging);
+            setSchemaInstanceCount(res.paging.total);
+          } else {
+            setSchemaData([]);
+            setSchemaPaging(pagingObject);
+
+            throw t('server.unexpected-response');
+          }
+          resolve();
+        })
+        .catch(() => {
+          // Error
+
+          reject();
+        })
+        .finally(() => {
+          setSchemaDataLoading(false);
+        });
+    });
+  };
+
+  const fetchDatabaseSchemasAndDBTModels = () => {
+    setIsLoading(true);
+    Promise.allSettled([fetchDatabaseSchemas()]).finally(() => {
+      setIsLoading(false);
+    });
+  };
+
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+      .then((res) => {
+        if (res) {
+          setFeedCount(res.totalCount);
+          setEntityFieldThreadCount(res.counts);
+        } else {
+          throw t('server.unexpected-response');
+        }
+      })
+      .catch(() => {
+        // Error
       });
-      setCurrentPage(activePage ?? 1);
-    },
-    [databaseSchemaPaging]
-  );
+  };
 
-  const settingsUpdateHandler = useCallback(
-    async (data: Database) => {
+  const getDetailsByFQN = () => {
+    setIsDatabaseDetailsLoading(true);
+    getDatabaseDetailsByFQN(databaseFQN, ['owner', 'tags'], Include.All)
+      .then((res) => {
+        if (res) {
+          const { description, id, name, serviceType } = res;
+          setDatabase(res);
+          setDescription(description ?? '');
+          setDatabaseId(id ?? '');
+          setDatabaseName(name);
+          setServiceType(serviceType);
+          setShowDeletedSchemas(res.deleted ?? false);
+          fetchDatabaseSchemasAndDBTModels();
+        }
+      })
+      .catch(() => {
+        // Error
+      })
+      .finally(() => {
+        setIsLoading(false);
+        setIsDatabaseDetailsLoading(false);
+      });
+  };
+
+  const onCancel = () => {
+    setIsEdit(false);
+  };
+
+  const saveUpdatedDatabaseData = (updatedData: Database) => {
+    let jsonPatch: Operation[] = [];
+    if (database) {
+      jsonPatch = compare(database, updatedData);
+    }
+
+    return patchDatabaseDetails(databaseId, jsonPatch);
+  };
+
+  const onDescriptionUpdate = async (updatedHTML: string) => {
+    if (description !== updatedHTML && database) {
+      const updatedDatabaseDetails = {
+        ...database,
+        description: updatedHTML,
+      };
       try {
-        const res = await saveUpdatedDatabaseData(data);
-
-        setDatabase(res);
-        getEntityFeedCount();
+        const response = await saveUpdatedDatabaseData(updatedDatabaseDetails);
+        if (response) {
+          setDatabase(updatedDatabaseDetails);
+          setDescription(updatedHTML);
+          getEntityFeedCount();
+        } else {
+          throw t('server.unexpected-response');
+        }
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.database'),
-          })
-        );
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
       }
-    },
-    [saveUpdatedDatabaseData, getEntityFeedCount]
-  );
+    } else {
+      setIsEdit(false);
+    }
+  };
+
+  const onDescriptionEdit = (): void => {
+    setIsEdit(true);
+  };
+
+  const activeTabHandler = (key: string) => {
+    if (key !== activeTab) {
+      history.push({
+        pathname: getDatabaseDetailsPath(databaseFQN, key),
+      });
+    }
+  };
+
+  const databaseSchemaPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
+    const pagingString = `&${cursorType}=${
+      databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
+    }`;
+    setSchemaDataLoading(true);
+    fetchDatabaseSchemas(pagingString).finally(() => {
+      setSchemaDataLoading(false);
+    });
+    setCurrentPage(activePage ?? 1);
+  };
+
+  const settingsUpdateHandler = async (data: Database) => {
+    try {
+      const res = await saveUpdatedDatabaseData(data);
+
+      setDatabase(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.database'),
+        })
+      );
+    }
+  };
 
   const handleUpdateOwner = useCallback(
     async (owner: Database['owner']) => {
@@ -331,25 +332,24 @@ const DatabaseDetails: FunctionComponent = () => {
     [database, database?.owner, settingsUpdateHandler]
   );
 
-  const createThread = useCallback(
-    async (data: CreateThread) => {
-      try {
-        const response = await postThread(data);
-
-        if (response) {
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res) => {
+        if (res) {
           getEntityFeedCount();
+        } else {
+          showErrorToast(t('server.unexpected-response'));
         }
-      } catch (err) {
+      })
+      .catch((err: AxiosError) => {
         showErrorToast(
-          err as AxiosError,
+          err,
           t('server.create-entity-error', {
             entity: t('label.conversation-lowercase'),
           })
         );
-      }
-    },
-    [getEntityFeedCount]
-  );
+      });
+  };
 
   useEffect(() => {
     getEntityFeedCount();
@@ -456,63 +456,54 @@ const DatabaseDetails: FunctionComponent = () => {
     [settingsUpdateHandler, database, tier]
   );
 
-  const handleUpdateDisplayName = useCallback(
-    async (data: EntityName) => {
-      if (isUndefined(database)) {
-        return;
-      }
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(database)) {
+      return;
+    }
 
-      const updatedTableDetails = {
-        ...database,
-        displayName: data.displayName,
-      };
+    const updatedTableDetails = {
+      ...database,
+      displayName: data.displayName,
+    };
 
-      return settingsUpdateHandler(updatedTableDetails);
-    },
-    [database, settingsUpdateHandler]
-  );
+    return settingsUpdateHandler(updatedTableDetails);
+  };
 
   /**
    * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
    */
-  const onTagUpdate = useCallback(
-    async (selectedTags?: Array<EntityTags>) => {
-      if (selectedTags) {
-        const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-        const updatedTable = { ...database, tags: updatedTags };
-        await settingsUpdateHandler(updatedTable as Database);
-      }
-    },
-    [tier, database, settingsUpdateHandler]
-  );
+  const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...database, tags: updatedTags };
+      await settingsUpdateHandler(updatedTable as Database);
+    }
+  };
 
-  const handleTagSelection = useCallback(
-    async (selectedTags: EntityTags[]) => {
-      if (selectedTags) {
-        const prevTags =
-          tags?.filter((tag) =>
-            selectedTags
-              .map((selTag) => selTag.tagFQN)
-              .includes(tag?.tagFQN as string)
-          ) || [];
-        const newTags = selectedTags
-          .filter((tag) => {
-            return !prevTags
-              ?.map((prevTag) => prevTag.tagFQN)
-              .includes(tag.tagFQN);
-          })
-          .map((tag) => ({
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-            source: tag.source,
-            tagFQN: tag.tagFQN,
-          }));
-        await onTagUpdate([...prevTags, ...newTags]);
-      }
-    },
-    [tags, onTagUpdate]
-  );
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    if (selectedTags) {
+      const prevTags =
+        tags?.filter((tag) =>
+          selectedTags
+            .map((selTag) => selTag.tagFQN)
+            .includes(tag?.tagFQN as string)
+        ) || [];
+      const newTags = selectedTags
+        .filter((tag) => {
+          return !prevTags
+            ?.map((prevTag) => prevTag.tagFQN)
+            .includes(tag.tagFQN);
+        })
+        .map((tag) => ({
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          source: tag.source,
+          tagFQN: tag.tagFQN,
+        }));
+      await onTagUpdate([...prevTags, ...newTags]);
+    }
+  };
 
   const databaseTable = useMemo(() => {
     return (
@@ -613,7 +604,7 @@ const DatabaseDetails: FunctionComponent = () => {
               <Row gutter={[16, 16]}>
                 <Col data-testid="description-container" span={24}>
                   <DescriptionV1
-                    description={database.description}
+                    description={description}
                     entityFieldThreads={getEntityFieldThreadCounts(
                       EntityField.DESCRIPTION,
                       entityFieldThreadCount
@@ -705,6 +696,7 @@ const DatabaseDetails: FunctionComponent = () => {
       tags,
       isEdit,
       database,
+      description,
       databaseName,
       entityFieldThreadCount,
       databaseFQN,
@@ -717,19 +709,12 @@ const DatabaseDetails: FunctionComponent = () => {
       editTagsPermission,
       editDescriptionPermission,
       handleShowDeletedSchemas,
-      getEntityFeedCount,
-      onCancel,
-      onDescriptionEdit,
-      onDescriptionUpdate,
-      onThreadLinkSelect,
-      handleTagSelection,
-      getDetailsByFQN,
     ]
   );
 
   useEffect(() => {
     fetchDatabaseSchemas();
-  }, [databaseFQN, showDeletedSchemas]);
+  }, [showDeletedSchemas]);
 
   if (isLoading || isDatabaseDetailsLoading) {
     return <Loader />;
