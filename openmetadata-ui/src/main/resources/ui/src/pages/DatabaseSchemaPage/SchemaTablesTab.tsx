@@ -18,19 +18,18 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
+import { PAGE_SIZE } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { EntityLinkThreadCount } from 'generated/api/feed/threadCount';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Table } from 'generated/entity/data/table';
-import { isEmpty, isString } from 'lodash';
+import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { TableListParams } from 'rest/tableAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
@@ -44,7 +43,11 @@ interface SchemaTablesTabProps {
   isEdit: boolean;
   showDeletedTables: boolean;
   tableData: PagingResponse<Table[]>;
-  getSchemaTables: (params?: TableListParams) => Promise<void>;
+  currentTablesPage: number;
+  tablePaginationHandler: (
+    cursorValue: string | number,
+    activePage?: number
+  ) => void;
   onCancel: () => void;
   onDescriptionEdit: () => void;
   onDescriptionUpdate: (updatedHTML: string) => Promise<void>;
@@ -60,7 +63,8 @@ function SchemaTablesTab({
   editDescriptionPermission,
   isEdit,
   tableData,
-  getSchemaTables,
+  currentTablesPage,
+  tablePaginationHandler,
   onCancel,
   onDescriptionEdit,
   onDescriptionUpdate,
@@ -68,20 +72,7 @@ function SchemaTablesTab({
   showDeletedTables,
   onShowDeletedTablesChange,
 }: SchemaTablesTabProps) {
-  const [currentTablesPage, setCurrentTablesPage] =
-    useState<number>(INITIAL_PAGING_VALUE);
   const { t } = useTranslation();
-
-  const tablePaginationHandler = useCallback(
-    (cursorValue: string | number, activePage?: number) => {
-      if (isString(cursorValue)) {
-        const { paging } = tableData;
-        getSchemaTables({ [cursorValue]: paging[cursorValue] });
-      }
-      setCurrentTablesPage(activePage ?? INITIAL_PAGING_VALUE);
-    },
-    [tableData]
-  );
 
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [

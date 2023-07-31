@@ -480,7 +480,8 @@ export const visitEntityDetailsPage = (
   term,
   serviceName,
   entity,
-  dataTestId
+  dataTestId,
+  entityType
 ) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
@@ -491,6 +492,12 @@ export const visitEntityDetailsPage = (
   interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
   const id = dataTestId ?? `${serviceName}-${term}`;
+
+  if (entityType) {
+    cy.get('[data-testid="global-search-selector"]').click();
+    cy.get(`[data-testid="global-search-select-option-${entityType}"]`).click();
+  }
+
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
@@ -886,9 +893,7 @@ export const updateOwner = () => {
       cy.get('[data-testid="edit-owner"]').click();
 
       cy.get('.user-team-select-popover').contains('Users').click();
-      cy.get(
-        '[id*="panel-users"] [data-testid="search-bar-container"] [data-testid="searchbar"]'
-      ).type(text);
+      cy.get('[data-testid="owner-select-users-search-bar"]').type(text);
       cy.get('[data-testid="selectable-list"]')
         .eq(1)
         .find(`[title="${text.trim()}"]`)

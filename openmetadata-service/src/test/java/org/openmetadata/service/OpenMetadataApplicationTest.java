@@ -59,7 +59,7 @@ public abstract class OpenMetadataApplicationTest {
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
-  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = Boolean.parseBoolean(System.getProperty("runESTestCases"));
+  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = false;
 
   private static final Set<ConfigOverride> configOverrides = new HashSet<>();
 

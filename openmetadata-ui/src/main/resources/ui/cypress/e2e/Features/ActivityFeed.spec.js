@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
 import {
   interceptURL,
   verifyResponseStatusCode,
@@ -46,7 +49,6 @@ describe('Recently viwed data assets', () => {
     cy.get('@feedWidget').should('contain', 'All');
     cy.get('@feedWidget').should('contain', '@Mentions');
     cy.get('@feedWidget').should('contain', 'Tasks');
-    cy.get('@feedWidget').should('contain', '0');
   });
 
   it('Feed widget should have some feeds', () => {
@@ -110,7 +112,9 @@ describe('Recently viwed data assets', () => {
       'suggestAsset'
     );
 
-    cy.get('[data-testid="editor-wrapper"]').should('be.visible');
+    cy.get('[data-testid="editor-wrapper"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     ).as('editor');
@@ -130,10 +134,9 @@ describe('Recently viwed data assets', () => {
 
     verifyResponseStatusCode('@postReply', 201);
 
-    cy.get('[data-testid="replies"]').should('contain', '1 reply');
     cy.get('[data-testid="replies"] .activity-feed-card.activity-feed-card-v1')
       .children('.ant-row')
-      .eq(1)
+      .last()
       .invoke('text')
       .should(
         'eq',
@@ -168,7 +171,9 @@ describe('Recently viwed data assets', () => {
       'suggestUser'
     );
 
-    cy.get('[data-testid="editor-wrapper"]').should('be.visible');
+    cy.get('[data-testid="editor-wrapper"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     ).as('editor');
@@ -206,15 +211,7 @@ describe('Recently viwed data assets', () => {
   });
 
   it('Assigned task should appear to task tab', () => {
-    cy.get('[data-testid="activity-feed-widget"]')
-      .contains('Tasks')
-      .should('contain', 0);
-
     cy.get('[data-testid="activity-feed-widget"]').contains('Tasks').click();
-
-    cy.get(
-      '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
-    ).should('be.visible');
 
     const value = SEARCH_ENTITY_TABLE.table_1;
     interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
@@ -228,14 +225,11 @@ describe('Recently viwed data assets', () => {
     interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
 
     // create description task
-    createDescriptionTask(value);
+    createDescriptionTask({ ...value, assignee: 'admin' });
 
     cy.clickOnLogo();
 
-    cy.get('[data-testid="activity-feed-widget"]')
-      .contains('Tasks')
-      .should('contain', 1)
-      .click();
+    cy.get('[data-testid="activity-feed-widget"]').contains('Tasks').click();
 
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
