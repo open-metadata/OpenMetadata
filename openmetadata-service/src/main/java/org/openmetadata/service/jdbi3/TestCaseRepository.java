@@ -72,7 +72,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, timestamp),
+                .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
             TestCaseResult.class);
 
     TestCaseResult updated = JsonUtils.applyPatch(original, patch, TestCaseResult.class);
@@ -82,8 +82,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updated.getTestCaseFailureStatus().setUpdatedAt(System.currentTimeMillis());
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .update(
-              FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
+          .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
       change = ENTITY_UPDATED;
     }
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
@@ -96,11 +95,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         FullyQualifiedName.add(
             entityLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(test.getName())));
     test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(TestCase test) {
-    return FullyQualifiedName.buildHash(test.getFullyQualifiedName());
   }
 
   @Override

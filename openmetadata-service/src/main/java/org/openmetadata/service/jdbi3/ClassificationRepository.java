@@ -30,7 +30,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -77,9 +76,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(classification.getName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
   }
 
   @Transaction

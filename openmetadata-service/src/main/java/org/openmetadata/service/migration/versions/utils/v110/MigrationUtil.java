@@ -493,8 +493,7 @@ public class MigrationUtil {
                 .insert(
                     "nameHash",
                     newExecutableTestSuite,
-                    FullyQualifiedName.buildHash(
-                        EntityInterfaceUtil.quoteName(newExecutableTestSuite.getFullyQualifiedName())));
+                    EntityInterfaceUtil.quoteName(newExecutableTestSuite.getFullyQualifiedName()));
             // Here we aer manually adding executable relationship since the table Repository is not registered and
             // result
             // into null for entity type table

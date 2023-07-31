@@ -55,7 +55,7 @@ public class ReIndexingHandler {
   private static CollectionDAO dao;
   private static SearchClient searchClient;
   private static ExecutorService threadScheduler;
-  private final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
+  private static final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
   private static BlockingQueue<Runnable> taskQueue;
 
   private ReIndexingHandler() {}
@@ -113,7 +113,7 @@ public class ReIndexingHandler {
         // Create Entry in the DB
         dao.entityExtensionTimeSeriesDao()
             .insert(
-                EntityUtil.hash(jobData.getId().toString()),
+                jobData.getId().toString(),
                 REINDEXING_JOB_EXTENSION,
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
@@ -173,8 +173,7 @@ public class ReIndexingHandler {
     SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
       String recordString =
-          dao.entityExtensionTimeSeriesDao()
-              .getLatestExtension(EntityUtil.hash(jobId.toString()), REINDEXING_JOB_EXTENSION);
+          dao.entityExtensionTimeSeriesDao().getLatestExtension(jobId.toString(), REINDEXING_JOB_EXTENSION);
       return JsonUtils.readValue(recordString, EventPublisherJob.class);
     }
     return REINDEXING_JOB_MAP.get(jobId).getJobData();
