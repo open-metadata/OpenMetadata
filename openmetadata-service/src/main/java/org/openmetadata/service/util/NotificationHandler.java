@@ -159,15 +159,13 @@ public class NotificationHandler {
         id -> {
           try {
             User user = repository.get(null, id, repository.getFields("name,email,href"));
-            EmailUtil.getInstance()
-                .sendTaskAssignmentNotificationToUser(
-                    user.getName(),
-                    user.getEmail(),
-                    String.format(
-                        "%s/users/%s/tasks", EmailUtil.getInstance().buildBaseUrl(urlInstance), user.getName()),
-                    thread,
-                    EmailUtil.getInstance().getTaskAssignmentSubject(),
-                    EmailUtil.TASK_NOTIFICATION_TEMPLATE);
+            EmailUtil.sendTaskAssignmentNotificationToUser(
+                user.getName(),
+                user.getEmail(),
+                String.format("%s/users/%s/tasks", EmailUtil.buildBaseUrl(urlInstance), user.getName()),
+                thread,
+                EmailUtil.getTaskAssignmentSubject(),
+                EmailUtil.TASK_NOTIFICATION_TEMPLATE);
           } catch (IOException ex) {
             LOG.error("Task Email Notification Failed :", ex);
           } catch (TemplateException ex) {

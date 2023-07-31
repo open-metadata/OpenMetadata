@@ -63,7 +63,6 @@ import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
-import org.openmetadata.service.events.subscription.ActivityFeedAlertCache;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -125,7 +124,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      ActivityFeedAlertCache.initialize("ActivityFeedAlert", repository);
       searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
       ReportsHandler.initialize(daoCollection, searchClient);
       initializeEventSubscriptions();
