@@ -161,7 +161,7 @@ class OMetaLineageMixin(Generic[T]):
         between source and target tables
         """
 
-        # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel,cyclic-import
         # importing inside the method to avoid circular import
         from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 
