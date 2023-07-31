@@ -31,6 +31,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   testSuite: 'test-suite',
   containers: 'containers',
   glossaryTerms: 'glossary-terms',
+  tags: 'tags',
 };
 
 export const SEARCH_INDEX = {
@@ -46,7 +47,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
-  testSuiteName: 'critical_metrics_suite',
+  sqlTestCaseName: 'my_sql_test_case_cypress',
   sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
@@ -132,6 +133,7 @@ export const SEARCH_ENTITY_MLMODEL = {
     term: 'eta_predictions',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    displayName: 'ETA Predictions',
   },
 };
 
@@ -170,6 +172,7 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
+  name: 'table_column_name_to_exist_in_id',
   label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
   field: 'id',
@@ -177,6 +180,7 @@ export const NEW_TABLE_TEST_CASE = {
 };
 
 export const NEW_COLUMN_TEST_CASE = {
+  name: 'id_column_value_lengths_to_be_between',
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
   label: 'Column Value Lengths To Be Between',
@@ -186,6 +190,7 @@ export const NEW_COLUMN_TEST_CASE = {
 };
 
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+  name: 'id_column_values_to_be_not_null',
   column: 'id',
   type: 'columnValuesToBeNotNull',
   label: 'Column Values To Be Not Null',
@@ -231,30 +236,30 @@ export const NEW_TAG = {
 };
 
 export const NEW_GLOSSARY = {
-  name: 'Business Glossary',
-  description: 'This is the Business glossary',
+  name: 'Cypress Glossary',
+  description: 'This is the Cypress Glossary',
   reviewer: 'Aaron Johnson',
   tag: 'PII.None',
 };
 export const NEW_GLOSSARY_1 = {
-  name: 'Product Glossary',
-  description: 'This is the Product glossary',
+  name: 'Cypress Product%Glossary',
+  description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   tag: 'PII.None',
 };
 
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
-    name: 'Purchase',
-    description: 'This is the Purchase',
+    name: 'CypressPurchase',
+    description: 'This is the Cypress Purchase',
     synonyms: 'buy,collect,acquire',
-    fullyQualifiedName: 'Business Glossary.Purchase',
+    fullyQualifiedName: 'Cypress Glossary.CypressPurchase',
   },
   term_2: {
-    name: 'Sales',
-    description: 'This is the Sales',
+    name: 'CypressSales',
+    description: 'This is the Cypress Sales',
     synonyms: 'give,disposal,deal',
-    fullyQualifiedName: 'Business Glossary.Sales',
+    fullyQualifiedName: 'Cypress Glossary.CypressSales',
   },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
@@ -262,24 +267,24 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
   description: 'This is the Accounts',
   tag: 'PersonalData.Personal',
   synonyms: 'book,ledger,results',
-  relatedTerms: 'Sales',
+  relatedTerms: 'CypressSales',
   reviewer: 'Colin Ho',
   inheritedReviewer: 'Aaron Johnson',
-  fullyQualifiedName: 'Business Glossary.Accounts',
+  fullyQualifiedName: 'Cypress Glossary.Accounts',
 };
 
 export const NEW_GLOSSARY_1_TERMS = {
   term_1: {
-    name: 'Features',
+    name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
-    fullyQualifiedName: 'Product Glossary.Features',
+    fullyQualifiedName: 'Cypress Product%Glossary.Features%Term',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
-    fullyQualifiedName: 'Product Glossary.Uses',
+    fullyQualifiedName: 'Cypress Product%Glossary.Uses',
   },
 };
 

@@ -95,10 +95,6 @@ jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockReturnValue(<p>TagsContainerV2</p>);
 });
 
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p>Tags</p>);
-});
-
 jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });

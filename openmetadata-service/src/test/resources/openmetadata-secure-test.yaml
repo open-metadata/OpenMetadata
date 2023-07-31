@@ -90,14 +90,7 @@ logging:
   level: INFO
   appenders:
     - type: console
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-    - type: file
-      currentLogFilename: './logs/openmetadata.log'
-      archivedLogFilenamePattern: './logs/openmetadata-%d-%i.log.gz'
-      archive: true
-      archivedFileCount: 7
-      maxFileSize: '1MiB'
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      logFormat: "%level %logger{5} - %msg%n"
 
 database:
   # the name of the JDBC driver, h2 is used for testing

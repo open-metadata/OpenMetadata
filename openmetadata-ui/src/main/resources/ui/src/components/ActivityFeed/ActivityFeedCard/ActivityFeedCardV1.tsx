@@ -129,6 +129,7 @@ const ActivityFeedCardV1 = ({
                     </div>
                     <div
                       className="d-flex items-center thread-count cursor-pointer"
+                      data-testid="thread-count"
                       onClick={!hidePopover ? showReplies : noop}>
                       <ThreadIcon width={18} />{' '}
                       <span className="text-xs p-l-xss">{postLength}</span>

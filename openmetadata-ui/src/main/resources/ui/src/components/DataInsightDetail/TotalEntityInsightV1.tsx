@@ -87,6 +87,10 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
     });
   }, [selectedDays]);
 
+  const pluralize = (entity: string) => {
+    return entity + 's';
+  };
+
   return (
     <Card
       className="total-data-insight-card"
@@ -172,7 +176,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
                         md={12}
                         sm={24}>
                         <Typography.Paragraph className="m-b-0">
-                          {entity}
+                          {pluralize(entity)}
                         </Typography.Paragraph>
 
                         <Typography.Paragraph className="m-b-0">
@@ -181,9 +185,10 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
                       </Col>
                       <Col md={12} sm={24}>
                         <Progress
-                          className="p-l-xss data-insight-progress-bar"
+                          className="p-l-xss"
                           percent={progress}
                           showInfo={false}
+                          size="small"
                           strokeColor={TOTAL_ENTITY_CHART_COLOR[entity]}
                         />
                       </Col>

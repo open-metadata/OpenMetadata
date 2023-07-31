@@ -43,7 +43,6 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -132,15 +131,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           String before,
       @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
+          String after)
       throws IOException {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(null);
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
@@ -170,15 +163,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
+          String fieldsParam)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
   @GET
@@ -203,15 +190,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
+          String fieldsParam)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, null);
   }
 
   @GET

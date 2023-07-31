@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
@@ -24,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -31,9 +35,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -77,6 +79,20 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public Tag setInheritedFields(Tag tag, Fields fields) throws IOException {
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(tag.getDomain())) {
+      if (tag.getParent() != null) {
+        Tag parentTerm = get(null, tag.getParent().getId(), getFields("domain"));
+        tag.setDomain(parentTerm.getDomain());
+      } else {
+        Classification classification = Entity.getEntity(tag.getClassification(), "domain", ALL);
+        tag.setDomain(classification.getDomain());
+      }
+    }
+    return tag;
+  }
+
+  @Override
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
       tag.setFullyQualifiedName(FullyQualifiedName.build(tag.getClassification().getName(), tag.getName()));
@@ -115,8 +131,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private List<EntityReference> getChildren(Tag entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
-    return EntityUtil.populateEntityReferences(ids, TAG);
+    return findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
   }
 
   private EntityReference getParent(Tag tag) throws IOException {

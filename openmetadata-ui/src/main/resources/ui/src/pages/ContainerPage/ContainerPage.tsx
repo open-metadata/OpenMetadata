@@ -10,12 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
@@ -27,13 +25,6 @@ import ContainerDataModel from 'components/ContainerDetail/ContainerDataModel/Co
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -41,8 +32,10 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getContainerDetailPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -50,8 +43,6 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
 import { Container } from 'generated/entity/data/container';
-import { EntityLineage } from 'generated/type/entityLineage';
-import { EntityReference } from 'generated/type/entityReference';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
@@ -62,8 +53,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
-import { getLineageByFQN } from 'rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addContainerFollower,
   getContainerByName,
@@ -71,6 +60,7 @@ import {
   removeContainerFollower,
   restoreContainer,
 } from 'rest/storageAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -79,14 +69,9 @@ import {
   refreshPage,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
-import {
-  getEntityLineage,
-  getEntityName,
-  getEntityThreadLink,
-} from 'utils/EntityUtils';
+import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getLineageViewPath } from 'utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -103,7 +88,6 @@ const ContainerPage = () => {
   const [isChildrenLoading, setIsChildrenLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
@@ -111,14 +95,6 @@ const ContainerPage = () => {
   >([]);
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
-    {} as EntityLineage
-  );
-  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
-  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
-    id: undefined,
-    state: false,
-  });
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -167,22 +143,6 @@ const ContainerPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsChildrenLoading(false);
-    }
-  };
-
-  const fetchLineageData = async (containerFQN: string) => {
-    setIsLineageLoading(true);
-    try {
-      const response = await getLineageByFQN(
-        containerFQN,
-        EntityType.CONTAINER
-      );
-
-      setEntityLineage(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLineageLoading(false);
     }
   };
 
@@ -431,67 +391,6 @@ const ContainerPage = () => {
     }
   };
 
-  // Lineage handlers
-  const handleAddLineage = async (edge: Edge) => {
-    try {
-      await addLineage(edge);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleRemoveLineage = async (data: EdgeData) => {
-    try {
-      await deleteLineageEdge(
-        data.fromEntity,
-        data.fromId,
-        data.toEntity,
-        data.toId
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleSetLeafNode = (val: EntityLineage, pos: LineagePos) => {
-    if (pos === 'to' && val.downstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
-      }));
-    }
-    if (pos === 'from' && val.upstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
-      }));
-    }
-  };
-
-  const handleLoadLineageNode = async (
-    node: EntityReference,
-    pos: LineagePos
-  ) => {
-    setNodeLoading({ id: node.id, state: true });
-
-    try {
-      const response = await getLineageByFQN(
-        node.fullyQualifiedName ?? '',
-        node.type
-      );
-      handleSetLeafNode(response, pos);
-      setEntityLineage(getEntityLineage(entityLineage, response, pos));
-      setTimeout(() => {
-        setNodeLoading((prev) => ({ ...prev, state: false }));
-      }, 500);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleFullScreenClick = () =>
-    history.push(getLineageViewPath(EntityType.CONTAINER, containerName));
-
   const handleExtensionUpdate = async (updatedContainer: Container) => {
     try {
       const response = await handleUpdateContainerData(updatedContainer);
@@ -620,6 +519,7 @@ const ContainerPage = () => {
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
@@ -632,6 +532,7 @@ const ContainerPage = () => {
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
@@ -659,14 +560,12 @@ const ContainerPage = () => {
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.CONTAINER}
-              fqn={containerName}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.CONTAINER}
+            fqn={containerName}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
+          />
         ),
       },
       {
@@ -691,24 +590,11 @@ const ContainerPage = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card className="lineage-card card-body-full m-md w-auto">
-            <EntityLineageComponent
-              addLineageHandler={handleAddLineage}
-              deleted={deleted}
-              entityLineage={entityLineage}
-              entityLineageHandler={(lineage: EntityLineage) =>
-                setEntityLineage(lineage)
-              }
-              entityType={EntityType.CONTAINER}
-              hasEditAccess={hasEditLineagePermission}
-              isLoading={isLineageLoading}
-              isNodeLoading={isNodeLoading}
-              lineageLeafNodes={leafNodes}
-              loadNodeHandler={handleLoadLineageNode}
-              removeLineageHandler={handleRemoveLineage}
-              onFullScreenClick={handleFullScreenClick}
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={containerData}
+            entityType={EntityType.CONTAINER}
+            hasEditAccess={hasEditLineagePermission}
+          />
         ),
       },
       {
@@ -745,24 +631,16 @@ const ContainerPage = () => {
       hasEditCustomFieldsPermission,
       deleted,
       owner,
-      isNodeLoading,
-      leafNodes,
-      isLineageLoading,
       isChildrenLoading,
       entityFieldThreadCount,
       tags,
-      entityLineage,
       feedCount,
       containerChildrenData,
-      handleAddLineage,
       handleUpdateDataModel,
       handleUpdateDescription,
       getEntityFieldThreadCounts,
       handleTagSelection,
       onThreadLinkSelect,
-      handleLoadLineageNode,
-      handleRemoveLineage,
-      handleFullScreenClick,
       handleExtensionUpdate,
     ]
   );
@@ -779,9 +657,6 @@ const ContainerPage = () => {
   }, [containerName]);
 
   useEffect(() => {
-    if (tab === EntityTabs.LINEAGE) {
-      fetchLineageData(containerName);
-    }
     if (tab === EntityTabs.CHILDREN) {
       fetchContainerChildren(containerName);
     }
@@ -816,6 +691,7 @@ const ContainerPage = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}
@@ -854,4 +730,4 @@ const ContainerPage = () => {
   );
 };
 
-export default observer(ContainerPage);
+export default withActivityFeed(observer(ContainerPage));

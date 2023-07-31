@@ -36,7 +36,6 @@ import {
 import {
   CurrentState,
   ExtraInfo,
-  FormattedTableData,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -65,10 +64,7 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
-import {
-  UrlEntityCharRegEx,
-  validEmailRegEx,
-} from '../constants/regex.constants';
+import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
@@ -80,8 +76,8 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
+import { history } from './HistoryUtils';
 import { serviceTypeLogo } from './ServiceUtils';
-import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -100,10 +96,6 @@ export const arraySorterByKey = <T extends object>(
         : 0) * sortOrder
     );
   };
-};
-
-export const isEven = (value: number): boolean => {
-  return value % 2 === 0;
 };
 
 export const getPartialNameFromFQN = (
@@ -127,6 +119,15 @@ export const getPartialNameFromFQN = (
 
   return arrPartialName.join(joinSeperator);
 };
+
+/**
+ * Retrieves a partial name from a fully qualified name (FQN) for tables.
+ *
+ * @param {string} fqn - The fully qualified name. It should be a decoded string.
+ * @param {Array<FqnPart>} fqnParts - The parts of the FQN to include in the partial name. Defaults to an empty array.
+ * @param {string} joinSeparator - The separator used to join the parts of the partial name. Defaults to '/'.
+ * @return {string} The partial name derived from the FQN.
+ */
 
 export const getPartialNameFromTableFQN = (
   fqn: string,
@@ -211,13 +212,6 @@ export const hasEditAccess = (type: string, id: string) => {
         loggedInUser?.teams?.some((team) => team.id === id)
     );
   }
-};
-
-export const getTabClasses = (
-  tab: number | string,
-  activeTab: number | string
-) => {
-  return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
 };
 
 export const getCountBadge = (
@@ -416,20 +410,6 @@ export const isValidUrl = (href?: string) => {
   } catch {
     return false;
   }
-};
-
-/**
- *
- * @param email - email address string
- * @returns - True|False
- */
-export const isValidEmail = (email?: string) => {
-  let isValid = false;
-  if (email && email.match(validEmailRegEx)) {
-    isValid = true;
-  }
-
-  return isValid;
 };
 
 export const getEntityMissingError = (entityType: string, fqn: string) => {
@@ -722,17 +702,12 @@ export const getLoadingStatus = (
   );
 };
 
-export const refreshPage = () => window.location.reload();
+export const refreshPage = () => {
+  history.go(0);
+};
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
-
-export const getTierFromEntityInfo = (entity: FormattedTableData) => {
-  return (
-    entity.tier?.tagFQN ||
-    getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
-  )?.split(FQN_SEPARATOR_CHAR)[1];
-};
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
@@ -793,36 +768,6 @@ export const Transi18next = ({
     {renderElement}
   </Trans>
 );
-
-/**
- * It returns a link to the documentation for the given filter pattern type
- * @param {FilterPatternEnum} type - The type of filter pattern.
- * @returns A string
- */
-export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
-  switch (type) {
-    case FilterPatternEnum.DATABASE:
-    case FilterPatternEnum.SCHEMA:
-    case FilterPatternEnum.TABLE:
-      return `https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/${FilterPatternEnum.DATABASE}#${type}-filter-pattern`;
-
-    case FilterPatternEnum.DASHBOARD:
-    case FilterPatternEnum.CHART:
-      return 'https://docs.open-metadata.org/connectors/dashboard/metabase#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.TOPIC:
-      return 'https://docs.open-metadata.org/connectors/messaging/kafka#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.PIPELINE:
-      return 'https://docs.open-metadata.org/connectors/pipeline/airflow#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.MLMODEL:
-      return 'https://docs.open-metadata.org/connectors/ml-model/mlflow';
-
-    default:
-      return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
-  }
-};
 
 /**
  * It takes a string and returns a string

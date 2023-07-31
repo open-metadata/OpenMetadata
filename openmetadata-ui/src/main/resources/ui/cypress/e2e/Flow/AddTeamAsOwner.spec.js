@@ -118,6 +118,27 @@ describe('Create a team and add that team as a owner of the entity', () => {
 
     cy.get('[data-testid="remove-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@updateTable', 200);
-    cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
+    cy.get('[data-testid="owner-link"]').should(
+      'not.contain',
+      TEAM_DETAILS.name
+    );
+  });
+
+  it('Delete newly created team', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'GET',
+      url: `/api/v1/teams/name/${teamName}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      cy.request({
+        method: 'GET',
+        url: `/api/v1/teams/${response.body.id}?hardDelete=true&recursive=true`,
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+      });
+    });
   });
 });

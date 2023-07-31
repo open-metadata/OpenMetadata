@@ -17,6 +17,7 @@ export enum DBT_SOURCES {
   http = 'http',
   s3 = 's3',
   gcs = 'gcs',
+  azure = 'azure',
 }
 
 export enum GCS_CONFIG {

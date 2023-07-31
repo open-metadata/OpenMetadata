@@ -44,7 +44,9 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -57,6 +59,7 @@ import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -323,6 +326,18 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertEquals(topicSampleData, putResponse.getSampleData());
     topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, topic.getSampleData());
+  }
+
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a topic, carry it forward from the messaging service
+    MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
+    CreateMessagingService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    MessagingService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a topic without domain and ensure it inherits domain from the parent
+    CreateTopic create = createRequest("chart").withService(service.getFullyQualifiedName());
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Override

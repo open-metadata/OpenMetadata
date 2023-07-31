@@ -14,9 +14,7 @@
 import { Card, Col, Radio, Row, Space, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -27,10 +25,12 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import ExecutionsTab from 'components/Execution/Execution.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
   getPipelineDetailsPath,
@@ -77,7 +78,6 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
-  followers,
   pipelineDetails,
   fetchPipeline,
   descriptionUpdateHandler,
@@ -93,6 +93,7 @@ const PipelineDetails = ({
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const userID = getCurrentUserId();
   const {
     deleted,
     owner,
@@ -102,6 +103,7 @@ const PipelineDetails = ({
     tier,
     tags,
     entityFqn,
+    followers,
   } = useMemo(() => {
     return {
       deleted: pipelineDetails.deleted,
@@ -114,6 +116,7 @@ const PipelineDetails = ({
       tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
       entityName: getEntityName(pipelineDetails),
       entityFqn: pipelineDetails.fullyQualifiedName ?? '',
+      followers: pipelineDetails.followers ?? [],
     };
   }, [pipelineDetails]);
 
@@ -193,8 +196,8 @@ const PipelineDetails = ({
   }, [pipelineDetails.id]);
 
   const isFollowing = useMemo(
-    () => followers.some(({ id }: { id: string }) => id === getCurrentUserId()),
-    [followers]
+    () => followers.some(({ id }: { id: string }) => id === userID),
+    [followers, userID]
   );
 
   const onTaskUpdate = async (taskDescription: string) => {
@@ -297,13 +300,13 @@ const PipelineDetails = ({
     }
   };
 
-  const followPipeline = async () => {
+  const followPipeline = useCallback(async () => {
     if (isFollowing) {
       await unFollowPipelineHandler(getEntityFeedCount);
     } else {
       await followPipelineHandler(getEntityFeedCount);
     }
-  };
+  }, [isFollowing, followPipelineHandler, unFollowPipelineHandler]);
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
@@ -394,7 +397,7 @@ const PipelineDetails = ({
           <TableDescription
             columnData={{
               fqn: record.fullyQualifiedName ?? '',
-              description: record.description,
+              field: record.description,
             }}
             entityFieldThreads={getEntityFieldThreadCounts(
               EntityField.TASKS,
@@ -599,6 +602,7 @@ const PipelineDetails = ({
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={pipelineFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}
@@ -614,6 +618,7 @@ const PipelineDetails = ({
                 />
 
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={pipelineFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}
@@ -643,14 +648,12 @@ const PipelineDetails = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.PIPELINE}
-              fqn={pipelineDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchPipeline}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.PIPELINE}
+            fqn={pipelineDetails?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchPipeline}
+          />
         ),
       },
       {
@@ -672,18 +675,14 @@ const PipelineDetails = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            data-testid="lineage-details"
-            id="lineageDetails">
-            <EntityLineageComponent
-              deleted={deleted}
-              entityType={EntityType.PIPELINE}
-              hasEditAccess={
-                pipelinePermissions.EditAll || pipelinePermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            deleted={deleted}
+            entity={pipelineDetails}
+            entityType={EntityType.PIPELINE}
+            hasEditAccess={
+              pipelinePermissions.EditAll || pipelinePermissions.EditLineage
+            }
+          />
         ),
       },
       {
@@ -748,6 +747,7 @@ const PipelineDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={pipelineDetails}
             entityType={EntityType.PIPELINE}
             permissions={pipelinePermissions}
@@ -802,4 +802,4 @@ const PipelineDetails = ({
   );
 };
 
-export default PipelineDetails;
+export default withActivityFeed<PipeLineDetailsProp>(PipelineDetails);

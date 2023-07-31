@@ -23,8 +23,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
-  private static final String UPDATE_FIELDS = "owner,tests";
-  private static final String PATCH_FIELDS = "owner,tests";
+  private static final String UPDATE_FIELDS = "tests";
+  private static final String PATCH_FIELDS = "tests";
 
   public TestSuiteRepository(CollectionDAO dao) {
     super(
@@ -59,9 +59,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) throws IOException {
-    List<CollectionDAO.EntityRelationshipRecord> testCases =
-        findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-    return EntityUtil.getEntityReferences(testCases);
+    return findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }
 
   @Override

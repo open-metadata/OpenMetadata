@@ -235,6 +235,10 @@ We support
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
 - Amazon RDS (PostgreSQL) engine version between 12 or greater
 
+Note:-
+    When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,
+as you can see in the ElasticSearch configuration example.
+
 For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
@@ -246,6 +250,7 @@ openmetadata:
   config:
     elasticsearch:
       host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
+      searchType: opensearch
       port: 443
       scheme: https
       connectionTimeoutSecs: 5

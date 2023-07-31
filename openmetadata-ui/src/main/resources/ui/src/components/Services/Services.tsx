@@ -169,15 +169,15 @@ const Services = ({
                         <div>
                           <Link
                             to={getServiceDetailsPath(
-                              service.fullyQualifiedName ?? service.name,
+                              encodeURIComponent(
+                                service.fullyQualifiedName ?? service.name
+                              ),
                               serviceName
                             )}>
                             <button>
                               <h6
                                 className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                                data-testid={`service-name-${getEntityName(
-                                  service
-                                )}`}
+                                data-testid={`service-name-${service.name}`}
                                 title={getEntityName(service)}>
                                 {getEntityName(service)}
                               </h6>

@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { DBTCloudConfig } from './DBTCloudConfig';
+import { dbtParsingTimeoutLimit } from './DBTFormConstants';
 
 const mockProps = {
   dbtCloudAccountId: '',
@@ -21,6 +22,7 @@ const mockProps = {
   dbtUpdateDescriptions: false,
   dbtCloudUrl: 'https://cloud.getdbt.com/',
   enableDebugLog: false,
+  parsingTimeoutLimit: dbtParsingTimeoutLimit,
 };
 
 jest.mock('./DBTCommonFields.component', () =>

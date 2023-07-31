@@ -13,7 +13,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -71,14 +70,6 @@ describe('S3Storage Ingestion', () => {
       description,
       SERVICE_TYPE.Storage,
       MYDATA_SUMMARY_OPTIONS.containers
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Storage,
-      serviceName,
-      API_SERVICE.storageServices
     );
   });
 

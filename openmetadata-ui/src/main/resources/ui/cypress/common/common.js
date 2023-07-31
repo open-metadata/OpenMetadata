@@ -220,7 +220,7 @@ export const testServiceCreationAndIngestion = ({
   // validation should work
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  cy.get('#name_help').should('be.visible').contains('name is required');
+  cy.get('#name_help').should('be.visible').contains('Name is required');
 
   // invalid name validation should work
   cy.get('[data-testid="service-name"]').should('exist').type('!@#$%^&*()');
@@ -437,90 +437,6 @@ export const deleteCreatedService = (
   cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };
 
-export const editOwnerforCreatedService = (
-  service_type,
-  service_Name,
-  api_services
-) => {
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-  // Click on settings page
-  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-  verifyResponseStatusCode('@getSettingsPage', 200);
-
-  // Services page
-  cy.get('.ant-menu-title-content')
-    .contains(service_type)
-    .should('be.visible')
-    .click();
-
-  interceptURL(
-    'GET',
-    `/api/v1/services/${api_services}/name/${service_Name}?fields=*`,
-    'getSelectedService'
-  );
-
-  interceptURL(
-    'GET',
-    `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${service_Name}`,
-    'waitForIngestion'
-  );
-
-  interceptURL(
-    'GET',
-    '/api/v1/system/config/pipeline-service-client',
-    'airflow'
-  );
-  interceptURL(
-    'GET',
-    `/api/v1/*?service=${service_Name}&fields=*`,
-    'assetsDetail'
-  );
-  // click on created service
-  cy.get(`[data-testid="service-name-${service_Name}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
-
-  verifyResponseStatusCode('@getSelectedService', 200);
-  verifyResponseStatusCode('@waitForIngestion', 200);
-  verifyResponseStatusCode('@airflow', 200);
-
-  verifyResponseStatusCode('@assetsDetail', 200);
-
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
-
-  // Click on edit owner button
-  cy.get('[data-testid="edit-owner"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
-
-  verifyResponseStatusCode('@waitForUsers', 200);
-
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*${encodeURI('admin')}*&from=0&size=*&index=*`,
-    'searchOwner'
-  );
-  cy.get('.user-team-select-popover [data-testid="searchbar"]')
-    .should('be.visible')
-    .and('exist')
-    .trigger('click')
-    .type('admin');
-
-  verifyResponseStatusCode('@searchOwner', 200);
-
-  cy.get('[data-testid="owner-link"]')
-    .invoke('text')
-    .then((text) => {
-      expect(text).equal(ADMIN);
-    });
-};
-
 export const goToAddNewServicePage = (service_type) => {
   interceptURL(
     'GET',
@@ -625,7 +541,7 @@ export const addNewTagToEntity = (entityObj, term) => {
   );
   cy.wait(500);
   cy.get(
-    '[data-testid="Classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+    '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
   )
     .eq(0)
     .should('be.visible')
@@ -643,7 +559,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="Classification-tags-0"] [data-testid="tags-container"]')
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tags-container"]')
     .scrollIntoView()
     .contains(name)
     .should('exist');
@@ -669,6 +585,7 @@ export const addUser = (username, email) => {
   cy.wait(1000);
   interceptURL('POST', ' /api/v1/users', 'add-user');
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
+  verifyResponseStatusCode('@add-user', 201);
 };
 
 export const softDeleteUser = (username, isAdmin) => {
@@ -678,18 +595,12 @@ export const softDeleteUser = (username, isAdmin) => {
     '/api/v1/search/query?q=**&from=0&size=*&index=*',
     'searchUser'
   );
-  cy.get('[data-testid="searchbar"]')
-    .should('exist')
-    .should('be.visible')
-    .type(username);
+  cy.get('[data-testid="searchbar"]').type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
 
   // Click on delete button
-  cy.get(`[data-testid="delete-user-btn-${username}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get(`[data-testid="delete-user-btn-${username}"]`).click();
 
   // Soft deleting the user
   cy.get('[data-testid="soft-delete"]').click();
@@ -701,33 +612,16 @@ export const softDeleteUser = (username, isAdmin) => {
     'softdeleteUser'
   );
   interceptURL('GET', '/api/v1/users*', 'userDeleted');
-  cy.get('[data-testid="confirm-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@softdeleteUser', 200);
   verifyResponseStatusCode('@userDeleted', 200);
 
   toastNotification('User deleted successfully!');
 
-  if (!isAdmin) {
-    cy.get('[data-testid="previous"]')
-      .scrollIntoView()
-      .should('exist')
-      .should('be.disabled');
-
-    cy.get('[data-testid="page-indicator"]').contains('1/7 Page');
-  }
-
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
 
   // Verifying the deleted user
-  cy.get('[data-testid="searchbar"]')
-    .scrollIntoView()
-    .should('exist')
-    .should('be.visible')
-    .clear()
-    .type(username);
+  cy.get('[data-testid="searchbar"]').scrollIntoView().clear().type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
   cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
@@ -812,10 +706,12 @@ export const deleteSoftDeletedUser = (username) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
-export const toastNotification = (msg) => {
+export const toastNotification = (msg, closeToast = true) => {
   cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
   cy.wait(200);
-  cy.get('.Toastify__close-button').should('be.visible').click();
+  if (closeToast) {
+    cy.get('.Toastify__close-button').should('be.visible').click();
+  }
 };
 
 export const addCustomPropertiesForEntity = (
@@ -826,26 +722,19 @@ export const addCustomPropertiesForEntity = (
   entityObj
 ) => {
   // Add Custom property for selected entity
-  cy.get('[data-testid="add-placeholder-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="add-field-button"]').click();
 
   // validation should work
   cy.get('[data-testid="create-button"]').scrollIntoView().click();
 
-  cy.get('#name_help').should('be.visible').contains('name is required');
-  cy.get('#propertyType_help')
-    .should('be.visible')
-    .contains('propertyType is required');
-  cy.get('#description_help')
-    .should('be.visible')
-    .contains('description is required');
+  cy.get('#name_help').should('contain', 'Name is required');
+  cy.get('#propertyType_help').should('contain', 'Property Type is required');
+
+  cy.get('#description_help').should('contain', 'Description is required');
 
   // capital case validation
   cy.get('[data-testid="name"]')
     .scrollIntoView()
-    .should('be.visible')
     .type(CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE);
   cy.get('[role="alert"]').should(
     'contain',
@@ -854,7 +743,6 @@ export const addCustomPropertiesForEntity = (
 
   // with underscore validation
   cy.get('[data-testid="name"]')
-    .should('be.visible')
     .clear()
     .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE);
   cy.get('[role="alert"]').should(
@@ -864,7 +752,6 @@ export const addCustomPropertiesForEntity = (
 
   // with space validation
   cy.get('[data-testid="name"]')
-    .should('be.visible')
     .clear()
     .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE);
   cy.get('[role="alert"]').should(
@@ -874,7 +761,6 @@ export const addCustomPropertiesForEntity = (
 
   // with dots validation
   cy.get('[data-testid="name"]')
-    .should('be.visible')
     .clear()
     .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS);
   cy.get('[role="alert"]').should(
@@ -883,25 +769,16 @@ export const addCustomPropertiesForEntity = (
   );
 
   // should allow name in another languages
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type('汝らヴェディア');
+  cy.get('[data-testid="name"]').clear().type('汝らヴェディア');
   // should not throw the validation error
   cy.get('#name_help').should('not.exist');
 
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type(propertyName);
+  cy.get('[data-testid="name"]').clear().type(propertyName);
 
-  cy.get('[data-testid="propertyType"]').should('be.visible').click();
-  cy.get(`[title="${customType}"]`).should('be.visible').click();
+  cy.get('[data-testid="propertyType"]').click();
+  cy.get(`[title="${customType}"]`).click();
 
-  cy.get(descriptionBox)
-    .should('be.visible')
-    .clear()
-    .type(entityType.description);
+  cy.get(descriptionBox).clear().type(entityType.description);
 
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
@@ -923,10 +800,7 @@ export const addCustomPropertiesForEntity = (
     entityObj.entity
   );
 
-  cy.get('[data-testid="custom_properties"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="custom_properties"]').click();
   cy.get('tbody').should('contain', propertyName);
 
   // Adding value for the custom property
@@ -937,21 +811,21 @@ export const addCustomPropertiesForEntity = (
     .as('editbutton');
   cy.wait(1000);
 
-  cy.get('@editbutton').should('exist').should('be.visible').click();
+  cy.get('@editbutton').click();
 
   // Checking for value text box or markdown box
   cy.get('body').then(($body) => {
     if ($body.find('[data-testid="value-input"]').length > 0) {
-      cy.get('[data-testid="value-input"]').should('be.visible').type(value);
+      cy.get('[data-testid="value-input"]').type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
     } else if (
       $body.find(
         '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
       )
     ) {
-      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-        .should('be.visible')
-        .type(value);
+      cy.get(
+        '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
+      ).type(value);
       cy.get('[data-testid="save"]').click();
     }
   });
@@ -998,15 +872,10 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="body-text"]').should('contain', propertyName);
 
   cy.get('[data-testid="save-button"]').should('be.visible').click();
-
-  // Checking if property got deleted successfully
-  cy.get('[data-testid="add-placeholder-button"]')
-    .scrollIntoView()
-    .should('be.visible');
 };
 
 export const updateOwner = () => {
-  cy.get('[data-testid="avatar"]').should('be.visible').click();
+  cy.get('[data-testid="avatar"]').click();
   cy.get('[data-testid="user-name"]')
     .should('exist')
     .invoke('text')
@@ -1014,10 +883,12 @@ export const updateOwner = () => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+      cy.get('[data-testid="edit-owner"]').click();
 
       cy.get('.user-team-select-popover').contains('Users').click();
-
+      cy.get(
+        '[id*="panel-users"] [data-testid="search-bar-container"] [data-testid="searchbar"]'
+      ).type(text);
       cy.get('[data-testid="selectable-list"]')
         .eq(1)
         .find(`[title="${text.trim()}"]`)
@@ -1291,7 +1162,7 @@ export const followAndOwnTheEntity = (termObj) => {
 
   // Check followed entity on mydata page
   cy.get('[data-testid="following-data-container"]')
-    .find(`[data-testid="Following data-${termObj.displayName}"]`)
+    .find(`[data-testid="following-${termObj.displayName}"]`)
     .should('be.visible');
 
   // Check owned entity

@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -25,15 +24,13 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.domains.DomainResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
-  private static final String UPDATE_FIELDS = "parent,children,owner,experts";
+  private static final String UPDATE_FIELDS = "parent,children,experts";
 
   public DomainRepository(CollectionDAO dao) {
     super(
@@ -58,13 +55,11 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private List<EntityReference> getChildren(Domain entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
   }
 
   private List<EntityReference> getExperts(Domain entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    return findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
   }
 
   @Override

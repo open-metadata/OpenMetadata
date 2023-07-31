@@ -32,6 +32,7 @@ import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component
 import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { Column } from 'generated/entity/data/container';
@@ -45,6 +46,7 @@ import {
   map,
   toLower,
 } from 'lodash';
+import { DateTime } from 'luxon';
 import Qs from 'qs';
 import React, {
   FC,
@@ -58,6 +60,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
+import { bytesToSize } from 'utils/StringsUtils';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
@@ -251,6 +254,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         title: `${t('label.profile-sample-type', { type: '' })}`,
         value: getProfileSampleValue(),
       },
+      {
+        title: t('label.size'),
+        value: bytesToSize(profile?.sizeInByte ?? 0),
+      },
+      {
+        title: t('label.created-date'),
+        value: profile?.createDateTime
+          ? DateTime.fromJSDate(new Date(profile?.createDateTime))
+              .toUTC()
+              .toFormat('MMM dd, yyyy HH:mm')
+          : '--',
+      },
     ];
   }, [profile, tableTests]);
 
@@ -289,12 +304,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   const addButtonContent = [
     {
-      label: t('label.table'),
+      label: <TabsLabel id="table" name={t('label.table')} />,
       key: '1',
       onClick: () => handleAddTestClick(ProfilerDashboardType.TABLE),
     },
     {
-      label: t('label.column'),
+      label: <TabsLabel id="column" name={t('label.column')} />,
       key: '2',
       onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
     },
@@ -369,7 +384,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       const { data } = await getListTestCase({
         ...params,
         fields: 'testCaseResult,entityLink,testDefinition,testSuite',
-        entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
+        entityLink: generateEntityLink(datasetFQN || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });
@@ -461,19 +476,27 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   }, [activeColumnFqn, columnTests]);
 
   useEffect(() => {
-    if (!isUndefined(table) && viewTest && !isTourOpen) {
+    const fetchTest =
+      viewTest && !isTourOpen && !isTableProfile && isEmpty(allTests.current);
+
+    if (fetchTest) {
       fetchAllTests();
     }
-  }, [table, viewTest, isTourOpen]);
+  }, [viewTest, isTourOpen, isTableProfile, allTests]);
 
   useEffect(() => {
-    if (!isTableDeleted && datasetFQN && !isTourOpen) {
+    if (
+      !isTableDeleted &&
+      datasetFQN &&
+      !isTourOpen &&
+      (isTableProfile || isColumnProfile)
+    ) {
       fetchLatestProfilerData();
     }
     if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);
     }
-  }, [datasetFQN, isTourOpen]);
+  }, [datasetFQN, isTourOpen, isTableProfile]);
 
   return (
     <Row
@@ -596,11 +619,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             )}
             {!isDataQuality && (
               <Col span={selectedColumn ? 14 : 24}>
-                <Row wrap gutter={[16, 16]}>
+                <Row
+                  wrap
+                  className={classNames(
+                    activeColumnFqn ? 'justify-start' : 'justify-between'
+                  )}
+                  gutter={[16, 16]}>
                   {overallSummery.map((summery) => (
-                    <Col
-                      key={summery.title}
-                      span={selectedColumn ? undefined : 8}>
+                    <Col key={summery.title}>
                       <SummaryCard
                         className={classNames(summery.className, 'h-full')}
                         showProgressBar={false}
@@ -641,6 +667,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isDataQuality && (
             <QualityTab
+              afterDeleteAction={fetchAllTests}
               isLoading={isTestCaseLoading}
               showTableColumn={false}
               testCases={getFilterTestCase()}

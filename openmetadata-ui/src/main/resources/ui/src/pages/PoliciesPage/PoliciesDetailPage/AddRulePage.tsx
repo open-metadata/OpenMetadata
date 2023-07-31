@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Space, Typography } from 'antd';
+import { Button, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -142,38 +142,34 @@ const AddRulePage = () => {
       <Row className="h-auto p-y-xss" gutter={[16, 16]}>
         <Col offset={5} span={14}>
           <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
-          <Card>
-            <Typography.Paragraph
-              className="text-base"
-              data-testid="add-rule-title">
-              {t('label.add-new-entity', { entity: t('label.rule') })}
-            </Typography.Paragraph>
-            <Form
-              data-testid="rule-form"
-              id="rule-form"
-              initialValues={{
-                ruleEffect: ruleData.effect,
-              }}
-              layout="vertical"
-              onFinish={handleSubmit}>
-              <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-              <Space align="center" className="w-full justify-end">
-                <Button
-                  data-testid="cancel-btn"
-                  type="link"
-                  onClick={handleBack}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  data-testid="submit-btn"
-                  form="rule-form"
-                  htmlType="submit"
-                  type="primary">
-                  {t('label.submit')}
-                </Button>
-              </Space>
-            </Form>
-          </Card>
+
+          <Typography.Paragraph
+            className="text-base"
+            data-testid="add-rule-title">
+            {t('label.add-new-entity', { entity: t('label.rule') })}
+          </Typography.Paragraph>
+          <Form
+            data-testid="rule-form"
+            id="rule-form"
+            initialValues={{
+              ruleEffect: ruleData.effect,
+            }}
+            layout="vertical"
+            onFinish={handleSubmit}>
+            <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+            <Space align="center" className="w-full justify-end">
+              <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="submit-btn"
+                form="rule-form"
+                htmlType="submit"
+                type="primary">
+                {t('label.submit')}
+              </Button>
+            </Space>
+          </Form>
         </Col>
       </Row>
     </PageLayoutV1>

@@ -48,6 +48,7 @@ export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 
 export const TAG_VIEW_CAP = 33;
+export const USER_DATA_SIZE = 4;
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
@@ -286,7 +287,6 @@ export const ROUTES = {
   PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
-  LINEAGE_FULL_SCREEN_VIEW: `/lineage-view/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
@@ -396,7 +396,7 @@ export const getTableTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN))
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -803,4 +803,9 @@ export const VALIDATION_MESSAGES = {
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',
+};
+
+export const ICON_DIMENSION = {
+  with: 14,
+  height: 14,
 };

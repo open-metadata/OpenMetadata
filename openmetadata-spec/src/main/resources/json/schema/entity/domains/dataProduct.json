@@ -49,7 +49,7 @@
     },
     "experts": {
       "description": "List of of users who are experts for this Data Product.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList",
+      "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },
     "domain": {
@@ -61,6 +61,6 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["id", "name", "description", "domain", "href"],
+  "required": ["id", "name", "description", "domain"],
   "additionalProperties": false
 }

@@ -45,6 +45,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonObject;
@@ -98,6 +99,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -130,7 +132,6 @@ import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -168,6 +169,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
+    Entity.withHref(uriInfo, user.getDomain());
     return user;
   }
 
@@ -191,8 +193,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    // Keep this before initializeUsers, else getUpdater() will fail
-    SubjectCache.initialize();
     this.repository.initializeUsers(config);
   }
 
@@ -520,7 +520,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         authHandler.sendInviteMailToUser(
             uriInfo,
             user,
-            String.format("Welcome to %s", EmailUtil.getInstance().getEmailingEntity()),
+            String.format("Welcome to %s", EmailUtil.getEmailingEntity()),
             create.getCreatePasswordType(),
             create.getPassword());
       } catch (Exception ex) {
@@ -533,7 +533,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isBasicAuth() {
-    return authenticationConfiguration.getProvider().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
+    return authenticationConfiguration.getProvider().equals(AuthProvider.BASIC);
   }
 
   @PUT
@@ -632,7 +632,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     RestUtil.PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     // Invalidate Bot Token in Cache
-    BotTokenCache.getInstance().invalidateToken(user.getName());
+    BotTokenCache.invalidateToken(user.getName());
     return response.toResponse();
   }
 
@@ -656,7 +656,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
 
-    User user = repository.get(uriInfo, id, new Fields(List.of(AUTH_MECHANISM_FIELD)));
+    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -693,7 +693,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
 
-    User user = repository.get(uriInfo, id, new Fields(List.of(AUTH_MECHANISM_FIELD)));
+    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -898,7 +898,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User registeredUser;
     try {
       registeredUser =
-          repository.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+          repository.getByName(uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     } catch (IOException | EntityNotFoundException ex) {
       LOG.error(
           "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}", userName, ex.getMessage());
@@ -907,10 +907,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       // send a mail to the User with the Update
       authHandler.sendPasswordResetLink(
-          uriInfo,
-          registeredUser,
-          EmailUtil.getInstance().getPasswordResetSubject(),
-          EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+          uriInfo, registeredUser, EmailUtil.getPasswordResetSubject(), EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -1017,7 +1014,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
     } catch (Exception ex) {
-      throw new IllegalArgumentException("Password need to be encoded in Base-64.");
+      throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
     }
     loginRequest.withPassword(new String(decodedBytes));
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
@@ -1114,7 +1111,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       List<String> ids = request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
       tokenRepository.deleteAllToken(ids);
     }
-    UserTokenCache.getInstance().invalidateToken(user.getName());
+    UserTokenCache.invalidateToken(user.getName());
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1299,7 +1296,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return repository.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+    return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
   private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
@@ -1311,7 +1308,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(EntityInterface bot) {
-    return repository.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
+    return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
   // TODO remove this

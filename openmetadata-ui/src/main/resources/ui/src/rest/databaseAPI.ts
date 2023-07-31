@@ -57,11 +57,16 @@ export const getDatabase = (
 
 export const getDatabaseDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[]
+  arrQueryFields: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const url = getURLWithQueryFields(`/databases/name/${fqn}`, arrQueryFields);
 
-  const response = await APIClient.get<Database>(url);
+  const response = await APIClient.get<Database>(url, {
+    params: {
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -139,6 +144,17 @@ export const restoreDatabaseSchema = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<DatabaseSchema>
   >('/databaseSchemas/restore', {
+    id,
+  });
+
+  return response.data;
+};
+
+export const restoreDatabase = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<Database>
+  >('/databases/restore', {
     id,
   });
 

@@ -15,10 +15,13 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,7 +42,6 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
@@ -56,9 +58,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final String TOPIC_UPDATE_FIELDS = "owner,tags,extension,followers";
-  private static final String TOPIC_PATCH_FIELDS = "owner,tags,extension,followers";
-
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
@@ -73,19 +72,12 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public TopicRepository(CollectionDAO dao) {
-    super(
-        TopicResource.COLLECTION_PATH,
-        Entity.TOPIC,
-        Topic.class,
-        dao.topicDAO(),
-        dao,
-        TOPIC_PATCH_FIELDS,
-        TOPIC_UPDATE_FIELDS);
+    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
   }
 
   @Override
   public void prepare(Topic topic) throws IOException {
-    MessagingService messagingService = Entity.getEntity(topic.getService(), "", Include.ALL);
+    MessagingService messagingService = Entity.getEntity(topic.getService(), "", ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     // Validate field tags
@@ -121,6 +113,16 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void storeRelationships(Topic topic) {
     setService(topic, topic.getService());
+  }
+
+  @Override
+  public Topic setInheritedFields(Topic topic, Fields fields) throws IOException {
+    // If topic does not have domain, then inherit it from parent messaging service
+    if (fields.contains(FIELD_DOMAIN) && topic.getDomain() == null) {
+      MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
+      topic.withDomain(service.getDomain());
+    }
+    return topic;
   }
 
   @Override
@@ -283,7 +285,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
         childrenSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
       }
-      Topic topic = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+      Topic topic = getByName(null, entityLink.getEntityFQN(), getFields("tags"), ALL);
       Field schemaField = null;
       for (Field field : topic.getMessageSchema().getSchemaFields()) {
         if (field.getName().equals(schemaName)) {
@@ -291,7 +293,7 @@ public class TopicRepository extends EntityRepository<Topic> {
           break;
         }
       }
-      if (childrenSchemaName != "" && schemaField != null) {
+      if (!"".equals(childrenSchemaName) && schemaField != null) {
         schemaField = getchildrenSchemaField(schemaField.getChildren(), childrenSchemaName);
       }
       if (schemaField == null) {
@@ -323,9 +325,9 @@ public class TopicRepository extends EntityRepository<Topic> {
       }
     }
     if (childrenSchemaField == null) {
-      for (int i = 0; i < fields.size(); i++) {
-        if (fields.get(i).getChildren() != null) {
-          childrenSchemaField = getchildrenSchemaField(fields.get(i).getChildren(), childrenSchemaName);
+      for (Field field : fields) {
+        if (field.getChildren() != null) {
+          childrenSchemaField = getchildrenSchemaField(field.getChildren(), childrenSchemaName);
           if (childrenSchemaField != null) {
             break;
           }

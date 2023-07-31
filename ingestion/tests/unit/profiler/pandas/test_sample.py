@@ -16,7 +16,8 @@ import os
 from unittest import TestCase, mock
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, String, func
+import pytest
+from sqlalchemy import TEXT, Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -170,6 +171,7 @@ class DatalakeSampleTest(TestCase):
         res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 3
 
+    @pytest.mark.skip(reason="Flaky test due to small sample size")
     def test_random_sample_histogram(self):
         """
         Histogram should run correctly

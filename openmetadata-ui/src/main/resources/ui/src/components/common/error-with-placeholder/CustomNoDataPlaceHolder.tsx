@@ -21,18 +21,23 @@ const CustomNoDataPlaceHolder = ({
   size,
   className,
   children,
+  icon,
 }: NoDataPlaceholderProps) => {
   return (
     <div
       className={classNames(className, 'flex-center flex-col w-full h-full')}
       data-testid="no-data-placeholder">
-      <NoDataFoundPlaceHolderIcon
-        data-testid="no-data-image"
-        height={size}
-        width={size}
-      />
+      {icon ? (
+        icon
+      ) : (
+        <NoDataFoundPlaceHolderIcon
+          data-testid="no-data-image"
+          height={size}
+          width={size}
+        />
+      )}
 
-      <div className="m-t-xss text-center text-sm font-normal">
+      <div className="m-t-xs text-center text-sm font-normal">
         {children ? children : ''}
       </div>
     </div>

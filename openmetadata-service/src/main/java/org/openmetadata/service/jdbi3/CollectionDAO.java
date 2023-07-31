@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -1253,9 +1254,20 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    @SqlQuery("SELECT * FROM field_relationship")
+    @Deprecated
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(DISTINCT fromFQN, toFQN) FROM field_relationship",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM ( SELECT DISTINCT fromFQN, toFQN FROM field_relationship) AS subquery",
+        connectionType = POSTGRES)
+    int listDistinctCount();
+
+    @Deprecated
+    @SqlQuery(
+        "SELECT DISTINCT fromFQN, toFQN FROM field_relationship WHERE fromFQNHash = '' or fromFQNHash is null or toFQNHash = '' or toFQNHash is null LIMIT :limit")
     @RegisterRowMapper(FieldRelationShipMapper.class)
-    List<FieldRelationship> listAll();
+    List<Pair<String, String>> migrationListDistinctWithOffset(@Bind("limit") int limit);
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
@@ -1311,20 +1323,10 @@ public interface CollectionDAO {
       }
     }
 
-    class FieldRelationShipMapper implements RowMapper<FieldRelationship> {
+    class FieldRelationShipMapper implements RowMapper<Pair<String, String>> {
       @Override
-      public FieldRelationship map(ResultSet rs, StatementContext ctx) throws SQLException {
-        FieldRelationship result = new FieldRelationship();
-        result.setFromFQNHash(rs.getString("fromFQNHash"));
-        result.setToFQNHash(rs.getString("toFQNHash"));
-        result.setFromFQN(rs.getString("fromFQN"));
-        result.setToFQN(rs.getString("toFQN"));
-        result.setFromType(rs.getString("fromType"));
-        result.setToType(rs.getString("toType"));
-        result.setRelation(rs.getInt("relation"));
-        result.setJsonSchema(rs.getString("jsonSchema"));
-        result.setJson(rs.getString("json"));
-        return result;
+      public Pair<String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Pair.of(rs.getString("fromFQN"), rs.getString("toFQN"));
       }
     }
 
@@ -1422,6 +1424,11 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM <table>")
     List<String> listAllEventsSubscriptions(@Define("table") String table);
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -1799,6 +1806,11 @@ public interface CollectionDAO {
     }
 
     @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    @Override
     default int listCount(ListFilter filter) {
       String entityId = filter.getQueryParam("entityId");
       String condition = "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
@@ -2056,7 +2068,7 @@ public interface CollectionDAO {
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(FullyQualifiedName.buildHash(targetFQN));
-      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getInstance().getDescription(tagLabel)));
+      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getDescription(tagLabel)));
       return tags;
     }
 
@@ -3148,8 +3160,12 @@ public interface CollectionDAO {
         "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
     String getExtension(@Bind("entityFQNHash") String entityId, @Bind("extension") String extension);
 
-    @SqlQuery("SELECT count(*) FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash")
+    @SqlQuery("SELECT count(*) FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash")
     int listCount(@Bind("entityFQNHash") String entityFQNHash);
+
+    @SqlQuery("SELECT COUNT(DISTINCT entityFQN) FROM entity_extension_time_series")
+    @Deprecated
+    int listDistinctCount();
 
     @ConnectionAwareSqlQuery(
         value =
@@ -3260,15 +3276,6 @@ public interface CollectionDAO {
         "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND jsonSchema = :jsonSchema "
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtensionByFQN(@Bind("entityFQNHash") String entityFQNHash, @Bind("jsonSchema") String jsonSchema);
-
-    @SqlQuery(
-        "SELECT json FROM entity_extension_time_series where entityFQNHash = :entityFQNHash and jsonSchema = :jsonSchema "
-            + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
-    List<String> listBetweenTimestampsByFQN(
-        @Bind("entityFQNHash") String entityFQNHash,
-        @Bind("jsonSchema") String jsonSchema,
-        @Bind("startTs") Long startTs,
-        @Bind("endTs") long endTs);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series where entityFQNHash = :entityFQNHash and extension = :extension "
@@ -3399,39 +3406,10 @@ public interface CollectionDAO {
       }
     }
 
-    @SqlQuery("select * from entity_extension_time_series")
-    @RegisterRowMapper(EntityExtensionTimeSeries.class)
-    List<EntityExtensionTimeSeriesTable> listAll();
-
-    @Getter
-    @Setter
-    class EntityExtensionTimeSeriesTable {
-      private String entityFQN;
-      private String extension;
-      private String jsonSchema;
-      private String json;
-      private long timestamp;
-      private String entityFQNHash;
-    }
-
-    class EntityExtensionTimeSeries implements RowMapper<EntityExtensionTimeSeriesTable> {
-      @Override
-      public EntityExtensionTimeSeriesTable map(ResultSet rs, StatementContext ctx) throws SQLException {
-        EntityExtensionTimeSeriesTable result = new EntityExtensionTimeSeriesTable();
-        // TODO : Ugly , after migration this is removed
-        try {
-          result.setEntityFQN(rs.getString("entityFQN"));
-        } catch (Exception ex) {
-          // Nothing
-        }
-        result.setExtension(rs.getString("extension"));
-        result.setJsonSchema(rs.getString("jsonSchema"));
-        result.setJson(rs.getString("json"));
-        result.setTimestamp(rs.getLong("timestamp"));
-        result.setEntityFQNHash(rs.getString("entityFQNHash"));
-        return result;
-      }
-    }
+    @SqlQuery(
+        "SELECT DISTINCT entityFQN FROM entity_extension_time_series WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
+    @Deprecated
+    List<String> migrationListDistinctWithOffset(@Bind("limit") int limit);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

@@ -13,7 +13,6 @@
 
 import {
   getImageWithResolutionAndFallback,
-  getRoundedValue,
   ImageQuality,
 } from './ProfilerUtils';
 
@@ -51,13 +50,5 @@ describe('Test ProfilerUtils', () => {
         mockImageListWithLowQuality
       )
     ).not.toEqual(mockImageList.image512);
-  });
-
-  it('getRoundedValue should return integer value as it is', () => {
-    expect(getRoundedValue(12)).toBe(12);
-  });
-
-  it('getRoundedValue should other values as it is', () => {
-    expect(getRoundedValue(false)).toBe(false);
   });
 });

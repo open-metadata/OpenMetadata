@@ -53,11 +53,11 @@ class Min(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_concatenable(self.col.type):
-            return MinFn(LenFn(column(self.col.name)))
+            return MinFn(LenFn(column(self.col.name, self.col.type)))
 
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
-        return MinFn(column(self.col.name))
+        return MinFn(column(self.col.name, self.col.type))
 
     def df_fn(self, dfs=None):
         """pandas function"""

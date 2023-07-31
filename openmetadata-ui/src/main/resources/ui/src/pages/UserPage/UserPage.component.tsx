@@ -11,72 +11,83 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import Loader from 'components/Loader/Loader';
 import Users from 'components/Users/Users.component';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { AssetsDataType } from 'Models';
-import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import Qs from 'qs';
+import {
+  default as React,
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getUserByName, updateUserDetail } from 'rest/userAPI';
-import AppState from '../../AppState';
+import { Transi18next } from 'utils/CommonUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { UserProfileTab } from '../../enums/user.enum';
 import { User } from '../../generated/entity/teams/user';
-import { useAuth } from '../../hooks/authHooks';
 import { SearchEntityHits } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { UserAssetsDataType } from './UserPage.interface';
 
 const UserPage = () => {
+  const history = useHistory();
   const { t } = useTranslation();
   const { username, tab = UserProfileTab.ACTIVITY } =
     useParams<{ [key: string]: string }>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
-  const [currentLoggedInUser, setCurrentLoggedInUser] = useState<User>();
   const [isError, setIsError] = useState(false);
   const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
     useState<boolean>(false);
 
-  const [followingEntities, setFollowingEntities] = useState<AssetsDataType>({
+  const [followingEntities, setFollowingEntities] =
+    useState<UserAssetsDataType>({
+      data: [],
+      total: 0,
+    });
+  const [ownedEntities, setOwnedEntities] = useState<UserAssetsDataType>({
     data: [],
     total: 0,
-    currPage: 1,
-  });
-  const [ownedEntities, setOwnedEntities] = useState<AssetsDataType>({
-    data: [],
-    total: 0,
-    currPage: 1,
   });
 
-  const fetchUserData = () => {
-    setUserData({} as User);
-    getUserByName(username, 'profile,roles,teams')
-      .then((res) => {
-        if (res) {
-          setUserData(res);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: 'User Details',
-          })
-        );
-        setIsError(true);
-      })
-      .finally(() => setIsLoading(false));
+  const { page = 1 } = useMemo(
+    () =>
+      Qs.parse(
+        location.search.startsWith('?')
+          ? location.search.substr(1)
+          : location.search
+      ),
+    [location.search]
+  );
+
+  const fetchUserData = async () => {
+    try {
+      const res = await getUserByName(username, 'profile,roles,teams');
+      setUserData(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.entity-detail-plural', {
+            entity: t('label.user'),
+          }),
+        })
+      );
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getQueryFilters = (fetchOwnedEntities: boolean) => {
@@ -95,16 +106,14 @@ const UserPage = () => {
 
   const fetchEntities = async (
     fetchOwnedEntities = false,
-    handleEntity: Dispatch<SetStateAction<AssetsDataType>>
+    handleEntity: Dispatch<SetStateAction<UserAssetsDataType>>
   ) => {
-    const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
-
     if (userData.id) {
       setIsUserEntitiesLoading(true);
       try {
         const response = await searchData(
           '',
-          entity.currPage,
+          Number(page),
           PAGE_SIZE,
           getQueryFilters(fetchOwnedEntities),
           '',
@@ -118,21 +127,23 @@ const UserPage = () => {
           handleEntity({
             data: hits,
             total,
-            currPage: entity.currPage,
           });
         } else {
           const total = 0;
           handleEntity({
             data: [],
             total,
-            currPage: entity.currPage,
           });
         }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
-            entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
+            entity: t('label.type-entities', {
+              type: fetchOwnedEntities
+                ? t('label.owner')
+                : t('label.following'),
+            }),
           })
         );
       } finally {
@@ -141,12 +152,10 @@ const UserPage = () => {
     }
   };
 
-  const handleFollowingEntityPaginate = (page: string | number) => {
-    setFollowingEntities((pre) => ({ ...pre, currPage: page as number }));
-  };
-
-  const handleOwnedEntityPaginate = (page: string | number) => {
-    setOwnedEntities((pre) => ({ ...pre, currPage: page as number }));
+  const handleEntityPaginate = (page: string | number) => {
+    history.push({
+      search: Qs.stringify({ page }),
+    });
   };
 
   const ErrorPlaceholder = () => {
@@ -154,12 +163,17 @@ const UserPage = () => {
       <div
         className="d-flex flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
         data-testid="error">
-        <p className="tw-text-base" data-testid="error-message">
-          {t('message.no-username-available')}
-          <span className="tw-font-medium" data-testid="username">
-            {username}
-          </span>
-        </p>
+        <Typography.Paragraph
+          className="tw-text-base"
+          data-testid="error-message">
+          <Transi18next
+            i18nKey="message.no-username-available"
+            renderElement={<strong data-testid="username" />}
+            values={{
+              user: username,
+            }}
+          />
+        </Typography.Paragraph>
       </div>
     );
   };
@@ -180,32 +194,6 @@ const UserPage = () => {
     }
   };
 
-  const isLoggedinUser = (userName: string) => {
-    return userName === currentLoggedInUser?.name;
-  };
-
-  const getUserComponent = () => {
-    if (!isError && !isEmpty(userData)) {
-      return (
-        <Users
-          followingEntities={followingEntities}
-          isAdminUser={Boolean(isAdminUser)}
-          isAuthDisabled={Boolean(isAuthDisabled)}
-          isLoggedinUser={isLoggedinUser(username)}
-          isUserEntitiesLoading={isUserEntitiesLoading}
-          ownedEntities={ownedEntities}
-          updateUserDetails={updateUserDetails}
-          userData={userData}
-          username={username}
-          onFollowingEntityPaginate={handleFollowingEntityPaginate}
-          onOwnedEntityPaginate={handleOwnedEntityPaginate}
-        />
-      );
-    } else {
-      return <ErrorPlaceholder />;
-    }
-  };
-
   useEffect(() => {
     fetchUserData();
   }, [username]);
@@ -214,19 +202,33 @@ const UserPage = () => {
     if (tab === UserProfileTab.FOLLOWING) {
       fetchEntities(false, setFollowingEntities);
     }
-  }, [followingEntities.currPage, tab, userData]);
+  }, [page, tab, userData]);
 
   useEffect(() => {
     if (tab === UserProfileTab.MY_DATA) {
       fetchEntities(true, setOwnedEntities);
     }
-  }, [ownedEntities.currPage, tab, userData]);
+  }, [page, tab, userData]);
 
-  useEffect(() => {
-    setCurrentLoggedInUser(AppState.getCurrentUserDetails());
-  }, [AppState.nonSecureUserDetails, AppState.userDetails]);
+  if (isLoading) {
+    return <Loader />;
+  }
 
-  return <>{isLoading ? <Loader /> : getUserComponent()}</>;
+  if (isError && isEmpty(userData)) {
+    return <ErrorPlaceholder />;
+  }
+
+  return (
+    <Users
+      followingEntities={followingEntities}
+      handlePaginate={handleEntityPaginate}
+      isUserEntitiesLoading={isUserEntitiesLoading}
+      ownedEntities={ownedEntities}
+      updateUserDetails={updateUserDetails}
+      userData={userData}
+      username={username}
+    />
+  );
 };
 
 export default observer(UserPage);

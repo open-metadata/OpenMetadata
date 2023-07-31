@@ -110,7 +110,7 @@ const ModelTab = ({
           <TableDescription
             columnData={{
               fqn: record.fullyQualifiedName ?? '',
-              description: record.description,
+              field: record.description,
             }}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}

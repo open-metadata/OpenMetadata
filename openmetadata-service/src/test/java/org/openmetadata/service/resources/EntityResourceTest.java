@@ -82,6 +82,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -219,9 +220,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
-  protected boolean supportsSoftDelete;
+  protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
-  protected boolean supportsEmptyDescription = true;
+  protected final boolean supportsEmptyDescription;
 
   // Special characters supported in the entity name
   protected String supportedNameCharacters = "_'-.&()" + RANDOM_STRING_GENERATOR.generate(1);
@@ -237,6 +238,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
       new Builder().filteredBy(Character::isLetterOrDigit).build();
+
+  public static Domain DOMAIN;
+  public static Domain SUB_DOMAIN;
+  public static DataProduct DOMAIN_DATA_PRODUCT;
+  public static DataProduct SUB_DOMAIN_DATA_PRODUCT;
 
   // Users
   public static User USER1;
@@ -332,11 +338,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String C4 = "\"c.4\"";
   public static List<Column> COLUMNS;
 
-  public static Domain DOMAIN;
-  public static Domain SUB_DOMAIN;
-  public static DataProduct DOMAIN_DATA_PRODUCT;
-  public static DataProduct SUB_DOMAIN_DATA_PRODUCT;
-
   public static final TestConnectionResult TEST_CONNECTION_RESULT =
       new TestConnectionResult()
           .withStatus(TestConnectionResultStatus.SUCCESSFUL)
@@ -380,7 +381,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.collectionName = collectionName;
     this.allFields = fields;
     ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
-    List<String> allowedFields = Entity.getEntityFields(entityClass);
+    Set<String> allowedFields = Entity.getEntityFields(entityClass);
+    this.supportsEmptyDescription = !EntityUtil.isDescriptionRequired(entityClass);
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
@@ -395,6 +397,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new RoleResourceTest().setupRoles(test);
     new TeamResourceTest().setupTeams(test);
     new UserResourceTest().setupUsers(test);
+    new DomainResourceTest().setupDomains(test);
+    new DataProductResourceTest().setupDataProducts(test);
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();
@@ -414,8 +418,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new KpiResourceTest().setupKpi();
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
-    new DomainResourceTest().setupDomains(test);
-    new DataProductResourceTest().setupDataProducts(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
@@ -2674,5 +2676,50 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected CsvDocumentation getCsvDocumentation() throws HttpResponseException {
     WebTarget target = getCollection().path("/documentation/csv");
     return TestUtils.get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
+  }
+
+  public T assertOwnerInheritance(K createRequest, EntityReference expectedOwner) throws HttpResponseException {
+    // Create entity with no owner and ensure it inherits owner from the parent
+    createRequest.withOwner(null);
+    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertReference(expectedOwner, entity.getOwner()); // Inherited owner
+    entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(expectedOwner, entity.getOwner()); // Inherited owner
+    return entity;
+  }
+
+  public void assertOwnershipInheritanceOverride(T entity, K updateRequest, EntityReference newOwner)
+      throws JsonProcessingException, HttpResponseException {
+    // When an entity has ownership set, it does not inherit owner from the parent
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(newOwner);
+    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertReference(newOwner, entity.getOwner());
+    entity = updateEntity(updateRequest.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(newOwner, entity.getOwner()); // Owner remains the same
+    entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(newOwner, entity.getOwner()); // Owner remains the same
+  }
+
+  public T assertDomainInheritance(K createRequest, EntityReference expectedDomain) throws HttpResponseException {
+    T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    return entity;
+  }
+
+  public T assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
+      throws JsonProcessingException, HttpResponseException {
+    // When an entity has domain set, it does not inherit domain from the parent
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setDomain(newDomain);
+    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertReference(newDomain, entity.getDomain());
+    entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    return entity;
   }
 }

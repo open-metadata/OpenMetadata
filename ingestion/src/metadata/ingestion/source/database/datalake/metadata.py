@@ -516,7 +516,7 @@ class DatalakeSource(DatabaseServiceSource):
                         return DataType.STRING.value
             except Exception as err:
                 logger.warning(
-                    f"Failed to disinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
+                    f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
                 )
                 logger.debug(traceback.format_exc())
         return data_type

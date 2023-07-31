@@ -84,7 +84,7 @@ $$
 $$section
 ### Database $(id="database")
 
-Database of the data source.
+Initial Mssql database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
 $$
 
 $$section
@@ -97,6 +97,13 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 $$
 
+
+$$section
+### Ingest All Databases $(id="ingestAllDatabases")
+If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
+$$
+
+
 $$section
 ### Connection Options $(id="connectionOptions")
 
@@ -107,4 +114,6 @@ $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
+
+When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TRUST_SERVER_CERTIFICATE: Yes.
 $$

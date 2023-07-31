@@ -48,7 +48,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   selectedEntityId,
   handleSummaryPanelDisplay,
   filter,
-  currentPage,
 }) => {
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
@@ -158,12 +157,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                       {searchResultCards}
                       <Pagination
                         hideOnSinglePage
-                        className="text-center"
-                        current={
-                          isNumber(Number(page ?? currentPage))
-                            ? Number(page ?? currentPage)
-                            : 1
-                        }
+                        className="text-center m-b-sm"
+                        current={isNumber(Number(page)) ? Number(page) : 1}
                         pageSize={
                           size && isNumber(Number(size))
                             ? Number(size)
