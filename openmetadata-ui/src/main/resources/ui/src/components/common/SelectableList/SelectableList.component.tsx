@@ -34,6 +34,7 @@ export const SelectableList = ({
   onCancel,
   searchPlaceholder,
   customTagRenderer,
+  searchBarDataTestId,
 }: SelectableListProps) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -203,6 +204,7 @@ export const SelectableList = ({
         <Searchbar
           removeMargin
           placeholder={searchPlaceholder ?? t('label.search')}
+          searchBarDataTestId={searchBarDataTestId}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearch}

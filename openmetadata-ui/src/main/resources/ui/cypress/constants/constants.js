@@ -58,6 +58,7 @@ export const SEARCH_ENTITY_TABLE = {
     displayName: 'raw_customer',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
   table_2: {
     term: 'fact_session',
@@ -65,6 +66,7 @@ export const SEARCH_ENTITY_TABLE = {
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
+    entityType: 'Table',
   },
   table_3: {
     term: 'raw_product_catalog',
@@ -72,12 +74,14 @@ export const SEARCH_ENTITY_TABLE = {
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
+    entityType: 'Table',
   },
   table_4: {
     term: 'dim_address',
     displayName: 'dim_address',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
 };
 
@@ -87,11 +91,13 @@ export const SEARCH_ENTITY_TOPIC = {
     displayName: 'shop_products',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Topic',
   },
   topic_2: {
     term: 'orders',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Topic',
   },
 };
 
@@ -101,11 +107,13 @@ export const SEARCH_ENTITY_DASHBOARD = {
     displayName: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
+    entityType: 'Dashboard',
   },
   dashboard_2: {
     term: 'Unicode Test',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
+    entityType: 'Dashboard',
   },
 };
 
@@ -115,12 +123,14 @@ export const SEARCH_ENTITY_PIPELINE = {
     displayName: 'dim_product etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+    entityType: 'Pipeline',
   },
   pipeline_2: {
-    term: 'dim_location_etl',
-    displayName: 'dim_location etl',
+    term: 'dim_user_etl',
+    displayName: 'dim_user etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+    entityType: 'Pipeline',
   },
 };
 export const SEARCH_ENTITY_MLMODEL = {
@@ -128,12 +138,14 @@ export const SEARCH_ENTITY_MLMODEL = {
     term: 'forecast_sales',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    entityType: 'ML Model',
   },
   mlmodel_2: {
     term: 'eta_predictions',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
     displayName: 'ETA Predictions',
+    entityType: 'ML Model',
   },
 };
 
@@ -142,11 +154,13 @@ export const DELETE_ENTITY = {
     term: 'dim.shop',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Table',
   },
 };
 

@@ -67,6 +67,7 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getExplorePath,
+  INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -128,7 +129,7 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -312,9 +313,9 @@ const DatabaseDetails: FunctionComponent = () => {
     const pagingString = `&${cursorType}=${
       databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
-    setIsLoading(true);
+    setSchemaDataLoading(true);
     fetchDatabaseSchemas(pagingString).finally(() => {
-      setIsLoading(false);
+      setSchemaDataLoading(false);
     });
     setCurrentPage(activePage ?? 1);
   };
@@ -581,6 +582,11 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   }, [databaseId]);
 
+  const handleShowDeletedSchemas = useCallback((value: boolean) => {
+    setShowDeletedSchemas(value);
+    setCurrentPage(INITIAL_PAGING_VALUE);
+  }, []);
+
   const editTagsPermission = useMemo(
     () =>
       (databasePermission.EditTags || databasePermission.EditAll) &&
@@ -636,7 +642,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       <Switch
                         checked={showDeletedSchemas}
                         data-testid="show-deleted"
-                        onClick={setShowDeletedSchemas}
+                        onClick={handleShowDeletedSchemas}
                       />
                       <Typography.Text className="m-l-xs">
                         {t('label.deleted')}
@@ -717,6 +723,7 @@ const DatabaseDetails: FunctionComponent = () => {
       showDeletedSchemas,
       editTagsPermission,
       editDescriptionPermission,
+      handleShowDeletedSchemas,
     ]
   );
 
