@@ -70,7 +70,7 @@ import {
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
-import { ordinalize } from './StringsUtils';
+import { getDecodedFqn, ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
@@ -180,28 +180,26 @@ export const getEntityLink = (
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
-      return getTopicDetailsPath(decodeURIComponent(fullyQualifiedName));
+      return getTopicDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
-      return getDashboardDetailsPath(decodeURIComponent(fullyQualifiedName));
+      return getDashboardDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
-      return getPipelineDetailsPath(decodeURIComponent(fullyQualifiedName));
+      return getPipelineDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE:
-      return getDatabaseDetailsPath(decodeURIComponent(fullyQualifiedName));
+      return getDatabaseDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsPath(
-        decodeURIComponent(fullyQualifiedName)
-      );
+      return getDatabaseSchemaDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
     case SearchIndex.GLOSSARY:
-      return getGlossaryPath(decodeURIComponent(fullyQualifiedName));
+      return getGlossaryPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
@@ -224,12 +222,12 @@ export const getEntityLink = (
 
     case EntityType.CONTAINER:
     case SearchIndex.CONTAINER:
-      return getContainerDetailPath(decodeURIComponent(fullyQualifiedName));
+      return getContainerDetailPath(getDecodedFqn(fullyQualifiedName));
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
 
     case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelDetailsPath(decodeURIComponent(fullyQualifiedName));
+      return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(
@@ -240,7 +238,7 @@ export const getEntityLink = (
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      return getTableDetailsPath(decodeURIComponent(fullyQualifiedName));
+      return getTableDetailsPath(getDecodedFqn(fullyQualifiedName));
   }
 };
 

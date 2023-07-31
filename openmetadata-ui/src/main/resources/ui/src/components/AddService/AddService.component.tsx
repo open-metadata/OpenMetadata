@@ -25,6 +25,7 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -173,7 +174,7 @@ const AddService = ({
     if (!isUndefined(newServiceData)) {
       history.push(
         getServiceDetailsPath(
-          encodeURIComponent(newServiceData.name),
+          getEncodedFqn(newServiceData.name),
           serviceCategory
         )
       );

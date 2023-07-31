@@ -43,6 +43,7 @@ import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getFeedCounts, refreshPage } from 'utils/CommonUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
@@ -149,7 +150,7 @@ const DataModelDetails = ({
     if (tabValue !== activeTab) {
       history.push({
         pathname: getDataModelDetailsPath(
-          decodeURIComponent(dashboardDataModelFQN),
+          getDecodedFqn(dashboardDataModelFQN),
           tabValue
         ),
       });

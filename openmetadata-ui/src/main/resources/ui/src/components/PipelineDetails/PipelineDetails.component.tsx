@@ -44,6 +44,7 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
   getPipelineDetailsPath,
@@ -483,7 +484,7 @@ const PipelineDetails = ({
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getPipelineDetailsPath(pipelineFQN, tabValue),
+        pathname: getPipelineDetailsPath(getDecodedFqn(pipelineFQN), tabValue),
       });
     }
   };
@@ -590,7 +591,7 @@ const PipelineDetails = ({
                     <div
                       className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
                       data-testid="no-tasks-data">
-                      <span>{t('label.no-task-available')}</span>
+                      <span>{t('server.no-task-available')}</span>
                     </div>
                   )}
                 </Col>

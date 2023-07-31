@@ -68,6 +68,7 @@ import { withActivityFeed } from 'components/router/withActivityFeed';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 
 const DashboardDetails = ({
   charts,
@@ -220,7 +221,7 @@ const DashboardDetails = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(
-        getDashboardDetailsPath(decodeURIComponent(dashboardFQN), activeKey)
+        getDashboardDetailsPath(getDecodedFqn(dashboardFQN), activeKey)
       );
     }
   };
