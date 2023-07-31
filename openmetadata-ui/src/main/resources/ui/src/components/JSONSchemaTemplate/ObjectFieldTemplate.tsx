@@ -107,8 +107,8 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
           <>
             <Collapse
               className="advanced-properties-collapse"
-              expandIconPosition="right">
-              <Panel header={t('label.advanced')} key="1">
+              expandIconPosition="end">
+              <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
                 {advancedProperties.map((element, index) => (
                   <div
                     className={classNames('property-wrapper', {
