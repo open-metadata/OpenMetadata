@@ -60,3 +60,9 @@ SET json = JSON_REPLACE(
   ) 
 where de2.serviceType = 'Mssql' 
   and JSON_EXTRACT(json, '$.connection.config.database') is NULL;
+
+-- remove keyfile from clickhouse
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.keyfile')
+WHERE serviceType = 'Clickhouse';
+

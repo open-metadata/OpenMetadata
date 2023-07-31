@@ -56,3 +56,8 @@ SET json = JSONB_SET(
 )
 WHERE de2.serviceType = 'Mssql' 
 AND json->>'{connection,config,database}' IS NULL;
+
+-- remove keyfile from clickhouse
+UPDATE dbservice_entity
+SET json = json #-'{connection,config,keyfile}'
+WHERE serviceType = 'Clickhouse';
