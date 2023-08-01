@@ -13,7 +13,6 @@
 
 import {
   findByTestId,
-  getAllByTestId,
   getByTestId,
   getByText,
   render,
@@ -100,11 +99,11 @@ describe('Test TierCard Component', () => {
 
     await waitForElementToBeRemoved(() => getByText(container, 'Loader'));
 
-    const radioBtns = getAllByTestId(container, 'radio-btn');
+    const radioButton = getByTestId(container, 'radio-btn-Tier1');
 
-    expect(radioBtns).toHaveLength(1);
+    expect(radioButton).toBeInTheDocument();
 
-    userEvent.click(radioBtns[0]);
+    userEvent.click(radioButton);
 
     expect(mockOnUpdate).toHaveBeenCalled();
   });

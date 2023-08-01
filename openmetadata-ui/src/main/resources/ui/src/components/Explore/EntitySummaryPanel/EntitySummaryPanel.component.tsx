@@ -132,7 +132,7 @@ export default function EntitySummaryPanel({
       (entityDetails.details.fullyQualifiedName &&
         entityDetails.details.entityType &&
         getEntityLinkFromType(
-          getEncodedFqn(entityDetails.details.fullyQualifiedName),
+          entityDetails.details.fullyQualifiedName,
           entityDetails.details.entityType as EntityType
         )) ??
       '',

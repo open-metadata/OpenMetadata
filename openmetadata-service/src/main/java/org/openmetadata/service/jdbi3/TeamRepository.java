@@ -245,7 +245,8 @@ public class TeamRepository extends EntityRepository<Team> {
         .withHref(team.getHref())
         .withFullyQualifiedName(team.getFullyQualifiedName())
         .withIsJoinable(team.getIsJoinable())
-        .withChildren(null);
+        .withChildren(null)
+        .withDescription(team.getDescription());
   }
 
   private TeamHierarchy deepCopy(TeamHierarchy team) {

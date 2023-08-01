@@ -164,8 +164,8 @@ public class FeedRepository {
     // Add field relationship for data asset - Thread -- isAbout ---> entity/entityField
     dao.fieldRelationshipDAO()
         .insert(
-            FullyQualifiedName.buildHash(thread.getId().toString()), // from FQN
-            FullyQualifiedName.buildHash(about.getFullyQualifiedFieldValue()), // to FQN,
+            thread.getId().toString(), // from FQN
+            about.getFullyQualifiedFieldValue(), // to FQN,
             thread.getId().toString(),
             about.getFullyQualifiedFieldValue(),
             Entity.THREAD, // From type
@@ -310,8 +310,8 @@ public class FeedRepository {
             mention ->
                 dao.fieldRelationshipDAO()
                     .insert(
-                        FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()),
-                        FullyQualifiedName.buildHash(thread.getId().toString()),
+                        mention.getFullyQualifiedFieldValue(),
+                        thread.getId().toString(),
                         mention.getFullyQualifiedFieldValue(),
                         thread.getId().toString(),
                         mention.getFullyQualifiedFieldType(),
@@ -375,7 +375,7 @@ public class FeedRepository {
     dao.relationshipDAO().deleteAll(id, Entity.THREAD);
 
     // Delete all the field relationships to other entities
-    dao.fieldRelationshipDAO().deleteAllByPrefix(FullyQualifiedName.buildHash(id));
+    dao.fieldRelationshipDAO().deleteAllByPrefix(id);
 
     // Finally, delete the entity
     dao.feedDAO().delete(id);
@@ -416,7 +416,7 @@ public class FeedRepository {
         result =
             dao.feedDAO()
                 .listCountByEntityLink(
-                    FullyQualifiedName.buildHash(entityLink.getFullyQualifiedFieldValue()),
+                    entityLink.getFullyQualifiedFieldValue(),
                     Entity.THREAD,
                     entityLink.getFullyQualifiedFieldType(),
                     IS_ABOUT.ordinal(),
@@ -470,15 +470,14 @@ public class FeedRepository {
           // Only data assets are added as about
           User user = userId != null ? SubjectCache.getUserById(userId) : null;
           List<String> teamNameHash = getTeamNames(user);
-          String userNameHash = getUserNameHash(user);
+          String userName = user == null ? null : user.getFullyQualifiedName();
           List<String> jsons =
               dao.feedDAO()
-                  .listThreadsByEntityLink(
-                      filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
+                  .listThreadsByEntityLink(filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userName, teamNameHash);
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
               dao.feedDAO()
-                  .listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
+                  .listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userName, teamNameHash);
         }
       } else {
         // userId filter present
@@ -535,8 +534,8 @@ public class FeedRepository {
     // field relationship table constraint (primary key)
     dao.fieldRelationshipDAO()
         .insert(
-            FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(user)),
-            FullyQualifiedName.buildHash(thread.getId().toString()),
+            EntityInterfaceUtil.quoteName(user),
+            thread.getId().toString(),
             user,
             thread.getId().toString(),
             Entity.USER,
@@ -915,10 +914,7 @@ public class FeedRepository {
   }
 
   private String getUserNameHash(User user) {
-    if (user != null) {
-      return FullyQualifiedName.buildHash(user.getFullyQualifiedName());
-    }
-    return null;
+    return user != null ? FullyQualifiedName.buildHash(user.getFullyQualifiedName()) : null;
   }
 
   public static class FilteredThreads {

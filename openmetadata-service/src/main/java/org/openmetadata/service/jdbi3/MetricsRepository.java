@@ -37,11 +37,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(Metrics metrics) {
-    return FullyQualifiedName.buildHash(metrics.getFullyQualifiedName());
-  }
-
-  @Override
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
     metrics.setService(getContainer(metrics.getId())); // service is a default field
     return metrics.withUsageSummary(

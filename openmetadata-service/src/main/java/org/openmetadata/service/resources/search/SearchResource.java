@@ -56,7 +56,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 
@@ -326,8 +325,7 @@ public class SearchResource {
     String jobRecord;
     jobRecord =
         dao.entityExtensionTimeSeriesDao()
-            .getLatestExtension(
-                FullyQualifiedName.buildHash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)
           .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))

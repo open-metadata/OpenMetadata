@@ -36,6 +36,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -155,7 +156,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getMlModelDetailsPath(mlModelFqn, activeKey));
+      history.push(getMlModelDetailsPath(getDecodedFqn(mlModelFqn), activeKey));
     }
   };
 
