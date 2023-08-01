@@ -471,20 +471,6 @@
       </exclusions>
     </dependency>
     <dependency>
-<<<<<<< HEAD
-      <groupId>org.reflections</groupId>
-      <artifactId>reflections</artifactId>
-      <version>0.10.2</version>
-    </dependency>
-    <dependency>
-      <groupId>io.swagger</groupId>
-      <artifactId>swagger-annotations</artifactId>
-      <version>1.6.11</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-=======
->>>>>>> parent of 19e223eab (Fix exceptions thrown as reflections scan non java classes (#12680))
       <groupId>org.quartz-scheduler</groupId>
       <artifactId>quartz</artifactId>
       <version>${quartz.version}</version>
