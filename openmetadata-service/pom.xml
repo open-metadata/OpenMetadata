@@ -649,7 +649,7 @@
           <forkCount>1C</forkCount>
           <argLine>-Xmx512m</argLine>
           <systemPropertyVariables>
-            <log4j.configuration>file:${basedir}/src/test/resources/log4j-silent.properties</log4j.configuration>
+            <log4j.configuration>file:${project.basedir}/openmetadata-service/src/test/resources/log4j-silent.properties</log4j.configuration>
           </systemPropertyVariables>
         </configuration>
         <executions>
