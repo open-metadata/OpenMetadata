@@ -330,16 +330,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [updateCurrentSelectedIngestion]
   );
 
-  const handleEnableDisableIngestion = useCallback(async (id: string) => {
-    try {
-      const response = await enableDisableIngestionPipelineById(id);
-      if (response.data) {
-        updateCurrentSelectedIngestion(id, response.data, 'enabled');
+  const handleEnableDisableIngestion = useCallback(
+    async (id: string) => {
+      try {
+        const response = await enableDisableIngestionPipelineById(id);
+        if (response.data) {
+          updateCurrentSelectedIngestion(id, response.data, 'enabled');
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  }, []);
+    },
+    [updateCurrentSelectedIngestion]
+  );
 
   const deleteIngestionById = useCallback(
     async (id: string, displayName: string) => {
