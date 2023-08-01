@@ -69,11 +69,12 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
         paginator_response = paginator.paginate()
         for response in paginator_response:
             response_obj = QueryExecutionIdsResponse(**response)
-            query_details_response = self.client.batch_get_query_execution(
-                QueryExecutionIds=response_obj.QueryExecutionIds
-            )
-            query_details_list = AthenaQueryExecutionList(**query_details_response)
-            yield query_details_list
+            if response_obj.QueryExecutionIds:
+                query_details_response = self.client.batch_get_query_execution(
+                    QueryExecutionIds=response_obj.QueryExecutionIds
+                )
+                query_details_list = AthenaQueryExecutionList(**query_details_response)
+                yield query_details_list
             query_limit -= 1
             if not query_limit:
                 break

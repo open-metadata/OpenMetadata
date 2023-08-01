@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexFields;
 import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
@@ -48,6 +47,7 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchDataInsightProcessor;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchEntitiesProcessor;
@@ -56,7 +56,6 @@ import org.openmetadata.service.search.openSearch.OpenSearchDataInsightProcessor
 import org.openmetadata.service.search.openSearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.openSearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
@@ -86,7 +85,8 @@ public class SearchIndexWorkflow implements Runnable {
               if (!isDataInsightIndex(entityType)) {
                 List<String> fields =
                     new ArrayList<>(
-                        Objects.requireNonNull(getIndexFields(entityType, jobData.getSearchIndexMappingLanguage())));
+                        Objects.requireNonNull(
+                            IndexUtil.getIndexFields(entityType, jobData.getSearchIndexMappingLanguage())));
                 PaginatedEntitiesSource source =
                     new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
                 if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
@@ -334,16 +334,12 @@ public class SearchIndexWorkflow implements Runnable {
 
   public void updateRecordToDb() throws IOException {
     String recordString =
-        dao.entityExtensionTimeSeriesDao()
-            .getExtension(EntityUtil.hash(jobData.getId().toString()), REINDEXING_JOB_EXTENSION);
+        dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
     long originalLastUpdate = lastRecord.getTimestamp();
     dao.entityExtensionTimeSeriesDao()
         .update(
-            EntityUtil.hash(jobData.getId().toString()),
-            REINDEXING_JOB_EXTENSION,
-            JsonUtils.pojoToJson(jobData),
-            originalLastUpdate);
+            jobData.getId().toString(), REINDEXING_JOB_EXTENSION, JsonUtils.pojoToJson(jobData), originalLastUpdate);
   }
 
   private void reCreateIndexes(String entityType) {
@@ -351,8 +347,7 @@ public class SearchIndexWorkflow implements Runnable {
       return;
     }
 
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     // Delete index
     searchClient.deleteIndex(indexType);
     // Create index

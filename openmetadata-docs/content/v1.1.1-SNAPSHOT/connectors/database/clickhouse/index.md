@@ -91,17 +91,11 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 - **Username**: Specify the User to connect to Clickhouse. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to Clickhouse.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Clickhouse deployment in the Host and Port field.
+- **Use HTTPS Protocol**: Enable this flag when the when the Clickhouse instance is hosted via HTTPS protocol. This flag is useful when you are using `clickhouse+http` connection scheme.
+- **Secure Connection**: Establish secure connection with ClickHouse. ClickHouse supports secure communication over SSL/TLS to protect data in transit, by checking this option, it establishes secure connection with ClickHouse. This flag is useful when you are using `clickhouse+native` connection scheme.
+- **Key File**: The key file path is the location when ClickHouse looks for a file containing the private key needed for secure communication over SSL/TLS. By default, ClickHouse will look for the key file in the `/etc/clickhouse-server directory`, with the file name `server.key`. However, this can be customized in the ClickHouse configuration file (`config.xml`). This flag is useful when you are using `clickhouse+native` connection scheme and the secure connection flag is enabled.
 
 {% partial file="/v1.1.1/connectors/database/advanced-configuration.md" /%}
-
-You can find the full list of accepted options [here](https://clickhouse-driver.readthedocs.io/en/latest/api.html#clickhouse_driver.connection.Connection).
-
-- **Connecting to Clickhouse with SSL Certificate**: You will need to use the `clickhouse+native` connection scheme. Then in the `Connection Options` reference the following key with their value:
-  - `verify`: `true`
-  - `secure`: `true`
-  - `keyfile`: `/path/to/key/file`
-
-The `keyfile` needs to be accessible by the service running the ingestion. For example if you are running the ingestion in a docker container, your `keyfile` needs to be present in the container at the location specify as a value in the `Connection Options`. Additionally, your `keyfile` needs to be in the `.cert` or `.pem` format.
 
 {% /extraContent %}
 

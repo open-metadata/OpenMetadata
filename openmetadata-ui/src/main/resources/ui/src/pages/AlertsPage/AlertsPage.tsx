@@ -167,29 +167,6 @@ const AlertsPage = () => {
     []
   );
 
-  if (loading) {
-    return <Loader />;
-  }
-
-  if (isEmpty(alerts)) {
-    return (
-      <ErrorPlaceHolder
-        permission
-        doc={ALERTS_DOCS}
-        heading={t('label.alert')}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={() =>
-          history.push(
-            getSettingPath(
-              GlobalSettingsMenuCategory.NOTIFICATIONS,
-              GlobalSettingOptions.ADD_ALERTS
-            )
-          )
-        }
-      />
-    );
-  }
-
   return (
     <>
       <Row gutter={[16, 16]}>
@@ -208,14 +185,37 @@ const AlertsPage = () => {
           </div>
         </Col>
         <Col span={24}>
-          <Table
-            bordered
-            columns={columns}
-            dataSource={alerts}
-            pagination={false}
-            rowKey="id"
-            size="middle"
-          />
+          {loading ? (
+            <Loader />
+          ) : (
+            <Table
+              bordered
+              columns={columns}
+              dataSource={alerts}
+              locale={{
+                emptyText: !loading && (
+                  <ErrorPlaceHolder
+                    permission
+                    className="p-y-md"
+                    doc={ALERTS_DOCS}
+                    heading={t('label.alert')}
+                    type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                    onClick={() =>
+                      history.push(
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.NOTIFICATIONS,
+                          GlobalSettingOptions.ADD_ALERTS
+                        )
+                      )
+                    }
+                  />
+                ),
+              }}
+              pagination={false}
+              rowKey="id"
+              size="middle"
+            />
+          )}
         </Col>
         <Col span={24}>
           {Boolean(

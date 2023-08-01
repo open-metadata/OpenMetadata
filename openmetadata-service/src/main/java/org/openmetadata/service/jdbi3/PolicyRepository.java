@@ -39,11 +39,9 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -62,14 +60,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /* Get all the teams that use this policy */
   private List<EntityReference> getTeams(Policy policy) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
-    return EntityUtil.populateEntityReferences(records, Entity.TEAM);
+    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
   }
 
   /* Get all the roles that use this policy */
   private List<EntityReference> getRoles(Policy policy) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
-    return EntityUtil.populateEntityReferences(records, Entity.ROLE);
+    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
   }
 
   @Override
@@ -81,7 +77,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public void storeEntity(Policy policy, boolean update) throws IOException {
     store(policy, update);
     if (update) {
-      PolicyCache.getInstance().invalidatePolicy(policy.getId());
+      PolicyCache.invalidatePolicy(policy.getId());
     }
   }
 
@@ -106,7 +102,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   protected void cleanup(Policy policy) throws IOException {
     super.cleanup(policy);
-    PolicyCache.getInstance().invalidatePolicy(policy.getId());
+    PolicyCache.invalidatePolicy(policy.getId());
   }
 
   public void validateRules(Policy policy) {

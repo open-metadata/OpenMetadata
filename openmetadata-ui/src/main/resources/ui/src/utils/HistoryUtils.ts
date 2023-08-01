@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,6 @@
  *  limitations under the License.
  */
 
-export enum AuthTypes {
-  GOOGLE = 'google',
-  GITHUB = 'github',
-  OKTA = 'okta',
-  AUTH0 = 'auth0',
-  AZURE = 'azure',
-  CUSTOM_OIDC = 'custom-oidc',
-  AWS_COGNITO = 'aws-cognito',
-  BASIC = 'basic',
-  LDAP = 'ldap',
-  NO_AUTH = 'no-auth',
-  SAML = 'saml',
-}
+import { createBrowserHistory } from 'history';
+
+export const history = createBrowserHistory();

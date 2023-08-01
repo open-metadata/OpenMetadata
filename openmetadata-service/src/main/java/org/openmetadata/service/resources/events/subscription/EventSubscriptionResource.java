@@ -58,13 +58,11 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
-import org.openmetadata.service.events.subscription.ActivityFeedAlertCache;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -126,7 +124,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      ActivityFeedAlertCache.initialize("ActivityFeedAlert", repository);
       searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
       ReportsHandler.initialize(daoCollection, searchClient);
       initializeEventSubscriptions();
@@ -192,15 +189,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               description = "Returns list of event subscriptions after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
+          String after)
       throws IOException {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(null);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -228,15 +219,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
+          String fieldsParam)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
   @GET
@@ -265,15 +250,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
+          String fieldsParam)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
   }
 
   @POST

@@ -249,8 +249,7 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchClient searchClient;
-    searchClient =
+    SearchClient searchClient =
         IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
     ElasticSearchIndexDefinition esIndexDefinition;
 
@@ -304,15 +303,15 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
         esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
         esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_DROP:
-        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
         esIndexDefinition.dropIndexes();
         break;
       default:

@@ -41,7 +41,6 @@ import { getLoggedInUser, updateUserDetail } from 'rest/userAPI';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
-import { AuthTypes } from '../../../enums/signin.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthType, User } from '../../../generated/entity/teams/user';
 import {
@@ -74,6 +73,7 @@ import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './basic-auth.provider';
 import OktaAuthProvider from './okta-auth-provider';
 
+import { AuthProvider as AuthProviderEnum } from 'generated/settings/settings';
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
@@ -302,8 +302,8 @@ export const AuthProvider = ({
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
       refreshToken ||
-      [AuthTypes.BASIC, AuthTypes.LDAP].indexOf(
-        authConfig?.provider as AuthTypes
+      [AuthProviderEnum.Basic, AuthProviderEnum.LDAP].indexOf(
+        authConfig?.provider as AuthProviderEnum
       ) === -1;
 
     if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
@@ -379,7 +379,7 @@ export const AuthProvider = ({
   const updateAuthInstance = (configJson: Record<string, string | boolean>) => {
     const { provider, ...otherConfigs } = configJson;
     switch (provider) {
-      case AuthTypes.AZURE:
+      case AuthProviderEnum.Azure:
         {
           setMsalInstance(otherConfigs as unknown as Configuration);
         }
@@ -447,10 +447,7 @@ export const AuthProvider = ({
       if (isSecureMode) {
         const provider = authConfig?.provider;
         // show an error toast if provider is null or not supported
-        if (
-          provider &&
-          Object.values(AuthTypes).includes(provider as AuthTypes)
-        ) {
+        if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           initializeAxiosInterceptors();
@@ -492,10 +489,10 @@ export const AuthProvider = ({
 
   const getCallBackComponent = () => {
     switch (authConfig?.provider) {
-      case AuthTypes.OKTA: {
+      case AuthProviderEnum.Okta: {
         return LoginCallback;
       }
-      case AuthTypes.AUTH0: {
+      case AuthProviderEnum.Auth0: {
         return Auth0Callback;
       }
       default: {
@@ -506,8 +503,8 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     switch (authConfig?.provider) {
-      case AuthTypes.LDAP:
-      case AuthTypes.BASIC: {
+      case AuthProviderEnum.LDAP:
+      case AuthProviderEnum.Basic: {
         return (
           <BasicAuthProvider
             onLoginFailure={handleFailedLogin}
@@ -518,7 +515,7 @@ export const AuthProvider = ({
           </BasicAuthProvider>
         );
       }
-      case AuthTypes.AUTH0: {
+      case AuthProviderEnum.Auth0: {
         return (
           <Auth0Provider
             useRefreshTokens
@@ -534,7 +531,7 @@ export const AuthProvider = ({
           </Auth0Provider>
         );
       }
-      case AuthTypes.SAML: {
+      case AuthProviderEnum.Saml: {
         return (
           <SamlAuthenticator
             ref={authenticatorRef}
@@ -543,7 +540,7 @@ export const AuthProvider = ({
           </SamlAuthenticator>
         );
       }
-      case AuthTypes.OKTA: {
+      case AuthProviderEnum.Okta: {
         return (
           <OktaAuthProvider onLoginSuccess={handleSuccessfulLogin}>
             <OktaAuthenticator
@@ -554,9 +551,9 @@ export const AuthProvider = ({
           </OktaAuthProvider>
         );
       }
-      case AuthTypes.GOOGLE:
-      case AuthTypes.CUSTOM_OIDC:
-      case AuthTypes.AWS_COGNITO: {
+      case AuthProviderEnum.Google:
+      case AuthProviderEnum.CustomOidc:
+      case AuthProviderEnum.AwsCognito: {
         return authConfig ? (
           <OidcAuthenticator
             childComponentType={childComponentType}
@@ -573,7 +570,7 @@ export const AuthProvider = ({
           <Loader />
         );
       }
-      case AuthTypes.AZURE: {
+      case AuthProviderEnum.Azure: {
         return msalInstance ? (
           <MsalProvider instance={msalInstance}>
             <MsalAuthenticator
@@ -631,7 +628,8 @@ export const AuthProvider = ({
 
   const isLoading =
     !isAuthDisabled &&
-    (!authConfig || (authConfig.provider === AuthTypes.AZURE && !msalInstance));
+    (!authConfig ||
+      (authConfig.provider === AuthProviderEnum.Azure && !msalInstance));
 
   const authContext = {
     isAuthenticated: isUserAuthenticated,

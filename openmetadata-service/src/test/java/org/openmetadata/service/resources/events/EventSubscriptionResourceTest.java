@@ -57,7 +57,6 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         "events/subscriptions",
         EventSubscriptionResource.FIELDS);
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
-    supportsSoftDelete = false;
     supportsFieldsQueryParam = false;
   }
 
@@ -323,6 +322,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     // Now check state of webhooks created
     WebhookCallbackResource.EventDetails details = waitForFirstEvent("simulate-slowServer", 25);
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
+    assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
 
     waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30);

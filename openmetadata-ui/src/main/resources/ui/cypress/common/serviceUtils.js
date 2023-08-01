@@ -20,6 +20,7 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     'getSettingsPage'
   );
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
@@ -29,7 +30,15 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     .should('be.visible')
     .click();
 
-  verifyResponseStatusCode('@getServices', 200);
+  cy.wait('@getServices').then((interception) => {
+    const responseBody = interception.response.body;
+    // check if service name is received on the first page otherwise, click on Next button
+    const item = responseBody.data.find((item) => item.name === service.name);
+    if (!item && responseBody.paging.after) {
+      cy.get('[data-testid="next"]').click();
+      verifyResponseStatusCode('@getServices', 200);
+    }
+  });
 
   // click on created service
   cy.get(`[data-testid="service-name-${service.name}"]`)
@@ -43,7 +52,7 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
       .should('be.visible')
       .invoke('text')
       .then((text) => {
-        expect(text).to.equal(service.name);
+        expect(text).to.equal(service.displayName);
       });
   }
 

@@ -52,9 +52,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -103,9 +101,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(glossary.getName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
   }
 
   private Integer getTermCount(Glossary glossary) {
@@ -139,8 +135,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private List<EntityReference> getReviewers(Glossary entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    return findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {

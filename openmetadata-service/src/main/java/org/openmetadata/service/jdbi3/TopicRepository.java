@@ -66,11 +66,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
   }
 
-  @Override
-  public String getFullyQualifiedNameHash(Topic topic) {
-    return FullyQualifiedName.buildHash(topic.getFullyQualifiedName());
-  }
-
   public TopicRepository(CollectionDAO dao) {
     super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
   }
