@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
-import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { Paging } from 'generated/type/paging';
 import { TagSource } from 'generated/type/tagLabel';
@@ -30,25 +29,23 @@ import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { fetchTagsElasticSearch, getTagPlaceholder } from 'utils/TagsUtils';
-import {
-  getRequestTagsPath,
-  getUpdateTagsPath,
-  TASK_ENTITIES,
-} from 'utils/TasksUtils';
+import { getRequestTagsPath, getUpdateTagsPath } from 'utils/TasksUtils';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
-import TagsViewer from '../TagsViewer/tags-viewer';
+import TagsViewer from '../TagsViewer/TagsViewer';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
   permission,
+  showTaskHandler = true,
   selectedTags,
   entityType,
   entityThreadLink,
   entityFqn,
   tagType,
+  displayType,
   showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
@@ -134,12 +131,15 @@ const TagsContainerV2 = ({
       source: tagType,
     }));
 
-    await onSelectionChange([
-      ...updatedTags,
-      ...((isGlossaryType
-        ? tags?.[TagSource.Classification]
-        : tags?.[TagSource.Glossary]) ?? []),
-    ]);
+    if (onSelectionChange) {
+      await onSelectionChange([
+        ...updatedTags,
+        ...((isGlossaryType
+          ? tags?.[TagSource.Classification]
+          : tags?.[TagSource.Glossary]) ?? []),
+      ]);
+    }
+
     form.resetFields();
     setIsEditTags(false);
   };
@@ -156,23 +156,24 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <span onClick={handleAddClick}>
+        <Col onClick={handleAddClick}>
           <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-        </span>
+        </Col>
       ) : null,
     [showAddTagButton]
   );
 
   const renderTags = useMemo(
     () => (
-      <TagsViewer
-        isTextPlaceholder
-        showNoDataPlaceholder={showNoDataPlaceholder}
-        tags={tags?.[tagType] ?? []}
-        type="border"
-      />
+      <Col>
+        <TagsViewer
+          displayType={displayType}
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          tags={tags?.[tagType] ?? []}
+        />
+      </Col>
     ),
-    [showNoDataPlaceholder, tags?.[tagType]]
+    [displayType, showNoDataPlaceholder, tags?.[tagType]]
   );
 
   const tagsSelectContainer = useMemo(() => {
@@ -194,71 +195,62 @@ const TagsContainerV2 = ({
     handleSave,
   ]);
 
-  const handleRequestTags = () => {
-    history.push(getRequestTagsPath(entityType as string, entityFqn as string));
-  };
-  const handleUpdateTags = () => {
-    history.push(getUpdateTagsPath(entityType as string, entityFqn as string));
+  const handleTagsTask = (hasTags: boolean) => {
+    history.push(
+      (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
+        entityType as string,
+        entityFqn as string
+      )
+    );
   };
 
   const requestTagElement = useMemo(() => {
     const hasTags = !isEmpty(tags?.[tagType]);
 
-    return TASK_ENTITIES.includes(entityType as EntityType) ? (
+    return (
       <Col>
-        <Button
-          className="p-0 flex-center"
-          data-testid="request-entity-tags"
-          size="small"
-          type="text"
-          onClick={hasTags ? handleUpdateTags : handleRequestTags}>
-          <Tooltip
-            placement="left"
-            title={
-              hasTags
-                ? t('label.update-request-tag-plural')
-                : t('label.request-tag-plural')
-            }>
-            <IconRequest
-              className="anticon"
-              height={14}
-              name="request-tags"
-              style={{ color: DE_ACTIVE_COLOR }}
-              width={14}
-            />
-          </Tooltip>
-        </Button>
+        <Tooltip
+          title={
+            hasTags
+              ? t('label.update-request-tag-plural')
+              : t('label.request-tag-plural')
+          }>
+          <IconRequest
+            className="cursor-pointer"
+            data-testid="request-entity-tags"
+            height={14}
+            name="request-tags"
+            style={{ color: DE_ACTIVE_COLOR }}
+            width={14}
+            onClick={() => handleTagsTask(hasTags)}
+          />
+        </Tooltip>
       </Col>
-    ) : null;
-  }, [tags?.[tagType], handleUpdateTags, handleRequestTags]);
+    );
+  }, [tags?.[tagType], handleTagsTask]);
 
   const conversationThreadElement = useMemo(
     () => (
       <Col>
-        <Button
-          className="p-0 flex-center"
-          data-testid="tag-thread"
-          size="small"
-          type="text"
-          onClick={() =>
-            onThreadLinkSelect?.(
-              entityThreadLink ??
-                getEntityFeedLink(entityType, entityFqn, 'tags')
-            )
-          }>
-          <Tooltip
-            placement="left"
-            title={t('label.list-entity', {
-              entity: t('label.conversation'),
-            })}>
-            <IconComments
-              height={14}
-              name="comments"
-              style={{ color: DE_ACTIVE_COLOR }}
-              width={14}
-            />
-          </Tooltip>
-        </Button>
+        <Tooltip
+          title={t('label.list-entity', {
+            entity: t('label.conversation'),
+          })}>
+          <IconComments
+            className="cursor-pointer"
+            data-testid="tag-thread"
+            height={14}
+            name="comments"
+            style={{ color: DE_ACTIVE_COLOR }}
+            width={14}
+            onClick={() =>
+              onThreadLinkSelect?.(
+                entityThreadLink ??
+                  getEntityFeedLink(entityType, entityFqn, 'tags')
+              )
+            }
+          />
+        </Tooltip>
       </Col>
     ),
     [
@@ -278,19 +270,24 @@ const TagsContainerV2 = ({
             {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
           </Typography.Text>
           {permission && (
-            <Row gutter={8}>
+            <Row gutter={12}>
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
-                <Button
-                  className="cursor-pointer flex-center"
-                  data-testid="edit-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                  onClick={handleAddClick}
-                />
+                <Col>
+                  <EditIcon
+                    className="cursor-pointer"
+                    color={DE_ACTIVE_COLOR}
+                    data-testid="edit-button"
+                    width="14px"
+                    onClick={handleAddClick}
+                  />
+                </Col>
               )}
-              {tagType === TagSource.Classification && requestTagElement}
-              {onThreadLinkSelect && conversationThreadElement}
+              {showTaskHandler && (
+                <>
+                  {tagType === TagSource.Classification && requestTagElement}
+                  {onThreadLinkSelect && conversationThreadElement}
+                </>
+              )}
             </Row>
           )}
         </Space>
@@ -302,6 +299,7 @@ const TagsContainerV2 = ({
     showHeader,
     isEditTags,
     permission,
+    showTaskHandler,
     isGlossaryType,
     requestTagElement,
     conversationThreadElement,
@@ -310,19 +308,13 @@ const TagsContainerV2 = ({
   const editTagButton = useMemo(
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
-        <Button
-          className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
+        <EditIcon
+          className="hover-cell-icon cursor-pointer"
           data-testid="edit-button"
-          icon={
-            <EditIcon
-              height={14}
-              name={t('label.edit')}
-              style={{ color: DE_ACTIVE_COLOR }}
-              width={14}
-            />
-          }
-          size="small"
-          type="text"
+          height={14}
+          name={t('label.edit')}
+          style={{ color: DE_ACTIVE_COLOR }}
+          width={14}
           onClick={handleAddClick}
         />
       ) : null,
@@ -340,18 +332,18 @@ const TagsContainerV2 = ({
       {header}
 
       {!isEditTags && (
-        <Space wrap align="center" data-testid="entity-tags" size={4}>
+        <Row data-testid="entity-tags">
           {addTagButton}
           {renderTags}
-          {showInlineEditButton && editTagButton}
-        </Space>
+          {showInlineEditButton && <Col>{editTagButton}</Col>}
+        </Row>
       )}
       {isEditTags && tagsSelectContainer}
 
-      <div className="m-t-xss d-flex items-center">
+      <Space align="baseline" className="m-t-xs w-full" size="middle">
         {showBottomEditButton && !showInlineEditButton && editTagButton}
         {children}
-      </div>
+      </Space>
     </div>
   );
 };

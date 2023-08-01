@@ -19,10 +19,13 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -55,9 +58,6 @@ import {
   getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
 const PipelineVersion: FC<PipelineVersionProp> = ({
@@ -299,7 +299,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <TagsViewer
             sizeCap={-1}
             tags={getFilterTags(tags || []).Classification}
-            type="border"
           />
         ),
       },
@@ -310,11 +309,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         accessor: 'tags',
         width: 272,
         render: (tags) => (
-          <TagsViewer
-            sizeCap={-1}
-            tags={getFilterTags(tags || []).Glossary}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
         ),
       },
     ],
@@ -350,7 +345,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         ),
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
@@ -379,9 +374,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
-                  <TagsContainerV1
-                    isVersionView
-                    showLimited
+                  <TagsContainerV2
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.PIPELINE}
                     key={tagType}

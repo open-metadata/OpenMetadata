@@ -12,11 +12,12 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
@@ -56,6 +57,7 @@ import {
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 
 export interface GlossaryHeaderProps {
   isVersionView?: boolean;
@@ -120,7 +122,10 @@ const GlossaryHeader = ({
 
   const handleGlossaryImport = () =>
     history.push(
-      getGlossaryPathWithAction(selectedData.name, EntityAction.IMPORT)
+      getGlossaryPathWithAction(
+        encodeURIComponent(selectedData.fullyQualifiedName ?? ''),
+        EntityAction.IMPORT
+      )
     );
 
   const handleVersionClick = async () => {
@@ -180,7 +185,7 @@ const GlossaryHeader = ({
   const handleGlossaryExportClick = useCallback(async () => {
     if (selectedData) {
       showModal({
-        name: selectedData?.name,
+        name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
       });
     }
@@ -321,7 +326,7 @@ const GlossaryHeader = ({
       return;
     }
 
-    const arr = fqn.split(FQN_SEPARATOR_CHAR);
+    const arr = !isGlossary ? Fqn.split(fqn) : [];
     const dataFQN: Array<string> = [];
     const newData = [
       {
@@ -371,7 +376,7 @@ const GlossaryHeader = ({
                   width={32}
                 />
               ) : (
-                <IconFlatDoc
+                <IconTerm
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="doc"
@@ -386,45 +391,48 @@ const GlossaryHeader = ({
           <div style={{ textAlign: 'right' }}>
             <div>
               {createButtons}
-              {selectedData && selectedData.version && (
-                <Button
-                  className={classNames('m-l-xs', {
-                    'text-primary border-primary': version,
-                  })}
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={handleVersionClick}>
-                  <Typography.Text
-                    className={classNames('m-l-xs', {
-                      'text-primary': version,
-                    })}>
-                    {toString(selectedData.version)}
-                  </Typography.Text>
-                </Button>
-              )}
 
-              {!isVersionView && (
-                <Dropdown
-                  align={{ targetOffset: [-12, 0] }}
-                  className="m-l-xs"
-                  menu={{
-                    items: manageButtonContent,
-                  }}
-                  open={showActions}
-                  overlayClassName="glossary-manage-dropdown-list-container"
-                  overlayStyle={{ width: '350px' }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
-                    <Button
-                      className="glossary-manage-dropdown-button tw-px-1.5"
-                      data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
-                  </Tooltip>
-                </Dropdown>
-              )}
+              <ButtonGroup className="p-l-xs" size="small">
+                {selectedData && selectedData.version && (
+                  <Button
+                    className={classNames('', {
+                      'text-primary border-primary': version,
+                    })}
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={handleVersionClick}>
+                    <Typography.Text
+                      className={classNames('', {
+                        'text-primary': version,
+                      })}>
+                      {toString(selectedData.version)}
+                    </Typography.Text>
+                  </Button>
+                )}
+
+                {!isVersionView && (
+                  <Dropdown
+                    align={{ targetOffset: [-12, 0] }}
+                    className="m-l-xs"
+                    menu={{
+                      items: manageButtonContent,
+                    }}
+                    open={showActions}
+                    overlayClassName="glossary-manage-dropdown-list-container"
+                    overlayStyle={{ width: '350px' }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setShowActions}>
+                    <Tooltip placement="right">
+                      <Button
+                        className="glossary-manage-dropdown-button tw-px-1.5"
+                        data-testid="manage-button"
+                        onClick={() => setShowActions(true)}>
+                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                      </Button>
+                    </Tooltip>
+                  </Dropdown>
+                )}
+              </ButtonGroup>
             </div>
           </div>
         </Col>

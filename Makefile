@@ -258,3 +258,10 @@ export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile-dev . -t openmetadata/ingestion-base:local
+
+.PHONY: generate-schema-docs
+generate-schema-docs:  ## Generates markdown files for documenting the JSON Schemas
+	@echo "Generating Schema docs"
+	python -m pip install "jsonschema2md"
+	python scripts/generate_docs_schemas.py
+	

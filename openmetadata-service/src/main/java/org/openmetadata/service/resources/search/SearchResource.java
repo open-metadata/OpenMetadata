@@ -56,7 +56,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 
@@ -261,6 +260,26 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @DefaultValue("table_search_index") @QueryParam("index") String index,
       @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
+      @Parameter(description = "value for searching in aggregation") @DefaultValue("") @QueryParam("value")
+          String value,
+      @Parameter(
+              description =
+                  "Search Query Text, Pass *text* for substring match; "
+                      + "Pass without wildcards for exact match. <br/> "
+                      + "1. For listing all tables or topics pass q=* <br/>"
+                      + "2. For search tables or topics pass q=*search_term* <br/>"
+                      + "3. For searching field names such as search by column_name "
+                      + "pass q=column_names:address <br/>"
+                      + "4. For searching by tag names pass q=tags:user.email <br/>"
+                      + "5. When user selects a filter pass q=query_text AND tags:user.email "
+                      + "AND platform:MYSQL <br/>"
+                      + "6. Search with multiple values of same filter q=tags:user.email "
+                      + "AND tags:user.address <br/>"
+                      + " logic operators such as AND and OR must be in uppercase ",
+              required = true)
+          @DefaultValue("*")
+          @QueryParam("q")
+          String query,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
           @QueryParam("size")
@@ -268,7 +287,7 @@ public class SearchResource {
       @DefaultValue("false") @QueryParam("deleted") String deleted)
       throws IOException {
 
-    return searchClient.aggregate(index, fieldName);
+    return searchClient.aggregate(index, fieldName, value, query);
   }
 
   @GET
@@ -306,8 +325,7 @@ public class SearchResource {
     String jobRecord;
     jobRecord =
         dao.entityExtensionTimeSeriesDao()
-            .getLatestExtension(
-                FullyQualifiedName.buildHash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)
           .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))

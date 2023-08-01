@@ -34,6 +34,7 @@ import mongoDBConnection from '../jsons/connectionSchemas/connections/database/m
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import oracleConnection from '../jsons/connectionSchemas/connections/database/oracleConnection.json';
+import pinotConnection from '../jsons/connectionSchemas/connections/database/pinotDBConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
@@ -199,8 +200,13 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.PinotDB: {
+      schema = pinotConnection;
+
+      break;
+    }
     default: {
-      schema = mysqlConnection;
+      schema = {};
 
       break;
     }

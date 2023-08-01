@@ -15,10 +15,10 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import ContainerVersion from 'components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from 'components/DashboardVersion/DashboardVersion.component';
 import DataModelVersion from 'components/DataModelVersion/DataModelVersion.component';
-import DatasetVersion from 'components/DatasetVersion/DatasetVersion.component';
 import Loader from 'components/Loader/Loader';
 import MlModelVersion from 'components/MlModelVersion/MlModelVersion.component';
 import PipelineVersion from 'components/PipelineVersion/PipelineVersion.component';
+import TableVersion from 'components/TableVersion/TableVersion.component';
 import TopicVersion from 'components/TopicVersion/TopicVersion.component';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -277,19 +277,10 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       switch (entityType) {
         case EntityType.TABLE: {
-          const response = await getTableDetailsByFQN(
-            getPartialNameFromTableFQN(
-              entityFQN,
-              [
-                FqnPart.Service,
-                FqnPart.Database,
-                FqnPart.Schema,
-                FqnPart.Table,
-              ],
-              FQN_SEPARATOR_CHAR
-            ),
-            ['owner', 'tags']
-          );
+          const response = await getTableDetailsByFQN(entityFQN, [
+            'owner',
+            'tags',
+          ]);
 
           const { id, owner, tags = [] } = response;
 
@@ -639,7 +630,7 @@ const EntityVersionPage: FunctionComponent = () => {
     switch (entityType) {
       case EntityType.TABLE: {
         return (
-          <DatasetVersion
+          <TableVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             datasetFQN={entityFQN}
@@ -723,7 +714,6 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedMlModelName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}

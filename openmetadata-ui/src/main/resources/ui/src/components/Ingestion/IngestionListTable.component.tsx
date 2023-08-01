@@ -15,14 +15,13 @@ import { Popover, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
-import { isEmpty, isNil } from 'lodash';
+import { isNil } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLogsViewerPath } from '../../utils/RouterUtils';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
@@ -36,7 +35,7 @@ function IngestionListTable({
   paging,
   handleEnableDisableIngestion,
   onIngestionWorkflowsUpdate,
-  servicePermission,
+  ingestionPipelinesPermission,
   serviceCategory,
   serviceName,
   handleDeleteSelection,
@@ -44,7 +43,6 @@ function IngestionListTable({
   ingestionData,
   deleteSelection,
   permissions,
-  pipelineNameColWidth,
   pipelineType,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
@@ -113,11 +111,11 @@ function IngestionListTable({
         handleDeleteSelection={handleDeleteSelection}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
         handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+        ingestionPipelinesPermission={ingestionPipelinesPermission}
         isRequiredDetailsAvailable={isRequiredDetailsAvailable}
         record={record}
         serviceCategory={serviceCategory}
         serviceName={serviceName}
-        servicePermission={servicePermission}
         triggerIngestion={triggerIngestion}
         onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
       />
@@ -130,7 +128,7 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: pipelineNameColWidth ?? 500,
+        width: 500,
         render: renderNameField,
       },
       {
@@ -167,11 +165,10 @@ function IngestionListTable({
       triggerIngestion,
       isRequiredDetailsAvailable,
       handleEnableDisableIngestion,
-      servicePermission,
+      ingestionPipelinesPermission,
       serviceName,
       deleteSelection,
       handleDeleteSelection,
-      getLogsViewerPath,
       serviceCategory,
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
@@ -186,13 +183,20 @@ function IngestionListTable({
     [paging]
   );
 
-  return !isEmpty(ingestionData) ? (
+  return (
     <div className="tw-mb-6" data-testid="ingestion-table">
       <Table
         bordered
         columns={tableColumn}
         data-testid="schema-table"
         dataSource={ingestionData}
+        locale={{
+          emptyText: getErrorPlaceHolder(
+            isRequiredDetailsAvailable,
+            ingestionData.length,
+            pipelineType
+          ),
+        }}
         pagination={false}
         rowKey="name"
         size="small"
@@ -208,12 +212,6 @@ function IngestionListTable({
         />
       )}
     </div>
-  ) : (
-    getErrorPlaceHolder(
-      isRequiredDetailsAvailable,
-      ingestionData.length,
-      pipelineType
-    )
   );
 }
 

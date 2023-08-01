@@ -74,6 +74,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   onTestCaseResultUpdate,
   removeFromTestSuite,
   showTableColumn = true,
+  afterDeleteAction,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -150,7 +151,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         selectedTestCase?.data.id ?? '',
         removeFromTestSuite.testSuite?.id ?? ''
       );
-      onTestUpdate?.();
+      afterDeleteAction?.();
       setSelectedTestCase(undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -400,29 +401,29 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <Row gutter={16}>
       <Col span={24}>
-        <Table
-          bordered
-          className="test-case-table-container"
-          columns={columns}
-          data-testid="test-case-table"
-          dataSource={sortedData}
-          expandable={{
-            ...getTableExpandableConfig<TestCase>(),
-            expandRowByClick: true,
-            rowExpandable: () => true,
-            expandedRowRender: (recode) => <TestSummary data={recode} />,
-          }}
-          loading={{
-            indicator: <Loader size="small" />,
-            spinning: isLoading,
-          }}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Table
+            bordered
+            className="test-case-table-container"
+            columns={columns}
+            data-testid="test-case-table"
+            dataSource={sortedData}
+            expandable={{
+              ...getTableExpandableConfig<TestCase>(),
+              expandRowByClick: true,
+              rowExpandable: () => true,
+              expandedRowRender: (recode) => <TestSummary data={recode} />,
+            }}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        )}
       </Col>
       <Col span={24}>
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
@@ -469,7 +470,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           />
         ) : (
           <DeleteWidgetModal
-            afterDeleteAction={onTestUpdate}
+            afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
             entityName={selectedTestCase?.data?.name ?? ''}

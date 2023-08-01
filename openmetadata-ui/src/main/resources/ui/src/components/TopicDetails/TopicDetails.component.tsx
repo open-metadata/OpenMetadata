@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -24,9 +22,11 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SampleDataTopic from 'components/SampleDataTopic/SampleDataTopic';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getTopicDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagLabel } from 'generated/type/schema';
@@ -36,7 +36,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
@@ -58,6 +60,7 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
+  fetchTopic,
   followTopicHandler,
   unFollowTopicHandler,
   versionHandler,
@@ -74,9 +77,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
@@ -170,7 +170,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getTopicDetailsPath(topicFQN, activeKey));
+      history.push(getTopicDetailsPath(getDecodedFqn(topicFQN), activeKey));
     }
   };
 
@@ -253,7 +253,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       EntityType.TOPIC,
       topicFQN,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -271,7 +270,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={topicDetails.description}
@@ -294,12 +293,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
-                    entityFieldTaskCount
-                  )}
                   entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
+                    EntityField.MESSAGE_SCHEMA,
                     entityFieldThreadCount
                   )}
                   entityFqn={topicDetails.fullyQualifiedName ?? ''}
@@ -322,6 +317,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={topicDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
@@ -336,6 +332,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 />
 
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={topicDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
@@ -364,13 +361,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.TOPIC}
-              fqn={topicDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.TOPIC}
+            fqn={topicDetails?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchTopic}
+          />
         ),
       },
       {
@@ -403,17 +399,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            data-testid="lineage-details"
-            id="lineageDetails">
-            <EntityLineageComponent
-              entityType={EntityType.TOPIC}
-              hasEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={topicDetails}
+            entityType={EntityType.TOPIC}
+            hasEditAccess={
+              topicPermissions.EditAll || topicPermissions.EditLineage
+            }
+          />
         ),
       },
       {
@@ -443,7 +435,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       activeTab,
       feedCount,
       topicDetails,
-      entityFieldTaskCount,
       entityFieldThreadCount,
       topicPermissions,
       isEdit,
@@ -461,6 +452,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
             permissions={topicPermissions}
@@ -500,4 +492,4 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 };
 
-export default TopicDetails;
+export default withActivityFeed<TopicDetailsProps>(TopicDetails);

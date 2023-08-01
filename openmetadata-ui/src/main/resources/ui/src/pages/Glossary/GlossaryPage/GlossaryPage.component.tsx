@@ -48,7 +48,8 @@ import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component'
 const GlossaryPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const glossaryFqn = decodeURIComponent(glossaryName);
   const history = useHistory();
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +64,7 @@ const GlossaryPage = () => {
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
+
     if (glossaryFqn) {
       return Fqn.split(glossaryFqn).length === 1;
     }
@@ -163,8 +165,9 @@ const GlossaryPage = () => {
         fetchGlossaryTermDetails();
       } else {
         setSelectedData(
-          glossaries.find((glossary) => glossary.name === glossaryFqn) ||
-            glossaries[0]
+          glossaries.find(
+            (glossary) => glossary.fullyQualifiedName === glossaryFqn
+          ) || glossaries[0]
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
@@ -202,7 +205,7 @@ const GlossaryPage = () => {
       });
 
       if (selectedData?.name !== updatedData.name) {
-        history.push(getGlossaryPath(response.name));
+        history.push(getGlossaryPath(response.fullyQualifiedName));
         fetchGlossaryList();
       }
     } catch (error) {
@@ -221,7 +224,14 @@ const GlossaryPage = () => {
           })
         );
         setIsLoading(true);
-        history.push(getGlossaryPath());
+        // check if the glossary available
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        history.push(glossaryPath);
         fetchGlossaryList();
       })
       .catch((err: AxiosError) => {
@@ -270,7 +280,7 @@ const GlossaryPage = () => {
         );
         let fqn;
         if (glossaryFqn) {
-          const fqnArr = glossaryFqn.split(FQN_SEPARATOR_CHAR);
+          const fqnArr = Fqn.split(glossaryFqn);
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
@@ -298,12 +308,18 @@ const GlossaryPage = () => {
   }
 
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="mt-0-important"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (glossaries.length === 0 && !isLoading) {
     return (
       <ErrorPlaceHolder
+        buttonId="add-glossary"
         className="mt-0-important"
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary')}

@@ -14,7 +14,6 @@
 
 import {
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -63,14 +62,6 @@ describe('Airflow Ingestion', () => {
       description,
       SERVICE_TYPE.Pipeline,
       MYDATA_SUMMARY_OPTIONS.pipelines
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Pipeline,
-      serviceName,
-      API_SERVICE.pipelineServices
     );
   });
 

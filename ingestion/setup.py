@@ -28,7 +28,7 @@ def get_long_description():
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.3.3",
+    "airflow": "apache-airflow==2.6.3",
     "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
@@ -93,7 +93,7 @@ base_requirements = {
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
-    "importlib-metadata~=4.12.0",  # From airflow constraints
+    "importlib-metadata~=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
@@ -106,7 +106,7 @@ base_requirements = {
     "PyYAML",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "setuptools~=65.6.3",
+    "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage>=1.0.4",
     "tabulate==0.9.0",
@@ -120,14 +120,14 @@ base_requirements = {
 plugins: Dict[str, Set[str]] = {
     "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"PyAthena[SQLAlchemy]"},
+    "athena": {"pyathena==2.25.2"},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], "azure-identity", "azure-storage-blob"},
     "bigquery": {
         "cachetools",
-        "google-cloud-datacatalog==3.6.2",
+        "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         "sqlalchemy-bigquery>=1.2.2",
@@ -204,6 +204,7 @@ plugins: Dict[str, Set[str]] = {
     "nifi": {},  # uses requests
     "okta": {"okta~=2.3"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
+    "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
     "postgres": {
         VERSIONS["pymysql"],
@@ -212,6 +213,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["packaging"],
     },
     "powerbi": {VERSIONS["msal"]},
+    "qliksense": {"websockets~=11.0.3"},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
@@ -264,7 +266,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="1.1.0.0.dev0",
+    version="1.2.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
@@ -306,6 +308,7 @@ setup(
                         "airflow",
                         "db2",
                         "great-expectations",
+                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
                     }
                 ]
             )

@@ -76,7 +76,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         """
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
-            filters=self.filters,
+            filters=self.get_filters(),
             time_column_name=self.get_postgres_time_column_name(),
         )
 

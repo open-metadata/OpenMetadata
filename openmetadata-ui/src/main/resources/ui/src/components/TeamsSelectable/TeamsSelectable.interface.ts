@@ -16,4 +16,5 @@ export interface TeamsSelectableProps {
   filterJoinable?: boolean;
   placeholder?: string;
   selectedTeams?: string[];
+  maxValueCount?: number;
 }

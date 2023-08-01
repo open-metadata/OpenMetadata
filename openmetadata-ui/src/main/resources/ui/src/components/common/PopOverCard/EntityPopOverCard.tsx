@@ -14,6 +14,8 @@
 import { Popover } from 'antd';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from 'components/Loader/Loader';
+import { Include } from 'generated/type/include';
 import React, {
   FC,
   HTMLAttributes,
@@ -29,10 +31,12 @@ import {
 import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getContainerByFQN } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
@@ -48,6 +52,7 @@ const PopoverContent: React.FC<{
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
+  const [loading, setLoading] = useState(false);
 
   const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
@@ -86,11 +91,15 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseDetailsByFQN(entityFQN, 'owner', Include.All);
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseSchemaDetailsByFQN(
+          entityFQN,
+          'owner',
+          'include=all'
+        );
 
         break;
       case EntityType.GLOSSARY_TERM:
@@ -102,11 +111,17 @@ const PopoverContent: React.FC<{
 
         break;
 
+      case EntityType.CONTAINER:
+        promise = getContainerByFQN(entityFQN, 'owner', Include.All);
+
+        break;
+
       default:
         break;
     }
 
     if (promise) {
+      setLoading(true);
       promise
         .then((res) => {
           setEntityDetails(res);
@@ -114,6 +129,9 @@ const PopoverContent: React.FC<{
         })
         .catch(() => {
           // do nothing
+        })
+        .finally(() => {
+          setLoading(false);
         });
     }
   }, [entityType, entityFQN]);
@@ -130,6 +148,10 @@ const PopoverContent: React.FC<{
   useEffect(() => {
     onMouseOver();
   }, [entityFQN]);
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return (
     <ExploreSearchCard
@@ -154,7 +176,12 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={<PopoverContent entityFQN={entityFQN} entityType={entityType} />}
+      content={
+        <PopoverContent
+          entityFQN={getEncodedFqn(entityFQN)}
+          entityType={entityType}
+        />
+      }
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>

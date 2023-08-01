@@ -122,10 +122,9 @@ export const CustomEdge = ({
       return (
         <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
           <Button
-            className="d-flex justify-center items-center custom-edge-pipeline-button"
+            className="flex-center custom-edge-pipeline-button"
             data-testid={dataTestId}
             icon={icon}
-            type="primary"
             onClick={(event) =>
               data.isEditMode &&
               data.addPipelineClick?.(event, rest as CustomEdgeData)
@@ -187,7 +186,10 @@ export const CustomEdge = ({
 
       {isColumnLineageAllowed &&
         hasLabel &&
-        getLineageEdgeIcon(<PipelineIcon />, 'pipeline-label')}
+        getLineageEdgeIcon(
+          <PipelineIcon className="text-primary" />,
+          'pipeline-label'
+        )}
       {isColumnLineageAllowed &&
         isSelectedEditMode &&
         getEditLineageIcon('add-pipeline', true, addPipelineClick)}

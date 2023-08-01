@@ -13,7 +13,7 @@
 
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { TagLabel } from 'generated/type/tagLabel';
 import { isEmpty, isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -39,8 +39,8 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       <div className="m-b-sm description-text" data-testid="description-text">
         {description.trim() ? (
           <RichTextEditorPreviewer
+            className="max-two-lines"
             markdown={description}
-            maxLength={150}
             showReadMoreBtn={false}
           />
         ) : (
@@ -69,7 +69,6 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           <TagsViewer
             sizeCap={3}
             tags={(tags ?? []).map((tag) => getTagValue(tag))}
-            type="border"
           />
         </div>
       )}

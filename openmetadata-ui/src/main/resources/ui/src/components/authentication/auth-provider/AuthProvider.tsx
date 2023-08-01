@@ -19,6 +19,7 @@ import { LoginCallback } from '@okta/okta-react';
 import appState from 'AppState';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
+import { compare } from 'fast-json-patch';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
@@ -36,11 +37,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
 import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
-import { getLoggedInUser, updateUser } from 'rest/userAPI';
+import { getLoggedInUser, updateUserDetail } from 'rest/userAPI';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
-import { AuthTypes } from '../../../enums/signin.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthType, User } from '../../../generated/entity/teams/user';
 import {
@@ -73,6 +73,7 @@ import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './basic-auth.provider';
 import OktaAuthProvider from './okta-auth-provider';
 
+import { AuthProvider as AuthProviderEnum } from 'generated/settings/settings';
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
@@ -211,35 +212,13 @@ export const AuthProvider = ({
 
   const getUpdatedUser = (updatedData: User, existingData: User) => {
     // PUT method for users api only excepts below fields
-    const {
-      isAdmin,
-      teams,
-      timezone,
-      name,
-      description,
-      displayName,
-      profile,
-      email,
-      isBot,
-      roles,
-    } = { ...existingData, ...updatedData };
-    const teamIds = teams?.map((team) => team.id);
-    const roleIds = roles?.map((role) => role.id);
-    updateUser({
-      isAdmin,
-      teams: teamIds,
-      timezone,
-      name,
-      description,
-      displayName,
-      profile,
-      email,
-      isBot,
-      roles: roleIds,
-    } as User)
+    const updatedUserData = { ...existingData, ...updatedData };
+    const jsonPatch = compare(existingData, updatedUserData);
+
+    updateUserDetail(existingData.id, jsonPatch)
       .then((res) => {
-        if (res.data) {
-          appState.updateUserDetails(res.data);
+        if (res) {
+          appState.updateUserDetails({ ...existingData, ...res });
         } else {
           throw t('server.unexpected-response');
         }
@@ -320,7 +299,14 @@ export const AuthProvider = ({
     const { isExpired, timeoutExpiry } = extractDetailsFromToken();
     const refreshToken = localState.getRefreshToken();
 
-    if (!isExpired && isNumber(timeoutExpiry) && refreshToken) {
+    // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
+    const shouldStartExpiry =
+      refreshToken ||
+      [AuthProviderEnum.Basic, AuthProviderEnum.LDAP].indexOf(
+        authConfig?.provider as AuthProviderEnum
+      ) === -1;
+
+    if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
       // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
@@ -393,7 +379,7 @@ export const AuthProvider = ({
   const updateAuthInstance = (configJson: Record<string, string | boolean>) => {
     const { provider, ...otherConfigs } = configJson;
     switch (provider) {
-      case AuthTypes.AZURE:
+      case AuthProviderEnum.Azure:
         {
           setMsalInstance(otherConfigs as unknown as Configuration);
         }
@@ -461,10 +447,7 @@ export const AuthProvider = ({
       if (isSecureMode) {
         const provider = authConfig?.provider;
         // show an error toast if provider is null or not supported
-        if (
-          provider &&
-          Object.values(AuthTypes).includes(provider as AuthTypes)
-        ) {
+        if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           initializeAxiosInterceptors();
@@ -506,10 +489,10 @@ export const AuthProvider = ({
 
   const getCallBackComponent = () => {
     switch (authConfig?.provider) {
-      case AuthTypes.OKTA: {
+      case AuthProviderEnum.Okta: {
         return LoginCallback;
       }
-      case AuthTypes.AUTH0: {
+      case AuthProviderEnum.Auth0: {
         return Auth0Callback;
       }
       default: {
@@ -520,8 +503,8 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     switch (authConfig?.provider) {
-      case AuthTypes.LDAP:
-      case AuthTypes.BASIC: {
+      case AuthProviderEnum.LDAP:
+      case AuthProviderEnum.Basic: {
         return (
           <BasicAuthProvider
             onLoginFailure={handleFailedLogin}
@@ -532,7 +515,7 @@ export const AuthProvider = ({
           </BasicAuthProvider>
         );
       }
-      case AuthTypes.AUTH0: {
+      case AuthProviderEnum.Auth0: {
         return (
           <Auth0Provider
             useRefreshTokens
@@ -548,7 +531,7 @@ export const AuthProvider = ({
           </Auth0Provider>
         );
       }
-      case AuthTypes.SAML: {
+      case AuthProviderEnum.Saml: {
         return (
           <SamlAuthenticator
             ref={authenticatorRef}
@@ -557,7 +540,7 @@ export const AuthProvider = ({
           </SamlAuthenticator>
         );
       }
-      case AuthTypes.OKTA: {
+      case AuthProviderEnum.Okta: {
         return (
           <OktaAuthProvider onLoginSuccess={handleSuccessfulLogin}>
             <OktaAuthenticator
@@ -568,9 +551,9 @@ export const AuthProvider = ({
           </OktaAuthProvider>
         );
       }
-      case AuthTypes.GOOGLE:
-      case AuthTypes.CUSTOM_OIDC:
-      case AuthTypes.AWS_COGNITO: {
+      case AuthProviderEnum.Google:
+      case AuthProviderEnum.CustomOidc:
+      case AuthProviderEnum.AwsCognito: {
         return authConfig ? (
           <OidcAuthenticator
             childComponentType={childComponentType}
@@ -587,7 +570,7 @@ export const AuthProvider = ({
           <Loader />
         );
       }
-      case AuthTypes.AZURE: {
+      case AuthProviderEnum.Azure: {
         return msalInstance ? (
           <MsalProvider instance={msalInstance}>
             <MsalAuthenticator
@@ -645,7 +628,8 @@ export const AuthProvider = ({
 
   const isLoading =
     !isAuthDisabled &&
-    (!authConfig || (authConfig.provider === AuthTypes.AZURE && !msalInstance));
+    (!authConfig ||
+      (authConfig.provider === AuthProviderEnum.Azure && !msalInstance));
 
   const authContext = {
     isAuthenticated: isUserAuthenticated,

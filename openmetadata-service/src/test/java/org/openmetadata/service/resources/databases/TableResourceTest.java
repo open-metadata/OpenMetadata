@@ -131,7 +131,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
-import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
@@ -515,8 +514,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     Table updatedTable = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(table.getColumns().get(0).getDescription(), updatedTable.getColumns().get(0).getDescription());
-    assertEquals(updatedTable.getColumns().get(0).getDataType(), CHAR);
-    assertEquals(updatedTable.getColumns().get(0).getDataLength(), 200);
+    assertEquals(CHAR, updatedTable.getColumns().get(0).getDataType());
+    assertEquals(200, updatedTable.getColumns().get(0).getDataLength());
   }
 
   @Test
@@ -1713,31 +1712,47 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Ensure databaseSchema owner is inherited from database
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema =
-        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, schema.getOwner());
+    CreateDatabaseSchema createSchema = schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.assertOwnerInheritance(createSchema, USER1_REF);
 
     // Ensure table owner is inherited from databaseSchema
-    CreateTable createTable = createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, table.getOwner());
+    CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = assertOwnerInheritance(createTable, USER1_REF);
 
     // Change the ownership of table and ensure further ingestion updates don't overwrite the ownership
-    String json = JsonUtils.pojoToJson(table);
-    table.setOwner(USER2_REF);
-    table = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, table.getOwner());
-    table = updateEntity(createTable.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
-    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
+    assertOwnershipInheritanceOverride(table, createTable.withOwner(null), USER2_REF);
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
-    json = JsonUtils.pojoToJson(schema);
-    schema.setOwner(USER2_REF);
-    schema = schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, schema.getOwner());
-    schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
-    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
+    schemaTest.assertOwnershipInheritanceOverride(schema, createSchema.withOwner(null), USER2_REF);
+  }
+
+  @Test
+  void test_domainInheritance(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    // Domain is inherited from databaseService > database > databaseSchema > table
+    DatabaseServiceResourceTest dbServiceTest = new DatabaseServiceResourceTest();
+    DatabaseService dbService =
+        dbServiceTest.createEntity(
+            dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+
+    // Ensure database domain is inherited from database service
+    DatabaseResourceTest dbTest = new DatabaseResourceTest();
+    CreateDatabase createDb = dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
+    Database db = dbTest.assertDomainInheritance(createDb, DOMAIN.getEntityReference());
+
+    // Ensure databaseSchema domain is inherited from database
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema = schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.assertDomainInheritance(createSchema, DOMAIN.getEntityReference());
+
+    // Ensure table domain is inherited from databaseSchema
+    CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
+
+    // Change the domain of table and ensure further ingestion updates don't overwrite the domain
+    assertDomainInheritanceOverride(table, createTable.withDomain(null), SUB_DOMAIN.getEntityReference());
+
+    // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
+    schemaTest.assertDomainInheritanceOverride(schema, createSchema.withDomain(null), SUB_DOMAIN.getEntityReference());
   }
 
   @Test
@@ -1748,28 +1763,25 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("P30D", database.getRetentionPeriod());
 
     // Ensure database schema retention period is carried over from the parent database
-    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createDatabaseSchema =
-        schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+        schemaTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
     DatabaseSchema schema =
-        schemaResourceTest
-            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
-            .withDatabase(database.getEntityReference());
-    assertEquals("P30D", schema.getRetentionPeriod());
-    schema = schemaResourceTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEquals("P30D", schema.getRetentionPeriod());
+        schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
+    assertEquals("P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
+    schema = schemaTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
 
     // Ensure table retention period is carried over from the parent database schema
     CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
-    assertEquals("P30D", table.getRetentionPeriod());
+    assertEquals("P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
     table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEquals("P30D", table.getRetentionPeriod());
+    assertEquals("P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
   }
 
   @Test
   void get_tablesWithTestCases(TestInfo test) throws IOException {
-    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
     DatabaseResourceTest databaseTest = new DatabaseResourceTest();

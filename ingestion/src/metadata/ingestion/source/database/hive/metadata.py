@@ -12,13 +12,10 @@
 Hive source methods.
 """
 
-import re
 from typing import Tuple
 
-from impala.sqlalchemy import ImpalaDialect
-from pyhive.sqlalchemy_hive import HiveDialect, _type_map
-from sqlalchemy import types, util
-from sqlalchemy.engine import reflection
+from pyhive.sqlalchemy_hive import HiveDialect
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -31,307 +28,23 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
-from metadata.profiler.orm.registry import Dialects
-
-complex_data_types = ["struct", "map", "array", "union"]
-
-_type_map.update(
-    {
-        "binary": types.BINARY,
-        "char": types.CHAR,
-        "varchar": types.VARCHAR,
-    }
+from metadata.ingestion.source.database.hive.connection import get_metastore_connection
+from metadata.ingestion.source.database.hive.utils import (
+    get_columns,
+    get_table_comment,
+    get_table_names,
+    get_table_names_older_versions,
+    get_view_definition,
+    get_view_names,
+    get_view_names_older_versions,
 )
+from metadata.utils.logger import ingestion_logger
 
-
-def get_columns(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument,too-many-locals
-    """
-    Method to handle table columns
-    """
-    rows = self._get_table_columns(  # pylint: disable=protected-access
-        connection, table_name, schema
-    )
-    rows = [[col.strip() if col else None for col in row] for row in rows]
-    rows = [row for row in rows if row[0] and row[0] != "# col_name"]
-    result = []
-    for col_name, col_type, comment in rows:
-        if col_name == "# Partition Information":
-            break
-
-        col_raw_type = col_type
-        attype = re.sub(r"\(.*\)", "", col_type)
-        col_type = re.search(r"^\w+", col_type).group(0)
-        try:
-            coltype = _type_map[col_type]
-
-        except KeyError:
-            util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
-            coltype = types.NullType
-        charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
-        if charlen:
-            charlen = charlen.group(1)
-            if attype == "decimal":
-                prec, scale = charlen.split(",")
-                args = (int(prec), int(scale))
-            else:
-                args = (int(charlen),)
-            coltype = coltype(*args)
-
-        result.append(
-            {
-                "name": col_name,
-                "type": coltype,
-                "comment": comment,
-                "nullable": True,
-                "default": None,
-                "system_data_type": col_raw_type,
-                "is_complex": col_type in complex_data_types,
-            }
-        )
-    return result
-
-
-def get_table_names_older_versions(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    query = "SHOW TABLES"
-    if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    tables_in_schema = connection.execute(query)
-    tables = []
-    for row in tables_in_schema:
-        # check number of columns in result
-        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
-        # else it is hive with 1 column in the result
-        if len(row) > 1:
-            tables.append(row[1])
-        else:
-            tables.append(row[0])
-    return tables
-
-
-def get_table_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    query = "SHOW TABLES"
-    if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    tables_in_schema = connection.execute(query)
-    tables = []
-    for row in tables_in_schema:
-        # check number of columns in result
-        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
-        # else it is hive with 1 column in the result
-        if len(row) > 1:
-            tables.append(row[1])
-        else:
-            tables.append(row[0])
-    # "SHOW TABLES" command in hive also fetches view names
-    # Below code filters out view names from table names
-    views = self.get_view_names(connection, schema)
-    return [table for table in tables if table not in views]
-
-
-def get_view_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    query = "SHOW VIEWS"
-    if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    view_in_schema = connection.execute(query)
-    views = []
-    for row in view_in_schema:
-        # check number of columns in result
-        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
-        # else it is hive with 1 column in the result
-        if len(row) > 1:
-            views.append(row[1])
-        else:
-            views.append(row[0])
-    return views
-
-
-def get_view_names_older_versions(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    # Hive does not provide functionality to query tableType for older version
-    # This allows reflection to not crash at the cost of being inaccurate
-    return []
-
-
-@reflection.cache
-def get_table_comment(  # pylint: disable=unused-argument
-    self, connection, table_name, schema_name, **kw
-):
-    """
-    Returns comment of table.
-    """
-    cursor = connection.execute(
-        HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)
-    )
-    try:
-        for result in list(cursor):
-            data = result.values()
-            if data[1] and data[1].strip() == "comment":
-                return {"text": data[2] if data and data[2] else None}
-    except Exception:
-        return {"text": None}
-    return {"text": None}
-
-
-def get_impala_table_or_view_names(connection, schema=None, target_type="table"):
-    """
-    Depending on the targetType returns either the Views or Tables
-    since they share the same method for getting their names.
-    """
-    query = "show tables"
-    if schema:
-        query += " IN " + schema
-
-    cursor = connection.execute(query)
-    results = cursor.fetchall()
-    tables_and_views = [result[0] for result in results]
-
-    retvalue = []
-
-    for table_view in tables_and_views:
-        query = f"describe formatted `{schema}`.`{table_view}`"
-        cursor = connection.execute(query)
-        results = cursor.fetchall()
-
-        for result in list(results):
-            data = result
-            if data[0].strip() == "Table Type:":
-                if target_type.lower() in data[1].lower():
-                    retvalue.append(table_view)
-    return retvalue
-
-
-def get_impala_view_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    results = get_impala_table_or_view_names(connection, schema, "view")
-    return results
-
-
-def get_impala_table_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    results = get_impala_table_or_view_names(connection, schema, "table")
-    return results
-
-
-def get_impala_table_comment(
-    self, connection, table_name, schema_name, **kw
-):  # pylint: disable=unused-argument
-    """
-    Gets the table comment from the describe formatted query result under the Table Parameters section.
-    """
-    full_table_name = (
-        f"{schema_name}.{table_name}" if schema_name is not None else table_name
-    )
-    split_name = full_table_name.split(".")
-    query = f"describe formatted `{split_name[0]}`.`{split_name[1]}`"
-    cursor = connection.execute(query)
-    results = cursor.fetchall()
-
-    found_table_parameters = False
-    try:
-        for result in list(results):
-            data = result
-            if not found_table_parameters and data[0].strip() == "Table Parameters:":
-                found_table_parameters = True
-            if found_table_parameters:
-                coltext = data[1].strip() if data[1] is not None else ""
-                if coltext == "comment":
-                    return {"text": data[2]}
-    except Exception:
-        return {"text": None}
-    return {"text": None}
-
-
-def get_impala_columns(
-    self, connection, table_name, schema=None, **kwargs
-):  # pylint: disable=unused-argument
-    # pylint: disable=too-many-locals
-    """
-    Extracted from the Impala Dialect. We'll tune the implementation.
-
-    By default, this gives us the column name as `table.column`. We just
-    want to get `column`.
-    """
-    full_table_name = f"{schema}.{table_name}" if schema is not None else table_name
-    split_name = full_table_name.split(".")
-    query = f"DESCRIBE `{split_name[0]}`.`{split_name[1]}`"
-    describe_table_rows = connection.execute(query)
-    column_info = []
-    ordinal_pos = 0
-    for col in describe_table_rows:
-        ordinal_pos = ordinal_pos + 1
-        col_raw = col[1]
-        attype = re.sub(r"\(.*\)", "", col[1])
-        col_type = re.search(r"^\w+", col[1]).group(0)
-        try:
-            coltype = _type_map[col_type]
-        except KeyError:
-            util.warn(f"Did not recognize type '{col_raw}' of column '{col[0]}'")
-            coltype = types.NullType
-        charlen = re.search(r"\(([\d,]+)\)", col_raw.lower())
-        if charlen:
-            charlen = charlen.group(1)
-            if attype == "decimal":
-                prec, scale = charlen.split(",")
-                args = (int(prec), int(scale))
-            else:
-                args = (int(charlen),)
-            coltype = coltype(*args)
-        add_column = {
-            "name": col[0],
-            "type": coltype,
-            "comment": col[2],
-            "nullable": True,
-            "autoincrement": False,
-            "ordinalPosition": ordinal_pos,
-        }
-        column_info.append(add_column)
-    return column_info
-
-
-# pylint: disable=unused-argument
-@reflection.cache
-def get_view_definition(self, connection, view_name, schema=None, **kw):
-    """
-    Gets the view definition
-    """
-    full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
-    res = connection.execute(f"SHOW CREATE TABLE {full_view_name}").fetchall()
-    if res:
-        return "\n".join(i[0] for i in res)
-    return None
-
-
-# pylint: disable=unused-argument
-@reflection.cache
-def get_impala_view_definition(self, connection, view_name, schema=None, **kw):
-    """
-    Gets the view definition
-    """
-    full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
-    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
-    if res:
-        return "\n".join(i[0] for i in res)
-    return None
-
+logger = ingestion_logger()
 
 HiveDialect.get_columns = get_columns
 HiveDialect.get_table_comment = get_table_comment
 
-ImpalaDialect.get_columns = get_impala_columns
-ImpalaDialect.get_table_comment = get_impala_table_comment
-ImpalaDialect.get_view_definition = get_impala_view_definition
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
 
@@ -341,6 +54,8 @@ class HiveSource(CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from Hive Source
     """
+
+    service_connection: HiveConnection
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -363,13 +78,7 @@ class HiveSource(CommonDbSourceService):
         Fetching views in hive server with query "SHOW VIEWS" was possible
         only after hive 2.2.0 version
         """
-        if self.engine.driver == Dialects.Impala:
-            ImpalaDialect.get_table_names = get_impala_table_names
-            ImpalaDialect.get_view_names = get_impala_view_names
-            ImpalaDialect.get_table_comment = get_impala_table_comment
-            ImpalaDialect.get_columns = get_impala_columns
-            ImpalaDialect.get_view_definition = get_impala_view_definition
-        else:
+        if not self.service_connection.metastoreConnection:
             result = dict(self.engine.execute("SELECT VERSION()").fetchone())
 
             version = result.get("_c0", "").split()
@@ -382,3 +91,8 @@ class HiveSource(CommonDbSourceService):
             else:
                 HiveDialect.get_table_names = get_table_names_older_versions
                 HiveDialect.get_view_names = get_view_names_older_versions
+        else:
+            self.engine = get_metastore_connection(
+                self.service_connection.metastoreConnection
+            )
+        self.inspector = inspect(self.engine)

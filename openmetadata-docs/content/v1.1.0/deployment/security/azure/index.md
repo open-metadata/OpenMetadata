@@ -59,4 +59,4 @@ Admin permissions are required to register the application on the Azure portal.
 "authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
 ```
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}

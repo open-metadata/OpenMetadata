@@ -5,7 +5,7 @@ slug: /deployment/upgrade
 
 # Upgrade OpenMetadata
 
-{% partial file="upgrade-prerequisites-110.md" /%}
+{% partial file="/v1.1.0/deployment/upgrade/upgrade-prerequisites-110.md" /%}
 
 ## Upgrade your installation
 

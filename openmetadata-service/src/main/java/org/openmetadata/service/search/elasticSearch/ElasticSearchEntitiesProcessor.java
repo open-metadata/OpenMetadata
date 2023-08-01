@@ -17,6 +17,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexFactory;
 import org.openmetadata.service.exception.ProcessorException;
+import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -68,8 +69,7 @@ public class ElasticSearchEntitiesProcessor implements Processor<BulkRequest, Re
 
   public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity)
       throws JsonProcessingException {
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(

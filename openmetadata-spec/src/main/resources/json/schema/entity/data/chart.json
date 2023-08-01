@@ -107,7 +107,7 @@
     },
     "followers": {
       "description": "Followers of this chart.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this chart.",
@@ -145,7 +145,7 @@
     },
     "dataProducts" : {
       "description": "List of of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref" : "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name", "service"],

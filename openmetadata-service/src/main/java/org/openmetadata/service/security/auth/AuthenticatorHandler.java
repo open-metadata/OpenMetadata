@@ -31,9 +31,10 @@ public interface AuthenticatorHandler {
 
   void checkIfLoginBlocked(String userName);
 
-  void recordFailedLoginAttempt(User user) throws TemplateException, IOException;
+  void recordFailedLoginAttempt(String providedIdentity, User user) throws TemplateException, IOException;
 
-  void validatePassword(User storedUser, String reqPassword) throws TemplateException, IOException;
+  void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+      throws TemplateException, IOException;
 
   User lookUserInProvider(String userName);
 

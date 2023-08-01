@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 from unittest.mock import patch
 
-from looker_sdk.error import SDKError
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (

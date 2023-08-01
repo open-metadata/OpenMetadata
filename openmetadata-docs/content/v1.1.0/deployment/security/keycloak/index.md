@@ -98,4 +98,4 @@ After the applying these steps, the users in your realm are able to login in the
 A dockerized demo for showing how this SSO works with OpenMetadata can be found [here](https://github.com/open-metadata/openmetadata-demo/tree/main/keycloak-sso).
 {% /note %}
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}

@@ -30,7 +30,7 @@ import BrandImage from 'components/common/BrandImage/BrandImage';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
-import { EntityTabs } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
 import React, {
@@ -123,12 +123,16 @@ const NavBar = ({
       <Select
         defaultActiveFirstOption
         className="global-search-select"
+        data-testid="global-search-selector"
         listHeight={300}
         popupClassName="global-search-select-menu"
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {globalSearchOptions.map(({ value, label }) => (
-          <Option key={value} value={value}>
+          <Option
+            data-testid={`global-search-select-option-${label}`}
+            key={value}
+            value={value}>
             {label}
           </Option>
         ))}
@@ -218,7 +222,7 @@ const NavBar = ({
         });
 
         path = getEntityDetailLink(
-          entityType,
+          entityType as EntityType,
           entityFQN,
           EntityTabs.ACTIVITY_FEED,
           ActivityFeedTabs.TASKS

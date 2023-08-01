@@ -47,9 +47,11 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FeatureSourceDataType;
@@ -64,6 +66,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.mlmodels.MlModelResource.MlModelList;
+import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -381,6 +384,18 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         () -> createEntity(createMlModel, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+  }
+
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for an ML Model, carry it forward from the ML Model Service
+    MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
+    CreateMlModelService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    MlModelService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a ML Model without domain and ensure it inherits domain from the parent
+    CreateMlModel create = createRequest("model").withService(service.getFullyQualifiedName());
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Override

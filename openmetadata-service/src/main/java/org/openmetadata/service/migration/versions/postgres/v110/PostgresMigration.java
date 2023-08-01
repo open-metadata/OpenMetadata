@@ -52,12 +52,18 @@ public class PostgresMigration implements MigrationStep {
   @Override
   public void preDDL() {
     // FQNHASH
+    preDDLFixQueryEntityFQN();
     preDDLFQNHashing();
   }
 
   @Override
   public void runDataMigration() {
-    dataMigrationFQNHashing(handle, collectionDAO);
+    String envVariableValue = System.getenv("MIGRATION_LIMIT_PARAM");
+    if (envVariableValue != null) {
+      dataMigrationFQNHashing(handle, collectionDAO, Integer.parseInt(envVariableValue));
+    } else {
+      dataMigrationFQNHashing(handle, collectionDAO, 1000);
+    }
   }
 
   @Override
@@ -68,6 +74,14 @@ public class PostgresMigration implements MigrationStep {
 
   @Override
   public void close() {}
+
+  private void preDDLFixQueryEntityFQN() {
+    List<String> queryList =
+        List.of(
+            // Add missing FQN to query_entity
+            "UPDATE query_entity SET json = jsonb_set(json::jsonb, '{fullyQualifiedName}', json#>'{name}') WHERE json#>'{fullyQualifiedName}' IS NULL");
+    performSqlExecutionAndUpdation(this, migrationDAO, handle, queryList);
+  }
 
   private void preDDLFQNHashing() {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace

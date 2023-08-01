@@ -27,18 +27,18 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from 'interface/search.interface';
-import { isArray, isEmpty, isUndefined } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
 import { getCountBadge } from 'utils/CommonUtils';
 import {
-  ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
+  TAG_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
@@ -68,16 +68,12 @@ export const getDropDownItems = (index: string) => {
       return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
     case SearchIndex.GLOSSARY:
       return [...GLOSSARY_DROPDOWN_ITEMS];
+    case SearchIndex.TAG:
+      return [...TAG_DROPDOWN_ITEMS];
 
     default:
       return [];
   }
-};
-
-export const getItemLabel = (key: string) => {
-  const item = ALL_DROPDOWN_ITEMS.find((dItem) => dItem.key === key);
-
-  return !isUndefined(item) ? item.label : 'label';
 };
 
 export const getAdvancedField = (field: string) => {
@@ -178,6 +174,45 @@ export const getSearchLabel = (itemLabel: string, searchKey: string) => {
   }
 };
 
+export const generateSearchDropdownLabel = (
+  option: SearchDropdownOption,
+  checked: boolean,
+  searchKey: string,
+  showProfilePicture: boolean
+) => {
+  return (
+    <div className="d-flex justify-between">
+      <Space
+        align="center"
+        className="m-x-sm"
+        data-testid={option.key}
+        size={8}>
+        <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+        {showProfilePicture && (
+          <ProfilePicture
+            displayName={option.label}
+            id={option.key || ''}
+            name={option.label || ''}
+            textClass="text-xs"
+            width="18"
+          />
+        )}
+        <Typography.Text
+          ellipsis
+          className="dropdown-option-label"
+          title={option.label}>
+          <span
+            dangerouslySetInnerHTML={{
+              __html: getSearchLabel(option.label, searchKey),
+            }}
+          />
+        </Typography.Text>
+      </Space>
+      {getCountBadge(option.count, 'm-r-sm', false)}
+    </div>
+  );
+};
+
 export const getSearchDropdownLabels = (
   optionsArray: SearchDropdownOption[],
   checked: boolean,
@@ -191,39 +226,11 @@ export const getSearchDropdownLabels = (
 
     return sortedOptions.map((option) => ({
       key: option.key,
-      label: (
-        <div className="d-flex justify-between">
-          <Space
-            align="center"
-            className="m-x-sm"
-            data-testid={option.key}
-            size={8}>
-            <Checkbox
-              checked={checked}
-              data-testid={`${option.key}-checkbox`}
-            />
-            {showProfilePicture && (
-              <ProfilePicture
-                displayName={option.label}
-                id={option.key || ''}
-                name={option.label || ''}
-                textClass="text-xs"
-                width="18"
-              />
-            )}
-            <Typography.Text
-              ellipsis
-              className="dropdown-option-label"
-              title={option.label}>
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: getSearchLabel(option.label, searchKey),
-                }}
-              />
-            </Typography.Text>
-          </Space>
-          {getCountBadge(option.count, 'm-r-sm', false)}
-        </div>
+      label: generateSearchDropdownLabel(
+        option,
+        checked,
+        searchKey,
+        showProfilePicture
       ),
     }));
   } else {

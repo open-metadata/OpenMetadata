@@ -7,7 +7,7 @@ import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_EMAIL_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIl_ENTRIES;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.unboundid.ldap.sdk.Attribute;
@@ -75,7 +75,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
     try {
-      if (ldapConfiguration.getSslEnabled()) {
+      if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
         LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
         LdapUtil ldapUtil = new LdapUtil();
         SSLUtil sslUtil = new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
@@ -116,7 +116,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
     checkIfLoginBlocked(loginRequest.getEmail());
     User storedUser = lookUserInProvider(loginRequest.getEmail());
-    validatePassword(storedUser, loginRequest.getPassword());
+    validatePassword(loginRequest.getEmail(), storedUser, loginRequest.getPassword());
     User omUser = checkAndCreateUser(loginRequest.getEmail());
     return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
@@ -139,22 +139,22 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void recordFailedLoginAttempt(User storedUser) throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(storedUser.getName());
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(storedUser.getName());
+  public void recordFailedLoginAttempt(String providedIdentity, User storedUser) throws TemplateException, IOException {
+    loginAttemptCache.recordFailedLogin(providedIdentity);
+    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
-      EmailUtil.getInstance()
-          .sendAccountStatus(
-              storedUser,
-              "Multiple Failed Login Attempts.",
-              String.format(
-                  "Someone is tried accessing your account. Login is Blocked for %s minutes.",
-                  loginConfiguration.getAccessBlockTime()));
+      EmailUtil.sendAccountStatus(
+          storedUser,
+          "Multiple Failed Login Attempts.",
+          String.format(
+              "Someone is tried accessing your account. Login is Blocked for %s seconds.",
+              loginConfiguration.getAccessBlockTime()));
     }
   }
 
   @Override
-  public void validatePassword(User storedUser, String reqPassword) throws TemplateException, IOException {
+  public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+      throws TemplateException, IOException {
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
@@ -165,7 +165,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     } catch (Exception ex) {
       if (bindingResult != null
           && Objects.equals(bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
-        recordFailedLoginAttempt(storedUser);
+        recordFailedLoginAttempt(providedIdentity, storedUser);
         throw new CustomExceptionMessage(UNAUTHORIZED, INVALID_EMAIL_PASSWORD);
       }
     }
@@ -200,7 +200,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           throw new CustomExceptionMessage(FORBIDDEN, LDAP_MISSING_ATTR);
         }
       } else if (result.getSearchEntries().size() > 1) {
-        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, MULTIPLE_EMAIl_ENTRIES);
+        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES);
       } else {
         throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, INVALID_EMAIL_PASSWORD);
       }

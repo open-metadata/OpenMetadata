@@ -24,15 +24,11 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
-  private static final String UPDATE_FIELDS = "owner,tags";
-  private static final String PATCH_FIELDS = UPDATE_FIELDS;
-
   @Getter private final Class<S> serviceConnectionClass;
 
   @Getter private final ServiceType serviceType;
@@ -44,7 +40,7 @@ public abstract class ServiceEntityRepository<
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
       ServiceType serviceType) {
-    this(collectionPath, service, dao, entityDAO, serviceConnectionClass, UPDATE_FIELDS, serviceType);
+    this(collectionPath, service, dao, entityDAO, serviceConnectionClass, "", serviceType);
   }
 
   protected ServiceEntityRepository(
@@ -53,9 +49,9 @@ public abstract class ServiceEntityRepository<
       CollectionDAO dao,
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
-      String updatedFields,
+      String updateFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, PATCH_FIELDS, updatedFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
   }
@@ -93,7 +89,7 @@ public abstract class ServiceEntityRepository<
   public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) throws IOException {
     T service = dao.findEntityById(serviceId);
     service.setTestConnectionResult(testConnectionResult);
-    dao.update(serviceId, FullyQualifiedName.buildHash(service.getFullyQualifiedName()), JsonUtils.pojoToJson(service));
+    dao.update(serviceId, service.getFullyQualifiedName(), JsonUtils.pojoToJson(service));
     return service;
   }
 

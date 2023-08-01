@@ -13,22 +13,16 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
-import { RuleObject } from 'antd/lib/form';
 import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import {
-  HierarchyTagsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getExplorePath, PAGE_SIZE } from 'constants/constants';
-import { delimiterRegex } from 'constants/regex.constants';
+import { ExplorePageTabs } from 'enums/Explore.enum';
 import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
-import { isEmpty, isUndefined, toLower } from 'lodash';
-import { Bucket, EntityTags, TagOption } from 'Models';
+import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { searchQuery } from 'rest/searchAPI';
@@ -42,9 +36,7 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
-import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { formatSearchTagsResponse } from './APIUtils';
-import { isUrlFriendlyName } from './CommonUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
 export const getClassifications = async (
@@ -161,37 +153,6 @@ export const getTableTags = (
   return uniqueTags;
 };
 
-export const getTagOptionsFromFQN = (
-  tagFQNs: Array<string>
-): Array<TagOption> => {
-  return tagFQNs.map((tag) => {
-    return { fqn: tag, source: 'Classification' };
-  });
-};
-
-export const getTagOptions = (tags: Array<string>): Array<EntityTags> => {
-  return tags.map((tag) => {
-    return {
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-      tagFQN: tag,
-      source: TagSource.Classification,
-    };
-  });
-};
-
-// Will add a label of value in the data object without it's FQN
-export const getTagsWithLabel = (tags: Array<Bucket>) => {
-  return tags.map((tag) => {
-    const containQuotes = tag.key.split('"')[1];
-
-    return {
-      ...tag,
-      label: isEmpty(containQuotes) ? tag.key.split('.').pop() : containQuotes,
-    };
-  });
-};
-
 //  Will return tag with ellipses if it exceeds the limit
 export const getTagDisplay = (tag: string) => {
   const tagLevelsArray = tag.split(FQN_SEPARATOR_CHAR);
@@ -236,44 +197,6 @@ export const fetchTagsAndGlossaryTerms = async () => {
   return tagsAndTerms;
 };
 
-/**
- *
- * @param isExtending For extending/adding more validation to field
- * @param data For validating if value already exist in the list
- * @returns If validation failed throws an error else resolve
- */
-
-export const tagsNameValidator =
-  (isExtending: boolean, data?: Classification[]) =>
-  async (_: RuleObject, value: string) => {
-    if (delimiterRegex.test(value)) {
-      return Promise.reject(
-        i18next.t('message.entity-delimiters-not-allowed', {
-          entity: i18next.t('label.name'),
-        })
-      );
-    }
-    if (isExtending) {
-      if (!isUrlFriendlyName(value)) {
-        return Promise.reject(
-          i18next.t('message.special-character-not-allowed')
-        );
-      } else if (
-        !isUndefined(
-          data?.find((item) => toLower(item.name) === toLower(value))
-        )
-      ) {
-        return Promise.reject(
-          i18next.t('message.entity-already-exists', {
-            entity: i18next.t('label.name'),
-          })
-        );
-      }
-    }
-
-    return Promise.resolve();
-  };
-
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">
     <div className="m-b-xs">
@@ -307,83 +230,25 @@ export const getUsageCountLink = (tagFQN: string) => {
   const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
 
   return getExplorePath({
+    tab: ExplorePageTabs.TABLES,
     extraParameters: {
-      facetFilter: {
-        [`${type}.tagFQN`]: [tagFQN],
-      },
-    },
-  });
-};
-
-export const getTagsHierarchy = (
-  tags: TagsDetailsProps[]
-): HierarchyTagsProps[] => {
-  const filteredTags = tags.filter(
-    (tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-  );
-
-  let hierarchyTags: HierarchyTagsProps[] = [];
-
-  filteredTags.forEach((tags) => {
-    const haveParent = hierarchyTags.find(
-      (h) => h.title === tags?.classification?.name
-    );
-
-    if (haveParent) {
-      hierarchyTags = hierarchyTags.map((h) => {
-        if (h.title === tags?.classification?.name) {
-          return {
-            ...h,
-            children: [
-              ...h.children,
+      page: '1',
+      quickFilter: JSON.stringify({
+        query: {
+          bool: {
+            must: [
               {
-                title: tags.name,
-                value: tags.fqn,
-                key: tags.fqn,
-                selectable: true,
+                bool: {
+                  should: [{ term: { [`${type}.tagFQN`]: tagFQN } }],
+                },
               },
             ],
-          };
-        } else {
-          return h;
-        }
-      });
-    } else {
-      hierarchyTags.push({
-        title: tags.classification?.name ?? '',
-        value: tags.classification?.name ?? '',
-        children: [
-          {
-            title: tags.name,
-            value: tags.fqn,
-            key: tags.fqn,
-            selectable: true,
           },
-        ],
-        key: tags.classification?.name ?? '',
-        selectable: false,
-      });
-    }
+        },
+      }),
+    },
+    isPersistFilters: false,
   });
-
-  return hierarchyTags;
-};
-
-export const getAllTagsList = async () => {
-  try {
-    const tags = await getAllTagsForOptions();
-
-    return Promise.resolve(
-      tags.map((tag) => ({
-        name: tag.name,
-        fqn: tag.fullyQualifiedName ?? '',
-        classification: tag.classification,
-        source: TagSource.Classification,
-      }))
-    );
-  } catch (error) {
-    return Promise.reject({ data: (error as AxiosError).response });
-  }
 };
 
 export const getTagPlaceholder = (isGlossaryType: boolean): string =>

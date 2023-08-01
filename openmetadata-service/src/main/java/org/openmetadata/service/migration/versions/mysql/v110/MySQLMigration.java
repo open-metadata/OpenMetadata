@@ -51,13 +51,19 @@ public class MySQLMigration implements MigrationStep {
 
   @Override
   public void preDDL() {
+    preDDLFixQueryEntityFQN();
     preDDLFQNHashing();
   }
 
   @Override
   public void runDataMigration() {
     // FQN Hashing Migrations
-    dataMigrationFQNHashing(handle, collectionDAO);
+    String envVariableValue = System.getenv("MIGRATION_LIMIT_PARAM");
+    if (envVariableValue != null) {
+      dataMigrationFQNHashing(handle, collectionDAO, Integer.parseInt(envVariableValue));
+    } else {
+      dataMigrationFQNHashing(handle, collectionDAO, 1000);
+    }
   }
 
   @Override
@@ -69,6 +75,14 @@ public class MySQLMigration implements MigrationStep {
 
   @Override
   public void close() {}
+
+  private void preDDLFixQueryEntityFQN() {
+    List<String> queryList =
+        List.of(
+            // Add missing FQN to query_entity
+            "UPDATE query_entity SET json = JSON_INSERT(json, '$.fullyQualifiedName', JSON_EXTRACT(json, '$.name')) WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') IS NULL");
+    performSqlExecutionAndUpdation(this, migrationDAO, handle, queryList);
+  }
 
   private void preDDLFQNHashing() {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace

@@ -71,4 +71,4 @@ alt="create-app" /%}
 src="/images/v1.1.0/deployment/security/auth0/credentials.png" 
 alt="credentials" /%}
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}

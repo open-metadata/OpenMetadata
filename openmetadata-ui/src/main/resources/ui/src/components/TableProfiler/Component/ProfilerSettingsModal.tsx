@@ -170,10 +170,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     form.setFieldsValue({
       profileSampleType,
       profileSamplePercentage: profileSampleTypeCheck
-        ? profileSample || 100
+        ? profileSample ?? 100
         : 100,
       profileSampleRows: !profileSampleTypeCheck
-        ? profileSample || 100
+        ? profileSample ?? 100
         : undefined,
     });
 

@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';

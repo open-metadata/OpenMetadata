@@ -13,19 +13,28 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import javax.json.JsonPatch;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.services.StorageService;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ContainerFileFormat;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerRepository extends EntityRepository<Container> {
-
-  private static final String CONTAINER_UPDATE_FIELDS = "dataModel,owner,tags,extension";
-  private static final String CONTAINER_PATCH_FIELDS = "dataModel,owner,tags,extension";
+  private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
+  private static final String CONTAINER_PATCH_FIELDS = "dataModel";
 
   public ContainerRepository(CollectionDAO dao) {
     super(
@@ -73,9 +82,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container == null) {
       return Collections.emptyList();
     }
-    List<CollectionDAO.EntityRelationshipRecord> childContainerIds =
-        findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
-    return EntityUtil.populateEntityReferences(childContainerIds, CONTAINER);
+    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }
 
   @Override
@@ -90,11 +97,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(Container container) {
-    return FullyQualifiedName.buildHash(container.getFullyQualifiedName());
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
@@ -212,6 +214,36 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
     }
     return allTags;
+  }
+
+  @Override
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
+      throws IOException {
+    // TODO move this as the first check
+    if (entityLink.getFieldName().equals("dataModel")) {
+      Container container = getByName(null, entityLink.getEntityFQN(), getFields("dataModel,tags"), Include.ALL);
+      Column column =
+          container.getDataModel().getColumns().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
+
+      String origJson = JsonUtils.pojoToJson(container);
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        column.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        column.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(container);
+      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+      patch(null, container.getId(), user, patch);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
   }
 
   private void addDerivedColumnTags(List<Column> columns) {

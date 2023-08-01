@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, FormProps, Input, Space } from 'antd';
+import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -19,6 +19,7 @@ import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import { Chart } from 'generated/entity/data/chart';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -34,7 +35,6 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
-import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -47,6 +47,7 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
+  getEntityColumnsDetails,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -67,6 +68,8 @@ const UpdateTag = () => {
   const value = queryParams.get('value');
 
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
+  const [chartData, setChartData] = useState([] as Chart[]);
+
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
@@ -89,8 +92,13 @@ const UpdateTag = () => {
   const columnObject = useMemo(() => {
     const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
-    return getColumnObject(column[0], (entityData as Table).columns || []);
-  }, [field, entityData]);
+    return getColumnObject(
+      column[0],
+      getEntityColumnsDetails(entityType, entityData),
+      entityType as EntityType,
+      chartData
+    );
+  }, [field, entityData, chartData, entityType]);
 
   const getTags = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
@@ -151,7 +159,8 @@ const UpdateTag = () => {
     fetchEntityDetail(
       entityType as EntityType,
       entityFQN as string,
-      setEntityData
+      setEntityData,
+      setChartData
     );
   }, [entityFQN, entityType]);
 
@@ -171,10 +180,10 @@ const UpdateTag = () => {
     }
     form.setFieldsValue({
       title: message.trimEnd(),
-      updateTags: getTags(),
+      updatedTags: getTags(),
       assignees: defaultAssignee,
     });
-  }, [entityData]);
+  }, [entityData, columnObject]);
 
   useEffect(() => {
     setCurrentTags(getTags());
@@ -200,12 +209,14 @@ const UpdateTag = () => {
                 },
               ]}
             />
-            <Card
-              className="m-t-0 request-tags"
-              key="update-tags"
-              title={t('label.create-entity', {
-                entity: t('label.task'),
-              })}>
+            <div className="m-t-0 request-tags" key="update-tags">
+              <Typography.Paragraph
+                className="text-base"
+                data-testid="form-title">
+                {t('label.create-entity', {
+                  entity: t('label.task'),
+                })}
+              </Typography.Paragraph>
               <Form form={form} layout="vertical" onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
@@ -244,7 +255,7 @@ const UpdateTag = () => {
                     label={t('label.update-entity', {
                       entity: t('label.tag-plural'),
                     })}
-                    name="updateTags"
+                    name="updatedTags"
                     rules={[
                       {
                         required: true,
@@ -278,7 +289,7 @@ const UpdateTag = () => {
                   </Space>
                 </Form.Item>
               </Form>
-            </Card>
+            </div>
           </div>
         ),
       }}

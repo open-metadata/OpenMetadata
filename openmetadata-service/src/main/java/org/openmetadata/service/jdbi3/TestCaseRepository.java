@@ -49,8 +49,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
-  private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
+  private static final String UPDATE_FIELDS = "entityLink,testSuite,testDefinition";
+  private static final String PATCH_FIELDS = "entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {
@@ -66,13 +66,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
-      String fqn, Long timestamp, UriInfo uriInfo, String user, JsonPatch patch) throws IOException {
+      String fqn, Long timestamp, String user, JsonPatch patch) throws IOException {
     String change = ENTITY_NO_CHANGE;
     TestCaseResult original =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, timestamp),
+                .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
             TestCaseResult.class);
 
     TestCaseResult updated = JsonUtils.applyPatch(original, patch, TestCaseResult.class);
@@ -82,8 +82,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updated.getTestCaseFailureStatus().setUpdatedAt(System.currentTimeMillis());
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .update(
-              FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
+          .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
       change = ENTITY_UPDATED;
     }
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
@@ -96,11 +95,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         FullyQualifiedName.add(
             entityLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(test.getName())));
     test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(TestCase test) {
-    return FullyQualifiedName.buildHash(test.getFullyQualifiedName());
   }
 
   @Override
@@ -121,27 +115,27 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private EntityReference getTestSuite(TestCase test) throws IOException {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+        findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      TestSuite testSuite = Entity.getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
-      if (testSuite.getExecutable()) {
+    for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
+      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
         return testSuite.getEntityReference();
       }
     }
     return null;
   }
 
-  private List<TestSuite> getTestSuites(TestCase test) throws IOException {
+  private List<TestSuite> getTestSuites(TestCase test) {
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+        findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
     return records.stream()
         .map(
-            record -> {
+            testSuiteId -> {
               try {
-                return Entity.<TestSuite>getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
+                return Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
               } catch (IOException e) {
                 throw new RuntimeException(e);
               }
@@ -294,7 +288,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public void isTestSuiteExecutable(String testSuiteFqn) throws IOException {
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
-    if (!testSuite.getExecutable()) {
+    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(
           "Test suite "
               + testSuite.getName()
@@ -337,11 +331,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
       testCaseFQNs = testCases.stream().map(TestCase::getFullyQualifiedName).collect(Collectors.toList());
     } else {
-      List<CollectionDAO.EntityRelationshipRecord> testCases =
-          findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-      List<EntityReference> testCasesEntityReferences = EntityUtil.getEntityReferences(testCases);
-      testCaseFQNs =
-          testCasesEntityReferences.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+      List<EntityReference> testCaseRefs = findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+      testCaseFQNs = testCaseRefs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
     }
 
     return EntityUtil.getTestCaseExecutionSummary(

@@ -56,14 +56,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -87,12 +85,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     Entity.withHref(uriInfo, term.getRelatedTerms());
     Entity.withHref(uriInfo, term.getReviewers());
     Entity.withHref(uriInfo, term.getOwner());
+    Entity.withHref(uriInfo, term.getDomain());
     return term;
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
-    TagLabelCache.initialize();
   }
 
   public GlossaryTermResource(CollectionDAO dao, Authorizer authorizer) {
@@ -173,7 +167,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
       glossary = repository.getGlossary(glossaryIdParam);
-      fqn = glossary.getName();
+      fqn = EntityInterfaceUtil.quoteName(glossary.getName());
     }
 
     // Filter by glossary parent term

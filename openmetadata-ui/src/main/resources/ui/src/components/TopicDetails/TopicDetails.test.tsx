@@ -51,6 +51,7 @@ const mockUserTeam = [
 
 const topicDetailsProps: TopicDetailsProps = {
   topicDetails: TOPIC_DETAILS,
+  fetchTopic: jest.fn(),
   followTopicHandler: jest.fn(),
   unFollowTopicHandler: jest.fn(),
   onTopicUpdate: jest.fn(),
@@ -90,12 +91,8 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () => {
-  return jest.fn().mockReturnValue(<p>TagsContainerV1</p>);
-});
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p>Tags</p>);
+jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+  return jest.fn().mockReturnValue(<p>TagsContainerV2</p>);
 });
 
 jest.mock('../FeedEditor/FeedEditor', () => {

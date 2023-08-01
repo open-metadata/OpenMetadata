@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,11 +19,12 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class ResourceRegistry {
   private static final List<ResourceDescriptor> RESOURCE_DESCRIPTORS = new ArrayList<>();
-  public static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP = new HashMap<>();
-  public static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP = new HashMap<>();
+  protected static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP = new HashMap<>();
+  protected static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP =
+      new EnumMap<>(MetadataOperation.class);
 
   // Operations common to all the entities
-  public static final List<MetadataOperation> COMMON_OPERATIONS =
+  protected static final List<MetadataOperation> COMMON_OPERATIONS =
       new ArrayList<>(
           listOf(
               MetadataOperation.CREATE,
@@ -55,7 +57,7 @@ public class ResourceRegistry {
   private ResourceRegistry() {}
 
   public static void addResource(
-      String resourceName, List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
+      String resourceName, List<MetadataOperation> entitySpecificOperations, Set<String> entityFields) {
     // If resourceName already exists, then no need to add the resource again
     if (RESOURCE_DESCRIPTORS.stream().anyMatch(d -> d.getName().equals(resourceName))) {
       return;
@@ -63,7 +65,7 @@ public class ResourceRegistry {
     ResourceDescriptor resourceDescriptor =
         new ResourceDescriptor()
             .withName(resourceName)
-            .withOperations(getOperations(resourceName, entitySpecificOperations, entityFields));
+            .withOperations(getOperations(resourceName, entitySpecificOperations, new ArrayList<>(entityFields)));
     RESOURCE_DESCRIPTORS.sort(Comparator.comparing(ResourceDescriptor::getName));
     RESOURCE_DESCRIPTORS.add(resourceDescriptor);
   }

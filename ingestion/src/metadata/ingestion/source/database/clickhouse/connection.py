@@ -28,6 +28,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
     init_empty_connection_arguments,
+    init_empty_connection_options,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -35,18 +36,24 @@ from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT_TEST,
 )
 
+HTTPS_PROTOCOL = "https"
+
 
 def get_connection(connection: ClickhouseConnection) -> Engine:
     """
     Create Clickhouse connection
     """
     if connection.secure or connection.keyfile:
-        if connection.connectionArguments:
+        if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         if connection.secure:
             connection.connectionArguments.__root__["secure"] = connection.secure
         if connection.keyfile:
             connection.connectionArguments.__root__["keyfile"] = connection.keyfile
+    if connection.https:
+        if not connection.connectionOptions:
+            connection.connectionOptions = init_empty_connection_options()
+        connection.connectionOptions.__root__["protocol"] = HTTPS_PROTOCOL
 
     return create_generic_db_connection(
         connection=connection,

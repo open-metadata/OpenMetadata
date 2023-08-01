@@ -48,7 +48,6 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   public QueryResourceTest() {
     super(Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
-    supportsSoftDelete = false;
     supportsSearchIndex = true;
   }
 
@@ -113,14 +112,14 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   @Test
-  public void post_valid_query_test_created(TestInfo test) throws IOException {
+  void post_valid_query_test_created(TestInfo test) throws IOException {
     CreateQuery create = createRequest(getEntityName(test));
     createEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(create);
   }
 
   @Test
-  public void post_without_query_400() {
+  void post_without_query_400() {
     CreateQuery create = new CreateQuery().withDuration(0.0).withQueryDate(1673857635064L);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
@@ -186,12 +185,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
     // Owner (USER1_REF) can see the results
     ResultList<Query> queries = getQueries(100, "*", false, authHeaders(USER1_REF.getName()));
-    queries
-        .getData()
-        .forEach(
-            query -> {
-              assertEquals(query.getQuery(), QUERY);
-            });
+    queries.getData().forEach(query -> assertEquals(query.getQuery(), QUERY));
 
     // Another user won't see the PII query body
     ResultList<Query> maskedQueries = getQueries(100, "*", false, authHeaders(USER2_REF.getName()));
@@ -200,7 +194,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .forEach(
             query -> {
               if (query.getTags().stream().map(TagLabel::getTagFQN).anyMatch("PII.Sensitive"::equals)) {
-                assertEquals(query.getQuery(), "********");
+                assertEquals("********", query.getQuery());
               } else {
                 assertEquals(query.getQuery(), QUERY);
               }

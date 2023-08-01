@@ -18,15 +18,16 @@ import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/Kil
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getLoadingStatus } from 'utils/CommonUtils';
 import { getEditIngestionPath, getLogsViewerPath } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 
 function PipelineActions({
   record,
-  servicePermission,
+  ingestionPipelinesPermission,
   triggerIngestion,
   deployIngestion,
   deleteSelection,
@@ -47,7 +48,7 @@ function PipelineActions({
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
 
   const getEditPermission = (service: string): boolean =>
-    !servicePermission?.[service]?.EditAll;
+    !ingestionPipelinesPermission?.[service]?.EditAll;
 
   const handleTriggerIngestion = async (id: string, displayName: string) => {
     try {
@@ -83,13 +84,15 @@ function PipelineActions({
       getEditIngestionPath(
         serviceCategory,
         serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
+        getEncodedFqn(
+          ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`
+        ),
         ingestion.pipelineType
       )
     );
   };
 
-  const ConfirmDelete = (id: string, name: string) => {
+  const handleConfirmDelete = (id: string, name: string) => {
     handleDeleteSelection({
       id,
       name,
@@ -192,9 +195,9 @@ function PipelineActions({
         <Button
           className="p-x-xss"
           data-testid="delete"
-          disabled={!servicePermission?.[record.name]?.Delete}
+          disabled={!ingestionPipelinesPermission?.[record.name]?.Delete}
           type="link"
-          onClick={() => ConfirmDelete(record.id as string, record.name)}>
+          onClick={() => handleConfirmDelete(record.id as string, record.name)}>
           {getDeleteButton()}
         </Button>
         <Divider className="border-gray" type="vertical" />
@@ -210,21 +213,23 @@ function PipelineActions({
           {t('label.kill')}
         </Button>
         <Divider className="border-gray" type="vertical" />
-        <Button
-          className="p-x-xss"
-          data-testid="logs"
-          disabled={!isRequiredDetailsAvailable}
-          href={getLogsViewerPath(
+        <Link
+          to={getLogsViewerPath(
             serviceCategory,
             record.service?.name || '',
-            record?.fullyQualifiedName || record?.name || ''
-          )}
-          type="link"
-          onClick={() => {
-            setSelectedPipeline(record);
-          }}>
-          {t('label.log-plural')}
-        </Button>
+            getEncodedFqn(record?.fullyQualifiedName || record?.name || '')
+          )}>
+          <Button
+            className="p-x-xss"
+            data-testid="logs"
+            disabled={!isRequiredDetailsAvailable}
+            type="link"
+            onClick={() => {
+              setSelectedPipeline(record);
+            }}>
+            {t('label.log-plural')}
+          </Button>
+        </Link>
       </Space>
       {isKillModalOpen &&
         selectedPipeline &&

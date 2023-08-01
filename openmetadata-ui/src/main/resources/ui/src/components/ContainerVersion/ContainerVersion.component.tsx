@@ -18,8 +18,11 @@ import { CustomPropertyProps } from 'components/common/CustomPropertyTable/Custo
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import VersionTable from 'components/VersionTable/VersionTable.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -42,9 +45,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
-import VersionTable from '../VersionTable/VersionTable.component';
 import { ContainerVersionProp } from './ContainerVersion.interface';
 
 const ContainerVersion: React.FC<ContainerVersionProp> = ({
@@ -125,7 +125,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
@@ -153,9 +153,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
-                  <TagsContainerV1
-                    isVersionView
-                    showLimited
+                  <TagsContainerV2
                     entityFqn={containerFQN}
                     entityType={EntityType.CONTAINER}
                     key={tagType}

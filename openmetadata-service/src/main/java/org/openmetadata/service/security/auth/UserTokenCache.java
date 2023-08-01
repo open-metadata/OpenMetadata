@@ -9,6 +9,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -22,50 +23,44 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserTokenCache {
-  private static UserTokenCache instance;
-  private static LoadingCache<String, HashSet<String>> userTokenCache;
+  private static final LoadingCache<String, HashSet<String>> CACHE =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new UserTokenLoader());
   private static volatile boolean initialized = false;
   private static TokenRepository tokenRepository;
 
+  private UserTokenCache() {
+    /* Private constructor for singleton */
+  }
+
   public static void initialize(CollectionDAO dao) {
     if (!initialized) {
-      userTokenCache =
-          CacheBuilder.newBuilder()
-              .maximumSize(1000)
-              .expireAfterWrite(2, TimeUnit.MINUTES)
-              .build(new UserTokenLoader());
       tokenRepository = new TokenRepository(dao);
-      instance = new UserTokenCache();
       initialized = true;
       LOG.info("User Token cache is initialized");
     } else {
-      LOG.info("User Token cache is already initialized");
+      LOG.debug("User Token cache is already initialized");
     }
   }
 
-  public HashSet<String> getToken(String userName) {
+  public static Set<String> getToken(String userName) {
     try {
-      return userTokenCache.get(userName);
+      return CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       LOG.error("Token not found", ex);
       return null;
     }
   }
 
-  public void invalidateToken(String userName) {
+  public static void invalidateToken(String userName) {
     try {
-      userTokenCache.invalidate(userName);
+      CACHE.invalidate(userName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate User token cache for User {}", userName, ex);
     }
-  }
-
-  public static UserTokenCache getInstance() {
-    return instance;
   }
 
   static class UserTokenLoader extends CacheLoader<String, HashSet<String>> {
@@ -74,11 +69,10 @@ public class UserTokenCache {
       HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(
-              null, userName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
+          userRepository.getByName(null, userName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
       List<TokenInterface> tokens =
           tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
-      tokens.forEach((t) -> result.add(((PersonalAccessToken) t).getJwtToken()));
+      tokens.forEach(t -> result.add(((PersonalAccessToken) t).getJwtToken()));
       return result;
     }
   }

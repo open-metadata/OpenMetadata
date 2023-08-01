@@ -19,7 +19,6 @@ import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import GlossaryV1Skeleton from 'components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
 import { Operation } from 'generated/entity/policies/policy';
 import React, { useMemo } from 'react';
@@ -28,12 +27,14 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
+import Fqn from '../../../utils/Fqn';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { glossaryName } = useParams<{ glossaryName: string }>();
+  const glossaryFqn = glossaryName ? decodeURIComponent(glossaryName) : null;
   const history = useHistory();
 
   const createGlossaryPermission = useMemo(
@@ -42,19 +43,19 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
     [permissions]
   );
   const selectedKey = useMemo(() => {
-    if (glossaryName) {
-      return glossaryName.split(FQN_SEPARATOR_CHAR)[0];
+    if (glossaryFqn) {
+      return Fqn.split(glossaryFqn)[0];
     }
 
-    return glossaries[0].name;
-  }, [glossaryName]);
+    return glossaries[0].fullyQualifiedName;
+  }, [glossaryFqn]);
 
   const menuItems: ItemType[] = useMemo(() => {
     return glossaries.reduce((acc, glossary) => {
       return [
         ...acc,
         {
-          key: glossary.name,
+          key: glossary.fullyQualifiedName ?? '',
           label: getEntityName(glossary),
           icon: <GlossaryIcon height={16} width={16} />,
         },

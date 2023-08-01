@@ -63,7 +63,6 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -393,42 +392,6 @@ export const getLineageData = (
   (entityLineage.nodes || []).forEach((n) => lineageData.push(makeNode(n)));
 
   return { node: lineageData, edge: lineageEdgesV1 };
-};
-
-export const getDataLabel = (
-  displayName?: string,
-  fqn = '',
-  isTextOnly = false,
-  type?: string
-) => {
-  const databaseName = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
-  const schemaName = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
-
-  let label = '';
-  if (displayName) {
-    label = displayName;
-  } else {
-    label = prepareLabel(type as string, fqn);
-  }
-
-  if (isTextOnly) {
-    return label;
-  } else {
-    return (
-      <span
-        className="tw-break-words tw-self-center w-72"
-        data-testid="lineage-entity">
-        {type === 'table' && databaseName && schemaName ? (
-          <span className="d-block text-xs custom-lineage-heading">
-            {databaseName}
-            {FQN_SEPARATOR_CHAR}
-            {schemaName}
-          </span>
-        ) : null}
-        <span className="text-base">{label}</span>
-      </span>
-    );
-  }
 };
 
 export const getDeletedLineagePlaceholder = () => {

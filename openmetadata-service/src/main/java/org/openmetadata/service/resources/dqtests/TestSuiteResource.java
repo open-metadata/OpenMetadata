@@ -401,7 +401,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (testSuite.getExecutable()) {
+    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
@@ -433,7 +433,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (testSuite.getExecutable()) {
+    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
@@ -469,7 +469,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (!testSuite.getExecutable()) {
+    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
@@ -504,7 +504,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (!testSuite.getExecutable()) {
+    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
@@ -551,7 +551,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   private TestSuite setExecutableTestSuiteName(TestSuite testSuite) {
-    if (!testSuite.getExecutable()) {
+    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       return testSuite;
     }
     String name = testSuite.getName();

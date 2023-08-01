@@ -49,7 +49,7 @@ import org.openmetadata.service.util.ResultList;
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
   protected final Class<T> entityClass;
   protected final String entityType;
-  protected final List<String> allowedFields;
+  protected final Set<String> allowedFields;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
@@ -318,8 +318,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return ResourceContext.builder().resource(entityType).entityRepository(dao);
   }
 
-  public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
-  public static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
+  protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
 
   private MetadataOperation[] getViewOperations(Fields fields) {
     if (fields.getFieldList().isEmpty()) {
