@@ -26,6 +26,10 @@
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "description": {
+      "description": "Description of the team.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
