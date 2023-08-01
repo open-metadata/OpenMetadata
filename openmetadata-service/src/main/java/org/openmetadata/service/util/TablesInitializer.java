@@ -249,8 +249,7 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchClient searchClient;
-    searchClient =
+    SearchClient searchClient =
         IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
     ElasticSearchIndexDefinition esIndexDefinition;
 
