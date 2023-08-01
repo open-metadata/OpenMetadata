@@ -72,20 +72,26 @@ public class ElasticSearchIndexDefinition {
   }
 
   public void createIndexes(ElasticSearchConfiguration esConfig) {
-    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-      searchClient.createIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+    if (searchClient != null) {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        searchClient.createIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+      }
     }
   }
 
   public void updateIndexes(ElasticSearchConfiguration esConfig) {
-    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-      searchClient.updateIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+    if (searchClient != null) {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        searchClient.updateIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+      }
     }
   }
 
   public void dropIndexes() {
-    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-      searchClient.deleteIndex(elasticSearchIndexType);
+    if (searchClient != null) {
+      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+        searchClient.deleteIndex(elasticSearchIndexType);
+      }
     }
   }
 

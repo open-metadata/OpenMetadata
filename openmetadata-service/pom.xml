@@ -11,7 +11,7 @@
   <artifactId>openmetadata-service</artifactId>
 
   <properties>
-    <dropwizard.swagger.version>2.1.6-1</dropwizard.swagger.version>
+    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
@@ -480,17 +480,6 @@
       <artifactId>woodstox-core</artifactId>
       <version>${woodstox.version}</version>
     </dependency>
-    <dependency>
-      <groupId>org.reflections</groupId>
-      <artifactId>reflections</artifactId>
-      <version>0.10.2</version>
-    </dependency>
-    <dependency>
-      <groupId>io.swagger</groupId>
-      <artifactId>swagger-annotations</artifactId>
-      <version>1.6.11</version>
-      <scope>compile</scope>
-    </dependency>
   </dependencies>
 
   <profiles>
@@ -647,7 +636,7 @@
           <parallel>classes</parallel>
           <threadCount>1</threadCount>
           <forkCount>2C</forkCount>
-          <argLine>-Xmx1024m</argLine>
+          <argLine>-Xmx512m</argLine>
         </configuration>
         <executions>
           <execution>
