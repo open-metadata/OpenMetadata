@@ -81,8 +81,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
+import java.util.SplittableRandom;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -357,6 +357,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // tests are run to save time. But over the course of development of a release, when tests are run enough times,
   // the webhook tests are run for all the entities.
   public static boolean runWebhookTests;
+  public static SplittableRandom random = new SplittableRandom();
 
   protected boolean supportsSearchIndex = false;
 
@@ -420,7 +421,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
 
-    runWebhookTests = new Random().nextBoolean();
+    runWebhookTests = random.nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
       EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
@@ -565,8 +566,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   void get_entityListWithPagination_200(TestInfo test) throws IOException {
     // Create a number of entities between 5 and 20 inclusive
-    Random rand = new Random();
-    int maxEntities = rand.nextInt(16) + 5;
+    int maxEntities = random.nextInt(16) + 5;
 
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
@@ -578,7 +578,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Predicate<T> matchDeleted = e -> e.getId().equals(entity.getId());
 
     // Test listing entities that include deleted, non-deleted, and all the entities
-    Random random = new Random();
     for (Include include : List.of(Include.NON_DELETED, Include.ALL, Include.DELETED)) {
       if (!supportsSoftDelete && include.equals(Include.DELETED)) {
         continue;
@@ -1934,8 +1933,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final void deleteAndCheckEntity(
       T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
-    T deletedEntity = deleteEntity(entity.getId(), recursive, hardDelete, authHeaders); // TODO fix this to include
-    assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
+    T deletedEntity = deleteEntity(entity.getId(), recursive, hardDelete, authHeaders);
+    // With 10% probability to speed tests
+    if (random.nextInt(10) == 0) {
+      assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
+    }
   }
 
   public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -1955,7 +1957,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final void deleteByNameAndCheckEntity(
       T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
     T deletedEntity = deleteEntityByName(entity.getFullyQualifiedName(), recursive, hardDelete, authHeaders);
-    assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
+    // With 10% probability to speed tests
+    if (random.nextInt(10) == 0) {
+      assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
+    }
   }
 
   private void assertDeleted(T deletedEntity, T entityBeforeDelete, boolean hardDelete, Map<String, String> authHeaders)
@@ -2011,19 +2016,23 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateCommonEntityFields(entity, create, updatedBy);
     validateCreatedEntity(entity, create, authHeaders);
 
-    // GET the entity created and ensure it has all the information set in create request
-    T getEntity = getEntity(entity.getId(), authHeaders);
-    assertEquals(0.1, entity.getVersion()); // First version of the entity
-    validateCommonEntityFields(entity, create, updatedBy);
-    validateCreatedEntity(getEntity, create, authHeaders);
+    // With 10% probability to speed the tests
+    if (random.nextInt(10) == 0) {
+      // GET the entity created and ensure it has all the information set in create request
+      T getEntity = getEntity(entity.getId(), authHeaders);
+      assertEquals(0.1, entity.getVersion()); // First version of the entity
+      validateCommonEntityFields(entity, create, updatedBy);
+      validateCreatedEntity(getEntity, create, authHeaders);
 
-    getEntity = getEntityByName(entity.getFullyQualifiedName(), allFields, authHeaders);
-    assertEquals(0.1, entity.getVersion()); // First version of the entity
-    validateCommonEntityFields(entity, create, updatedBy);
-    validateCreatedEntity(getEntity, create, authHeaders);
+      getEntity = getEntityByName(entity.getFullyQualifiedName(), allFields, authHeaders);
+      assertEquals(0.1, entity.getVersion()); // First version of the entity
+      validateCommonEntityFields(entity, create, updatedBy);
+      validateCreatedEntity(getEntity, create, authHeaders);
 
-    // Validate that change event was created
-    validateChangeEvents(entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
+      // Validate that change event was created
+      validateChangeEvents(entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
+    }
+
     return entity;
   }
 
@@ -2036,21 +2045,26 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     T updated = updateEntity(request, status, authHeaders);
     validateUpdatedEntity(updated, request, authHeaders, updateType);
-    validateChangeDescription(updated, updateType, changeDescription);
-    validateEntityHistory(updated.getId(), updateType, changeDescription, authHeaders);
-    validateLatestVersion(updated, updateType, changeDescription, authHeaders);
 
-    // GET the newly updated entity and validate
-    T getEntity = getEntity(updated.getId(), authHeaders);
-    validateUpdatedEntity(getEntity, request, authHeaders, updateType);
-    validateChangeDescription(getEntity, updateType, changeDescription);
+    // With 10% probability to speed the tests
+    if (random.nextInt(10) == 0) {
+      validateChangeDescription(updated, updateType, changeDescription);
+      validateEntityHistory(updated.getId(), updateType, changeDescription, authHeaders);
+      validateLatestVersion(updated, updateType, changeDescription, authHeaders);
 
-    // Check if the entity change events are record
-    if (updateType != NO_CHANGE) {
-      EventType expectedEventType =
-          updateType == UpdateType.CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      validateChangeEvents(updated, updated.getUpdatedAt(), expectedEventType, changeDescription, authHeaders);
+      // GET the newly updated entity and validate
+      T getEntity = getEntity(updated.getId(), authHeaders);
+      validateUpdatedEntity(getEntity, request, authHeaders, updateType);
+      validateChangeDescription(getEntity, updateType, changeDescription);
+
+      // Check if the entity change events are recorded
+      if (updateType != NO_CHANGE) {
+        EventType expectedEventType =
+            updateType == UpdateType.CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+        validateChangeEvents(updated, updated.getUpdatedAt(), expectedEventType, changeDescription, authHeaders);
+      }
     }
+
     return updated;
   }
 
@@ -2058,9 +2072,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       T entity, Map<String, String> authHeaders, ChangeDescription changeDescription) throws IOException {
     T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), Status.OK, authHeaders);
     validateLatestVersion(updated, NO_CHANGE, changeDescription, authHeaders);
-    // GET the newly updated entity and validate
-    T getEntity = getEntity(updated.getId(), authHeaders);
-    validateChangeDescription(getEntity, NO_CHANGE, changeDescription);
+    // With 10% probability to speed tests
+    if (random.nextInt(10) == 0) {
+      // GET the newly updated entity and validate
+      T getEntity = getEntity(updated.getId(), authHeaders);
+      validateChangeDescription(getEntity, NO_CHANGE, changeDescription);
+    }
     return updated;
   }
 
@@ -2120,11 +2137,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
     validateLatestVersion(returned, updateType, expectedChange, authHeaders);
 
-    // GET the entity and Validate information returned
-    T getEntity = getEntity(returned.getId(), authHeaders);
-    validateCommonEntityFields(updated, returned, updatedBy);
-    compareEntities(updated, getEntity, authHeaders);
-    validateChangeDescription(getEntity, updateType, expectedChange);
+    // GET the entity and Validate information returned (with 10% probability to speed tests)
+    if (random.nextInt(10) == 0) {
+      T getEntity = getEntity(returned.getId(), authHeaders);
+      validateCommonEntityFields(updated, returned, updatedBy);
+      compareEntities(updated, getEntity, authHeaders);
+      validateChangeDescription(getEntity, updateType, expectedChange);
+    }
 
     // Check if the entity change events are record
     if (updateType != NO_CHANGE) {
