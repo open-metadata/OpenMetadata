@@ -75,11 +75,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(Pipeline pipeline) {
-    return FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
-  }
-
-  @Override
   public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
       throws IOException {
     if (entityLink.getFieldName().equals(TASKS_FIELD)) {

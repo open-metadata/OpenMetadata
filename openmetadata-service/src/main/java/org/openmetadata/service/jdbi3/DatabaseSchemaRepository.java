@@ -51,11 +51,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(DatabaseSchema schema) {
-    return FullyQualifiedName.buildHash(schema.getFullyQualifiedName());
-  }
-
-  @Override
   public void prepare(DatabaseSchema schema) throws IOException {
     populateDatabase(schema);
   }

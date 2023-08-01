@@ -91,11 +91,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     entity.setFullyQualifiedName(FullyQualifiedName.add(domain.getFullyQualifiedName(), entity.getName()));
   }
 
-  @Override
-  public String getFullyQualifiedNameHash(DataProduct entity) {
-    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-  }
-
   public class DataProductUpdater extends EntityUpdater {
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);

@@ -22,6 +22,7 @@ services:
       dockerfile: docker/postgresql/Dockerfile_postgres
     container_name: openmetadata_postgresql
     restart: always
+    command: "--work_mem = 10MB"
     depends_on:
       - elasticsearch
     environment:
