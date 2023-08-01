@@ -1,14 +1,15 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Note that the methods in the class become available for SpEL expressions for authoring expressions such as
@@ -112,6 +113,33 @@ public class RuleEvaluator {
     List<TagLabel> tags = resourceContext.getTags();
     LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(tagFQNs), Arrays.toString(tags.toArray()));
     for (String tagFQN : tagFQNs) {
+      TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
+      if (found != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchAnyGlossary",
+      input = "List of comma separated glossaryTerm fully qualified names",
+      description = "Returns true if the entity being accessed has at least one of the glossaryTerm given as input",
+      examples = {"matchAnyTag('Business Glossary.Clothing')"})
+  @SuppressWarnings("unused") // Used in SpelExpressions
+  public boolean matchAnyGlossary(String... glossaryTermFQNs) throws IOException {
+    if (expressionValidation) {
+      for (String tagFqn : glossaryTermFQNs) {
+        TagLabelCache.getInstance().getGlossaryTerm(tagFqn);
+      }
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    List<TagLabel> tags = resourceContext.getTags();
+    LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(glossaryTermFQNs), Arrays.toString(tags.toArray()));
+    for (String tagFQN : glossaryTermFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found != null) {
         return true;
