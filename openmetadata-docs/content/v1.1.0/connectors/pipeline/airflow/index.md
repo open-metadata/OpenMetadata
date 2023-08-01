@@ -5,11 +5,24 @@ slug: /connectors/pipeline/airflow
 
 # Airflow
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions (Tested) | >= 2.2.5 <=2.6.3             |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
 {% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
+
+
 
 ## Requirements
 
