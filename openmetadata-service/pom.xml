@@ -646,8 +646,11 @@
           <reuseForks>false</reuseForks>
           <parallel>classes</parallel>
           <threadCount>1</threadCount>
-          <forkCount>2C</forkCount>
-          <argLine>-Xmx1024m</argLine>
+          <forkCount>1C</forkCount>
+          <argLine>-Xmx512m</argLine>
+          <systemPropertyVariables>
+            <log4j.configuration>file:${basedir}/src/test/resources/log4j-silent.properties</log4j.configuration>
+          </systemPropertyVariables>
         </configuration>
         <executions>
           <execution>

@@ -87,7 +87,7 @@ server:
 
 # Logging settings.
 logging:
-  level: INFO
+  level: ERROR
   appenders:
     - type: console
       logFormat: "%level %logger{5} - %msg%n"

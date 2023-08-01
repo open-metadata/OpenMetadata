@@ -9,7 +9,6 @@
             </pattern>
         </encoder>
     </appender>
-    <root level="INFO">
-        <appender-ref ref="STDOUT" />
+    <root level="OFF">
     </root>
 </configuration>
