@@ -156,6 +156,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
+    useState(false);
   const [isServiceLoading, setIsServiceLoading] = useState(true);
   const [dataModel, setDataModel] = useState<Array<ServicePageData>>([]);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
@@ -236,7 +238,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const getAllIngestionWorkflows = useCallback(
     async (paging?: string) => {
       try {
-        setIsLoading(true);
+        setIsIngestionPipelineLoading(true);
         const response = await getIngestionPipelines(
           ['owner', 'pipelineStatuses'],
           getDecodedFqn(serviceFQN),
@@ -252,7 +254,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       } catch (error) {
         // Error
       } finally {
-        setIsLoading(false);
+        setIsIngestionPipelineLoading(false);
       }
     },
     [serviceFQN, paging]
@@ -776,7 +778,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             handleEnableDisableIngestion={handleEnableDisableIngestion}
             ingestionList={ingestionPipelines}
             isAirflowAvailable={isAirflowAvailable}
-            isLoading={isLoading}
+            isLoading={isIngestionPipelineLoading}
             paging={ingestionPaging}
             permissions={servicePermission}
             serviceCategory={serviceCategory as ServiceCategory}
@@ -791,7 +793,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ),
     [
       isAirflowAvailable,
-      isLoading,
+      isIngestionPipelineLoading,
       airflowEndpoint,
       serviceDetails,
       deleteIngestionById,
