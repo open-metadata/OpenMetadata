@@ -1,10 +1,8 @@
 package org.openmetadata.service.migration.versions.mysql.v111;
 
-import static org.openmetadata.service.migration.versions.utils.v110.MigrationUtil.performSqlExecutionAndUpdation;
 import static org.openmetadata.service.migration.versions.utils.v111.MigrationUtilV111.removeDuplicateTestCases;
 import static org.openmetadata.service.migration.versions.utils.v111.MigrationUtilV111.runTestSuiteMigration;
 
-import java.util.List;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -49,11 +47,7 @@ public class MySQLMigration implements MigrationStep {
   }
 
   @Override
-  public void preDDL() {
-    // Update Test Suite to have FqnHash as column instead of nameHash
-    List<String> queryList = List.of("ALTER TABLE test_suite CHANGE COLUMN nameHash fqnHash VARCHAR(256);");
-    performSqlExecutionAndUpdation(this, migrationDAO, handle, queryList);
-  }
+  public void preDDL() {}
 
   @Override
   @SneakyThrows
