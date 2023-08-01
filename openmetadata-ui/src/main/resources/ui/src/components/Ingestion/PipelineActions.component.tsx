@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getLoadingStatus } from 'utils/CommonUtils';
 import { getEditIngestionPath, getLogsViewerPath } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 
@@ -83,7 +84,9 @@ function PipelineActions({
       getEditIngestionPath(
         serviceCategory,
         serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
+        getEncodedFqn(
+          ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`
+        ),
         ingestion.pipelineType
       )
     );
@@ -214,7 +217,7 @@ function PipelineActions({
           to={getLogsViewerPath(
             serviceCategory,
             record.service?.name || '',
-            record?.fullyQualifiedName || record?.name || ''
+            getEncodedFqn(record?.fullyQualifiedName || record?.name || '')
           )}>
           <Button
             className="p-x-xss"

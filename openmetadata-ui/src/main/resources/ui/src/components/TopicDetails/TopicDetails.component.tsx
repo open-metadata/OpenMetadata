@@ -38,6 +38,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
@@ -169,7 +170,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getTopicDetailsPath(topicFQN, activeKey));
+      history.push(getTopicDetailsPath(getDecodedFqn(topicFQN), activeKey));
     }
   };
 

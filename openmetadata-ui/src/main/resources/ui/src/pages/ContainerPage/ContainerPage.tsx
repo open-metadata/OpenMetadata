@@ -72,6 +72,7 @@ import {
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -235,7 +236,10 @@ const ContainerPage = () => {
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getContainerDetailPath(containerName, tabValue),
+        pathname: getContainerDetailPath(
+          getDecodedFqn(containerName),
+          tabValue
+        ),
       });
     }
   };
@@ -562,7 +566,7 @@ const ContainerPage = () => {
         children: (
           <ActivityFeedTab
             entityType={EntityType.CONTAINER}
-            fqn={containerName}
+            fqn={getDecodedFqn(containerName)}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
           />
