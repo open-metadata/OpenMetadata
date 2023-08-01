@@ -38,6 +38,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.jdbi.BindFQN;
 
 public interface EntityDAO<T extends EntityInterface> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
@@ -69,7 +70,7 @@ public interface EntityDAO<T extends EntityInterface> {
   int insert(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
-      @Bind("nameHashColumnValue") String nameHashColumnValue,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("json") String json);
 
   @ConnectionAwareSqlUpdate(
@@ -81,7 +82,7 @@ public interface EntityDAO<T extends EntityInterface> {
   void update(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
-      @Bind("nameHashColumnValue") String nameHashColumnValue,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
       @Bind("json") String json);
 
@@ -130,7 +131,7 @@ public interface EntityDAO<T extends EntityInterface> {
   String findByName(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
-      @Bind("name") String name,
+      @BindFQN("name") String name,
       @Define("cond") String cond);
 
   @SqlQuery("SELECT count(*) FROM <table> <cond>")
@@ -244,25 +245,27 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumnHash> = :fqnHash)")
   boolean existsByName(
-      @Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("fqnHash") String fqnHash);
+      @Define("table") String table,
+      @Define("nameColumnHash") String nameColumnHash,
+      @BindFQN("fqnHash") String fqnHash);
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @Bind("id") String id);
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(EntityInterface entity, String fqnHash) throws JsonProcessingException {
-    insert(getTableName(), getNameHashColumn(), fqnHash, JsonUtils.pojoToJson(entity));
+  default void insert(EntityInterface entity, String fqn) throws JsonProcessingException {
+    insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
-  default void update(UUID id, String fqnHash, String json) {
-    update(getTableName(), getNameHashColumn(), fqnHash, id.toString(), json);
+  default void update(UUID id, String fqn, String json) {
+    update(getTableName(), getNameHashColumn(), fqn, id.toString(), json);
   }
 
   default void update(EntityInterface entity) throws JsonProcessingException {
     update(
         getTableName(),
         getNameHashColumn(),
-        FullyQualifiedName.buildHash(entity.getFullyQualifiedName()),
+        entity.getFullyQualifiedName(),
         entity.getId().toString(),
         JsonUtils.pojoToJson(entity));
   }
@@ -292,8 +295,7 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SneakyThrows
   default T findEntityByName(String fqn, Include include) {
-    return jsonToEntity(
-        findByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn), getCondition(include)), fqn);
+    return jsonToEntity(findByName(getTableName(), getNameHashColumn(), fqn, getCondition(include)), fqn);
   }
 
   default T jsonToEntity(String json, String identity) throws IOException {
@@ -327,7 +329,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default String findJsonByFqn(String fqn, Include include) {
-    return findByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn), getCondition(include));
+    return findByName(getTableName(), getNameHashColumn(), fqn, getCondition(include));
   }
 
   default int listCount(ListFilter filter) {
@@ -372,7 +374,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default void existsByName(String fqn) {
-    if (!existsByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn))) {
+    if (!existsByName(getTableName(), getNameHashColumn(), fqn)) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }
