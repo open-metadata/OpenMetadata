@@ -61,3 +61,6 @@ AND json->>'{connection,config,database}' IS NULL;
 UPDATE dbservice_entity
 SET json = json #-'{connection,config,keyfile}'
 WHERE serviceType = 'Clickhouse';
+
+-- Clean old test connections
+TRUNCATE automations_workflow;
