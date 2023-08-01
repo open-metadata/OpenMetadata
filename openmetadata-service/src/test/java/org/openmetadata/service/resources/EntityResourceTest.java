@@ -92,6 +92,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
@@ -2575,7 +2576,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final String getEntityName(TestInfo test) {
     // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
-    return format("%s%s%s", entityType, supportedNameCharacters, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return getEntityName(test.getDisplayName().replaceAll("\\(.*\\)", ""));
+  }
+
+  public final String getEntityName(String name) {
+    // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
+    return format("%s%s%s%s", entityType, supportedNameCharacters, name, RandomStringUtils.randomAlphabetic(10));
   }
 
   /**

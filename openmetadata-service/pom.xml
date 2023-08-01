@@ -632,10 +632,9 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-surefire.version}</version>
         <configuration>
-          <reuseForks>false</reuseForks>
-          <parallel>classes</parallel>
-          <threadCount>1</threadCount>
-          <forkCount>2C</forkCount>
+          <reuseForks>true</reuseForks>
+          <parallel>methods</parallel>
+          <forkCount>1C</forkCount>
           <argLine>-Xmx512m</argLine>
         </configuration>
         <executions>
