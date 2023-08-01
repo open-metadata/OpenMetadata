@@ -49,6 +49,7 @@ import { buildTree } from 'utils/GlossaryUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import {
   DraggableBodyRowProps,
   GlossaryTermTabProps,
@@ -112,6 +113,12 @@ const GlossaryTermTab = ({
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
+      },
+      {
+        title: t('label.owner'),
+        dataIndex: 'owner',
+        key: 'owner',
+        render: (owner: Record<string, any>) => <OwnerLabel owner={owner} />,
       },
     ];
     if (permissions.Create) {
