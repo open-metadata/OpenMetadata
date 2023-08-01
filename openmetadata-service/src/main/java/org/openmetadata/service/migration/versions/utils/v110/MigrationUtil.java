@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration;
+package org.openmetadata.service.migration.versions.utils.v110;
 
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
