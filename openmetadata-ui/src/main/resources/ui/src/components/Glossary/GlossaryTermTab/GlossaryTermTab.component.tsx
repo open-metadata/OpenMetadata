@@ -36,6 +36,7 @@ import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { EntityReference } from 'generated/type/entityReference';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -118,7 +119,7 @@ const GlossaryTermTab = ({
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
-        render: (owner: Record<string, any>) => <OwnerLabel owner={owner} />,
+        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
       },
     ];
     if (permissions.Create) {
@@ -281,6 +282,7 @@ const GlossaryTermTab = ({
         <div className="d-flex justify-end">
           <Button
             className="tw-text-primary tw-rounded m-b-sm"
+            data-testid="expand-terms"
             size="small"
             type="text"
             onClick={toggleExpandAll}>
