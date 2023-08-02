@@ -121,7 +121,7 @@ jobs:
               -Dsonar.pullrequest.base=main \
               -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-              -Dsonar.pullrequest.provider=github :openmetadata-service -Dprofile=postgres-tests clean install
+              -Dsonar.pullrequest.provider=github :openmetadata-service -Dprofile=postgres-tests clean test
 
       - name: Build with Maven
         env:
