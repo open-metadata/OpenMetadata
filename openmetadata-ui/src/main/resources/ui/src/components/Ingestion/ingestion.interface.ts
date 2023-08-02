@@ -49,7 +49,7 @@ export interface IngestionProps {
   isAirflowAvailable?: boolean;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   deployIngestion: (id: string) => Promise<void>;
-  handleEnableDisableIngestion: (id: string) => void;
+  handleEnableDisableIngestion: (id: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   onIngestionWorkflowsUpdate: (paging?: string) => void;
   handleIngestionDataChange?: (data: Array<IngestionPipeline>) => void;
