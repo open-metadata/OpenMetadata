@@ -61,7 +61,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
-import { bytesToSize } from 'utils/StringsUtils';
+import { bytesToSize, getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
@@ -301,7 +301,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     history.push(
       getAddDataQualityTableTestPath(
         type,
-        `${datasetFQN ?? table?.fullyQualifiedName}`
+        `${getDecodedFqn(datasetFQN) ?? table?.fullyQualifiedName}`
       )
     );
   };

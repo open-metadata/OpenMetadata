@@ -82,7 +82,9 @@ const ActivityFeedListV1 = ({
               )
             }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph style={{ marginBottom: '0' }}>
+            <Typography.Paragraph
+              className="tw-max-w-md"
+              style={{ marginBottom: '0' }}>
               {isTaskTab && (
                 <Typography.Text strong>
                   {t('message.no-open-tasks')} <br />
