@@ -817,6 +817,9 @@ public interface CollectionDAO {
             + "(fromId = :id AND fromEntity = :entity)")
     void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
 
+    @SqlUpdate("DELETE from entity_relationship WHERE fromId = :id or toId = :id")
+    void deleteAllWithId(@Bind("id") String id);
+
     class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
       @Override
       public EntityRelationshipRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -3033,7 +3036,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameHashColumn() {
-      return "nameHash";
+      return "fqnHash";
     }
   }
 
