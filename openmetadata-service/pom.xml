@@ -549,7 +549,8 @@
               <version>${maven-surefire.version}</version>
               <configuration>
                 <reuseForks>false</reuseForks>
-                <parallel>classes</parallel>
+                <parallel>classesAndMethods</parallel>
+                <threadCount>10</threadCount>
                 <forkCount>1C</forkCount>
                 <argLine>-Xmx512m</argLine>
               </configuration>
