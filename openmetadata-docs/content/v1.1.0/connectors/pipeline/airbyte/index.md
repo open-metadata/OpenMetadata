@@ -5,6 +5,17 @@ slug: /connectors/pipeline/airbyte
 
 # Airbyte
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions (Tested) | --                           |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Airbyte connector.
 
 Configure and schedule Airbyte metadata and profiler workflows from the OpenMetadata UI:

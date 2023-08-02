@@ -5,6 +5,17 @@ slug: /connectors/pipeline/databricks-pipeline
 
 # Databricks Pipeline
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions (Tested) | --                           |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Databricks Pipeline connector.
 
 Configure and schedule Databricks Pipeline metadata workflows from the OpenMetadata UI:

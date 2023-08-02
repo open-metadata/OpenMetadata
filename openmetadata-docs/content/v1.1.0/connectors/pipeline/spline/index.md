@@ -5,6 +5,17 @@ slug: /connectors/pipeline/spline
 
 # Spline
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions (Tested) | --                           |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Spline connector.
 
 Configure and schedule Spline metadata and profiler workflows from the OpenMetadata UI:

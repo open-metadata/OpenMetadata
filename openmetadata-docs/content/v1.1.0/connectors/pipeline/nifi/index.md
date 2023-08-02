@@ -5,6 +5,17 @@ slug: /connectors/pipeline/nifi
 
 # Nifi
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions          |             1.17.0           |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Nifi connector.
 
 Configure and schedule Nifi metadata workflows from the OpenMetadata UI:
