@@ -65,3 +65,6 @@ ALTER TABLE event_subscription_entity DROP COLUMN deleted;
 UPDATE dbservice_entity
 SET json = json #-'{connection,config,keyfile}'
 WHERE serviceType = 'Clickhouse';
+
+-- Clean old test connections
+TRUNCATE automations_workflow;

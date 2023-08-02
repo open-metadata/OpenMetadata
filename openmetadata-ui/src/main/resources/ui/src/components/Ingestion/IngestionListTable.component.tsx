@@ -13,6 +13,7 @@
 
 import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
 import { isNil } from 'lodash';
@@ -44,6 +45,7 @@ function IngestionListTable({
   deleteSelection,
   permissions,
   pipelineType,
+  isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
@@ -185,6 +187,10 @@ function IngestionListTable({
         columns={tableColumn}
         data-testid="schema-table"
         dataSource={ingestionData}
+        loading={{
+          spinning: isLoading,
+          indicator: <Loader size="small" />,
+        }}
         locale={{
           emptyText: getErrorPlaceHolder(
             isRequiredDetailsAvailable,

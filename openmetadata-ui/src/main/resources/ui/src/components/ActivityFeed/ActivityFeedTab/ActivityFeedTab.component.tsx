@@ -38,6 +38,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
@@ -108,7 +109,12 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+      getEntityDetailLink(
+        entityType,
+        EntityType.TABLE === entityType ? getEncodedFqn(fqn) : fqn,
+        EntityTabs.ACTIVITY_FEED,
+        subTab
+      )
     );
     setActiveThread();
   };
