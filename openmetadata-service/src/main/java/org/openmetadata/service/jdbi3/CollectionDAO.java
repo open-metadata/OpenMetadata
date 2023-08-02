@@ -1692,10 +1692,7 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json\n"
-                + "FROM policy_entity\n"
-                + "WHERE JSON_EXTRACT(json, '$.rules[*].condition') LIKE '%matchAllTags%'\n"
-                + "   OR JSON_EXTRACT(json, '$.rules[*].condition') LIKE '%matchAnyTag%'",
+            "SELECT json FROM policy_entity WHERE JSON_EXTRACT(json, '$.rules[*].condition') LIKE '%matchAllTags%' OR JSON_EXTRACT(json, '$.rules[*].condition') LIKE '%matchAnyTag%' OR JSON_EXTRACT(json, '$.rules[*].condition') LIKE '%matchAnyGlossary%'",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -1705,7 +1702,8 @@ public interface CollectionDAO {
                 + "  SELECT *\n"
                 + "  FROM jsonb_array_elements(json->'rules') AS rule\n"
                 + "  WHERE rule->>'condition' LIKE '%matchAllTags%'\n"
-                + "     OR rule->>'condition' LIKE '%matchAnyTag%'\n"
+                + "     OR rule->>'condition' LIKE '%matchAnyTag%'\n "
+                + "     OR rule->>'condition' LIKE '%matchAnyGlossary%' )"
                 + ");",
         connectionType = POSTGRES)
     List<String> listPoliciesWithMatchTagCondition();
