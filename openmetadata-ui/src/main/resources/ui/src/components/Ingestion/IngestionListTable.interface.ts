@@ -26,6 +26,7 @@ export interface IngestionListTableProps {
   deleteSelection: SelectedRowDetails;
   ingestionData: Array<IngestionPipeline>;
   isRequiredDetailsAvailable: boolean;
+  isLoading?: boolean;
   paging: Paging;
   permissions: OperationPermission;
   pipelineType?: PipelineType;
@@ -35,7 +36,7 @@ export interface IngestionListTableProps {
   ingestionPipelinesPermission?: IngestionServicePermission;
   deployIngestion: (id: string) => Promise<void>;
   handleDeleteSelection: (row: SelectedRowDetails) => void;
-  handleEnableDisableIngestion: (id: string) => void;
+  handleEnableDisableIngestion: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate: (paging?: string) => void;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
