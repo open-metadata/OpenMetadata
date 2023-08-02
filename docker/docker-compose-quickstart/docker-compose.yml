@@ -363,7 +363,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: docker.getcollate.io/openmetadata/ingestion:1.2.0
+    image: docker.getcollate.io/openmetadata/ingestion:1.1.0
     depends_on:
       elasticsearch:
         condition: service_started
