@@ -587,7 +587,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   </Dropdown>
                 )}
 
-                {editDataProfile && (
+                {editDataProfile && !isDataQuality && (
                   <Tooltip
                     placement="topRight"
                     title={t('label.setting-plural')}>
