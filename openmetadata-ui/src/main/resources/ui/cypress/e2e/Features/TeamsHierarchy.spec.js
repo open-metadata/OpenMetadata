@@ -83,6 +83,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     teamNames.forEach((teamName) => {
       cy.get('.ant-tree-select-dropdown')
         .contains(teamName)
+        .scrollIntoView()
         .should('be.visible');
     });
 
@@ -95,6 +96,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
         .type(teamName);
       cy.get('.ant-tree-select-dropdown')
         .contains(teamName)
+        .scrollIntoView()
         .should('be.visible');
     });
   });
