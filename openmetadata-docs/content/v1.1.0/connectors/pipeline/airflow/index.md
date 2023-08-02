@@ -11,7 +11,7 @@ slug: /connectors/pipeline/airflow
 |--:--------------------------|--:---------------------------|
 | Stage                       | PROD                         |
 | Metadata                    | {% icon iconName="check" /%} |
-| Supported Versions (Tested) | >=2.2.5 <=2.6.3              |
+| Supported Versions          | >=2.2.5 <=2.6.3              |
 
 
 {% /multiTablesWrapper %}
