@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Maven MySQL Tests CI
+name: Maven Postgres Tests CI
 
 on:
   push:
@@ -121,13 +121,13 @@ jobs:
               -Dsonar.pullrequest.base=main \
               -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-              -Dsonar.pullrequest.provider=github clean test
+              -Dsonar.pullrequest.provider=github :openmetadata-service -Dprofile=postgres-tests clean test
 
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push' }}
-        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
+        run: mvn clean test
 
       - name: Clean Up
         run: |
