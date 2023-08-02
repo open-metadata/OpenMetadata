@@ -45,7 +45,7 @@ function IngestionListTable({
   deleteSelection,
   permissions,
   pipelineType,
-  isLoading,
+  isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
