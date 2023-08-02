@@ -42,7 +42,8 @@ import {
 } from '../../constants/constants';
 
 const serviceType = 'Mysql';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const serviceName =
+  'Mysql-ct-test-107711' ?? `${serviceType}-ct-test-${uuid()}`;
 
 const goToProfilerTab = () => {
   interceptURL(
@@ -63,6 +64,8 @@ const goToProfilerTab = () => {
 describe('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
+    interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
+    interceptURL('GET', `/api/v1/tables/*/tableProfile?*`, 'tableProfile');
   });
 
   it('Add and ingest mysql data', () => {
@@ -159,6 +162,8 @@ describe('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${term}?include=all`,
       'addTableTestPage'
     );
+    verifyResponseStatusCode('@systemProfile', 200);
+    verifyResponseStatusCode('@tableProfile', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="table"]').click();
 
@@ -263,6 +268,8 @@ describe('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?include=all`,
       'addTableTestPage'
     );
+    verifyResponseStatusCode('@systemProfile', 200);
+    verifyResponseStatusCode('@tableProfile', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 
@@ -306,6 +313,8 @@ describe('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?include=all`,
       'addTableTestPage'
     );
+    verifyResponseStatusCode('@systemProfile', 200);
+    verifyResponseStatusCode('@tableProfile', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 

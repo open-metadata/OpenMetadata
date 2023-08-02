@@ -299,7 +299,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
     history.push(
-      getAddDataQualityTableTestPath(type, `${table?.fullyQualifiedName}`)
+      getAddDataQualityTableTestPath(
+        type,
+        `${datasetFQN ?? table?.fullyQualifiedName}`
+      )
     );
   };
 
