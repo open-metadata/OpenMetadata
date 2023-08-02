@@ -81,10 +81,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .type(buTeamName);
 
     teamNames.forEach((teamName) => {
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .scrollIntoView()
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
 
     teamNames.forEach((teamName) => {
@@ -94,10 +91,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
         .should('be.visible')
         .click()
         .type(teamName);
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .scrollIntoView()
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
   });
 });
