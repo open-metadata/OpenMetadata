@@ -11,7 +11,7 @@ slug: /connectors/pipeline/databricks-pipeline
 |--:--------------------------|--:---------------------------|
 | Stage                       | PROD                         |
 | Metadata                    | {% icon iconName="check" /%} |
-| Supported Versions (Tested) | --                           |
+| Supported Versions          | --                           |
 
 
 {% /multiTablesWrapper %}

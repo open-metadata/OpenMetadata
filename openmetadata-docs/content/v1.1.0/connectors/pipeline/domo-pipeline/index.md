@@ -11,7 +11,7 @@ slug: /connectors/pipeline/domo-pipeline
 |--:--------------------------|--:---------------------------|
 | Stage                       | PROD                         |
 | Metadata                    | {% icon iconName="check" /%} |
-| Supported Versions (Tested) | --                           |
+| Supported Versions          | --                           |
 
 
 {% /multiTablesWrapper %}

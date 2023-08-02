@@ -11,7 +11,7 @@ slug: /connectors/pipeline/nifi
 |--:--------------------------|--:---------------------------|
 | Stage                       | PROD                         |
 | Metadata                    | {% icon iconName="check" /%} |
-| Supported Versions          |             1.17.0           |
+| Supported Versions          | Tested with 1.17.0           |
 
 
 {% /multiTablesWrapper %}
