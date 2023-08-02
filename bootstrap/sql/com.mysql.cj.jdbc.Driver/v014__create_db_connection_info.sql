@@ -72,6 +72,3 @@ WHERE serviceType = 'Clickhouse';
 
 -- Clean old test connections
 TRUNCATE automations_workflow;
-
--- Rename the table nameHash to fqnHash
-ALTER TABLE test_suite CHANGE COLUMN nameHash fqnHash VARCHAR(256);
