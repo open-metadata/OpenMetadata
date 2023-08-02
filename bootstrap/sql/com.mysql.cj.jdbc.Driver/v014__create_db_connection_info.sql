@@ -61,10 +61,6 @@ SET json = JSON_REPLACE(
 where de2.serviceType = 'Mssql' 
   and JSON_EXTRACT(json, '$.connection.config.database') is NULL;
 
--- column deleted not needed for entities that don't support soft delete
-ALTER TABLE query_entity DROP COLUMN deleted;
-ALTER TABLE event_subscription_entity DROP COLUMN deleted;
-
 -- remove keyfile from clickhouse
 UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.keyfile')
