@@ -540,9 +540,6 @@
       </build>
     </profile>
       <profile>
-        <id>all-tests</id>
-      </profile>
-      <profile>
         <id>postgres-tests</id>
         <build>
           <plugins>
@@ -553,8 +550,7 @@
               <configuration>
                 <reuseForks>false</reuseForks>
                 <parallel>classes</parallel>
-                <threadCount>1</threadCount>
-                <forkCount>2C</forkCount>
+                <forkCount>1C</forkCount>
                 <argLine>-Xmx512m</argLine>
               </configuration>
               <executions>
@@ -604,8 +600,7 @@
               <configuration>
                 <reuseForks>false</reuseForks>
                 <parallel>classes</parallel>
-                <threadCount>1</threadCount>
-                <forkCount>2C</forkCount>
+                <forkCount>1C</forkCount>
                 <argLine>-Xmx512m</argLine>
               </configuration>
               <executions>
