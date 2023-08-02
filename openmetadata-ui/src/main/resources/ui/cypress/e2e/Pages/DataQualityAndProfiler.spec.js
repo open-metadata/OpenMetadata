@@ -42,8 +42,7 @@ import {
 } from '../../constants/constants';
 
 const serviceType = 'Mysql';
-const serviceName =
-  'Mysql-ct-test-107711' ?? `${serviceType}-ct-test-${uuid()}`;
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 const goToProfilerTab = () => {
   interceptURL(
