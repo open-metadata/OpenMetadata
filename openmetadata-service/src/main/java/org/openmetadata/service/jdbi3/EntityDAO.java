@@ -357,9 +357,9 @@ public interface EntityDAO<T extends EntityInterface> {
     return listAfterWithOffset(getTableName(), limit, offset);
   }
 
-  default List<String> migrationListAfterWithOffset(int limit) {
+  default List<String> migrationListAfterWithOffset(int limit, String nameHashColumn) {
     // No ordering
-    return migrationListAfterWithOffset(getTableName(), getNameHashColumn(), limit);
+    return migrationListAfterWithOffset(getTableName(), nameHashColumn, limit);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {

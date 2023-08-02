@@ -115,11 +115,12 @@ export const getHeaderLabel = (
   return (
     <Fragment>
       {isMainNode ? (
-        <span
-          className="tw-break-words description-text tw-self-center tw-font-medium"
-          data-testid="lineage-entity">
+        <Typography.Text
+          className="description-text text-left text-md font-medium w-68"
+          data-testid="lineage-entity"
+          ellipsis={{ tooltip: true }}>
           {name || prepareLabel(type, fqn, false)}
-        </span>
+        </Typography.Text>
       ) : (
         <Typography.Title
           ellipsis

@@ -32,6 +32,7 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
@@ -205,7 +206,7 @@ const GlossaryV1 = ({
     if (!isGlossaryActive && tab !== 'terms') {
       history.push(
         getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
+          getEncodedFqn(selectedData.fullyQualifiedName || ''),
           'terms'
         )
       );
