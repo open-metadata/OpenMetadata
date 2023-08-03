@@ -16,6 +16,7 @@ from different auths and different file systems.
 
 
 from enum import Enum
+from typing import Optional
 
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
@@ -63,7 +64,7 @@ class SupportedTypes(Enum):
 
 def fetch_dataframe(
     config_source, client, file_fqn: DatalakeTableSchemaWrapper, **kwargs
-):
+) -> Optional["DataFrame"]:
     """
     Method to get dataframe for profiling
     """
@@ -87,6 +88,8 @@ def fetch_dataframe(
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
         raise err
+
+    return None
 
 
 def _get_root_col(col_name: str) -> str:

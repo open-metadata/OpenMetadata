@@ -385,7 +385,8 @@ class DatalakeSource(DatabaseServiceSource):
                 ),
                 connection_kwargs=connection_args,
             )
-            columns = self.get_columns(data_frame[0])
+            # If no data_frame (due to unsupported type), ignore
+            columns = self.get_columns(data_frame[0]) if data_frame else None
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
