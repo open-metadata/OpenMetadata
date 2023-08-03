@@ -72,14 +72,12 @@ public class ListFilter {
 
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
-    return database == null ? "" : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(database));
+    return database == null ? "" : getFqnPrefixCondition(tableName, database);
   }
 
   public String getDatabaseSchemaCondition(String tableName) {
     String databaseSchema = queryParams.get("databaseSchema");
-    return databaseSchema == null
-        ? ""
-        : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(databaseSchema));
+    return databaseSchema == null ? "" : getFqnPrefixCondition(tableName, databaseSchema);
   }
 
   public String getServiceCondition(String tableName) {
@@ -89,7 +87,7 @@ public class ListFilter {
 
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
-    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(parentFqn));
+    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
   }
 
   public String getDisabledCondition(String tableName) {
