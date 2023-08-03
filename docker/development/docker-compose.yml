@@ -211,7 +211,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - app_net
+      - local_app_net
 
   openmetadata-server:
     build:
