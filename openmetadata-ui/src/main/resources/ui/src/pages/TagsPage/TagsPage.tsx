@@ -247,9 +247,9 @@ const TagsPage = () => {
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
-        setCurrentClassificationName(response.data[0].name);
+        setCurrentClassificationName(response.data[0].fullyQualifiedName ?? '');
 
-        history.push(getTagPath(response.data[0].name));
+        history.push(getTagPath(response.data[0].fullyQualifiedName));
       }
     } catch (error) {
       const errMsg = getErrorText(
@@ -265,18 +265,18 @@ const TagsPage = () => {
     }
   };
 
-  const fetchCurrentClassification = async (name: string, update?: boolean) => {
-    if (currentClassification?.name !== name || update) {
+  const fetchCurrentClassification = async (fqn: string, update?: boolean) => {
+    if (currentClassification?.fullyQualifiedName !== fqn || update) {
       setIsLoading(true);
       try {
-        const currentClassification = await getClassificationByName(name, [
+        const currentClassification = await getClassificationByName(fqn, [
           'usageCount',
           'termCount',
         ]);
         if (currentClassification) {
           setClassifications((prevClassifications) =>
             prevClassifications.map((data) => {
-              if (data.name === name) {
+              if (data.fullyQualifiedName === fqn) {
                 return {
                   ...data,
                   termCount: currentClassification.termCount,
@@ -287,7 +287,9 @@ const TagsPage = () => {
             })
           );
           setCurrentClassification(currentClassification);
-          setCurrentClassificationName(currentClassification.name);
+          setCurrentClassificationName(
+            currentClassification.fullyQualifiedName ?? ''
+          );
           setIsLoading(false);
         } else {
           showErrorToast(t('server.unexpected-response'));
@@ -301,7 +303,7 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentClassification({ name, description: '' });
+        setCurrentClassification({ name: fqn, description: '' });
         setIsLoading(false);
       }
     }
@@ -312,7 +314,7 @@ const TagsPage = () => {
     try {
       const res = await createClassification(data);
       await fetchClassifications();
-      history.push(getTagPath(res.name));
+      history.push(getTagPath(res.fullyQualifiedName));
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -419,10 +421,16 @@ const TagsPage = () => {
         );
         if (response) {
           fetchClassifications();
-          if (currentClassification?.name !== updatedClassification.name) {
-            history.push(getTagPath(response.name));
+          if (
+            currentClassification?.fullyQualifiedName !==
+            updatedClassification.fullyQualifiedName
+          ) {
+            history.push(getTagPath(response.fullyQualifiedName));
           } else {
-            await fetchCurrentClassification(currentClassification?.name, true);
+            await fetchCurrentClassification(
+              currentClassification?.fullyQualifiedName ?? '',
+              true
+            );
           }
         } else {
           throw t('server.unexpected-response');
@@ -502,10 +510,13 @@ const TagsPage = () => {
     try {
       await createTag({
         ...data,
-        classification: currentClassification?.name ?? '',
+        classification: currentClassification?.fullyQualifiedName,
       });
 
-      fetchCurrentClassification(currentClassification?.name as string, true);
+      fetchCurrentClassification(
+        currentClassification?.fullyQualifiedName ?? '',
+        true
+      );
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -538,7 +549,7 @@ const TagsPage = () => {
         const response = await patchTag(editTag.id ?? '', patchData);
         if (response) {
           fetchCurrentClassification(
-            currentClassification?.name as string,
+            currentClassification?.fullyQualifiedName ?? '',
             true
           );
         } else {
@@ -576,7 +587,7 @@ const TagsPage = () => {
         data: {
           id: record.id as string,
           name: record.name,
-          categoryName: currentClassification?.name,
+          categoryName: currentClassification?.fullyQualifiedName,
           isCategory: false,
           status: 'waiting',
         },
@@ -611,13 +622,15 @@ const TagsPage = () => {
 
   useEffect(() => {
     currentClassification &&
-      fetchClassificationChildren(currentClassification?.name);
+      fetchClassificationChildren(
+        currentClassification?.fullyQualifiedName ?? ''
+      );
   }, [currentClassification]);
 
   const onClickClassifications = (category: Classification) => {
     setCurrentClassification(category);
-    setCurrentClassificationName(category.name);
-    history.push(getTagPath(category.name));
+    setCurrentClassificationName(category.fullyQualifiedName ?? '');
+    history.push(getTagPath(category.fullyQualifiedName));
   };
 
   const handlePageChange = useCallback(
@@ -698,7 +711,8 @@ const TagsPage = () => {
                 {getCountBadge(
                   category.termCount,
                   'self-center m-l-auto',
-                  currentClassification?.name === category.name
+                  currentClassification?.fullyQualifiedName ===
+                    category.fullyQualifiedName
                 )}
               </div>
             ))}
@@ -1090,7 +1104,9 @@ const TagsPage = () => {
                       }
                       entityFQN={currentClassification.fullyQualifiedName}
                       entityId={currentClassification.id}
-                      entityName={currentClassification.name}
+                      entityName={
+                        currentClassification.fullyQualifiedName ?? ''
+                      }
                       entityType={EntityType.CLASSIFICATION}
                       extraDropdownContent={extraDropdownContent}
                       onEditDisplayName={handleUpdateDisplayName}
@@ -1107,7 +1123,7 @@ const TagsPage = () => {
               description={currentClassification?.description ?? ''}
               entityName={
                 currentClassification?.displayName ??
-                currentClassification?.name
+                currentClassification?.fullyQualifiedName
               }
               hasEditAccess={
                 editDescriptionPermission && !isClassificationDisabled

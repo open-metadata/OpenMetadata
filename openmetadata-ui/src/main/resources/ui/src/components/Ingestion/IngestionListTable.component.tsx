@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Tooltip, Typography } from 'antd';
+import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
@@ -45,7 +45,7 @@ function IngestionListTable({
   deleteSelection,
   permissions,
   pipelineType,
-  isLoading,
+  isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
@@ -87,19 +87,14 @@ function IngestionListTable({
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
     return record.airflowConfig?.scheduleInterval ? (
-      <Popover
-        content={
-          <div>
-            {cronstrue.toString(record.airflowConfig.scheduleInterval, {
-              use24HourTimeFormat: true,
-              verbose: true,
-            })}
-          </div>
-        }
+      <Tooltip
         placement="bottom"
-        trigger="hover">
-        <span>{record.airflowConfig.scheduleInterval}</span>
-      </Popover>
+        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
+          use24HourTimeFormat: true,
+          verbose: true,
+        })}>
+        {record.airflowConfig.scheduleInterval}
+      </Tooltip>
     ) : (
       <span>--</span>
     );
