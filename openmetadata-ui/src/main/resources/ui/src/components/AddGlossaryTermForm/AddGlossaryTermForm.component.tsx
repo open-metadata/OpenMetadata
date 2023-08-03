@@ -219,7 +219,7 @@ const AddGlossaryTermForm = ({
       props: {
         'data-testid': 'description',
         initialValue: '',
-        height: '170px',
+        height: 'auto',
       },
     },
     {
