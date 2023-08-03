@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration;
+package org.openmetadata.service.migration.versions.utils.v110;
 
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
@@ -146,9 +146,15 @@ public class MigrationUtil {
       Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName, int limitParam)
       throws IOException {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
+    String nameHashColumn = dao.getNameHashColumn();
+    if (dao instanceof CollectionDAO.TestSuiteDAO) {
+      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
+      // the migrations here
+      nameHashColumn = "nameHash";
+    }
     while (true) {
       // Read from Database
-      List<String> jsons = dao.migrationListAfterWithOffset(limitParam);
+      List<String> jsons = dao.migrationListAfterWithOffset(limitParam, nameHashColumn);
       LOG.debug("[{}]Read a Batch of Size: {}", dao.getTableName(), jsons.size());
       if (jsons.isEmpty()) {
         break;
@@ -444,17 +450,12 @@ public class MigrationUtil {
       TestSuite stored;
       try {
         // If entity is found by Hash it is already migrated
-        testSuiteRepository.getByName(
-            null,
-            EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)),
-            new Fields(Set.of("id")),
-            Include.ALL);
+        testSuiteRepository.getDao().findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), Include.ALL);
       } catch (EntityNotFoundException entityNotFoundException) {
         try {
           // Check if the test Suite Exists, this brings the data on nameHash basis
           stored =
-              testSuiteRepository.getByName(
-                  null, EntityInterfaceUtil.quoteName(testSuiteFqn), new Fields(Set.of("id")), Include.ALL);
+              testSuiteRepository.getDao().findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), Include.ALL);
           testSuiteRepository.addRelationship(
               stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
           stored.setExecutable(true);
@@ -474,7 +475,8 @@ public class MigrationUtil {
                       "ingestion-bot")
                   .withExecutable(false);
           // Create
-          testSuiteRepository.create(null, newExecutableTestSuite);
+          testSuiteRepository.prepareInternal(newExecutableTestSuite);
+          testSuiteRepository.getDao().insert(newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
           // Here we aer manually adding executable relationship since the table Repository is not registered and result
           // into null for entity type table
           testSuiteRepository.addRelationship(

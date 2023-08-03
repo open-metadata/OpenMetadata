@@ -42,15 +42,10 @@ const AddGlossaryTermForm = ({
   isFormInModal = false,
   formRef: form,
 }: AddGlossaryTermFormProps) => {
-  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
-  const [owner, setOwner] = useState<EntityReference | undefined>();
   const [relatedTermsOptions, setRelatedTermsOptions] = useState<
     EntityReference[]
   >([]);
-  const selectedOwner = Form.useWatch<EntityReference | undefined>(
-    'owner',
-    form
-  );
+  const owner = Form.useWatch<EntityReference | undefined>('owner', form);
   const reviewersList =
     Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
 
@@ -115,7 +110,7 @@ const AddGlossaryTermForm = ({
       name: name.trim(),
       displayName: displayName?.trim(),
       description: description,
-      reviewers: reviewer,
+      reviewers: reviewersList,
       relatedTerms: editMode
         ? relatedTermsOptions
             .filter((item) => includes(relatedTerms, item.fullyQualifiedName))
@@ -132,7 +127,7 @@ const AddGlossaryTermForm = ({
 
   useEffect(() => {
     if (glossaryReviewers.length > 0) {
-      setReviewer(glossaryReviewers);
+      form.setFieldValue('reviewers', glossaryReviewers);
     }
     if (editMode && glossaryTerm) {
       const {
@@ -160,11 +155,11 @@ const AddGlossaryTermForm = ({
       });
 
       if (reviewers) {
-        setReviewer(reviewers);
+        form.setFieldValue('reviewers', reviewers);
       }
 
       if (owner) {
-        setOwner(owner);
+        form.setFieldValue('owner', owner);
       }
 
       if (relatedTerms && relatedTerms.length > 0) {
@@ -321,7 +316,6 @@ const AddGlossaryTermForm = ({
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
-      initialValue: [],
     },
   };
 
@@ -411,11 +405,11 @@ const AddGlossaryTermForm = ({
 
         <div className="m-t-xss">
           {getField(ownerField)}
-          {selectedOwner && (
+          {owner && (
             <div className="tw-my-2" data-testid="owner-container">
               <UserTag
-                id={selectedOwner.id}
-                name={getEntityName(selectedOwner)}
+                id={owner.id}
+                name={getEntityName(owner)}
                 size={UserTagSize.small}
               />
             </div>

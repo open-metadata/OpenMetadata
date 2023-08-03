@@ -168,7 +168,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, testSuitePermission]);
+  }, [testSuitePermission]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
