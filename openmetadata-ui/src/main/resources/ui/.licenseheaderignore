@@ -49,6 +49,8 @@
 /cypress/screenshots
 /cypress/videos
 /cypress/plugins
+/coverage
+".nyc_output"
 
 # webpack
 /webpack

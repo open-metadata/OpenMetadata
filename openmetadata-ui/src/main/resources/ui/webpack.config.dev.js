@@ -64,10 +64,12 @@ module.exports = {
       // .ts and .tsx files to be handled by ts-loader
       {
         test: /\.(ts|tsx)$/,
-        loader: 'ts-loader',
-        options: {
-          configFile: 'tsconfig.json',
-          transpileOnly: true, // Speed up compilation in development mode
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-typescript'],
+            plugins: ['istanbul'],
+          },
         },
         include: path.resolve(__dirname, 'src'), // Just the source code
       },
