@@ -90,7 +90,9 @@ const ContainerPage = () => {
   const [hasError, setHasError] = useState<boolean>(false);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
 
-  const [containerData, setContainerData] = useState<Container>();
+  const [containerData, setContainerData] = useState<Container>(
+    {} as Container
+  );
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
   >([]);
@@ -280,17 +282,11 @@ const ContainerPage = () => {
         displayName: data.displayName,
       });
 
-      setContainerData((prev) => {
-        if (isUndefined(prev)) {
-          return;
-        }
-
-        return {
-          ...prev,
-          displayName,
-          version,
-        };
-      });
+      setContainerData((prev) => ({
+        ...prev,
+        displayName,
+        version,
+      }));
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -654,7 +650,7 @@ const ContainerPage = () => {
     if (hasViewPermission) {
       fetchContainerDetail(containerName);
     }
-  }, [containerName, containerPermissions]);
+  }, [containerName, hasViewPermission]);
 
   useEffect(() => {
     fetchResourcePermission(containerName);
@@ -664,13 +660,13 @@ const ContainerPage = () => {
     if (tab === EntityTabs.CHILDREN && hasViewPermission) {
       fetchContainerChildren(containerName);
     }
-  }, [tab, containerName]);
+  }, [tab, containerName, hasViewPermission]);
 
   useEffect(() => {
     if (hasViewPermission) {
       getEntityFeedCount();
     }
-  }, [containerName]);
+  }, [containerName, hasViewPermission]);
 
   // Rendering
   if (isLoading) {
