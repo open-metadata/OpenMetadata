@@ -1,7 +1,9 @@
 package org.openmetadata.service.resources;
 
 import java.lang.reflect.Field;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ResourceFactory {
   private static Object getResourceByCollectionPath(String collectionPath) {
     if (!collectionPath.startsWith("/")) {
@@ -22,7 +24,7 @@ public class ResourceFactory {
       Object value = field.get(null);
       return (T) getResourceByCollectionPath((String) value);
     } catch (NoSuchFieldException | IllegalAccessException e) {
-      e.printStackTrace();
+      LOG.error("Unable to fetch resource class.");
       return null;
     }
   }
