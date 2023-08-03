@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -25,6 +27,11 @@ public class TopicIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
+    if (topic.getOwner() != null) {
+      EntityReference owner = topic.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      topic.setOwner(owner);
+    }
     Map<String, Object> doc = JsonUtils.getMap(topic);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> fieldSuggest = new ArrayList<>();
