@@ -115,13 +115,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-          mvn -pl :openmetadata-service -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-              -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-              -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-              -Dsonar.pullrequest.base=main \
-              -Dsonar.pullrequest.github.repository=OpenMetadata \
-              -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-              -Dsonar.pullrequest.provider=github :openmetadata-service -Dprofile=postgres-tests clean test
+          mvn -pl :openmetadata-service -Dprofile=postgres-tests clean test
 
       - name: Build with Maven
         env:
