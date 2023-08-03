@@ -16,6 +16,7 @@ from different auths and different file systems.
 
 
 from enum import Enum
+from typing import Optional
 
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
@@ -30,7 +31,6 @@ from metadata.utils.datalake.json_dispatch import read_json_dispatch
 from metadata.utils.datalake.parquet_dispatch import read_parquet_dispatch
 from metadata.utils.logger import utils_logger
 
-logger = utils_logger()
 logger = utils_logger()
 
 
@@ -64,7 +64,7 @@ class SupportedTypes(Enum):
 
 def fetch_dataframe(
     config_source, client, file_fqn: DatalakeTableSchemaWrapper, **kwargs
-):
+) -> Optional["DataFrame"]:
     """
     Method to get dataframe for profiling
     """
@@ -86,6 +86,9 @@ def fetch_dataframe(
         logger.error(
             f"Error fetching file {bucket_name}/{key} using {config_source.__class__.__name__} due to: {err}"
         )
+        # Here we need to blow things up. Without the dataframe we cannot move forward
+        raise err
+
     return None
 
 
