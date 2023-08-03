@@ -174,6 +174,13 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     .scrollIntoView()
     .should('be.visible')
     .type('https://test.com');
+
+  // check for parent glossary reviewer
+  if (glossary.name === NEW_GLOSSARY.name) {
+    cy.get('[data-testid="user-tag"]')
+      .contains(glossary.reviewer)
+      .should('be.visible');
+  }
 };
 
 const createGlossaryTerm = (term, glossary, isMutually = false) => {
@@ -318,10 +325,7 @@ const updateTerms = (newTerm) => {
     .click()
     .type(newTerm);
   verifyResponseStatusCode('@getGlossaryTerm', 200);
-  cy.get('.ant-select-item-option-content')
-    .contains(newTerm)
-    .should('be.visible')
-    .click();
+  cy.get('.ant-select-item-option-content').contains(newTerm).click();
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   verifyResponseStatusCode('@saveGlossaryTermData', 200);
 

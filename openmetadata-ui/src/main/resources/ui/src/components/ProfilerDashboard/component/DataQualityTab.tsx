@@ -38,6 +38,7 @@ import { isUndefined, sortBy } from 'lodash';
 import QueryString from 'qs';
 import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
+import { getEncodedFqn, replacePlus } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
@@ -47,7 +48,6 @@ import {
   TestCaseResult,
 } from '../../../generated/tests/testCase';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
@@ -198,7 +198,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     data-testid="table-link"
                     to={{
-                      pathname: getTableTabPath(tableFqn, 'profiler'),
+                      pathname: getTableTabPath(
+                        getEncodedFqn(tableFqn),
+                        'profiler'
+                      ),
                       search: QueryString.stringify({
                         activeTab: TableProfilerTab.DATA_QUALITY,
                       }),
@@ -218,13 +221,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 150,
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
-
           if (isColumn) {
             const name = getNameFromFQN(
-              getDecodedFqn(
-                getEntityFqnFromEntityLink(entityLink, isColumn),
-                true
-              )
+              replacePlus(getEntityFqnFromEntityLink(entityLink, isColumn))
             );
 
             return name;

@@ -44,6 +44,7 @@ function PipelineActions({
 
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+  const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
 
@@ -77,6 +78,17 @@ function PipelineActions({
         setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
       })
       .catch(() => setCurrDeployId({ id: '', state: '' }));
+  };
+
+  const onPauseUnpauseClick = async (id: string) => {
+    setCurrPauseId({ id, state: 'waiting' });
+    try {
+      await handleEnableDisableIngestion(id);
+      setCurrPauseId({ id, state: 'success' });
+      setTimeout(() => setCurrPauseId({ id: '', state: '' }), 1000);
+    } catch {
+      setCurrPauseId({ id: '', state: '' });
+    }
   };
 
   const handleUpdate = (ingestion: IngestionPipeline) => {
@@ -168,8 +180,8 @@ function PipelineActions({
               data-testid="pause"
               disabled={getIngestionPermission(record.name)}
               type="link"
-              onClick={() => handleEnableDisableIngestion(record.id || '')}>
-              {t('label.pause')}
+              onClick={() => onPauseUnpauseClick(record.id || '')}>
+              {getLoadingStatus(currPauseId, record.id, t('label.pause'))}
             </Button>
           </>
         ) : (
@@ -178,8 +190,8 @@ function PipelineActions({
             data-testid="unpause"
             disabled={getIngestionPermission(record.name)}
             type="link"
-            onClick={() => handleEnableDisableIngestion(record.id || '')}>
-            {t('label.unpause')}
+            onClick={() => onPauseUnpauseClick(record.id || '')}>
+            {getLoadingStatus(currPauseId, record.id, t('label.unpause'))}
           </Button>
         )}
         <Divider className="border-gray" type="vertical" />

@@ -38,10 +38,52 @@ const reactOnFeed = (feedSelector, reaction) => {
   ).click();
 };
 
-describe('Recently viwed data assets', () => {
+describe('Activity feed', () => {
   beforeEach(() => {
     cy.login();
     cy.get("[data-testid='welcome-screen-close-btn']").click();
+  });
+
+  it('Create feed', () => {
+    interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
+    interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=**teamType:Group&from=0&size=15&index=team_search_index',
+      'getTeams'
+    );
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    const value = SEARCH_ENTITY_TABLE.table_4;
+    const OWNER = 'admin';
+    interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
+
+    visitEntityDetailsPage(
+      value.term,
+      value.serviceName,
+      value.entity,
+      undefined,
+      value.entityType
+    );
+    verifyResponseStatusCode('@entityPermission', 200);
+    verifyResponseStatusCode('@activityFeed', 200);
+
+    cy.get('[data-testid="edit-owner"]').click();
+
+    cy.get('.ant-tabs [id*=tab-users]').click();
+    verifyResponseStatusCode('@getUsers', 200);
+
+    interceptURL(
+      'GET',
+      `api/v1/search/query?q=*${encodeURI(OWNER)}*`,
+      'searchOwner'
+    );
+
+    cy.get('[data-testid="owner-select-users-search-bar"]').type(OWNER);
+
+    verifyResponseStatusCode('@searchOwner', 200);
+
+    cy.get(`.ant-popover [title="${OWNER}"]`).click();
+    verifyResponseStatusCode('@patchOwner', 200);
   });
 
   it('Feed widget should be visible', () => {
