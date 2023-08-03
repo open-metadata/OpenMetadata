@@ -62,7 +62,6 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -115,11 +114,12 @@ export const getHeaderLabel = (
   return (
     <Fragment>
       {isMainNode ? (
-        <span
-          className="description-text self-center font-medium"
-          data-testid="lineage-entity">
+        <Typography.Text
+          className="description-text text-left text-md font-medium w-68"
+          data-testid="lineage-entity"
+          ellipsis={{ tooltip: true }}>
           {name || prepareLabel(type, fqn, false)}
-        </span>
+        </Typography.Text>
       ) : (
         <Typography.Title
           ellipsis
@@ -392,40 +392,6 @@ export const getLineageData = (
   (entityLineage.nodes || []).forEach((n) => lineageData.push(makeNode(n)));
 
   return { node: lineageData, edge: lineageEdgesV1 };
-};
-
-export const getDataLabel = (
-  displayName?: string,
-  fqn = '',
-  isTextOnly = false,
-  type?: string
-) => {
-  const databaseName = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
-  const schemaName = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
-
-  let label = '';
-  if (displayName) {
-    label = displayName;
-  } else {
-    label = prepareLabel(type as string, fqn);
-  }
-
-  if (isTextOnly) {
-    return label;
-  } else {
-    return (
-      <span className="self-center w-72" data-testid="lineage-entity">
-        {type === 'table' && databaseName && schemaName ? (
-          <span className="d-block text-xs custom-lineage-heading">
-            {databaseName}
-            {FQN_SEPARATOR_CHAR}
-            {schemaName}
-          </span>
-        ) : null}
-        <span className="text-base">{label}</span>
-      </span>
-    );
-  }
 };
 
 export const getDeletedLineagePlaceholder = () => {

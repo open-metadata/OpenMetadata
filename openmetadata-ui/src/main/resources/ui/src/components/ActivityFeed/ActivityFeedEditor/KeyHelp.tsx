@@ -20,7 +20,7 @@ export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
   return editorValue.length > 2 ? (
     <div className="absolute ">
       <p
-        className="text-grey-muted "
+        className="text-grey-muted m-t-xss"
         data-testid="key-help"
         style={{ fontSize: '10px' }}>
         <kbd>{t('label.shift')}</kbd>

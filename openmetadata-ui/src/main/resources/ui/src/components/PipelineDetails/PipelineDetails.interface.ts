@@ -13,14 +13,13 @@
 
 import { Operation } from 'fast-json-patch';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;
   pipelineDetails: Pipeline;
-  followers: Array<EntityReference>;
   paging: Paging;
+  fetchPipeline: () => void;
   followPipelineHandler: (fetchCount: () => void) => Promise<void>;
   unFollowPipelineHandler: (fetchCount: () => void) => Promise<void>;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;

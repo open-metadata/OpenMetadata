@@ -55,11 +55,6 @@ describe('Test Custom Logo Config Page', () => {
 
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
 
-    // card header
-    expect(
-      screen.getByText('label.custom-logo-configuration')
-    ).toBeInTheDocument();
-
     // logo
     expect(screen.getByText('label.logo-url')).toBeInTheDocument();
     expect(screen.getByTestId('logo-url-info')).toBeInTheDocument();

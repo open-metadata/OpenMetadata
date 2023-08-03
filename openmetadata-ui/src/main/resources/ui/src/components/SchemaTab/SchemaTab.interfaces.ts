@@ -25,13 +25,11 @@ export type Props = {
   columnName: string;
   tableConstraints: Table['tableConstraints'];
   sampleData?: TableData;
-  hasDescriptionEditAccess?: boolean;
+  hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   isReadOnly?: boolean;
-  entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
-  entityFieldTasks?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-  onEntityFieldSelect?: (value: string) => void;
+  entityFqn: string;
+  entityFieldThreads: EntityFieldThreads[];
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (columns: Table['columns']) => Promise<void>;
 };

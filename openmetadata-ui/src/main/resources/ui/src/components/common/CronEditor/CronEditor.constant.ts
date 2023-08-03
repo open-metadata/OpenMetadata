@@ -207,4 +207,6 @@ export const SELECTED_PERIOD_OPTIONS = {
   day: 'selectedDayOption',
   week: 'selectedWeekOption',
   minute: 'selectedMinuteOption',
+  month: 'selectedMonthOption',
+  year: 'selectedYearOption',
 };

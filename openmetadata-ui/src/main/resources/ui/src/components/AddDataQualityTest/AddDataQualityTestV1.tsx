@@ -33,6 +33,7 @@ import {
 import { useHistory, useParams } from 'react-router-dom';
 import { createExecutableTestSuite, createTestCase } from 'rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { getTableTabPath } from '../../constants/constants';
 import {
   allowedServiceForOperationGraph,
@@ -100,7 +101,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const handleRedirection = () => {
     history.push({
       pathname: getTableTabPath(
-        table.fullyQualifiedName ?? '',
+        getEncodedFqn(table.fullyQualifiedName ?? ''),
         EntityTabs.PROFILER
       ),
       search: Qs.stringify({ activeTab: TableProfilerTab.DATA_QUALITY }),

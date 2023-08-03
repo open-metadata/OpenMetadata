@@ -66,11 +66,11 @@
     },
     "children": {
       "description": "Other glossary terms that are children of this glossary term.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "relatedTerms": {
       "description": "Other glossary terms that are related to this glossary term.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "references": {
       "description": "Link to a reference from an external glossary.",
@@ -97,7 +97,7 @@
     },
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "owner": {
       "description": "Owner of this glossary term.",

@@ -70,6 +70,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         <Col span={20}>
           {data.length > 0 ? (
             <ResponsiveContainer
+              className="custom-legend"
               debounce={200}
               id={`${name}_graph`}
               minHeight={300}>

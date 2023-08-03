@@ -15,9 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
@@ -26,6 +29,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.MlModel;
@@ -37,16 +41,20 @@ import org.openmetadata.schema.type.MlFeatureSource;
 import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension,followers";
-  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension,followers";
+  private static final String MODEL_UPDATE_FIELDS = "dashboard";
+  private static final String MODEL_PATCH_FIELDS = "dashboard";
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -66,11 +74,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(MlModel mlModel) {
-    return FullyQualifiedName.buildHash(mlModel.getFullyQualifiedName());
   }
 
   @Override
@@ -172,6 +175,16 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     setMlFeatureSourcesLineage(mlModel);
   }
 
+  @Override
+  public MlModel setInheritedFields(MlModel mlModel, Fields fields) throws IOException {
+    // If mlModel does not have domain, then inherit it from parent MLModel service
+    if (fields.contains(FIELD_DOMAIN) && mlModel.getDomain() == null) {
+      MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
+      mlModel.withDomain(service.getDomain());
+    }
+    return mlModel;
+  }
+
   /**
    * If we have the properties MLFeatures -> MlFeatureSources and the feature sources have properly informed the Data
    * Source EntityRef, then we will automatically build the lineage between tables and ML Model.
@@ -219,6 +232,35 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
     }
     return allTags;
+  }
+
+  @Override
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
+      throws IOException {
+    if (entityLink.getFieldName().equals("mlFeatures")) {
+      MlModel mlModel = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+      MlFeature mlFeature =
+          mlModel.getMlFeatures().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("chart", entityLink.getArrayFieldName())));
+
+      String origJson = JsonUtils.pojoToJson(mlModel);
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        mlFeature.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        mlFeature.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(mlModel);
+      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+      patch(null, mlModel.getId(), user, patch);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
   }
 
   private void populateService(MlModel mlModel) throws IOException {

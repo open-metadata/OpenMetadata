@@ -39,7 +39,7 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 {%/note%}
 
-## Postgres (version between 12.0 and 14.6)
+## Postgres (version between 12.0 or greater)
 
 To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
 {%note%}
@@ -174,6 +174,10 @@ We support
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.1 or Amazon OpenSearch engine version upto 1.3
 - Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
+Note:-
+    When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,
+as you can see in the ElasticSearch configuration example. 
+
 For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata bare metal systems to connect with Database and ElasticSearch.
@@ -211,6 +215,7 @@ OM_DATABASE='<YOUR_POSTGRES_DATABASE_NAME>'
 
 ### Configure ElasticSearch Connection
 ```
+SEARCH_TYPE = 'opensearch'
 ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
 ELASTICSEARCH_USER='<ES_USERNAME>'
 ELASTICSEARCH_CONNECTION_TIMEOUT_SECS='5'

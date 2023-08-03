@@ -129,7 +129,7 @@ const SelectServiceType = ({
                 }
               )}
               data-testid={type}
-              flex="100px"
+              flex="114px"
               key={type}
               onClick={() => handleServiceTypeClick(type)}>
               <Space

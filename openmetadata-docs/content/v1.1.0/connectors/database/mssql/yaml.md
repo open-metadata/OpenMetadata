@@ -37,6 +37,8 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
@@ -128,6 +130,13 @@ This is a sample config for MSSQL:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+**ingestAllDatabases**: Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+
+{% /codeInfo %}
+
+
 
 #### Source Configuration - Source Config
 
@@ -153,7 +162,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="workflow-config.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config.md" /%}
 
 #### Advanced Configuration
 

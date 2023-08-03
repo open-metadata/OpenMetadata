@@ -39,10 +39,6 @@ const mockCustomProperties = [
   },
 ];
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  isEven: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -65,6 +61,20 @@ jest.mock('rest/metadataTypeAPI', () => ({
       customProperties: mockCustomProperties,
     })
   ),
+}));
+
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
 }));
 
 const mockTableDetails = {} as EntityDetails;

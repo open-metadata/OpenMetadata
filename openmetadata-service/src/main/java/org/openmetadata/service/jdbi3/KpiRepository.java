@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -25,9 +24,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -37,9 +34,9 @@ import org.openmetadata.service.util.ResultList;
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
   public static final String COLLECTION_PATH = "/v1/kpi";
-  private static final String UPDATE_FIELDS = "owner,targetDefinition,dataInsightChart,startDate,endDate,metricType";
+  private static final String UPDATE_FIELDS = "targetDefinition,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
-      "owner,targetDefinition,dataInsightChart,description,owner,startDate,endDate,metricType";
+      "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
   public KpiRepository(CollectionDAO dao) {
@@ -150,14 +147,6 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
   private EntityReference getDataInsightChart(Kpi kpi) throws IOException {
     return getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CHART, true);
-  }
-
-  public void validateDataInsightChartOneToOneMapping(UUID chartId) {
-    // Each Chart has one unique Kpi mapping
-    List<EntityRelationshipRecord> recordList = findTo(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
-    if (!recordList.isEmpty() && !chartId.equals(recordList.get(0).getId())) {
-      throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
-    }
   }
 
   public KpiResult getKpiResult(String fqn) throws IOException {

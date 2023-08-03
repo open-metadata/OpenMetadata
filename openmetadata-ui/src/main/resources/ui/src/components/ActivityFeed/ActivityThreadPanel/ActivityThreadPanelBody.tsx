@@ -14,6 +14,7 @@
 import { Button, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
@@ -31,14 +32,12 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
-import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
@@ -139,8 +138,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     setConfirmationState(data);
   };
 
-  const entityField = getEntityField(threadLink);
-
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
   };
@@ -238,7 +235,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
-            entityField={entityField as string}
+            entityLink={selectedThread?.about ?? threadLink}
             noun={
               isConversationType
                 ? t('label.conversation-plural')
@@ -344,10 +341,14 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         )}
       </div>
-      <DeleteConfirmationModal
+      <ConfirmationModal
+        bodyText={t('message.confirm-delete-message')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.delete')}
+        header={t('message.delete-message-question-mark')}
         visible={confirmationState.state}
-        onDelete={onPostDelete}
-        onDiscard={onDiscard}
+        onCancel={onDiscard}
+        onConfirm={onPostDelete}
       />
     </Fragment>
   );

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/container';
 import { EntityReference } from 'generated/entity/type';
@@ -33,6 +34,7 @@ export interface EntityLineageProp {
   deleted?: boolean;
   hasEditAccess?: boolean;
   isFullScreen?: boolean;
+  entity?: SourceType;
 }
 
 export interface Edge {

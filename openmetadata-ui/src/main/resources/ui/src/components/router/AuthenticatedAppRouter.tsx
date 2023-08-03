@@ -12,7 +12,6 @@
  */
 
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
-import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -64,7 +63,7 @@ const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/BotDetailsPage/BotDetailsPage'))
 );
 const ServicePage = withSuspenseFallback(
-  React.lazy(() => import('pages/service'))
+  React.lazy(() => import('pages/ServiceDetailsPage/ServiceDetailsPage'))
 );
 
 const SwaggerPage = withSuspenseFallback(
@@ -116,7 +115,7 @@ const DashboardDetailsPage = withSuspenseFallback(
   )
 );
 const DatabaseDetails = withSuspenseFallback(
-  React.lazy(() => import('pages/database-details/index'))
+  React.lazy(() => import('pages/DatabaseDetailsPage/DatabaseDetailsPage'))
 );
 const DatabaseSchemaPageComponent = withSuspenseFallback(
   React.lazy(
@@ -563,11 +562,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
-      <Route
-        exact
-        component={LineagePage}
-        path={ROUTES.LINEAGE_FULL_SCREEN_VIEW}
-      />
 
       {/* keep these route above the setting route always */}
       <AdminProtectedRoute

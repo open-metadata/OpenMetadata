@@ -126,15 +126,19 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
+jest.mock('components/TableTags/TableTags.component', () => {
+  return jest.fn().mockReturnValue(<p>TableTags</p>);
+});
+
+jest.mock('components/TableDescription/TableDescription.component', () => {
+  return jest.fn().mockReturnValue(<p>TableDescription</p>);
+});
+
 jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest
     .fn()
     .mockReturnValue(<p> ModalWithMarkdownEditor</p>),
 }));
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockImplementation(({ tag }) => <span>{tag.tagFQN}</span>);
-});
 
 jest.mock('utils/TableUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
@@ -152,6 +156,16 @@ const mockProp = {
   mlFeatures: mockData['mlFeatures'] as Mlmodel['mlFeatures'],
   handleFeaturesUpdate,
   permissions: DEFAULT_ENTITY_PERMISSION,
+  onThreadLinkSelect: jest.fn(),
+  entityFieldThreads: [
+    {
+      entityLink:
+        '<#E::mlmodel::mlflow_svc.eta_predictions::mlFeatures::sales::description>',
+      count: 1,
+      entityField: 'mlFeatures::sales::description',
+    },
+  ],
+  entityFqn: 'mlflow_svc.eta_predictions',
 };
 
 describe('Test MlModel feature list', () => {

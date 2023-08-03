@@ -26,8 +26,8 @@ import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
-  private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers,query";
-  private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,votes,followers";
+  private static final String QUERY_PATCH_FIELDS = "users,query";
+  private static final String QUERY_UPDATE_FIELDS = "users,votes";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -53,20 +53,14 @@ public class QueryRepository extends EntityRepository<Query> {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
-    // null means it will find all the relationships to Query from any entity type
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
-
-    return EntityUtil.getEntityReferences(records);
+    return findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
   }
 
   public List<EntityReference> getQueryUsers(Query queryEntity) throws IOException {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
-    return EntityUtil.populateEntityReferences(records, USER);
+    return findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
   }
 
   @Override

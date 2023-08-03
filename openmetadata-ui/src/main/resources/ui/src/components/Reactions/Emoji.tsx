@@ -99,6 +99,17 @@ const Emoji: FC<EmojiProps> = ({
     setIsClicked(false);
   }, [reaction]);
 
+  const element = React.createElement(
+    'g-emoji',
+    {
+      alias: reactionObject?.alias,
+      className: 'd-flex',
+      'data-testid': 'emoji',
+      'fallback-src': image,
+    },
+    reactionObject?.emoji
+  );
+
   return (
     <Popover
       content={popoverContent}
@@ -116,17 +127,7 @@ const Emoji: FC<EmojiProps> = ({
         size="small"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
-        <div
-          dangerouslySetInnerHTML={{
-            __html: `<g-emoji
-          alias={${reactionObject?.alias}}
-          className="d-flex"
-          data-testid="emoji"
-          fallback-src={${image}}>
-          ${reactionObject?.emoji}
-        </g-emoji>`,
-          }}
-        />
+        {element}
 
         <span className="text-xs m-l-xss self-center" data-testid="emoji-count">
           {reactionList.length}

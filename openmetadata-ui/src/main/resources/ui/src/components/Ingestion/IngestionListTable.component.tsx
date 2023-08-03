@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Tooltip, Typography } from 'antd';
+import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
-import { isEmpty, isNil } from 'lodash';
+import { isNil } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLogsViewerPath } from '../../utils/RouterUtils';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
@@ -36,7 +36,7 @@ function IngestionListTable({
   paging,
   handleEnableDisableIngestion,
   onIngestionWorkflowsUpdate,
-  servicePermission,
+  ingestionPipelinesPermission,
   serviceCategory,
   serviceName,
   handleDeleteSelection,
@@ -45,6 +45,7 @@ function IngestionListTable({
   deleteSelection,
   permissions,
   pipelineType,
+  isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
@@ -86,19 +87,14 @@ function IngestionListTable({
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
     return record.airflowConfig?.scheduleInterval ? (
-      <Popover
-        content={
-          <div>
-            {cronstrue.toString(record.airflowConfig.scheduleInterval, {
-              use24HourTimeFormat: true,
-              verbose: true,
-            })}
-          </div>
-        }
+      <Tooltip
         placement="bottom"
-        trigger="hover">
-        <span>{record.airflowConfig.scheduleInterval}</span>
-      </Popover>
+        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
+          use24HourTimeFormat: true,
+          verbose: true,
+        })}>
+        {record.airflowConfig.scheduleInterval}
+      </Tooltip>
     ) : (
       <span>--</span>
     );
@@ -112,11 +108,11 @@ function IngestionListTable({
         handleDeleteSelection={handleDeleteSelection}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
         handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+        ingestionPipelinesPermission={ingestionPipelinesPermission}
         isRequiredDetailsAvailable={isRequiredDetailsAvailable}
         record={record}
         serviceCategory={serviceCategory}
         serviceName={serviceName}
-        servicePermission={servicePermission}
         triggerIngestion={triggerIngestion}
         onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
       />
@@ -166,11 +162,10 @@ function IngestionListTable({
       triggerIngestion,
       isRequiredDetailsAvailable,
       handleEnableDisableIngestion,
-      servicePermission,
+      ingestionPipelinesPermission,
       serviceName,
       deleteSelection,
       handleDeleteSelection,
-      getLogsViewerPath,
       serviceCategory,
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
@@ -185,13 +180,24 @@ function IngestionListTable({
     [paging]
   );
 
-  return !isEmpty(ingestionData) ? (
-    <div data-testid="ingestion-table">
+  return (
+    <div className="tw-mb-6" data-testid="ingestion-table">
       <Table
         bordered
         columns={tableColumn}
         data-testid="schema-table"
         dataSource={ingestionData}
+        loading={{
+          spinning: isLoading,
+          indicator: <Loader size="small" />,
+        }}
+        locale={{
+          emptyText: getErrorPlaceHolder(
+            isRequiredDetailsAvailable,
+            ingestionData.length,
+            pipelineType
+          ),
+        }}
         pagination={false}
         rowKey="name"
         size="small"
@@ -207,12 +213,6 @@ function IngestionListTable({
         />
       )}
     </div>
-  ) : (
-    getErrorPlaceHolder(
-      isRequiredDetailsAvailable,
-      ingestionData.length,
-      pipelineType
-    )
   );
 }
 

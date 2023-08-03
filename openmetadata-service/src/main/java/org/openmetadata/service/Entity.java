@@ -23,9 +23,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
@@ -259,11 +261,6 @@ public final class Entity {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
-  public static Fields getFields(String entityType, String fields) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    return entityRepository.getFields(fields);
-  }
-
   public static Fields getFields(String entityType, List<String> fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(String.join(",", fields));
@@ -355,9 +352,9 @@ public final class Entity {
   /**
    * Get list of all the entity field names from JsonPropertyOrder annotation from generated java class from entity.json
    */
-  public static <T> List<String> getEntityFields(Class<T> clz) {
+  public static <T> Set<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
-    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
+    return new HashSet<>(Arrays.asList(propertyOrder.value()));
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */

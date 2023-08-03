@@ -13,7 +13,6 @@
 
 import {
   Button,
-  Card,
   Form,
   Input,
   Radio,
@@ -23,17 +22,14 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { AuthProvider } from 'generated/settings/settings';
 import { isEmpty, isUndefined, map, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
 import { getEntityName } from 'utils/EntityUtils';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
-import {
-  passwordRegex,
-  validEmailRegEx,
-} from '../../constants/regex.constants';
-import { AuthTypes } from '../../enums/signin.enum';
+import { EMAIL_REG_EX, passwordRegex } from '../../constants/regex.constants';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
 import {
   CreatePasswordType,
@@ -93,8 +89,8 @@ const CreateUser = ({
 
   const isAuthProviderBasic = useMemo(
     () =>
-      authConfig?.provider === AuthTypes.BASIC ||
-      authConfig?.provider === AuthTypes.LDAP,
+      authConfig?.provider === AuthProvider.Basic ||
+      authConfig?.provider === AuthProvider.LDAP,
     [authConfig]
   );
 
@@ -642,7 +638,7 @@ const CreateUser = ({
   }, []);
 
   return (
-    <Card className="p-xs">
+    <>
       <h6 className="text-base">
         {t('label.create-entity', {
           entity: forceBot ? t('label.bot') : t('label.user'),
@@ -659,7 +655,7 @@ const CreateUser = ({
           name="email"
           rules={[
             {
-              pattern: validEmailRegEx,
+              pattern: EMAIL_REG_EX,
               required: true,
               type: 'email',
               message: t('message.field-text-is-invalid', {
@@ -670,7 +666,7 @@ const CreateUser = ({
               type: 'email',
               required: true,
               validator: async (_, value) => {
-                if (validEmailRegEx.test(value) && !forceBot) {
+                if (EMAIL_REG_EX.test(value) && !forceBot) {
                   const isEmailAlreadyExists = await checkEmailInUse(value);
                   if (isEmailAlreadyExists) {
                     return Promise.reject(
@@ -900,6 +896,9 @@ const CreateUser = ({
               <Select
                 data-testid="roles-dropdown"
                 disabled={isEmpty(roles)}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').includes(input)
+                }
                 mode="multiple"
                 options={roleOptions}
                 placeholder={t('label.please-select-entity', {
@@ -938,7 +937,7 @@ const CreateUser = ({
           </Button>
         </Space>
       </Form>
-    </Card>
+    </>
   );
 };
 

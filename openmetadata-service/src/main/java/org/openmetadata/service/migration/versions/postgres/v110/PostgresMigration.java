@@ -1,8 +1,8 @@
 package org.openmetadata.service.migration.versions.postgres.v110;
 
-import static org.openmetadata.service.migration.MigrationUtil.dataMigrationFQNHashing;
-import static org.openmetadata.service.migration.MigrationUtil.performSqlExecutionAndUpdation;
-import static org.openmetadata.service.migration.MigrationUtil.testSuitesMigration;
+import static org.openmetadata.service.migration.versions.utils.v110.MigrationUtil.dataMigrationFQNHashing;
+import static org.openmetadata.service.migration.versions.utils.v110.MigrationUtil.performSqlExecutionAndUpdation;
+import static org.openmetadata.service.migration.versions.utils.v110.MigrationUtil.testSuitesMigration;
 
 import java.util.Arrays;
 import java.util.List;
@@ -58,7 +58,12 @@ public class PostgresMigration implements MigrationStep {
 
   @Override
   public void runDataMigration() {
-    dataMigrationFQNHashing(handle, collectionDAO);
+    String envVariableValue = System.getenv("MIGRATION_LIMIT_PARAM");
+    if (envVariableValue != null) {
+      dataMigrationFQNHashing(handle, collectionDAO, Integer.parseInt(envVariableValue));
+    } else {
+      dataMigrationFQNHashing(handle, collectionDAO, 1000);
+    }
   }
 
   @Override

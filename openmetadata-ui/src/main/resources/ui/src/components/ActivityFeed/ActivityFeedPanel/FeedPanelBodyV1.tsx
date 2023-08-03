@@ -26,6 +26,7 @@ interface FeedPanelBodyPropV1 {
   isOpenInDrawer?: boolean;
   onFeedClick?: (feed: Thread) => void;
   isActive?: boolean;
+  isForFeedTab?: boolean;
   hidePopover: boolean;
 }
 
@@ -37,6 +38,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   onFeedClick,
   isActive,
   hidePopover = false,
+  isForFeedTab = false,
 }) => {
   const { t } = useTranslation();
   const mainFeed = {
@@ -64,6 +66,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           feed={feed}
           hidePopover={hidePopover}
           isActive={isActive}
+          isForFeedTab={isForFeedTab}
           isOpenInDrawer={isOpenInDrawer}
           key={feed.id}
           post={mainFeed}

@@ -16,6 +16,7 @@ Define Median function
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
+from sqlalchemy.sql.sqltypes import DECIMAL
 
 from metadata.profiler.metrics.core import CACHE
 from metadata.profiler.orm.registry import Dialects
@@ -48,7 +49,11 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return "if(isNaN(quantile(%s)(%s)),null,quantile(%s)(%s))" % ((percentile, col) * 2)
+    quantile_str = f"quantile({percentile})({col})"
+    null_check = (
+        "isNull" if isinstance(elements.clauses.clauses[0].type, DECIMAL) else "isNaN"
+    )
+    return f"if({null_check}({quantile_str}), null, {quantile_str})"
 
 
 # pylint: disable=unused-argument
@@ -58,7 +63,7 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return 'approx_percentile("%s", %.2f)' % (col, percentile)
+    return "approx_percentile(%s, %.2f)" % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.MSSQL)

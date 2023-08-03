@@ -19,6 +19,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
@@ -47,7 +48,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -55,8 +55,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final String UPDATE_FIELDS = "tags,references,relatedTerms,reviewers,owner,synonyms";
-  private static final String PATCH_FIELDS = "tags,references,relatedTerms,reviewers,owner,synonyms";
+  private static final String UPDATE_FIELDS = "references,relatedTerms,reviewers,synonyms";
+  private static final String PATCH_FIELDS = "references,relatedTerms,reviewers,synonyms";
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -85,10 +85,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     GlossaryTerm parentTerm = null;
     if (fields.contains(FIELD_OWNER) && glossaryTerm.getOwner() == null) {
       if (glossaryTerm.getParent() != null) {
-        parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("owner,reviewers"));
+        parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("owner,reviewers,domain"));
         glossaryTerm.setOwner(parentTerm.getOwner());
       } else {
-        glossary = Entity.getEntity(glossaryTerm.getGlossary(), "owner,reviewers", ALL);
+        glossary = Entity.getEntity(glossaryTerm.getGlossary(), "owner,reviewers,domain", ALL);
         glossaryTerm.setOwner(glossary.getOwner());
       }
     }
@@ -96,23 +96,35 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(glossaryTerm.getReviewers())) {
       if (glossaryTerm.getParent() != null) {
         if (parentTerm == null) {
-          parentTerm = get(null, glossaryTerm.getParent().getId(), getFields(FIELD_REVIEWERS));
+          parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("reviewers,domain"));
         }
         glossaryTerm.setReviewers(parentTerm.getReviewers());
       } else {
         if (glossary == null) {
-          glossary = Entity.getEntity(glossaryTerm.getGlossary(), FIELD_REVIEWERS, ALL);
+          glossary = Entity.getEntity(glossaryTerm.getGlossary(), "reviewers,domain", ALL);
         }
         glossaryTerm.setReviewers(glossary.getReviewers());
+      }
+    }
+
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(glossaryTerm.getDomain())) {
+      if (glossaryTerm.getParent() != null) {
+        if (parentTerm == null) {
+          parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("domain"));
+        }
+        glossaryTerm.setDomain(parentTerm.getDomain());
+      } else {
+        if (glossary == null) {
+          glossary = Entity.getEntity(glossaryTerm.getGlossary(), "domain", ALL);
+        }
+        glossaryTerm.setDomain(glossary.getDomain());
       }
     }
     return glossaryTerm;
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(term.getFullyQualifiedName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), term.getFullyQualifiedName());
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
@@ -120,19 +132,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids =
-        findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    return findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
   }
 
   @Override
@@ -204,11 +212,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  @Override
-  public String getFullyQualifiedNameHash(GlossaryTerm entity) {
-    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-  }
-
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
     return getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
   }
@@ -225,9 +228,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postDelete(GlossaryTerm entity) {
     // Cleanup all the tag labels using this glossary term
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagLabels(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
+    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {

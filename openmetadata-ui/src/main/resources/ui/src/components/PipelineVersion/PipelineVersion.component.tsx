@@ -19,11 +19,13 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -56,8 +58,6 @@ import {
   getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from '../Loader/Loader';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
 const PipelineVersion: FC<PipelineVersionProp> = ({
@@ -299,7 +299,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <TagsViewer
             sizeCap={-1}
             tags={getFilterTags(tags || []).Classification}
-            type="border"
           />
         ),
       },
@@ -310,11 +309,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         accessor: 'tags',
         width: 272,
         render: (tags) => (
-          <TagsViewer
-            sizeCap={-1}
-            tags={getFilterTags(tags || []).Glossary}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
         ),
       },
     ],

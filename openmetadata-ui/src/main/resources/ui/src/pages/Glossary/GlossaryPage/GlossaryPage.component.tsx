@@ -48,7 +48,8 @@ import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component'
 const GlossaryPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const glossaryFqn = decodeURIComponent(glossaryName);
   const history = useHistory();
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -307,12 +308,18 @@ const GlossaryPage = () => {
   }
 
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="mt-0-important"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (glossaries.length === 0 && !isLoading) {
     return (
       <ErrorPlaceHolder
+        buttonId="add-glossary"
         className="mt-0-important"
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary')}

@@ -30,6 +30,7 @@ import './components/menu.less';
 import './components/profiler.less';
 import './components/radio.less';
 import './components/react-awesome-query.less';
+import './components/rechart.less';
 import './components/size.less';
 import './components/slider.less';
 import './components/step.less';

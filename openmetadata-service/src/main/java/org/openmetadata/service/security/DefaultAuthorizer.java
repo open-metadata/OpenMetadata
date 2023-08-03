@@ -117,7 +117,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   public static SubjectContext getSubjectContext(String userName) {
-    return SubjectCache.getInstance().getSubjectContext(EntityInterfaceUtil.quoteName(userName));
+    return SubjectCache.getSubjectContext(EntityInterfaceUtil.quoteName(userName));
   }
 
   private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {

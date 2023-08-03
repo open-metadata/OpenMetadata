@@ -42,6 +42,9 @@
           "oneOf": [
             {
               "$ref": "connections/storage/s3Connection.json"
+            },
+            {
+              "$ref": "connections/storage/customStorageConnection.json"
             }
           ]
         }
@@ -79,7 +82,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this storage service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",

@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Space, Typography } from 'antd';
+import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
@@ -219,68 +219,68 @@ const AddGlossary = ({
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-            <Card className="p-sm m-t-md glossary-form">
-              <Typography.Title data-testid="form-heading" level={5}>
-                {header}
-              </Typography.Title>
-              <div data-testid="add-glossary">
-                <Form form={form} layout="vertical" onFinish={handleSave}>
-                  {generateFormFields(formFields)}
-                  <div className="m-t-xss">
-                    {getField(ownerField)}
-                    {selectedOwner && (
-                      <div className="m-y-xs" data-testid="owner-container">
+            <Typography.Title
+              className="m-t-md"
+              data-testid="form-heading"
+              level={5}>
+              {header}
+            </Typography.Title>
+            <div data-testid="add-glossary">
+              <Form form={form} layout="vertical" onFinish={handleSave}>
+                {generateFormFields(formFields)}
+                <div className="m-t-xss">
+                  {getField(ownerField)}
+                  {selectedOwner && (
+                    <div className="m-y-xs" data-testid="owner-container">
+                      <UserTag
+                        id={selectedOwner.id}
+                        name={getEntityName(selectedOwner)}
+                        size={UserTagSize.small}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="m-t-xss">
+                  {getField(reviewersField)}
+                  {Boolean(reviewersList.length) && (
+                    <Space
+                      wrap
+                      className="m-y-xs"
+                      data-testid="reviewers-container"
+                      size={[8, 8]}>
+                      {reviewersList.map((d, index) => (
                         <UserTag
-                          id={selectedOwner.id}
-                          name={getEntityName(selectedOwner)}
+                          id={d.id}
+                          key={index}
+                          name={getEntityName(d)}
                           size={UserTagSize.small}
                         />
-                      </div>
-                    )}
-                  </div>
-                  <div className="m-t-xss">
-                    {getField(reviewersField)}
-                    {Boolean(reviewersList.length) && (
-                      <Space
-                        wrap
-                        className="m-y-xs"
-                        data-testid="reviewers-container"
-                        size={[8, 8]}>
-                        {reviewersList.map((d, index) => (
-                          <UserTag
-                            id={d.id}
-                            key={index}
-                            name={getEntityName(d)}
-                            size={UserTagSize.small}
-                          />
-                        ))}
-                      </Space>
-                    )}
-                  </div>
-                  <Form.Item>
-                    <Space
-                      className="w-full justify-end"
-                      data-testid="cta-buttons"
-                      size={16}>
-                      <Button
-                        data-testid="cancel-glossary"
-                        type="link"
-                        onClick={onCancel}>
-                        {t('label.cancel')}
-                      </Button>
-                      <Button
-                        data-testid="save-glossary"
-                        disabled={!allowAccess}
-                        htmlType="submit"
-                        loading={isLoading}
-                        type="primary">
-                        {t('label.save')}
-                      </Button>
+                      ))}
                     </Space>
-                  </Form.Item>
-                </Form>
-              </div>
-            </Card>
+                  )}
+                </div>
+
+                <Space
+                  className="w-full justify-end"
+                  data-testid="cta-buttons"
+                  size={16}>
+                  <Button
+                    data-testid="cancel-glossary"
+                    type="link"
+                    onClick={onCancel}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    data-testid="save-glossary"
+                    disabled={!allowAccess}
+                    htmlType="submit"
+                    loading={isLoading}
+                    type="primary">
+                    {t('label.save')}
+                  </Button>
+                </Space>
+              </Form>
+            </div>
           </div>
         ),
         minWidth: 700,

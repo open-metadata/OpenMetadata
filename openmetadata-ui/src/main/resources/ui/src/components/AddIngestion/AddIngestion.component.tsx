@@ -24,6 +24,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   DBT_CLASSIFICATION_DEFAULT_VALUE,
+  DEFAULT_PARSING_TIMEOUT_LIMIT,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/Ingestions.constant';
@@ -251,6 +252,11 @@ const AddIngestion = ({
       confidence: sourceConfig?.confidence,
       dbtClassificationName:
         sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
+      parsingTimeoutLimit:
+        sourceConfig?.parsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      viewParsingTimeoutLimit:
+        sourceConfig?.viewParsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      filterCondition: sourceConfig?.filterCondition ?? '',
     }),
     []
   );
@@ -395,6 +401,7 @@ const AddIngestion = ({
       topicFilterPattern,
       useFqnFilter,
       includeOwners,
+      viewParsingTimeoutLimit,
     } = state;
 
     switch (serviceCategory) {
@@ -418,6 +425,7 @@ const AddIngestion = ({
           markDeletedTables: markDeletedTables,
           markAllDeletedTables: markAllDeletedTables,
           type: ConfigType.DatabaseMetadata,
+          viewParsingTimeoutLimit: viewParsingTimeoutLimit,
         };
       }
       case ServiceCategory.MESSAGING_SERVICES: {
@@ -513,6 +521,8 @@ const AddIngestion = ({
       timeoutSeconds,
       processPii,
       confidence,
+      filterCondition,
+      parsingTimeoutLimit,
     } = state;
     switch (type) {
       case PipelineType.Usage: {
@@ -521,6 +531,7 @@ const AddIngestion = ({
           resultLimit: resultLimit,
           stageFileLocation: stageFileLocation,
           type: usageIngestionType,
+          filterCondition: filterCondition,
         };
       }
       case PipelineType.Lineage: {
@@ -528,6 +539,8 @@ const AddIngestion = ({
           queryLogDuration: queryLogDuration,
           resultLimit: resultLimit,
           type: lineageIngestionType,
+          filterCondition: filterCondition,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
       case PipelineType.Profiler: {
@@ -572,6 +585,7 @@ const AddIngestion = ({
           databaseFilterPattern: databaseFilterPattern,
           schemaFilterPattern: schemaFilterPattern,
           tableFilterPattern: tableFilterPattern,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
 

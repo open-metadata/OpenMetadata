@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import DBTCommonFields from './DBTCommonFields.component';
+import { dbtParsingTimeoutLimit } from './DBTFormConstants';
 
 const mockProps = {
   dbtUpdateDescriptions: false,
@@ -21,6 +22,7 @@ const mockProps = {
   descriptionId: 'test-id',
   dbtClassificationName: 'DBT',
   enableDebugLog: false,
+  parsingTimeoutLimit: dbtParsingTimeoutLimit,
 };
 
 describe('DBTCommonFields', () => {

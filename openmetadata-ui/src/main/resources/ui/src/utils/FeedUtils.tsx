@@ -483,7 +483,7 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
 
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
   let displayName;
-  if (entityType === EntityType.TABLE) {
+  if (entityType === EntityType.TABLE || entityType === EntityType.TEST_CASE) {
     displayName = getPartialNameFromTableFQN(
       entityFQN,
       [FqnPart.Database, FqnPart.Schema, FqnPart.Table],

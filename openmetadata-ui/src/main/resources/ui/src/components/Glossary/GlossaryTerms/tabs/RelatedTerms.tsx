@@ -12,8 +12,8 @@
  */
 
 import { Button, Tooltip, Typography } from 'antd';
+import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagSelectForm from 'components/Tag/TagsSelectForm/TagsSelectForm.component';
@@ -160,7 +160,7 @@ const RelatedTerms = ({
     (entity: EntityReference, versionStatus?: VersionStatus) => (
       <TagButton
         className="cursor-pointer"
-        icon={<IconFlatDoc height={12} name="folder" />}
+        icon={<IconTerm height={12} name="folder" />}
         key={entity.fullyQualifiedName}
         label={getEntityName(entity)}
         tooltip={

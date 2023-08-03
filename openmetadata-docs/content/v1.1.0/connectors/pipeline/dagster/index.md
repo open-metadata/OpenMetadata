@@ -5,6 +5,17 @@ slug: /connectors/pipeline/dagster
 
 # Dagster
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions          | --                           |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Dagster connector.
 
 Configure and schedule Dagster metadata and profiler workflows from the OpenMetadata UI:

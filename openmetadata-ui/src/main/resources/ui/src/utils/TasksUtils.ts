@@ -13,7 +13,15 @@
 
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { EntityField } from 'constants/Feeds.constants';
 import { Change, diffWordsWithSpace } from 'diff';
+import { Chart } from 'generated/entity/data/chart';
+import { Container } from 'generated/entity/data/container';
+import { Dashboard } from 'generated/entity/data/dashboard';
+import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
+import { Pipeline, Task } from 'generated/entity/data/pipeline';
+import { Field, Topic } from 'generated/entity/data/topic';
+import { TagLabel } from 'generated/type/tagLabel';
 import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
 import {
@@ -23,7 +31,10 @@ import {
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
-import { getDatabaseSchemaDetailsByFQN } from 'rest/databaseAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from 'rest/databaseAPI';
 import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getUserSuggestions } from 'rest/miscAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
@@ -49,7 +60,12 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { TaskType, Thread } from '../generated/entity/feed/thread';
 import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
-import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
+import { ContainerFields } from './ContainerDetailUtils';
+import {
+  defaultFields as DashboardFields,
+  fetchCharts,
+} from './DashboardDetailsUtils';
+import { DatabaseFields } from './Database/DatabaseDetails.utils';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
@@ -178,19 +194,66 @@ export const fetchOptions = (
     .catch((err: AxiosError) => showErrorToast(err));
 };
 
+export const getEntityColumnsDetails = (
+  entityType: string,
+  entityData: EntityData
+) => {
+  switch (entityType) {
+    case EntityType.TOPIC:
+      return (entityData as Topic).messageSchema?.schemaFields ?? [];
+
+    case EntityType.DASHBOARD:
+      return (entityData as Dashboard).charts ?? [];
+
+    case EntityType.PIPELINE:
+      return (entityData as Pipeline).tasks ?? [];
+
+    case EntityType.MLMODEL:
+      return (entityData as Mlmodel).mlFeatures ?? [];
+
+    case EntityType.CONTAINER:
+      return (entityData as Container).dataModel?.columns ?? [];
+
+    default:
+      return (entityData as Table).columns ?? [];
+  }
+};
+
+type EntityColumns = Column[] | Task[] | MlFeature[] | Field[];
+
+interface EntityColumnProps {
+  description: string;
+  tags: TagLabel[];
+}
+
 export const getColumnObject = (
   columnName: string,
-  columns: Table['columns']
-): Column => {
-  let columnObject: Column = {} as Column;
+  columns: EntityColumns,
+  entityType: EntityType,
+  chartData?: Chart[]
+): EntityColumnProps => {
+  let columnObject: EntityColumnProps = {} as EntityColumnProps;
+
   for (let index = 0; index < columns.length; index++) {
     const column = columns[index];
     if (isEqual(column.name, columnName)) {
-      columnObject = column;
+      columnObject = {
+        description: column.description ?? '',
+        tags:
+          column.tags ??
+          (entityType === EntityType.DASHBOARD
+            ? chartData?.find((item) => item.name === columnName)?.tags ?? []
+            : []),
+      };
 
       break;
     } else {
-      columnObject = getColumnObject(columnName, column.children || []);
+      columnObject = getColumnObject(
+        columnName,
+        (column as Column).children || [],
+        entityType,
+        chartData
+      );
     }
   }
 
@@ -298,7 +361,8 @@ export const getBreadCrumbList = (
 export const fetchEntityDetail = (
   entityType: EntityType,
   entityFQN: string,
-  setEntityData: (value: React.SetStateAction<EntityData>) => void
+  setEntityData: (value: React.SetStateAction<EntityData>) => void,
+  setChartData?: (value: React.SetStateAction<Chart[]>) => void
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
@@ -321,6 +385,11 @@ export const fetchEntityDetail = (
       getDashboardByFqn(entityFQN, DashboardFields)
         .then((res) => {
           setEntityData(res);
+          fetchCharts(res.charts)
+            .then((chart) => {
+              setChartData?.(chart);
+            })
+            .catch((err: AxiosError) => showErrorToast(err));
         })
         .catch((err: AxiosError) => showErrorToast(err));
 
@@ -335,6 +404,15 @@ export const fetchEntityDetail = (
       break;
     case EntityType.MLMODEL:
       getMlModelByFQN(entityFQN, MlModelFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.DATABASE:
+      getDatabaseDetailsByFQN(entityFQN, DatabaseFields)
         .then((res) => {
           setEntityData(res);
         })
@@ -361,7 +439,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.CONTAINER:
-      getContainerByFQN(entityFQN, DataModelFields)
+      getContainerByFQN(entityFQN, ContainerFields)
         .then((res) => {
           setEntityData(res);
         })
@@ -373,17 +451,6 @@ export const fetchEntityDetail = (
       break;
   }
 };
-
-export const getTaskActionList = (): TaskAction[] => [
-  {
-    label: i18Next.t('label.accept-suggestion'),
-    key: TaskActionMode.VIEW,
-  },
-  {
-    label: i18Next.t('label.edit-amp-accept-suggestion'),
-    key: TaskActionMode.EDIT,
-  },
-];
 
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
@@ -401,3 +468,56 @@ export const isDescriptionTask = (taskType: TaskType) =>
 
 export const isTagsTask = (taskType: TaskType) =>
   [TaskType.RequestTag, TaskType.UpdateTag].includes(taskType);
+
+export const getEntityTaskDetails = (
+  entityType: EntityType
+): {
+  fqnPart: FqnPart[];
+  entityField: string;
+} => {
+  let fqnPartTypes: FqnPart;
+  let entityField: string;
+  switch (entityType) {
+    case EntityType.TABLE:
+      fqnPartTypes = FqnPart.NestedColumn;
+      entityField = EntityField.COLUMNS;
+
+      break;
+
+    case EntityType.TOPIC:
+      fqnPartTypes = FqnPart.Topic;
+      entityField = EntityField.MESSAGE_SCHEMA;
+
+      break;
+
+    case EntityType.DASHBOARD:
+      fqnPartTypes = FqnPart.Database;
+      entityField = EntityField.CHARTS;
+
+      break;
+
+    case EntityType.PIPELINE:
+      fqnPartTypes = FqnPart.Schema;
+      entityField = EntityField.TASKS;
+
+      break;
+
+    case EntityType.MLMODEL:
+      fqnPartTypes = FqnPart.Schema;
+      entityField = EntityField.ML_FEATURES;
+
+      break;
+
+    case EntityType.CONTAINER:
+      fqnPartTypes = FqnPart.Topic;
+      entityField = EntityField.DATA_MODEL;
+
+      break;
+
+    default:
+      fqnPartTypes = FqnPart.Table;
+      entityField = EntityField.COLUMNS;
+  }
+
+  return { fqnPart: [fqnPartTypes], entityField };
+};

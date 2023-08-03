@@ -13,7 +13,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -61,14 +60,6 @@ describe('ML Flow Ingestion', () => {
       description,
       SERVICE_TYPE.MLModels,
       MYDATA_SUMMARY_OPTIONS.mlmodels
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.MLModels,
-      serviceName,
-      API_SERVICE.mlmodelServices
     );
   });
 

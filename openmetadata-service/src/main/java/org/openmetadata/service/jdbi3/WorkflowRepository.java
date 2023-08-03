@@ -13,18 +13,10 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 
 public class WorkflowRepository extends EntityRepository<Workflow> {
-  private static final String UPDATE_FIELDS = "owner";
-  private static final String PATCH_FIELDS = "owner,status,response";
+  private static final String PATCH_FIELDS = "status,response";
 
   public WorkflowRepository(CollectionDAO dao) {
-    super(
-        WorkflowResource.COLLECTION_PATH,
-        WORKFLOW,
-        Workflow.class,
-        dao.workflowDAO(),
-        dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+    super(WorkflowResource.COLLECTION_PATH, WORKFLOW, Workflow.class, dao.workflowDAO(), dao, PATCH_FIELDS, "");
   }
 
   @Override

@@ -43,6 +43,10 @@ export const DBTSources: Array<{ label: string; value: string }> = [
     label: i18n.t('label.gcs-config-source'),
     value: DBT_SOURCES.gcs,
   },
+  {
+    label: i18n.t('label.azure-config-source'),
+    value: DBT_SOURCES.azure,
+  },
 ];
 
 export const GCSCreds: Array<{ label: string; value: string }> = [
@@ -90,3 +94,5 @@ export const rulesDBTGCSCredsFields: Record<
   email: ['clientEmail'],
   url: ['authUri', 'tokenUri', 'authProviderX509CertUrl', 'clientX509CertUrl'],
 };
+
+export const dbtParsingTimeoutLimit = 300;

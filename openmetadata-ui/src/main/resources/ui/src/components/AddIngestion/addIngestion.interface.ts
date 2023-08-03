@@ -114,6 +114,7 @@ export interface AddIngestionState {
   dbtConfigSourceType: DBT_SOURCES;
   description: string;
   enableDebugLog: boolean;
+  filterCondition: string;
   gcsConfigType: GCS_CONFIG | undefined;
   includeLineage: boolean;
   includeTags: boolean;
@@ -153,6 +154,8 @@ export interface AddIngestionState {
   timeoutSeconds: number;
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
+  viewParsingTimeoutLimit: number;
+  parsingTimeoutLimit: number;
   processPii: boolean;
   includeOwners: boolean;
   confidence?: number;

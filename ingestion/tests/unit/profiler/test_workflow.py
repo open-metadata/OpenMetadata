@@ -18,7 +18,6 @@ from unittest.mock import patch
 
 import sqlalchemy as sqa
 from pytest import raises
-from sqlalchemy import MetaData
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import (
@@ -31,7 +30,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
@@ -41,12 +39,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.api.workflow import ProfilerWorkflow
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.processor.default import DefaultProfiler
-from metadata.profiler.source.base_profiler_source import BaseProfilerSource
+from metadata.profiler.source.base.profiler_source import ProfilerSource
 
 TABLE = Table(
     id=uuid.uuid4(),
@@ -233,7 +230,7 @@ def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argum
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
 
-    profiler_source = BaseProfilerSource(
+    profiler_source = ProfilerSource(
         profile_workflow.config,
         DatabaseService(
             id=uuid.uuid4(),
@@ -274,7 +271,7 @@ def test_default_profile_def(
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    profiler_source = BaseProfilerSource(
+    profiler_source = ProfilerSource(
         profile_workflow.config,
         DatabaseService(
             id=uuid.uuid4(),

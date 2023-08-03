@@ -343,3 +343,10 @@ Option to include fetching the tags metadata from dbt.
 
 When enabled, OpenMetadata will fetch tags associated with tables and columns from dbt `manifest.json` and attach them to the corresponding tables in OpenMetadata.
 $$
+
+
+$$section
+### Query Parsing Timeout Limit $(id="parsingTimeoutLimit")
+
+Specify the timeout limit for parsing the sql queries to perform the lineage analysis.
+$$

@@ -285,6 +285,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           },
         ]}>
         <Select
+          showSearch
           options={testDefinitions.map((suite) => ({
             label: getEntityName(suite),
             value: suite.fullyQualifiedName,
