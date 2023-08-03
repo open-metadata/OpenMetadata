@@ -388,7 +388,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       const { data } = await getListTestCase({
         ...params,
         fields: 'testCaseResult, testDefinition',
-        entityLink: generateEntityLink(datasetFQN || ''),
+        entityLink: generateEntityLink(getDecodedFqn(datasetFQN) || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });
