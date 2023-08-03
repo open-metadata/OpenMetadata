@@ -113,9 +113,6 @@ function SettingsIngestion({
       );
     } finally {
       setIsLoading(false);
-      if (!airflowEndpoint) {
-        getAirflowEndpoint();
-      }
     }
   };
 
@@ -257,6 +254,7 @@ function SettingsIngestion({
   useEffect(() => {
     if (isAirflowAvailable) {
       getAllIngestionWorkflows();
+      getAirflowEndpoint();
     }
   }, [isAirflowAvailable]);
 
