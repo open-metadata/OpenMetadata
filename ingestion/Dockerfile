@@ -1,10 +1,12 @@
 FROM apache/airflow:2.6.3-python3.9
 USER root
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
+RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 # Install Dependencies (listed in alphabetical order)
-RUN apt-get update \
-    && apt-get install -y alien \
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -qq update \
+    && apt-get -qq install -y \
+    alien \
     build-essential \
     default-libmysqlclient-dev \
     freetds-bin \
@@ -31,7 +33,6 @@ RUN apt-get update \
     unixodbc \
     unixodbc-dev \
     unzip \
-    vim \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
@@ -39,11 +40,11 @@ RUN apt-get update \
 
 RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
  then \
- wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
  else \
- wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
  fi
 
 ENV LD_LIBRARY_PATH=/instantclient
@@ -55,25 +56,31 @@ ENV LD_LIBRARY_PATH=/instantclient
 #    https://security.snyk.io/vuln/SNYK-DEBIAN11-BIND9-3027852
 #    https://security.snyk.io/vuln/SNYK-DEBIAN11-EXPAT-3023031 we are already installed the latest
 RUN echo "deb http://deb.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list
-RUN apt-get update \
-    && apt-get install -t bullseye-backports -y \
+RUN apt-get -qq update \
+    && apt-get -qq install -t bullseye-backports -y \
     curl \
     libpcre2-8-0 \
     postgresql-common \
     expat \
-    bind9
+    bind9 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Required for Starting Ingestion Container in Docker Compose
-COPY --chown=airflow:0 ingestion/ingestion_dependency.sh /opt/airflow
+COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflow
 # Required for Ingesting Sample Data
 COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
-# Provide Execute Permissions to shell script
-RUN chmod +x /opt/airflow/ingestion_dependency.sh
 USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
+
+# Disable pip cache dir
+# https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
+ENV PIP_NO_CACHE_DIR=1
+# Make pip silent
+ENV PIP_QUIET=1
+
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-managed-apis~=1.1.0.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.9.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.1.0.4"

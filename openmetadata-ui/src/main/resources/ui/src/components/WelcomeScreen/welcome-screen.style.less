@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 @import url(../../styles/variables.less);
-@dark-purple: #361a8f;
 
 .welcome-screen-container {
   .ant-card-head {
@@ -19,8 +18,17 @@
     border-bottom: unset;
 
     .welcome-screen-close-btn {
-      color: #afa3d2;
+      color: @primary-color;
+      &:hover {
+        background-color: @primary-color-hover;
+      }
     }
+  }
+  .ant-card-body {
+    height: @welcome-page-height;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -44,7 +52,7 @@
 }
 
 .welcome-screen-button-text {
-  color: @dark-purple;
+  color: @primary-color;
   text-decoration: underline;
   font-size: 1rem;
   line-height: 1.5rem;

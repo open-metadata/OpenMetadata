@@ -301,9 +301,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
         {tabItems.length > 0 && (
           <Layout hasSider className="bg-white">
             <Sider className="bg-white border-right" width={230}>
-              <Typography.Title className="p-md p-b-0" level={5}>
+              <Typography.Paragraph className="explore-data-header">
                 {t('label.data-asset-plural')}
-              </Typography.Title>
+              </Typography.Paragraph>
               <Menu
                 className="custom-menu"
                 data-testid="explore-left-panel"

@@ -26,11 +26,16 @@ class DatalakeFileFormatException(Exception):
 
 
 def return_azure_storage_options(config_source: Any) -> Dict:
+    """
+    Build the Azure Storage options to pass to the readers.
+    We are not adding the `account_name` since it is added in the path.
+    If we pass it here as well we'll get an error reading the data:
+      "got multiple values for argument 'account_name'"
+    """
     connection_args = config_source.securityConfig
     return {
         "tenant_id": connection_args.tenantId,
         "client_id": connection_args.clientId,
-        "account_name": connection_args.accountName,
         "client_secret": connection_args.clientSecret.get_secret_value(),
     }
 

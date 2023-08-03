@@ -22,6 +22,7 @@ import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
 import { TAG_START_WITH } from 'constants/Tag.constants';
 import { reduceColorOpacity } from 'utils/CommonUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TagsV1Props } from './TagsV1.interface';
@@ -78,8 +79,10 @@ const TagsV1 = ({
   const redirectLink = useCallback(
     () =>
       tag.source === TagSource.Glossary
-        ? history.push(`${ROUTES.GLOSSARY}/${tag.tagFQN}`)
-        : history.push(`${ROUTES.TAGS}/${tag.tagFQN.split('.')[0]}`),
+        ? history.push(`${ROUTES.GLOSSARY}/${getEncodedFqn(tag.tagFQN)}`)
+        : history.push(
+            `${ROUTES.TAGS}/${getEncodedFqn(tag.tagFQN.split('.')[0])}`
+          ),
     [tag.source, tag.tagFQN]
   );
 

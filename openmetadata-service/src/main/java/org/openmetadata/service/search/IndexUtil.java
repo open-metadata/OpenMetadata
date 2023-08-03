@@ -59,9 +59,12 @@ public class IndexUtil {
   }
 
   public static SearchClient getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
-    return esConfig.getSearchType().equals(SearchType.OPENSEARCH)
-        ? new OpenSearchClientImpl(esConfig, dao)
-        : new ElasticSearchClientImpl(esConfig, dao);
+    if (esConfig != null) {
+      return esConfig.getSearchType().equals(SearchType.OPENSEARCH)
+          ? new OpenSearchClientImpl(esConfig, dao)
+          : new ElasticSearchClientImpl(esConfig, dao);
+    }
+    return null;
   }
 
   /**

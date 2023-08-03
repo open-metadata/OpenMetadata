@@ -10,7 +10,7 @@
   "properties": {
     "classification": {
       "description": "Name of the classification that this tag is part of.",
-      "$ref": "../../entity/classification/tag.json#/definitions/tagName"
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "parent": {
       "description": "Fully qualified name of the parent tag. When null, the term is at the root of the classification.",

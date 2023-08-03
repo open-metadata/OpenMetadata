@@ -22,6 +22,8 @@ server:
   adminConnectors:
     - type: http
       port: 0
+  requestLog:
+    type: external
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
@@ -87,10 +89,8 @@ server:
 
 # Logging settings.
 logging:
-  level: INFO
-  appenders:
-    - type: console
-      logFormat: "%level %logger{5} - %msg%n"
+  level: OFF
+  appenders: []
 
 database:
   # the name of the JDBC driver, h2 is used for testing
