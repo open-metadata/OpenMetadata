@@ -36,7 +36,7 @@ import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
@@ -69,7 +69,7 @@ const PopoverContent: React.FC<{
         break;
       case EntityType.TEST_CASE:
         promise = getTableDetailsByFQN(
-          getTableFQNFromColumnFQN(entityFQN),
+          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
           fields
         );
 
