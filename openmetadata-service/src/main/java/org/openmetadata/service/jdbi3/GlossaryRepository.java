@@ -31,7 +31,15 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -42,6 +50,8 @@ import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -57,6 +67,8 @@ import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -79,6 +91,67 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     glossary.setTermCount(fields.contains("termCount") ? getTermCount(glossary) : null);
     glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
     return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : null);
+  }
+
+  @Override
+  public RestUtil.PatchResponse<Glossary> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
+      throws IOException {
+    // Get all the fields in the original entity that can be updated during PATCH operation
+    Glossary original = setFieldsInternal(dao.findEntityById(id), patchFields);
+    setInheritedFields(original, patchFields);
+    JsonArray jsonArray = patch.toJsonArray();
+    // Apply JSON patch to the original entity to get the updated entity
+    Glossary updated = JsonUtils.applyPatch(original, patch, Glossary.class);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    prepareInternal(updated);
+    populateOwner(updated.getOwner());
+    restorePatchAttributes(original, updated);
+
+    // Update the attributes and relationships of an entity
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+    jsonArray.forEach(
+        entry -> {
+          JsonObject jsonObject = entry.asJsonObject();
+          if (jsonObject.getString("path").equals("/name")) {
+            List<String> policyData = daoCollection.policyDAO().listPoliciesWithMatchTagCondition();
+            for (String json : policyData) {
+              Policy policy;
+              try {
+                policy = JsonUtils.readValue(json, Policy.class);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+              List<Rule> rules = policy.getRules();
+              for (Rule rule : rules) {
+                if (rule.getCondition() != null) {
+                  List<String> glossary = new ArrayList<>();
+                  Pattern pattern = Pattern.compile("'([^']+)'");
+                  Matcher matcher = pattern.matcher(rule.getCondition());
+                  while (matcher.find()) {
+                    String tagValue = matcher.group(1);
+                    glossary.add(tagValue);
+                  }
+                  if (glossary.contains(original.getFullyQualifiedName())) {
+                    rule.setCondition(
+                        rule.getCondition().replace(original.getFullyQualifiedName(), updated.getFullyQualifiedName()));
+                    policy.setRules(rules);
+                    PolicyRepository policyRepository = new PolicyRepository(daoCollection);
+                    try {
+                      policyRepository.createOrUpdateInternal(uriInfo, policy);
+                    } catch (IOException e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+    String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new RestUtil.PatchResponse<>(Response.Status.OK, withHref(uriInfo, updated), change);
   }
 
   @Override
