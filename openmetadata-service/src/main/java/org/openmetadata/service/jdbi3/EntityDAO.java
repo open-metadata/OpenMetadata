@@ -311,7 +311,8 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SneakyThrows
   default T findEntityByName(String fqn, String nameHashColumn, Include include) {
-    return jsonToEntity(findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
+    return jsonToEntity(
+        findByName(getTableName(), nameHashColumn, FullyQualifiedName.buildHash(fqn), getCondition(include)), fqn);
   }
 
   default T jsonToEntity(String json, String identity) throws IOException {
