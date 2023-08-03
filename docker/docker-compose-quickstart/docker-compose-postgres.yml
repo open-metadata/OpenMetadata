@@ -64,6 +64,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
 
+      # Migration 
+      MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
+      
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
