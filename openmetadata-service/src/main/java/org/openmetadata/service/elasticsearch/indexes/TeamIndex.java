@@ -3,6 +3,7 @@ package org.openmetadata.service.elasticsearch.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
@@ -18,7 +19,7 @@ public class TeamIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (team.getDisplayName() == null) {
+    if (CommonUtil.nullOrEmpty(team.getDisplayName())) {
       team.setDisplayName(team.getName());
     }
     Map<String, Object> doc = JsonUtils.getMap(team);
