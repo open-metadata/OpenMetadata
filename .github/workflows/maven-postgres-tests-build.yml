@@ -103,7 +103,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev jq
-	  sudo make install_antlr_cli
+          sudo make install_antlr_cli
       
       - name: Build PR with Maven
         env:

@@ -373,7 +373,6 @@ class DatalakeSource(DatabaseServiceSource):
         """
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
-        columns = []
         try:
             table_constraints = None
             connection_args = self.service_connection.configSource.securityConfig
@@ -386,7 +385,8 @@ class DatalakeSource(DatabaseServiceSource):
                 ),
                 connection_kwargs=connection_args,
             )
-            columns = self.get_columns(data_frame[0])
+            # If no data_frame (due to unsupported type), ignore
+            columns = self.get_columns(data_frame[0]) if data_frame else None
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,

@@ -1104,9 +1104,7 @@ const TagsPage = () => {
                       }
                       entityFQN={currentClassification.fullyQualifiedName}
                       entityId={currentClassification.id}
-                      entityName={
-                        currentClassification.fullyQualifiedName ?? ''
-                      }
+                      entityName={currentClassification.name}
                       entityType={EntityType.CLASSIFICATION}
                       extraDropdownContent={extraDropdownContent}
                       onEditDisplayName={handleUpdateDisplayName}
