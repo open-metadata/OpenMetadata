@@ -254,6 +254,10 @@ public interface EntityDAO<T extends EntityInterface> {
     insert(getTableName(), getNameHashColumn(), fqnHash, JsonUtils.pojoToJson(entity));
   }
 
+  default void insert(String nameHash, EntityInterface entity, String fqnHash) throws JsonProcessingException {
+    insert(getTableName(), nameHash, fqnHash, JsonUtils.pojoToJson(entity));
+  }
+
   default void update(UUID id, String fqnHash, String json) {
     update(getTableName(), getNameHashColumn(), fqnHash, id.toString(), json);
   }
@@ -262,6 +266,15 @@ public interface EntityDAO<T extends EntityInterface> {
     update(
         getTableName(),
         getNameHashColumn(),
+        FullyQualifiedName.buildHash(entity.getFullyQualifiedName()),
+        entity.getId().toString(),
+        JsonUtils.pojoToJson(entity));
+  }
+
+  default void update(String nameHashColumnName, EntityInterface entity) throws JsonProcessingException {
+    update(
+        getTableName(),
+        nameHashColumnName,
         FullyQualifiedName.buildHash(entity.getFullyQualifiedName()),
         entity.getId().toString(),
         JsonUtils.pojoToJson(entity));
@@ -294,6 +307,11 @@ public interface EntityDAO<T extends EntityInterface> {
   default T findEntityByName(String fqn, Include include) {
     return jsonToEntity(
         findByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn), getCondition(include)), fqn);
+  }
+
+  @SneakyThrows
+  default T findEntityByName(String fqn, String nameHashColumn, Include include) {
+    return jsonToEntity(findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
   }
 
   default T jsonToEntity(String json, String identity) throws IOException {

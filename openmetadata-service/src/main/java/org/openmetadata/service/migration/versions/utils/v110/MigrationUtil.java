@@ -101,10 +101,16 @@ public class MigrationUtil {
   @SneakyThrows
   public static <T extends EntityInterface> void updateFQNHashForEntity(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
+    String nameHashColumn = dao.getNameHashColumn();
+    if (dao instanceof CollectionDAO.TestSuiteDAO) {
+      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
+      // the migrations here
+      nameHashColumn = "nameHash";
+    }
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
           handle,
-          String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()),
+          String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
           clazz,
           dao,
           false,
@@ -112,7 +118,7 @@ public class MigrationUtil {
     } else {
       readAndProcessEntity(
           handle,
-          String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()),
+          String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
           clazz,
           dao,
           false,
@@ -123,18 +129,19 @@ public class MigrationUtil {
   @SneakyThrows
   public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
+    String nameHashColumn = dao.getNameHashColumn();
+    if (dao instanceof CollectionDAO.TestSuiteDAO) {
+      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
+      // the migrations here
+      nameHashColumn = "nameHash";
+    }
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
-          handle,
-          String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()),
-          clazz,
-          dao,
-          true,
-          limitParam);
+          handle, String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn), clazz, dao, true, limitParam);
     } else {
       readAndProcessEntity(
           handle,
-          String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()),
+          String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
           clazz,
           dao,
           true,
@@ -450,12 +457,16 @@ public class MigrationUtil {
       TestSuite stored;
       try {
         // If entity is found by Hash it is already migrated
-        testSuiteRepository.getDao().findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), Include.ALL);
+        testSuiteRepository
+            .getDao()
+            .findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), "nameHash", Include.ALL);
       } catch (EntityNotFoundException entityNotFoundException) {
         try {
           // Check if the test Suite Exists, this brings the data on nameHash basis
           stored =
-              testSuiteRepository.getDao().findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), Include.ALL);
+              testSuiteRepository
+                  .getDao()
+                  .findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), "nameHash", Include.ALL);
           testSuiteRepository.addRelationship(
               stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
           stored.setExecutable(true);
@@ -463,40 +474,55 @@ public class MigrationUtil {
           // the update() method here internally calls FullyQualifiedName.buildHash so not adding it
           stored.setFullyQualifiedName(EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)));
           stored.setDisplayName(testSuiteFqn);
-          testSuiteRepository.getDao().update(stored);
+          testSuiteRepository.getDao().update("nameHash", stored);
         } catch (EntityNotFoundException ex) {
-          TestSuite newExecutableTestSuite =
-              getTestSuite(
-                      collectionDAO,
-                      new CreateTestSuite()
-                          .withName(FullyQualifiedName.buildHash(testSuiteFqn))
-                          .withDisplayName(testSuiteFqn)
-                          .withExecutableEntityReference(entityLink.getEntityFQN()),
-                      "ingestion-bot")
-                  .withExecutable(false);
-          // Create
-          testSuiteRepository.prepareInternal(newExecutableTestSuite);
-          testSuiteRepository.getDao().insert(newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
-          // Here we aer manually adding executable relationship since the table Repository is not registered and result
-          // into null for entity type table
-          testSuiteRepository.addRelationship(
-              newExecutableTestSuite.getExecutableEntityReference().getId(),
-              newExecutableTestSuite.getId(),
-              Entity.TABLE,
-              TEST_SUITE,
-              Relationship.CONTAINS);
+          try {
+            TestSuite newExecutableTestSuite =
+                getTestSuite(
+                        collectionDAO,
+                        new CreateTestSuite()
+                            .withName(FullyQualifiedName.buildHash(testSuiteFqn))
+                            .withDisplayName(testSuiteFqn)
+                            .withExecutableEntityReference(entityLink.getEntityFQN()),
+                        "ingestion-bot")
+                    .withExecutable(false);
+            // Create
+            testSuiteRepository.prepareInternal(newExecutableTestSuite);
+            testSuiteRepository
+                .getDao()
+                .insert(
+                    "nameHash",
+                    newExecutableTestSuite,
+                    FullyQualifiedName.buildHash(
+                        EntityInterfaceUtil.quoteName(newExecutableTestSuite.getFullyQualifiedName())));
+            // Here we aer manually adding executable relationship since the table Repository is not registered and
+            // result
+            // into null for entity type table
+            testSuiteRepository.addRelationship(
+                newExecutableTestSuite.getExecutableEntityReference().getId(),
+                newExecutableTestSuite.getId(),
+                Entity.TABLE,
+                TEST_SUITE,
+                Relationship.CONTAINS);
 
-          // add relationship from testSuite to TestCases
-          testSuiteRepository.addRelationship(
-              newExecutableTestSuite.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+            // add relationship from testSuite to TestCases
+            testSuiteRepository.addRelationship(
+                newExecutableTestSuite.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
 
-          // Not a good approach but executable cannot be set true before
-          TestSuite temp =
-              testSuiteRepository
-                  .getDao()
-                  .findEntityByName(EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)));
-          temp.setExecutable(true);
-          testSuiteRepository.getDao().update(temp);
+            // Not a good approach but executable cannot be set true before
+            TestSuite temp =
+                testSuiteRepository
+                    .getDao()
+                    .findEntityByName(
+                        EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)),
+                        "nameHash",
+                        Include.ALL);
+            temp.setExecutable(true);
+            testSuiteRepository.setFullyQualifiedName(temp);
+            testSuiteRepository.getDao().update("nameHash", temp);
+          } catch (Exception exIgnore) {
+            LOG.warn("Ignoring error since already added: {}", ex.getMessage());
+          }
         }
       }
     }
@@ -510,7 +536,7 @@ public class MigrationUtil {
       TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId());
       if (Boolean.FALSE.equals(temp.getExecutable())) {
         temp.setExecutable(false);
-        testSuiteRepository.getDao().update(temp);
+        testSuiteRepository.getDao().update("nameHash", temp);
       }
 
       // get Ingestion Pipelines
