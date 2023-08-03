@@ -373,7 +373,6 @@ class DatalakeSource(DatabaseServiceSource):
         """
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
-        columns = []
         try:
             table_constraints = None
             connection_args = self.service_connection.configSource.securityConfig

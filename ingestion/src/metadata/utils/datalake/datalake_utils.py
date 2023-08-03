@@ -31,7 +31,6 @@ from metadata.utils.datalake.parquet_dispatch import read_parquet_dispatch
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
-logger = utils_logger()
 
 
 class FileFormatDispatchMap:
@@ -86,7 +85,8 @@ def fetch_dataframe(
         logger.error(
             f"Error fetching file {bucket_name}/{key} using {config_source.__class__.__name__} due to: {err}"
         )
-    return None
+        # Here we need to blow things up. Without the dataframe we cannot move forward
+        raise err
 
 
 def _get_root_col(col_name: str) -> str:
