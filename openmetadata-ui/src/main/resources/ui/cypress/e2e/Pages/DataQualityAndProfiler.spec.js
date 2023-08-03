@@ -63,6 +63,8 @@ const goToProfilerTab = () => {
 describe('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
+    interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
+    interceptURL('GET', `/api/v1/tables/*/tableProfile?*`, 'tableProfile');
   });
 
   it('Add and ingest mysql data', () => {
@@ -159,6 +161,8 @@ describe('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${term}?include=all`,
       'addTableTestPage'
     );
+    verifyResponseStatusCode('@systemProfile', 200);
+    verifyResponseStatusCode('@tableProfile', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="table"]').click();
 
@@ -263,6 +267,8 @@ describe('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?include=all`,
       'addTableTestPage'
     );
+    verifyResponseStatusCode('@systemProfile', 200);
+    verifyResponseStatusCode('@tableProfile', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 
@@ -306,6 +312,8 @@ describe('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?include=all`,
       'addTableTestPage'
     );
+    verifyResponseStatusCode('@systemProfile', 200);
+    verifyResponseStatusCode('@tableProfile', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 
@@ -426,10 +434,16 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Create logical test suite', () => {
+    const testCaseName = 'column_value_max_to_be_between';
     interceptURL(
       'GET',
       '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
       'testSuite'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=test_case_search_index*',
+      'getTestCase'
     );
     cy.get('[data-testid="appbar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
@@ -441,8 +455,10 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get(descriptionBox).scrollIntoView().type(NEW_TEST_SUITE.description);
 
     cy.get('[data-testid="submit-button"]').click();
-
-    cy.get('[data-testid="column_value_max_to_be_between"]').click();
+    cy.get('[data-testid="searchbar"]').type(testCaseName);
+    verifyResponseStatusCode('@getTestCase', 200);
+    cy.get(`[data-testid="${testCaseName}"]`).scrollIntoView().as('testCase');
+    cy.get('@testCase').click();
     cy.get('[data-testid="submit"]').scrollIntoView().click();
 
     cy.get('[data-testid="success-line"]').should(
@@ -452,6 +468,12 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Add test case to logical test suite', () => {
+    const testCaseName = 'column_values_to_be_between';
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=test_case_search_index*',
+      'searchTestCase'
+    );
     interceptURL(
       'GET',
       '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
@@ -472,7 +494,13 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.get('[data-testid="add-test-case-btn"]').click();
     verifyResponseStatusCode('@testCase', 200);
-    cy.get('[data-testid="column_values_to_be_between"]').click();
+
+    cy.get('[data-testid="searchbar"]').type(testCaseName);
+    verifyResponseStatusCode('@searchTestCase', 200);
+    cy.get(`[data-testid="${testCaseName}"]`)
+      .scrollIntoView()
+      .as('newTestCase');
+    cy.get('@newTestCase').click();
     cy.get('[data-testid="submit"]').scrollIntoView().click();
     verifyResponseStatusCode('@putTestCase', 200);
   });
