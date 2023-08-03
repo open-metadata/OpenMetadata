@@ -938,12 +938,13 @@ export const WHATS_NEW = [
   {
     id: 17,
     version: 'v1.1.1',
-    description: 'Released on 04th Aug 2023.',
+    description: 'Released on 4th Aug 2023.',
     features: [],
     changeLogs: {
       'UI Improvements': `- User profile page UI / UX improvements
 - Superset Connection fixes for Basic and IAM auth type
 - Fix task flow bugs
+- UI / UX improvements for Service, Database, and Schema pages.
 - Support custom cron for schedule ingestion
 `,
       'Data Quality': `- Fix BigQuery, MSSQL, and Clickhouse profiling errors`,
