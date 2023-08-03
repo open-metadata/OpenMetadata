@@ -661,17 +661,19 @@ const ContainerPage = () => {
   }, [containerName]);
 
   useEffect(() => {
-    if (tab === EntityTabs.CHILDREN) {
+    if (tab === EntityTabs.CHILDREN && hasViewPermission) {
       fetchContainerChildren(containerName);
     }
   }, [tab, containerName]);
 
   useEffect(() => {
-    getEntityFeedCount();
+    if (hasViewPermission) {
+      getEntityFeedCount();
+    }
   }, [containerName]);
 
   // Rendering
-  if (isLoading || !containerData) {
+  if (isLoading) {
     return <Loader />;
   }
 
