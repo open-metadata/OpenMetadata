@@ -118,12 +118,12 @@ const DataInsightMetadataToESConfigForm = ({
       <Divider />
       <Row justify="end">
         <Col>
-          <Button type="link" onClick={handlePrev}>
+          <Button data-testid="back-button" type="link" onClick={handlePrev}>
             {t('label.back')}
           </Button>
         </Col>
         <Col>
-          <Button htmlType="submit" type="primary">
+          <Button data-testid="next-button" htmlType="submit" type="primary">
             {t('label.next')}
           </Button>
         </Col>

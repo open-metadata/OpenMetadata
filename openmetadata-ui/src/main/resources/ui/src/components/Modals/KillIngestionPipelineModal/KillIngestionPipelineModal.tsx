@@ -61,7 +61,11 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       confirmLoading={isLoading}
       data-testid="kill-modal"
       maskClosable={false}
-      okText="Confirm"
+      okText={
+        <Typography.Text className="text-white" data-testid="confirm">
+          {t('label.confirm')}
+        </Typography.Text>
+      }
       title={`${t('label.kill')} ${pipelinName} ?`}
       visible={isModalOpen}
       onCancel={onClose}
