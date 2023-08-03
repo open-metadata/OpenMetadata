@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Popover, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
@@ -357,22 +357,17 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           return (
             <>
               {record?.airflowConfig.scheduleInterval ? (
-                <Popover
-                  content={
-                    <div>
-                      {cronstrue.toString(
-                        record.airflowConfig.scheduleInterval || '',
-                        {
-                          use24HourTimeFormat: true,
-                          verbose: true,
-                        }
-                      )}
-                    </div>
-                  }
+                <Tooltip
                   placement="bottom"
-                  trigger="hover">
+                  title={cronstrue.toString(
+                    record.airflowConfig.scheduleInterval || '',
+                    {
+                      use24HourTimeFormat: true,
+                      verbose: true,
+                    }
+                  )}>
                   <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </Popover>
+                </Tooltip>
               ) : (
                 <span>--</span>
               )}

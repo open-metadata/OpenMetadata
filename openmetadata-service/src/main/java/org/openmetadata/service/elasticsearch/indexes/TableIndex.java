@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
 import org.openmetadata.service.elasticsearch.ParseTags;
@@ -28,6 +30,11 @@ public class TableIndex implements ColumnIndex {
   }
 
   public Map<String, Object> buildESDoc() {
+    if (table.getOwner() != null) {
+      EntityReference owner = table.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      table.setOwner(owner);
+    }
     Map<String, Object> doc = JsonUtils.getMap(table);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();
@@ -35,7 +42,6 @@ public class TableIndex implements ColumnIndex {
     List<ElasticSearchSuggest> databaseSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-
     if (table.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(table.getColumns(), cols, null);
