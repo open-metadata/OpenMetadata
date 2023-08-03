@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
@@ -101,21 +101,18 @@ const Description: FC<DescriptionProps> = ({
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
         }>
-        <Popover
-          destroyTooltipOnHide
-          content={
+        <Tooltip
+          placement="right"
+          title={
             hasDescription
               ? t('message.request-update-description')
               : t('message.request-description')
-          }
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
+          }>
           <IconRequest
             name={t('message.request-description')}
             {...ICON_DIMENSION}
           />
-        </Popover>
+        </Tooltip>
       </Button>
     ) : null;
   };
