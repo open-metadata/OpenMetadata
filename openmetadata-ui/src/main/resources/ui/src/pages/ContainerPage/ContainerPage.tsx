@@ -90,9 +90,7 @@ const ContainerPage = () => {
   const [hasError, setHasError] = useState<boolean>(false);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
 
-  const [containerData, setContainerData] = useState<Container>(
-    {} as Container
-  );
+  const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
   >([]);
@@ -282,11 +280,17 @@ const ContainerPage = () => {
         displayName: data.displayName,
       });
 
-      setContainerData((prev) => ({
-        ...prev,
-        displayName,
-        version,
-      }));
+      setContainerData((prev) => {
+        if (isUndefined(prev)) {
+          return;
+        }
+
+        return {
+          ...prev,
+          displayName,
+          version,
+        };
+      });
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -681,8 +685,12 @@ const ContainerPage = () => {
     );
   }
 
-  if (!hasViewPermission && !isLoading) {
+  if (!hasViewPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  if (!containerData) {
+    return <ErrorPlaceHolder />;
   }
 
   return (
