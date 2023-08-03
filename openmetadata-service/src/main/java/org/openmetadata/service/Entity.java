@@ -13,6 +13,7 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -30,7 +31,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -51,6 +55,8 @@ public final class Entity {
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+
+  @Getter @Setter private static FeedRepository feedRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -89,15 +95,13 @@ public final class Entity {
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRICS = "metrics";
   public static final String DASHBOARD = "dashboard";
+  public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
-  public static final String BOT = "bot";
-  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
-  public static final String THREAD = "THREAD";
   public static final String QUERY = "query";
 
   public static final String GLOSSARY = "glossary";
@@ -107,14 +111,11 @@ public final class Entity {
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
-  public static final String WORKFLOW = "workflow";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
-
-  public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
 
   //
   // Policy entity
@@ -128,6 +129,7 @@ public final class Entity {
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
+  public static final String BOT = "bot";
 
   //
   // Operation related entities
@@ -139,6 +141,12 @@ public final class Entity {
   //
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
+
+  //
+  // Other entities
+  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
+  public static final String THREAD = "THREAD";
+  public static final String WORKFLOW = "workflow";
 
   //
   // Reserved names in OpenMetadata
@@ -355,6 +363,29 @@ public final class Entity {
   public static <T> Set<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
     return new HashSet<>(Arrays.asList(propertyOrder.value()));
+  }
+
+  /** Returns true if the entity supports activity feeds, announcement, and tasks */
+  public static boolean supportsFeed(String entityType) {
+    return listOf(
+            TABLE,
+            DATABASE,
+            DATABASE_SCHEMA,
+            METRICS,
+            DASHBOARD,
+            DASHBOARD_DATA_MODEL,
+            PIPELINE,
+            CHART,
+            REPORT,
+            TOPIC,
+            MLMODEL,
+            CONTAINER,
+            QUERY,
+            GLOSSARY,
+            GLOSSARY_TERM,
+            TAG,
+            CLASSIFICATION)
+        .contains(entityType);
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */

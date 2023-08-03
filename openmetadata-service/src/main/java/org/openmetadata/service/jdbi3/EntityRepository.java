@@ -850,6 +850,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete the extension data storing custom properties
     removeExtension(entityInterface);
 
+    // Delete all the threads that are about this entity
+    Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+
     // Finally, delete the entity
     dao.delete(id);
   }
