@@ -102,7 +102,7 @@ class SupersetAPISource(SupersetSourceMixin):
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error creating dashboard [{dashboard_details.name}]: {exc}"
+                f"Error creating dashboard [{dashboard_details.dashboard_title}]: {exc}"
             )
 
     def _get_datasource_fqn_for_lineage(
