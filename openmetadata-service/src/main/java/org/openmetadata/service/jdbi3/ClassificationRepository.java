@@ -16,8 +16,9 @@ package org.openmetadata.service.jdbi3;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,7 +44,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -103,12 +103,13 @@ public class ClassificationRepository extends EntityRepository<Classification> {
               List<Rule> rules = policy.getRules();
               for (Rule rule : rules) {
                 if (rule.getCondition() != null) {
-                  List<String> classification = new ArrayList<>();
+                  Set<String> classification = new HashSet<>();
                   Pattern pattern = Pattern.compile("'([^']+)'");
                   Matcher matcher = pattern.matcher(rule.getCondition());
                   while (matcher.find()) {
                     String tagValue = matcher.group(1);
-                    classification.add(tagValue);
+                    String[] classificationFqn = FullyQualifiedName.split(tagValue);
+                    classification.add(classificationFqn[0]);
                   }
                   if (classification.contains(original.getFullyQualifiedName())) {
                     rule.setCondition(

@@ -129,7 +129,7 @@ public class RuleEvaluator {
   public boolean matchAnyGlossary(String... glossaryTermFQNs) throws IOException {
     if (expressionValidation) {
       for (String glossaryTermFqn : glossaryTermFQNs) {
-        TagLabelCache.getInstance().getGlossaryTerm(glossaryTermFqn);
+        TagLabelCache.getGlossaryTerm(glossaryTermFqn);
       }
       return false;
     }
@@ -157,7 +157,7 @@ public class RuleEvaluator {
   public boolean matchAllGlossaryTerms(String... glossaryTermFQNs) throws IOException {
     if (expressionValidation) {
       for (String glossaryTermFqn : glossaryTermFQNs) {
-        TagLabelCache.getInstance().getGlossaryTerm(glossaryTermFqn);
+        TagLabelCache.getGlossaryTerm(glossaryTermFqn);
       }
       return false;
     }

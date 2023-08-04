@@ -33,8 +33,10 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -168,12 +170,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               List<Rule> rules = policy.getRules();
               for (Rule rule : rules) {
                 if (rule.getCondition() != null) {
-                  List<String> glossaryTerms = new ArrayList<>();
+                  Set<String> glossaryTerms = new HashSet<>();
                   Pattern pattern = Pattern.compile("'([^']+)'");
                   Matcher matcher = pattern.matcher(rule.getCondition());
                   while (matcher.find()) {
-                    String tagValue = matcher.group(1);
-                    glossaryTerms.add(tagValue);
+                    String glossaryTerm = matcher.group(1);
+                    glossaryTerms.add(glossaryTerm);
                   }
                   if (glossaryTerms.contains(original.getFullyQualifiedName())) {
                     rule.setCondition(
