@@ -38,6 +38,7 @@ jobs:
   cypress-ci-mysql:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         job: [0, 1, 2]
     environment: test

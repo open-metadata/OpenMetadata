@@ -38,6 +38,7 @@ import {
   patchTeamDetail,
 } from 'rest/teamsAPI';
 import { getUsers, updateUserDetail } from 'rest/userAPI';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
@@ -611,7 +612,7 @@ const TeamsPage = () => {
 
   useEffect(() => {
     if (currentTab === TeamsPageTab.USERS) {
-      getCurrentTeamUsers(selectedTeam.name, {}, false);
+      getCurrentTeamUsers(getEncodedFqn(selectedTeam.name), {}, false);
     } else {
       setUserPaging(pagingObject);
     }
