@@ -25,6 +25,7 @@ import { useParams } from 'react-router-dom';
 import { getTestCaseByFqn } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDataQualityPagePath } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import './TestCaseDetailsPage.style.less';
@@ -36,7 +37,7 @@ function TestCaseDetailsPage() {
 
   const fetchTestCaseData = async () => {
     try {
-      const response = await getTestCaseByFqn(testCaseFQN, {
+      const response = await getTestCaseByFqn(getEncodedFqn(testCaseFQN), {
         fields: ['testSuite', 'testCaseResult'],
       });
       setTestCaseData(response.data);
