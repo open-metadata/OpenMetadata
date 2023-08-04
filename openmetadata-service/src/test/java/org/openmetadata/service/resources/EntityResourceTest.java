@@ -2734,6 +2734,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
     entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
+    entity = getEntityByName(entity.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(expectedOwner, entity.getOwner()); // Inherited owner
     return entity;
   }
 
@@ -2748,12 +2750,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
     entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
+    entity = getEntityByName(entity.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(newOwner, entity.getOwner()); // Owner remains the same
   }
 
   public T assertDomainInheritance(K createRequest, EntityReference expectedDomain) throws HttpResponseException {
     T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     return entity;
   }
@@ -2768,6 +2774,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
   }
 }
