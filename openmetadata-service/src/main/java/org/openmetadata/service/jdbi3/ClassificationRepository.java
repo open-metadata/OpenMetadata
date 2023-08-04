@@ -71,7 +71,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private int getTermCount(Classification category) {
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getName());
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getFullyQualifiedName());
     return daoCollection.tagDAO().listCount(filter);
   }
 

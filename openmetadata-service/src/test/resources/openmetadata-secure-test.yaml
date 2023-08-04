@@ -89,8 +89,10 @@ server:
 
 # Logging settings.
 logging:
-  level: OFF
-  appenders: []
+  level: INFO
+  appenders:
+    - type: console
+      logFormat: "%level %logger{5} - %msg%n"
 
 database:
   # the name of the JDBC driver, h2 is used for testing

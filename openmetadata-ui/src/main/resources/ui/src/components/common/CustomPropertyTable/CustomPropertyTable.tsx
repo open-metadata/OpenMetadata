@@ -15,7 +15,13 @@ import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import { EntityField } from 'constants/Feeds.constants';
+import { EntityType } from 'enums/entity.enum';
 import { ChangeDescription } from 'generated/tests/testCase';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -34,6 +40,7 @@ import {
   CustomPropertyProps,
   EntityDetails,
 } from './CustomPropertyTable.interface';
+import { ExtensionTable } from './ExtensionTable';
 import { PropertyValue } from './PropertyValue';
 
 export const CustomPropertyTable: FC<CustomPropertyProps> = ({
@@ -45,9 +52,12 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   isVersionView,
 }) => {
   const { t } = useTranslation();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
+
+  const [typePermission, setPermission] = useState<OperationPermission>();
 
   const fetchTypeDetail = async () => {
     setEntityTypeDetailLoading(true);
@@ -57,6 +67,26 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
       setEntityTypeDetail(res);
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setEntityTypeDetailLoading(false);
+    }
+  };
+
+  const fetchResourcePermission = async (entityType: EntityType) => {
+    setEntityTypeDetailLoading(true);
+    try {
+      const permission = await getEntityPermissionByFqn(
+        ResourceEntity.TYPE,
+        entityType
+      );
+
+      setPermission(permission);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
     } finally {
       setEntityTypeDetailLoading(false);
     }
@@ -139,35 +169,48 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   ]);
 
   useEffect(() => {
-    fetchTypeDetail();
-  }, []);
+    if (typePermission?.ViewAll || typePermission?.ViewBasic) {
+      fetchTypeDetail();
+    }
+  }, [typePermission]);
+
+  useEffect(() => {
+    fetchResourcePermission(entityType);
+  }, [entityType]);
 
   if (entityTypeDetailLoading) {
     return <Loader />;
   }
 
+  if (!isEmpty(entityTypeDetail.customProperties)) {
+    return (
+      <Table
+        bordered
+        className="m-md"
+        columns={tableColumn}
+        data-testid="custom-properties-table"
+        dataSource={entityTypeDetail.customProperties || []}
+        pagination={false}
+        rowKey="name"
+        size="small"
+      />
+    );
+  }
+
+  if (
+    isEmpty(entityTypeDetail.customProperties) &&
+    !isUndefined(entityDetails.extension)
+  ) {
+    return <ExtensionTable extension={entityDetails.extension} />;
+  }
+
   return (
-    <>
-      {isEmpty(entityTypeDetail.customProperties) ? (
-        <ErrorPlaceHolder className={className}>
-          <Typography.Paragraph>
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: t('label.custom-property-plural'),
-            })}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      ) : (
-        <Table
-          bordered
-          className="m-md"
-          columns={tableColumn}
-          data-testid="custom-properties-table"
-          dataSource={entityTypeDetail.customProperties || []}
-          pagination={false}
-          rowKey="name"
-          size="small"
-        />
-      )}
-    </>
+    <ErrorPlaceHolder className={className}>
+      <Typography.Paragraph>
+        {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+          entity: t('label.custom-property-plural'),
+        })}
+      </Typography.Paragraph>
+    </ErrorPlaceHolder>
   );
 };

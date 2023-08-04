@@ -154,6 +154,7 @@ function ServiceMainTabContent({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        className: 'd-block w-max-200 truncate',
         render: (_, record: ServicePageData) => {
           return (
             <Link

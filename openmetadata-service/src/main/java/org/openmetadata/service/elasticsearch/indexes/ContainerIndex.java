@@ -3,7 +3,9 @@ package org.openmetadata.service.elasticsearch.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
 import org.openmetadata.service.elasticsearch.ParseTags;
@@ -21,6 +23,11 @@ public class ContainerIndex implements ColumnIndex {
   }
 
   public Map<String, Object> buildESDoc() {
+    if (container.getOwner() != null) {
+      EntityReference owner = container.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      container.setOwner(owner);
+    }
     Map<String, Object> doc = JsonUtils.getMap(container);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();
