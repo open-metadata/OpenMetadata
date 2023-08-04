@@ -39,6 +39,6 @@ def dataframe_to_chunks(df):
     Reads the Dataframe and returns list of dataframes broken down in chunks
     """
     return [
-        df[range_iter : range_iter + CHUNKSIZE]
+        df[range_iter: range_iter + CHUNKSIZE]
         for range_iter in range(0, len(df), CHUNKSIZE)
     ]
