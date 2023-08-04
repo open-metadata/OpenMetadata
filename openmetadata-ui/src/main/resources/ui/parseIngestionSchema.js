@@ -24,7 +24,7 @@ const schemaDir =
 
 const rootDir = 'ingestionTemp';
 const srcDir = 'schema/metadataIngestion';
-const destDir = 'src/jsons/metadataIngestionSchemas';
+const destDir = 'src/jsons/ingestionSchemas';
 
 const playDir = `${rootDir}/${srcDir}`;
 
