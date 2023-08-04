@@ -420,7 +420,7 @@ const TagsPage = () => {
           patchData
         );
         if (response) {
-          fetchClassifications();
+          await fetchClassifications();
           if (
             currentClassification?.fullyQualifiedName !==
             updatedClassification.fullyQualifiedName
@@ -469,6 +469,7 @@ const TagsPage = () => {
       return handleUpdateClassification({
         ...currentClassification,
         ...data,
+        fullyQualifiedName: data.name,
       });
     }
 
