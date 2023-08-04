@@ -7,7 +7,6 @@ slug: /deployment/security/azure/bare-metal
 
 Get the `Client Id` and `Tenant ID` from Azure Application configured in [Step 3](/deployment/security/azure#step-3-where-to-find-the-credentials).
 
-Get the Azure Service Application `Client Id`, `Client Secret`, `Authority`, `Scopes` from the information collected in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
 
 ## Update conf/openmetadata.yaml
 
