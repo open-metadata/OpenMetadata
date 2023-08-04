@@ -24,6 +24,7 @@ import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
 import { getDataQualityPagePath, getLogEntityPath } from './RouterUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 /**
  * It takes in a service type, an ingestion name, and an ingestion details object, and returns an array
@@ -69,8 +70,10 @@ export const getLogBreadCrumbs = (
         name: ingestionDetails.name,
         url:
           getTableTabPath(
-            (ingestionDetails.sourceConfig.config as ConfigClass)
-              ?.entityFullyQualifiedName ?? '',
+            getEncodedFqn(
+              (ingestionDetails.sourceConfig.config as ConfigClass)
+                ?.entityFullyQualifiedName ?? ''
+            ),
             EntityTabs.PROFILER
           ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
       },
@@ -87,7 +90,9 @@ export const getLogBreadCrumbs = (
     return {
       name: index === 0 ? startCase(path) : path,
       url:
-        index !== urlPath.length - 1 ? getLogEntityPath(path, serviceType) : '',
+        index !== urlPath.length - 1
+          ? getLogEntityPath(getEncodedFqn(path), serviceType)
+          : '',
     };
   });
 };
