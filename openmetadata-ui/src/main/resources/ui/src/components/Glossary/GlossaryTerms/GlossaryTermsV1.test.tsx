@@ -17,53 +17,13 @@ import { mockedGlossaryTerms, MOCK_ASSETS_DATA } from 'mocks/Glossary.mock';
 import React from 'react';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
-jest.mock('../PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-    permissions: {
-      glossaryTerm: {
-        Create: true,
-        Delete: true,
-        ViewAll: true,
-        EditAll: true,
-        EditDescription: true,
-        EditDisplayName: true,
-        EditCustomFields: true,
-      },
-      glossary: {
-        Create: true,
-        Delete: true,
-        ViewAll: true,
-        EditAll: true,
-        EditDescription: true,
-        EditDisplayName: true,
-        EditCustomFields: true,
-      },
-    },
-  }),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-  userPermissions: {
-    hasViewPermissions: jest.fn(),
-  },
-}));
-
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-  useParams: jest.fn().mockReturnValue({
-    glossaryName: 'GlossaryName',
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    glossaryName: 'glossary',
     tab: 'terms',
-  }),
+    version: 'glossaryVersion',
+  })),
 }));
 
 jest.mock('rest/miscAPI', () => ({
@@ -71,14 +31,6 @@ jest.mock('rest/miscAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
 }));
-
-jest.mock('../common/description/DescriptionV1', () => {
-  return jest.fn().mockReturnValue(<>Description component</>);
-});
-
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
-});
 
 jest.mock('./tabs/RelatedTerms', () =>
   jest.fn().mockReturnValue(<div>RelatedTermsComponent</div>)

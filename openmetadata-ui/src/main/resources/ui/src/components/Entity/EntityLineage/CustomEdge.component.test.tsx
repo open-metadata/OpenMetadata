@@ -18,7 +18,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
 import { CustomEdge } from './CustomEdge.component';
 
-jest.mock('../../constants/Lineage.constants', () => ({
+jest.mock('constants/Lineage.constants', () => ({
   foreignObjectSize: 40,
 }));
 

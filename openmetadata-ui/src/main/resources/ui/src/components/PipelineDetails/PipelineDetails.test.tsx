@@ -137,15 +137,11 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage</p>);
-});
-
 jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);

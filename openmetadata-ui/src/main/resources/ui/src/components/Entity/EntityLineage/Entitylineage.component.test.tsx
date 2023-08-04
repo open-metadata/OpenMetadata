@@ -19,10 +19,6 @@ import { act } from 'react-dom/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import EntityLineage from './EntityLineage.component';
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
-});
-
 const mockEntityLineageProp = {
   deleted: false,
   entityType: EntityType.TABLE,
@@ -57,7 +53,7 @@ const mockPaginatedData = {
   edges: [],
 };
 
-jest.mock('../../utils/EntityLineageUtils', () => ({
+jest.mock('utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
   getDeletedLineagePlaceholder: jest
     .fn()
@@ -80,27 +76,12 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
   getParamByEntityType: jest.fn().mockReturnValue('entityFQN'),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
-  getEntityIcon: jest.fn(),
-}));
-
-jest.mock('../../hooks/authHooks', () => ({
-  useAuth: jest.fn().mockReturnValue({
-    userPermissions: [],
-    isAdminUser: false,
-  }),
-}));
-
 jest.mock('rest/lineageAPI', () => ({
   getLineageByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       ...MOCK_LINEAGE_DATA,
     })
   ),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  hasPermission: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../EntityInfoDrawer/EntityInfoDrawer.component', () => {

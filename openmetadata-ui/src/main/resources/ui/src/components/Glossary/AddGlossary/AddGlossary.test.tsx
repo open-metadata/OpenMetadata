@@ -12,33 +12,12 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import React from 'react';
 import AddGlossary from './AddGlossary.component';
 
 jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
-
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
-});
-
-jest.mock('../common/rich-text-editor/RichTextEditor', () => {
-  return forwardRef(
-    jest.fn().mockImplementation(({ initialValue }) => {
-      return (
-        <div
-          ref={(input) => {
-            return {
-              getEditorContent: input,
-            };
-          }}>
-          {initialValue}RichTextEditor
-        </div>
-      );
-    })
-  );
-});
 
 jest.mock('rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),

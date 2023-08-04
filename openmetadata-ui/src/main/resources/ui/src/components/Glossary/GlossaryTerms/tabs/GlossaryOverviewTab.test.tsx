@@ -16,13 +16,13 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import GlossaryOverviewTab from './GlossaryOverviewTab.component';
 
-jest.mock('components/GlossaryTerms/tabs/GlossaryTermSynonyms', () => {
+jest.mock('./GlossaryTermSynonyms', () => {
   return jest.fn().mockReturnValue(<p>GlossaryTermSynonyms</p>);
 });
-jest.mock('components/GlossaryTerms/tabs/RelatedTerms', () => {
+jest.mock('./RelatedTerms', () => {
   return jest.fn().mockReturnValue(<p>RelatedTerms</p>);
 });
-jest.mock('components/GlossaryTerms/tabs/GlossaryTermReferences', () => {
+jest.mock('./GlossaryTermReferences', () => {
   return jest.fn().mockReturnValue(<p>GlossaryTermReferences</p>);
 });
 
