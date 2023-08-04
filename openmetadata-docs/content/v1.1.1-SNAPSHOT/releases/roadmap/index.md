@@ -76,7 +76,7 @@ You can check the latest release [here](/releases/all-releases).
 {% /tilesContainer %}
 
 
-## 1.2 Release - Aug 9th 2023
+## 1.2 Release - Oct 13th 2023
 
 {% tilesContainer %}
 

@@ -24,7 +24,7 @@ Password to connect to Hive.
 
 This parameter specifies the host and port of the Hive instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `myhivehost:10000`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:10000` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:10000` as the value.
 
 ### Auth
 The auth parameter specifies the authentication method to use when connecting to the Hive server. Possible values are `LDAP`, `NONE`, `CUSTOM`, or `KERBEROS`. If you are using Kerberos authentication, you should set auth to `KERBEROS`. If you are using custom authentication, you should set auth to `CUSTOM` and provide additional options in the `authOptions` parameter.
@@ -146,7 +146,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 This parameter specifies the host and port of the Postgres instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5432`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:5432` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:5432` as the value.
 
 ### Database
 
@@ -275,7 +275,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 This parameter specifies the host and port of the MySQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3306`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3306` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3306` as the value.
 
 ### Database Name $(id="databaseName")
 In OpenMetadata, the Database Service hierarchy works as follows:

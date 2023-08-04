@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Popover, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
@@ -49,6 +49,7 @@ import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
 } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 interface Props {
@@ -59,6 +60,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
+
   const { permissions } = usePermissionProvider();
   const history = useHistory();
 
@@ -357,22 +359,17 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           return (
             <>
               {record?.airflowConfig.scheduleInterval ? (
-                <Popover
-                  content={
-                    <div>
-                      {cronstrue.toString(
-                        record.airflowConfig.scheduleInterval || '',
-                        {
-                          use24HourTimeFormat: true,
-                          verbose: true,
-                        }
-                      )}
-                    </div>
-                  }
+                <Tooltip
                   placement="bottom"
-                  trigger="hover">
+                  title={cronstrue.toString(
+                    record.airflowConfig.scheduleInterval || '',
+                    {
+                      use24HourTimeFormat: true,
+                      verbose: true,
+                    }
+                  )}>
                   <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </Popover>
+                </Tooltip>
               ) : (
                 <span>--</span>
               )}
@@ -457,8 +454,8 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     onClick={() => {
                       history.push(
                         getTestSuiteIngestionPath(
-                          testSuiteFQN,
-                          record.fullyQualifiedName
+                          getEncodedFqn(testSuiteFQN),
+                          getEncodedFqn(record.fullyQualifiedName ?? '')
                         )
                       );
                     }}>
@@ -523,7 +520,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     to={getLogsViewerPath(
                       EntityType.TEST_SUITE,
                       record.service?.name || '',
-                      record.fullyQualifiedName || ''
+                      getEncodedFqn(record.fullyQualifiedName || '')
                     )}>
                     <Button
                       className="p-0"
@@ -581,7 +578,9 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
+                history.push(
+                  getTestSuiteIngestionPath(getEncodedFqn(testSuiteFQN))
+                );
               }}>
               {t('label.add')}
             </Button>
