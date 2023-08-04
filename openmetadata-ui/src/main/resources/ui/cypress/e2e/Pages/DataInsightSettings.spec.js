@@ -77,8 +77,6 @@ describe('Data Insight settings page should work properly', () => {
     cy.get('[data-testid="deploy-button"]').click();
 
     cy.wait('@postIngestionPipeline').then(({ request, response }) => {
-      expect(request.body).to.have.any.key('sourceConfig');
-      expect(request.body.sourceConfig).to.have.any.key('config');
       expect(request.body.sourceConfig.config).to.deep.equal({
         regionName: 'US',
         useAwsCredentials: true,
@@ -86,7 +84,6 @@ describe('Data Insight settings page should work properly', () => {
         verifyCerts: false,
         type: 'MetadataToElasticSearch',
       });
-      expect(request.body).to.have.any.key('loggerLevel');
       expect(request.body.loggerLevel).to.equal('INFO');
 
       expect(response.statusCode).to.equal(201);
@@ -134,8 +131,6 @@ describe('Data Insight settings page should work properly', () => {
     cy.get('[data-testid="deploy-button"]').click();
 
     cy.wait('@putIngestionPipeline').then(({ request, response }) => {
-      expect(request.body).to.have.any.key('sourceConfig');
-      expect(request.body.sourceConfig).to.have.any.key('config');
       expect(request.body.sourceConfig.config).to.deep.equal({
         regionName: 'US',
         useAwsCredentials: true,
@@ -143,7 +138,6 @@ describe('Data Insight settings page should work properly', () => {
         verifyCerts: false,
         type: 'MetadataToElasticSearch',
       });
-      expect(request.body).to.have.any.key('loggerLevel');
       expect(request.body.loggerLevel).to.equal('DEBUG');
 
       expect(response.statusCode).to.equal(200);
