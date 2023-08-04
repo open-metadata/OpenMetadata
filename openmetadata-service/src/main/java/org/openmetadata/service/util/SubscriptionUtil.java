@@ -75,7 +75,7 @@ public class SubscriptionUtil {
         result
             .getData()
             .forEach(
-                (user) -> {
+                user -> {
                   if (type == CreateEventSubscription.SubscriptionType.EMAIL
                       || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
                     data.add(user.getEmail());
@@ -109,7 +109,7 @@ public class SubscriptionUtil {
       List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
           daoCollection.relationshipDAO().findFrom(entityId.toString(), entityType, relationship.ordinal());
       ownerOrFollowers.forEach(
-          (owner) -> {
+          owner -> {
             if (type == CreateEventSubscription.SubscriptionType.EMAIL
                 || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
               if (USER.equals(owner.getType())) {
