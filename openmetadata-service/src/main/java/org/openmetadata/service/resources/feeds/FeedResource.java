@@ -100,6 +100,7 @@ public class FeedResource {
   public FeedResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = new FeedRepository(dao);
+    Entity.setFeedRepository(this.dao);
     this.authorizer = authorizer;
   }
 
@@ -145,7 +146,7 @@ public class FeedResource {
           @QueryParam("after")
           String after,
       @Parameter(
-              description = "Filter threads by entity link",
+              description = "Filter threads by entity link of entity about which this thread is created",
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink,
@@ -354,8 +355,7 @@ public class FeedResource {
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
-          Boolean isResolved)
-      throws IOException {
+          Boolean isResolved) {
     FeedFilter filter = FeedFilter.builder().threadType(threadType).taskStatus(taskStatus).resolved(isResolved).build();
     return dao.getThreadsCount(filter, entityLink);
   }
