@@ -111,7 +111,9 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard count")
         return 0
 
-    def fetch_dashboards(self, current_page: int, page_size: int):
+    def fetch_dashboards(
+        self, current_page: int, page_size: int
+    ) -> SupersetDashboardCount:
         """
         Fetch dashboards
 
@@ -133,7 +135,7 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
-        return None
+        return SupersetDashboardCount()
 
     def fetch_total_charts(self) -> int:
         """
@@ -153,7 +155,7 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the chart count")
         return 0
 
-    def fetch_charts(self, current_page: int, page_size: int):
+    def fetch_charts(self, current_page: int, page_size: int) -> SupersetChart:
         """
         Fetch charts
 
@@ -175,13 +177,13 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
-        return None
+        return SupersetChart()
 
     def fetch_charts_with_id(self, chart_id: str):
         response = self.client.get(f"/chart/{chart_id}")
         return response
 
-    def fetch_datasource(self, datasource_id: str):
+    def fetch_datasource(self, datasource_id: str) -> SupersetDatasource:
         """
         Fetch data source
 
@@ -199,9 +201,10 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
-        return None
 
-    def fetch_database(self, database_id: str):
+        return SupersetDatasource()
+
+    def fetch_database(self, database_id: str) -> ListDatabaseResult:
         """
         Fetch database
 
@@ -219,4 +222,4 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the database list")
-        return None
+        return ListDatabaseResult()
