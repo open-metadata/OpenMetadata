@@ -20,8 +20,8 @@ import requests
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (
     BitBucketCredentials,
 )
-from metadata.readers.api_reader import ApiReader
-from metadata.readers.base import ReadException
+from metadata.readers.file.api_reader import ApiReader
+from metadata.readers.file.base import ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

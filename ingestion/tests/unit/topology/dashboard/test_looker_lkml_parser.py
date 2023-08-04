@@ -28,7 +28,7 @@ from metadata.ingestion.source.dashboard.looker.parser import (
     LkmlParser,
     ViewName,
 )
-from metadata.readers.local import LocalReader
+from metadata.readers.file.local import LocalReader
 
 BASE_PATH = Path(__file__).parent.parent.parent / "resources/lkml"
 
