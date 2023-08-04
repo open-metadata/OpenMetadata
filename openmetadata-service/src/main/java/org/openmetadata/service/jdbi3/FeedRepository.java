@@ -92,6 +92,15 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.ResultList;
 
+/*
+ * Feed relationships:
+ * - 'user' --- createdBy ---> 'thread' in entity_relationship
+ * - 'user' --- repliedTo ---> 'thread' in entity_relationship
+ * - 'user' --- mentionedIn ---> 'thread' in entity_relationship
+ * - 'user' --- reactedTo ---> 'thread' in entity_relationship
+ * - 'thread' --- addressedTo ---> 'user' in field_relationship
+ * - 'thread' --- isAbout ---> 'entity' in entity_relationship
+ */
 @Slf4j
 public class FeedRepository {
   private final CollectionDAO dao;
@@ -369,19 +378,32 @@ public class FeedRepository {
 
   @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
-    String id = thread.getId().toString();
+    deleteThreadInternal(thread.getId().toString());
+    LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
+    return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
+  }
 
+  public void deleteThreadInternal(String id) {
     // Delete all the relationships to other entities
     dao.relationshipDAO().deleteAll(id, Entity.THREAD);
 
     // Delete all the field relationships to other entities
     dao.fieldRelationshipDAO().deleteAllByPrefix(id);
 
-    // Finally, delete the entity
+    // Finally, delete the thread
     dao.feedDAO().delete(id);
+  }
 
-    LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
-    return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
+  @Transaction
+  public void deleteByAbout(UUID entityId) {
+    List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
+    for (String threadId : threadIds) {
+      try {
+        deleteThreadInternal(threadId);
+      } catch (Exception ex) {
+        // Continue deletion
+      }
+    }
   }
 
   @Transaction
