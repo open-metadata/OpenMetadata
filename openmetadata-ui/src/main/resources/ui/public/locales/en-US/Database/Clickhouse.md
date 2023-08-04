@@ -86,11 +86,17 @@ Connections are kept open for as long as needed to complete a query, but they ca
 $$
 
 $$section
+### Use HTTPS Protocol $(id="https")
+
+Enable this flag when the when the Clickhouse instance is hosted via HTTPS protocol. This flag is useful when you are using `clickhouse+http` connection scheme.
+$$
+
+$$section
 ### Secure $(id="secure")
 
 Establish secure connection with ClickHouse.
 
-ClickHouse supports secure communication over SSL/TLS to protect data in transit, by checking this option, it establishes secure connection with ClickHouse
+ClickHouse supports secure communication over SSL/TLS to protect data in transit, by checking this option, it establishes secure connection with ClickHouse. This flag is useful when you are using `clickhouse+native` connection scheme.
 $$
 
 $$section

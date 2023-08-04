@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -197,9 +196,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(term.getFullyQualifiedName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), term.getFullyQualifiedName());
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
@@ -207,19 +204,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids =
-        findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    return findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
   }
 
   @Override
@@ -291,11 +284,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  @Override
-  public String getFullyQualifiedNameHash(GlossaryTerm entity) {
-    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-  }
-
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
     return getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
   }
@@ -312,9 +300,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postDelete(GlossaryTerm entity) {
     // Cleanup all the tag labels using this glossary term
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagLabels(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
+    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {

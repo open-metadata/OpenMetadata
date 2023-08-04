@@ -135,14 +135,15 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isEmpty(mostActiveUsers) ? (
+      {isLoading ? (
+        <Loader />
+      ) : isEmpty(mostActiveUsers) ? (
         <EmptyGraphPlaceholder />
       ) : (
         <Table
           className="data-insight-table-wrapper"
           columns={columns}
           dataSource={mostActiveUsers}
-          loading={{ spinning: isLoading, indicator: <Loader /> }}
           pagination={false}
           size="small"
         />

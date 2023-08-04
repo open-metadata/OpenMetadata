@@ -23,9 +23,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.domains.DataProductResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -51,8 +49,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   // TODO to to inheritance for experts
   private List<EntityReference> getExperts(DataProduct entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    return findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
   }
 
   @Override
@@ -92,11 +89,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public void setFullyQualifiedName(DataProduct entity) {
     EntityReference domain = entity.getDomain();
     entity.setFullyQualifiedName(FullyQualifiedName.add(domain.getFullyQualifiedName(), entity.getName()));
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(DataProduct entity) {
-    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
   }
 
   public class DataProductUpdater extends EntityUpdater {

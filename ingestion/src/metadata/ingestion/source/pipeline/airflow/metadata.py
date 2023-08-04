@@ -254,21 +254,20 @@ class AirflowSource(PipelineServiceSource):
             SerializedDagModel.fileloc,
         ).all():
             try:
-                if serialized_dag[0] in ("example_subdag_operator"):
-                    data = serialized_dag[1]["dag"]
-                    dag = AirflowDagDetails(
-                        dag_id=serialized_dag[0],
-                        fileloc=serialized_dag[2],
-                        data=AirflowDag.parse_obj(serialized_dag[1]),
-                        max_active_runs=data.get("max_active_runs", None),
-                        description=data.get("_description", None),
-                        start_date=data.get("start_date", None),
-                        tasks=data.get("tasks", []),
-                        schedule_interval=get_schedule_interval(data),
-                        owners=self.fetch_owners(data),
-                    )
+                data = serialized_dag[1]["dag"]
+                dag = AirflowDagDetails(
+                    dag_id=serialized_dag[0],
+                    fileloc=serialized_dag[2],
+                    data=AirflowDag.parse_obj(serialized_dag[1]),
+                    max_active_runs=data.get("max_active_runs", None),
+                    description=data.get("_description", None),
+                    start_date=data.get("start_date", None),
+                    tasks=data.get("tasks", []),
+                    schedule_interval=get_schedule_interval(data),
+                    owners=self.fetch_owners(data),
+                )
 
-                    yield dag
+                yield dag
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(

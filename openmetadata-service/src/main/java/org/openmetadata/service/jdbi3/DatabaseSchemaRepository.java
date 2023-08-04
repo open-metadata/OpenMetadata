@@ -27,7 +27,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -49,11 +48,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void setFullyQualifiedName(DatabaseSchema schema) {
     schema.setFullyQualifiedName(
         FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()));
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(DatabaseSchema schema) {
-    return FullyQualifiedName.buildHash(schema.getFullyQualifiedName());
   }
 
   @Override
@@ -83,9 +77,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schema == null) {
       return Collections.emptyList();
     }
-    List<EntityRelationshipRecord> tableIds =
-        findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
-    return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
+    return findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
   }
 
   public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) throws IOException {

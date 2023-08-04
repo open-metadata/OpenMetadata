@@ -233,7 +233,7 @@ We support
 
 - Amazon RDS (MySQL) engine version 8 or greater
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
-- Amazon RDS (PostgreSQL) engine version between 12 and 14.6
+- Amazon RDS (PostgreSQL) engine version between 12 or greater
 
 Note:-
     When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,

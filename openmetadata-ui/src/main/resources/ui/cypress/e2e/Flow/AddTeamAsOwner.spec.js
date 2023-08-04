@@ -46,7 +46,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
    * Only team of type group can own the entities
    */
   it('Add a group team type and assign it as a owner of the entity', () => {
-    interceptURL('GET', '/api/v1/users*', 'getTeams');
+    interceptURL('GET', '/api/v1/teams/name/*', 'getTeams');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -80,7 +80,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
     );
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.get('.user-team-select-popover  [data-testid="searchbar"]')
+    cy.get('[data-testid="owner-select-teams-search-bar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.name);
 
@@ -110,7 +110,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
     );
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.get('.user-team-select-popover  [data-testid="searchbar"]')
+    cy.get('[data-testid="owner-select-teams-search-bar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.name);
 

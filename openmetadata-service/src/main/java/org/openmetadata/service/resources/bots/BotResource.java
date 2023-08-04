@@ -62,6 +62,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -102,7 +103,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       // Add role corresponding to the bot to the user
       // we need to set a mutable list here
       user.setRoles(getRoleForBot(bot.getName()));
-      user = UserUtil.addOrUpdateBotUser(user, config);
+      user = UserUtil.addOrUpdateBotUser(user);
       bot.withBotUser(user.getEntityReference());
       repository.initializeEntity(bot);
     }
@@ -397,14 +398,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     if (user == null) {
       return false;
     }
-    List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
+    List<EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
     return !userBotRelationship.isEmpty()
         && (botUser == null
             || userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId())));
   }
 
-  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return repository.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+  private List<EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
+    return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
   private Bot getBot(SecurityContext securityContext, CreateBot create) throws IOException {
@@ -415,7 +416,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       throw new IllegalArgumentException(String.format("User [%s] is not a bot user", botUser.getName()));
     }
     if (userHasRelationshipWithAnyBot(botUser, originalBot)) {
-      List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(botUser);
+      List<EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(botUser);
       bot =
           repository.get(
               null, userBotRelationship.stream().findFirst().orElseThrow().getId(), EntityUtil.Fields.EMPTY_FIELDS);

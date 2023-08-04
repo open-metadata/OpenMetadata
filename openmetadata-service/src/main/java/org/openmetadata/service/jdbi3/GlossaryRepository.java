@@ -16,30 +16,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
-import static org.openmetadata.csv.CsvUtil.addEntityReference;
-import static org.openmetadata.csv.CsvUtil.addEntityReferences;
-import static org.openmetadata.csv.CsvUtil.addField;
-import static org.openmetadata.csv.CsvUtil.addOwner;
-import static org.openmetadata.csv.CsvUtil.addTagLabels;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -62,13 +39,35 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
+import static org.openmetadata.csv.CsvUtil.addEntityReference;
+import static org.openmetadata.csv.CsvUtil.addEntityReferences;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -176,9 +175,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(glossary.getName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
   }
 
   private Integer getTermCount(Glossary glossary) {
@@ -212,8 +209,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private List<EntityReference> getReviewers(Glossary entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    return findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {

@@ -17,7 +17,7 @@ import traceback
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
@@ -39,7 +39,11 @@ def get_host_from_host_port(uri: str) -> str:
 
 
 def get_view_lineage(
-    view: TableView, metadata: OpenMetadata, service_name: str, connection_type: str
+    view: TableView,
+    metadata: OpenMetadata,
+    service_name: str,
+    connection_type: str,
+    timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
 ):
     """
     Method to generate view lineage
@@ -64,7 +68,9 @@ def get_view_lineage(
     try:
         connection_type = str(connection_type)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-        lineage_parser = LineageParser(view_definition, dialect)
+        lineage_parser = LineageParser(
+            view_definition, dialect, timeout_seconds=timeout_seconds
+        )
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from get_lineage_by_query(
                 metadata,
@@ -73,6 +79,7 @@ def get_view_lineage(
                 database_name=db_name,
                 schema_name=schema_name,
                 dialect=dialect,
+                timeout_seconds=timeout_seconds,
             ) or []
 
         else:
@@ -84,6 +91,7 @@ def get_view_lineage(
                 schema_name=schema_name,
                 query=view_definition,
                 dialect=dialect,
+                timeout_seconds=timeout_seconds,
             ) or []
     except Exception as exc:
         logger.debug(traceback.format_exc())

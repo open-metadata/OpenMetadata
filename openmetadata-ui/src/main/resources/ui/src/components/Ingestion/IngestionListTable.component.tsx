@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Tooltip, Typography } from 'antd';
+import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
 import { isNil } from 'lodash';
@@ -22,7 +23,6 @@ import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLogsViewerPath } from '../../utils/RouterUtils';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
@@ -45,6 +45,7 @@ function IngestionListTable({
   deleteSelection,
   permissions,
   pipelineType,
+  isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
@@ -86,19 +87,14 @@ function IngestionListTable({
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
     return record.airflowConfig?.scheduleInterval ? (
-      <Popover
-        content={
-          <div>
-            {cronstrue.toString(record.airflowConfig.scheduleInterval, {
-              use24HourTimeFormat: true,
-              verbose: true,
-            })}
-          </div>
-        }
+      <Tooltip
         placement="bottom"
-        trigger="hover">
-        <span>{record.airflowConfig.scheduleInterval}</span>
-      </Popover>
+        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
+          use24HourTimeFormat: true,
+          verbose: true,
+        })}>
+        {record.airflowConfig.scheduleInterval}
+      </Tooltip>
     ) : (
       <span>--</span>
     );
@@ -170,7 +166,6 @@ function IngestionListTable({
       serviceName,
       deleteSelection,
       handleDeleteSelection,
-      getLogsViewerPath,
       serviceCategory,
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
@@ -192,6 +187,10 @@ function IngestionListTable({
         columns={tableColumn}
         data-testid="schema-table"
         dataSource={ingestionData}
+        loading={{
+          spinning: isLoading,
+          indicator: <Loader size="small" />,
+        }}
         locale={{
           emptyText: getErrorPlaceHolder(
             isRequiredDetailsAvailable,

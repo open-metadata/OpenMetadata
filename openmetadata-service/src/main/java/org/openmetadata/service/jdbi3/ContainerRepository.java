@@ -82,9 +82,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container == null) {
       return Collections.emptyList();
     }
-    List<CollectionDAO.EntityRelationshipRecord> childContainerIds =
-        findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
-    return EntityUtil.populateEntityReferences(childContainerIds, CONTAINER);
+    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }
 
   @Override
@@ -99,11 +97,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(Container container) {
-    return FullyQualifiedName.buildHash(container.getFullyQualifiedName());
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {

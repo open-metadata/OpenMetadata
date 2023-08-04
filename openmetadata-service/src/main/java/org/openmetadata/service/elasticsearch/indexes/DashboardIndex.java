@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -22,6 +23,11 @@ public class DashboardIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
+    if (dashboard.getOwner() != null) {
+      EntityReference owner = dashboard.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      dashboard.setOwner(owner);
+    }
     Map<String, Object> doc = JsonUtils.getMap(dashboard);
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();

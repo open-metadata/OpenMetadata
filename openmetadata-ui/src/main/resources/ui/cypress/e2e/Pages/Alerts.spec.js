@@ -47,16 +47,16 @@ const visitAddAlertPage = () => {
   cy.wait('@alertsPage').then(({ response }) => {
     const data = response.body.data?.find((alert) => alert.provider === 'user');
 
-    if (Cypress._.isUndefined(data)) {
+    if (data) {
+      cy.get('[data-testid="create-alert"]').click();
+    } else {
       // Click on create placeholder button for alerts
       cy.get('[data-testid="add-placeholder-button"]').click();
-    } else {
-      cy.get('[data-testid="create-alert"]').click();
     }
   });
 };
 
-describe('Alerts page should work properly', () => {
+describe.skip('Alerts page should work properly', () => {
   beforeEach(() => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');

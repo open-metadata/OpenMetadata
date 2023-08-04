@@ -13,27 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.service.util.EntityUtil.getId;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -45,13 +25,32 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.getId;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -113,11 +112,6 @@ public class TagRepository extends EntityRepository<Tag> {
     } else {
       tag.setFullyQualifiedName(FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
     }
-  }
-
-  @Override
-  public String getFullyQualifiedNameHash(Tag tag) {
-    return FullyQualifiedName.buildHash(tag.getFullyQualifiedName());
   }
 
   @Override
@@ -199,14 +193,11 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private Integer getUsageCount(Tag tag) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(tag.getFullyQualifiedName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
   }
 
   private List<EntityReference> getChildren(Tag entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
-    return EntityUtil.populateEntityReferences(ids, TAG);
+    return findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
   }
 
   private EntityReference getParent(Tag tag) throws IOException {

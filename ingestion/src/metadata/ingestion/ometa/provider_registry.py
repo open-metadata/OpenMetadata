@@ -58,6 +58,10 @@ def warn_auth_deprecation(auth_provider: AuthProvider) -> None:
     )
 
 
+def warn_not_supported() -> None:
+    logger.warning("Note that we don't support this implementation on the client.")
+
+
 class InvalidAuthProviderException(Exception):
     """
     Raised when we cannot find a valid auth provider
@@ -70,6 +74,27 @@ auth_provider_registry = enum_register()
 
 @auth_provider_registry.add(AuthProvider.no_auth.value)
 def no_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    return NoOpAuthenticationProvider.create(config)
+
+
+@auth_provider_registry.add(AuthProvider.basic.value)
+def basic_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
+    warn_not_supported()
+    return NoOpAuthenticationProvider.create(config)
+
+
+@auth_provider_registry.add(AuthProvider.saml.value)
+def saml_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
+    warn_not_supported()
+    return NoOpAuthenticationProvider.create(config)
+
+
+@auth_provider_registry.add(AuthProvider.ldap.value)
+def ldap_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
+    warn_not_supported()
     return NoOpAuthenticationProvider.create(config)
 
 

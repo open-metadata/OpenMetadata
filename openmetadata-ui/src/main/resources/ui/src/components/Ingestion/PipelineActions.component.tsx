@@ -18,9 +18,10 @@ import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/Kil
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getLoadingStatus } from 'utils/CommonUtils';
 import { getEditIngestionPath, getLogsViewerPath } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 
@@ -43,6 +44,7 @@ function PipelineActions({
 
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+  const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
 
@@ -78,12 +80,25 @@ function PipelineActions({
       .catch(() => setCurrDeployId({ id: '', state: '' }));
   };
 
+  const onPauseUnpauseClick = async (id: string) => {
+    setCurrPauseId({ id, state: 'waiting' });
+    try {
+      await handleEnableDisableIngestion(id);
+      setCurrPauseId({ id, state: 'success' });
+      setTimeout(() => setCurrPauseId({ id: '', state: '' }), 1000);
+    } catch {
+      setCurrPauseId({ id: '', state: '' });
+    }
+  };
+
   const handleUpdate = (ingestion: IngestionPipeline) => {
     history.push(
       getEditIngestionPath(
         serviceCategory,
         serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
+        getEncodedFqn(
+          ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`
+        ),
         ingestion.pipelineType
       )
     );
@@ -165,8 +180,8 @@ function PipelineActions({
               data-testid="pause"
               disabled={getIngestionPermission(record.name)}
               type="link"
-              onClick={() => handleEnableDisableIngestion(record.id || '')}>
-              {t('label.pause')}
+              onClick={() => onPauseUnpauseClick(record.id || '')}>
+              {getLoadingStatus(currPauseId, record.id, t('label.pause'))}
             </Button>
           </>
         ) : (
@@ -175,8 +190,8 @@ function PipelineActions({
             data-testid="unpause"
             disabled={getIngestionPermission(record.name)}
             type="link"
-            onClick={() => handleEnableDisableIngestion(record.id || '')}>
-            {t('label.unpause')}
+            onClick={() => onPauseUnpauseClick(record.id || '')}>
+            {getLoadingStatus(currPauseId, record.id, t('label.unpause'))}
           </Button>
         )}
         <Divider className="border-gray" type="vertical" />
@@ -210,21 +225,23 @@ function PipelineActions({
           {t('label.kill')}
         </Button>
         <Divider className="border-gray" type="vertical" />
-        <Button
-          className="p-x-xss"
-          data-testid="logs"
-          disabled={!isRequiredDetailsAvailable}
-          href={getLogsViewerPath(
+        <Link
+          to={getLogsViewerPath(
             serviceCategory,
             record.service?.name || '',
-            record?.fullyQualifiedName || record?.name || ''
-          )}
-          type="link"
-          onClick={() => {
-            setSelectedPipeline(record);
-          }}>
-          {t('label.log-plural')}
-        </Button>
+            getEncodedFqn(record?.fullyQualifiedName || record?.name || '')
+          )}>
+          <Button
+            className="p-x-xss"
+            data-testid="logs"
+            disabled={!isRequiredDetailsAvailable}
+            type="link"
+            onClick={() => {
+              setSelectedPipeline(record);
+            }}>
+            {t('label.log-plural')}
+          </Button>
+        </Link>
       </Space>
       {isKillModalOpen &&
         selectedPipeline &&

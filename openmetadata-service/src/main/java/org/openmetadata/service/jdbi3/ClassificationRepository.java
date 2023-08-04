@@ -44,6 +44,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
+
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
   public ClassificationRepository(CollectionDAO dao) {
@@ -150,9 +151,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(classification.getName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
   }
 
   @Transaction
