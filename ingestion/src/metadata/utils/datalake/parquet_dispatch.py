@@ -29,10 +29,10 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 )
 from metadata.utils.datalake.common import (
     AZURE_PATH,
-    DatalakeFileFormatException,
     dataframe_to_chunks,
     return_azure_storage_options,
 )
+from metadata.readers.dataframe.exceptions import FileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -40,7 +40,7 @@ logger = utils_logger()
 
 @singledispatch
 def read_parquet_dispatch(config_source: Any, key: str, **kwargs):
-    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
+    raise FileFormatException(config_source=config_source, file_name=key)
 
 
 @read_parquet_dispatch.register

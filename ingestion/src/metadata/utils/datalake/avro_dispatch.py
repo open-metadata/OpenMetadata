@@ -38,9 +38,9 @@ from metadata.ingestion.source.database.datalake.models import DatalakeColumnWra
 from metadata.parsers.avro_parser import parse_avro_schema
 from metadata.utils.constants import UTF_8
 from metadata.utils.datalake.common import (
-    DatalakeFileFormatException,
     dataframe_to_chunks,
 )
+from metadata.readers.dataframe.exceptions import FileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -88,7 +88,7 @@ def read_from_avro(
 
 @singledispatch
 def read_avro_dispatch(config_source: Any, key: str, **kwargs):
-    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
+    raise FileFormatException(config_source=config_source, file_name=key)
 
 
 @read_avro_dispatch.register

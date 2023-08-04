@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, UTF_8
-from metadata.utils.datalake.common import DatalakeFileFormatException
+from metadata.readers.dataframe.exceptions import FileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -72,7 +72,7 @@ def read_from_json(
 
 @singledispatch
 def read_json_dispatch(config_source: Any, key: str, **kwargs):
-    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
+    raise FileFormatException(config_source=config_source, file_name=key)
 
 
 @read_json_dispatch.register

@@ -28,9 +28,9 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.datalake.common import (
     AZURE_PATH,
-    DatalakeFileFormatException,
     return_azure_storage_options,
 )
+from metadata.readers.dataframe.exceptions import FileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -53,12 +53,12 @@ def read_from_pandas(path: str, separator: str, storage_options=None):
 
 @singledispatch
 def read_csv_dispatch(config_source: Any, key: str, **kwargs):
-    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
+    raise FileFormatException(config_source=config_source, file_name=key)
 
 
 @singledispatch
 def read_tsv_dispatch(config_source: Any, key: str, **kwargs):
-    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
+    raise FileFormatException(config_source=config_source, file_name=key)
 
 
 @read_csv_dispatch.register

@@ -19,12 +19,6 @@ from metadata.utils.constants import CHUNKSIZE
 AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
 
 
-class DatalakeFileFormatException(Exception):
-    def __init__(self, config_source: Any, file_name: str) -> None:
-        message = f"Missing implementation for {config_source.__class__.__name__} for {file_name}"
-        super().__init__(message)
-
-
 def return_azure_storage_options(config_source: Any) -> Dict:
     """
     Build the Azure Storage options to pass to the readers.
