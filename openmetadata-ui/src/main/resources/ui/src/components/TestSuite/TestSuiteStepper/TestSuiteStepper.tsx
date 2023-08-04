@@ -34,6 +34,7 @@ import { useHistory } from 'react-router-dom';
 import { addTestCaseToLogicalTestSuite, createTestSuites } from 'rest/testAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
@@ -44,7 +45,11 @@ const TestSuiteStepper = () => {
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
 
   const handleViewTestSuiteClick = () => {
-    history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName ?? ''));
+    history.push(
+      getTestSuitePath(
+        getEncodedFqn(testSuiteResponse?.fullyQualifiedName ?? '')
+      )
+    );
   };
 
   const handleTestSuitNextClick = (data: TestSuite) => {
