@@ -403,7 +403,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFieldsInternal(dao.findEntityByName(fqn, include), fields));
+    T entity = dao.findEntityByName(fqn, include);
+    setFieldsInternal(entity, fields);
+    setInheritedFields(entity, fields);
+    return withHref(uriInfo, entity);
   }
 
   @Transaction
