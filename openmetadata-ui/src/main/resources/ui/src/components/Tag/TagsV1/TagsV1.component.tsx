@@ -25,6 +25,7 @@ import { reduceColorOpacity } from 'utils/CommonUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import Fqn from '../../../utils/Fqn';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
@@ -81,7 +82,7 @@ const TagsV1 = ({
       tag.source === TagSource.Glossary
         ? history.push(`${ROUTES.GLOSSARY}/${getEncodedFqn(tag.tagFQN)}`)
         : history.push(
-            `${ROUTES.TAGS}/${getEncodedFqn(tag.tagFQN.split('.')[0])}`
+            `${ROUTES.TAGS}/${getEncodedFqn(Fqn.split(tag.tagFQN)[0])}`
           ),
     [tag.source, tag.tagFQN]
   );

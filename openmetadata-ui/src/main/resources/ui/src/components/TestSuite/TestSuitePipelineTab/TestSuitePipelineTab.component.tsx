@@ -49,6 +49,7 @@ import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
 } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 interface Props {
@@ -59,6 +60,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
+
   const { permissions } = usePermissionProvider();
   const history = useHistory();
 
@@ -445,8 +447,8 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     onClick={() => {
                       history.push(
                         getTestSuiteIngestionPath(
-                          testSuiteFQN,
-                          record.fullyQualifiedName
+                          getEncodedFqn(testSuiteFQN),
+                          getEncodedFqn(record.fullyQualifiedName ?? '')
                         )
                       );
                     }}>
@@ -511,7 +513,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     to={getLogsViewerPath(
                       EntityType.TEST_SUITE,
                       record.service?.name || '',
-                      record.fullyQualifiedName || ''
+                      getEncodedFqn(record.fullyQualifiedName || '')
                     )}>
                     <Button
                       className="p-0"
@@ -569,7 +571,9 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
+                history.push(
+                  getTestSuiteIngestionPath(getEncodedFqn(testSuiteFQN))
+                );
               }}>
               {t('label.add')}
             </Button>

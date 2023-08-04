@@ -79,6 +79,7 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.DASHBOARD:
+      case EntityType.CHART:
         promise = getDashboardByFqn(entityFQN, fields);
 
         break;
@@ -103,7 +104,7 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(entityFQN, 'owner');
+        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), 'owner');
 
         break;
       case EntityType.GLOSSARY:
@@ -163,7 +164,7 @@ const PopoverContent: React.FC<{
         displayName: getEntityName(entityData),
         id: entityData.id ?? '',
         description: entityData.description ?? '',
-        fullyQualifiedName: entityFQN,
+        fullyQualifiedName: getDecodedFqn(entityFQN),
         tags: (entityData as Table).tags,
         entityType: entityType,
         serviceType: (entityData as Table).serviceType,

@@ -654,24 +654,26 @@ const ContainerPage = () => {
     if (hasViewPermission) {
       fetchContainerDetail(containerName);
     }
-  }, [containerName, containerPermissions]);
+  }, [containerName, hasViewPermission]);
 
   useEffect(() => {
     fetchResourcePermission(containerName);
   }, [containerName]);
 
   useEffect(() => {
-    if (tab === EntityTabs.CHILDREN) {
+    if (tab === EntityTabs.CHILDREN && hasViewPermission) {
       fetchContainerChildren(containerName);
     }
-  }, [tab, containerName]);
+  }, [tab, containerName, hasViewPermission]);
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, [containerName]);
+    if (hasViewPermission) {
+      getEntityFeedCount();
+    }
+  }, [containerName, hasViewPermission]);
 
   // Rendering
-  if (isLoading || !containerData) {
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -683,8 +685,12 @@ const ContainerPage = () => {
     );
   }
 
-  if (!hasViewPermission && !isLoading) {
+  if (!hasViewPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  if (!containerData) {
+    return <ErrorPlaceHolder />;
   }
 
   return (
