@@ -421,10 +421,7 @@ const TagsPage = () => {
         );
         if (response) {
           await fetchClassifications();
-          if (
-            currentClassification?.fullyQualifiedName !==
-            updatedClassification.fullyQualifiedName
-          ) {
+          if (currentClassification?.name !== updatedClassification.name) {
             history.push(getTagPath(response.fullyQualifiedName));
           } else {
             await fetchCurrentClassification(
@@ -469,7 +466,6 @@ const TagsPage = () => {
       return handleUpdateClassification({
         ...currentClassification,
         ...data,
-        fullyQualifiedName: data.name,
       });
     }
 
