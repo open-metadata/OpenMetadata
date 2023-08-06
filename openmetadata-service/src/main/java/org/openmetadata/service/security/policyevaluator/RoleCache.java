@@ -26,60 +26,41 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.RoleRepository;
-import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class RoleCache {
-  private static final RoleCache INSTANCE = new RoleCache();
-  private static volatile boolean initialized = false;
-  protected static LoadingCache<String, Role> roleCache;
-  protected static LoadingCache<UUID, Role> roleCacheWithId;
-  private static RoleRepository roleRepository;
-  private static Fields fields;
+  protected static final LoadingCache<String, Role> CACHE =
+      CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
+  protected static final LoadingCache<UUID, Role> CACHE_WITH_ID =
+      CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoaderWithId());
 
-  public static RoleCache getInstance() {
-    return INSTANCE;
+  private RoleCache() {
+    // Private constructor for singleton
   }
 
-  /** To be called only once during the application start from DefaultAuthorizer */
-  public static void initialize() {
-    if (!initialized) {
-      roleCache =
-          CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
-      roleCacheWithId =
-          CacheBuilder.newBuilder()
-              .maximumSize(100)
-              .expireAfterWrite(3, TimeUnit.MINUTES)
-              .build(new RoleLoaderWithId());
-      roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
-      fields = roleRepository.getFields("policies");
-      initialized = true;
-    }
-  }
-
-  public Role getRole(String roleName) {
+  public static Role getRole(String roleName) {
     try {
-      return roleCache.get(roleName);
+      return CACHE.get(roleName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.ROLE, roleName));
     }
   }
 
-  public Role getRoleById(UUID roleId) {
+  public static Role getRoleById(UUID roleId) {
     try {
-      return roleCacheWithId.get(roleId);
+      return CACHE_WITH_ID.get(roleId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.ROLE, roleId));
     }
   }
 
-  public void invalidateRole(UUID roleId) {
+  public static void invalidateRole(UUID roleId) {
     try {
-      roleCacheWithId.invalidate(roleId);
+      CACHE_WITH_ID.invalidate(roleId);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for role {}", roleId, ex);
     }
@@ -88,7 +69,7 @@ public class RoleCache {
   static class RoleLoader extends CacheLoader<String, Role> {
     @Override
     public Role load(@CheckForNull String roleName) throws IOException {
-      Role role = roleRepository.getByName(null, roleName, fields);
+      Role role = Entity.getEntityByName(Entity.ROLE, roleName, "policies", Include.NON_DELETED);
       LOG.info("Loaded role {}:{}", role.getName(), role.getId());
       return role;
     }
@@ -97,14 +78,13 @@ public class RoleCache {
   static class RoleLoaderWithId extends CacheLoader<UUID, Role> {
     @Override
     public Role load(@CheckForNull UUID roleId) throws IOException {
-      Role role = roleRepository.get(null, roleId, fields);
+      Role role = Entity.getEntity(Entity.ROLE, roleId, "policies", Include.NON_DELETED);
       LOG.info("Loaded role {}:{}", role.getName(), role.getId());
       return role;
     }
   }
 
   public static void cleanUp() {
-    roleCacheWithId.cleanUp();
-    initialized = false;
+    CACHE_WITH_ID.cleanUp();
   }
 }

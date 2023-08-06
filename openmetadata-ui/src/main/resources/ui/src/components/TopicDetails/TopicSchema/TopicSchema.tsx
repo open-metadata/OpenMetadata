@@ -14,12 +14,12 @@
 import {
   Button,
   Col,
-  Popover,
   Radio,
   RadioChangeEvent,
   Row,
   Space,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
@@ -150,14 +150,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             align="start"
             className="w-max-90 vertical-align-inherit"
             size={2}>
-            <Popover
-              destroyTooltipOnHide
-              content={getEntityName(record)}
-              trigger="hover">
+            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
               <Typography.Text className="break-word">
                 {getEntityName(record)}
               </Typography.Text>
-            </Popover>
+            </Tooltip>
           </Space>
         ),
       },

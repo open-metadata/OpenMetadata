@@ -92,6 +92,15 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.ResultList;
 
+/*
+ * Feed relationships:
+ * - 'user' --- createdBy ---> 'thread' in entity_relationship
+ * - 'user' --- repliedTo ---> 'thread' in entity_relationship
+ * - 'user' --- mentionedIn ---> 'thread' in entity_relationship
+ * - 'user' --- reactedTo ---> 'thread' in entity_relationship
+ * - 'thread' --- addressedTo ---> 'user' in field_relationship
+ * - 'thread' --- isAbout ---> 'entity' in entity_relationship
+ */
 @Slf4j
 public class FeedRepository {
   private final CollectionDAO dao;
@@ -126,10 +135,7 @@ public class FeedRepository {
     // Validate about data entity is valid and get the owner for that entity
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityRepository<?> repository = Entity.getEntityRepository(about.getEntityType());
-    String field = "owner";
-    if (!repository.supportsOwner) {
-      field = "id";
-    }
+    String field = repository.supportsOwner ? "owner" : "";
     EntityInterface aboutEntity = Entity.getEntity(about, field, ALL);
     thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     return createThread(thread, about, aboutEntity.getOwner());
@@ -139,7 +145,7 @@ public class FeedRepository {
   private Thread createThread(Thread thread, EntityLink about, EntityReference entityOwner)
       throws JsonProcessingException {
     // Validate user creating thread
-    User createdByUser = SubjectCache.getInstance().getUser(thread.getCreatedBy());
+    User createdByUser = SubjectCache.getUser(thread.getCreatedBy());
 
     if (thread.getType() == ThreadType.Task) {
       thread.withTask(thread.getTask().withId(getNextTaskId())); // Assign taskId for a task
@@ -167,8 +173,8 @@ public class FeedRepository {
     // Add field relationship for data asset - Thread -- isAbout ---> entity/entityField
     dao.fieldRelationshipDAO()
         .insert(
-            FullyQualifiedName.buildHash(thread.getId().toString()), // from FQN
-            FullyQualifiedName.buildHash(about.getFullyQualifiedFieldValue()), // to FQN,
+            thread.getId().toString(), // from FQN
+            about.getFullyQualifiedFieldValue(), // to FQN,
             thread.getId().toString(),
             about.getFullyQualifiedFieldValue(),
             Entity.THREAD, // From type
@@ -313,8 +319,8 @@ public class FeedRepository {
             mention ->
                 dao.fieldRelationshipDAO()
                     .insert(
-                        FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()),
-                        FullyQualifiedName.buildHash(thread.getId().toString()),
+                        mention.getFullyQualifiedFieldValue(),
+                        thread.getId().toString(),
                         mention.getFullyQualifiedFieldValue(),
                         thread.getId().toString(),
                         mention.getFullyQualifiedFieldType(),
@@ -326,7 +332,7 @@ public class FeedRepository {
   @Transaction
   public Thread addPostToThread(String id, Post post, String userName) throws IOException {
     // Validate the user posting the message
-    User fromUser = SubjectCache.getInstance().getUser(post.getFrom());
+    User fromUser = SubjectCache.getUser(post.getFrom());
 
     // Update the thread with the new post
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
@@ -372,23 +378,32 @@ public class FeedRepository {
 
   @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
-    String id = thread.getId().toString();
-
-    // Delete all the relationships to other entities
-    dao.relationshipDAO().deleteAll(id, Entity.THREAD);
-
-    // Delete all the field relationships to other entities
-    dao.fieldRelationshipDAO().deleteAllByPrefix(FullyQualifiedName.buildHash(id));
-
-    // Finally, delete the entity
-    dao.feedDAO().delete(id);
-
+    deleteThreadInternal(thread.getId().toString());
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
     return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
   }
 
-  public EntityReference getOwnerReference(String username) {
-    return dao.userDAO().findEntityByName(EntityInterfaceUtil.quoteName(username)).getEntityReference();
+  public void deleteThreadInternal(String id) {
+    // Delete all the relationships to other entities
+    dao.relationshipDAO().deleteAll(id, Entity.THREAD);
+
+    // Delete all the field relationships to other entities
+    dao.fieldRelationshipDAO().deleteAllByPrefix(id);
+
+    // Finally, delete the thread
+    dao.feedDAO().delete(id);
+  }
+
+  @Transaction
+  public void deleteByAbout(UUID entityId) {
+    List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
+    for (String threadId : threadIds) {
+      try {
+        deleteThreadInternal(threadId);
+      } catch (Exception ex) {
+        // Continue deletion
+      }
+    }
   }
 
   @Transaction
@@ -423,7 +438,7 @@ public class FeedRepository {
         result =
             dao.feedDAO()
                 .listCountByEntityLink(
-                    FullyQualifiedName.buildHash(entityLink.getFullyQualifiedFieldValue()),
+                    entityLink.getFullyQualifiedFieldValue(),
                     Entity.THREAD,
                     entityLink.getFullyQualifiedFieldType(),
                     IS_ABOUT.ordinal(),
@@ -475,17 +490,16 @@ public class FeedRepository {
           total = filteredThreads.getTotalCount();
         } else {
           // Only data assets are added as about
-          User user = userId != null ? SubjectCache.getInstance().getUserById(userId) : null;
+          User user = userId != null ? SubjectCache.getUserById(userId) : null;
           List<String> teamNameHash = getTeamNames(user);
-          String userNameHash = getUserNameHash(user);
+          String userName = user == null ? null : user.getFullyQualifiedName();
           List<String> jsons =
               dao.feedDAO()
-                  .listThreadsByEntityLink(
-                      filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
+                  .listThreadsByEntityLink(filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userName, teamNameHash);
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
               dao.feedDAO()
-                  .listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
+                  .listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userName, teamNameHash);
         }
       } else {
         // userId filter present
@@ -542,8 +556,8 @@ public class FeedRepository {
     // field relationship table constraint (primary key)
     dao.fieldRelationshipDAO()
         .insert(
-            FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(user)),
-            FullyQualifiedName.buildHash(thread.getId().toString()),
+            EntityInterfaceUtil.quoteName(user),
+            thread.getId().toString(),
             user,
             thread.getId().toString(),
             Entity.USER,
@@ -631,7 +645,7 @@ public class FeedRepository {
   public void checkPermissionsForResolveTask(Thread thread, boolean closeTask, SecurityContext securityContext)
       throws IOException {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = SubjectCache.getInstance().getUser(userName);
+    User user = SubjectCache.getUser(userName);
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
     if (Boolean.TRUE.equals(user.getIsAdmin())) {
@@ -830,7 +844,7 @@ public class FeedRepository {
 
   /** Return the tasks created by or assigned to the user. */
   private FilteredThreads getTasksOfUser(FeedFilter filter, String userId, int limit) throws IOException {
-    String username = SubjectCache.getInstance().getUserById(userId).getName();
+    String username = SubjectCache.getUserById(userId).getName();
     List<String> teamIds = getTeamIds(userId);
     List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
@@ -845,7 +859,7 @@ public class FeedRepository {
 
   /** Return the tasks created by the user. */
   private FilteredThreads getTasksAssignedBy(FeedFilter filter, String userId, int limit) throws IOException {
-    String username = SubjectCache.getInstance().getUserById(userId).getName();
+    String username = SubjectCache.getUserById(userId).getName();
     List<String> jsons = dao.feedDAO().listTasksAssigned(username, limit, filter.getCondition());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, filter.getCondition(false));
@@ -869,7 +883,7 @@ public class FeedRepository {
   /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
   private FilteredThreads getThreadsByMentions(FeedFilter filter, String userId, int limit) throws IOException {
 
-    User user = SubjectCache.getInstance().getUserById(userId);
+    User user = SubjectCache.getUserById(userId);
     String userNameHash = getUserNameHash(user);
     // Return the threads where the user or team was mentioned
     List<String> teamNamesHash = getTeamNames(user);
@@ -891,7 +905,7 @@ public class FeedRepository {
   private List<String> getTeamIds(String userId) {
     List<String> teamIds = null;
     if (userId != null) {
-      User user = SubjectCache.getInstance().getUserById(userId);
+      User user = SubjectCache.getUserById(userId);
       teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).collect(Collectors.toList());
     }
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
@@ -922,10 +936,7 @@ public class FeedRepository {
   }
 
   private String getUserNameHash(User user) {
-    if (user != null) {
-      return FullyQualifiedName.buildHash(user.getFullyQualifiedName());
-    }
-    return null;
+    return user != null ? FullyQualifiedName.buildHash(user.getFullyQualifiedName()) : null;
   }
 
   public static class FilteredThreads {

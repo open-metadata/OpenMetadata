@@ -42,6 +42,9 @@
           "oneOf": [
             {
               "$ref": "connections/storage/s3Connection.json"
+            },
+            {
+              "$ref": "connections/storage/customStorageConnection.json"
             }
           ]
         }

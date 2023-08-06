@@ -102,7 +102,7 @@ public class WebSocketManager {
 
   public void sendToOne(String username, String event, String message) {
     try {
-      UUID receiver = SubjectCache.getInstance().getSubjectContext(username).getUser().getId();
+      UUID receiver = SubjectCache.getSubjectContext(username).getUser().getId();
       if (activityFeedEndpoints.containsKey(receiver)) {
         activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
       }

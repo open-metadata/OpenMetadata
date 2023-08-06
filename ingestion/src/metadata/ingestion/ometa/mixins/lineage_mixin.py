@@ -19,7 +19,10 @@ from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type
 from metadata.utils.logger import ometa_logger
@@ -144,3 +147,39 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
+
+    def add_lineage_by_query(
+        self,
+        database_service: DatabaseService,
+        sql: str,
+        database_name: str = None,
+        schema_name: str = None,
+        timeout: int = LINEAGE_PARSING_TIMEOUT,
+    ) -> None:
+        """
+        Method parses the query and generated the lineage
+        between source and target tables
+        """
+
+        # pylint: disable=import-outside-toplevel,cyclic-import
+        # importing inside the method to avoid circular import
+        from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+
+        if database_service:
+            connection_type = database_service.serviceType.value
+            add_lineage_request = get_lineage_by_query(
+                metadata=self,
+                service_name=database_service.name.__root__,
+                dialect=ConnectionTypeDialectMapper.dialect_of(connection_type),
+                query=sql,
+                database_name=database_name,
+                schema_name=schema_name,
+                timeout_seconds=timeout,
+            )
+            for lineage_request in add_lineage_request or []:
+                resp = self.add_lineage(lineage_request)
+                entity_name = resp.get("entity", {}).get("name")
+                for node in resp.get("nodes", []):
+                    logger.info(
+                        f"added lineage between table {node.get('name')} and {entity_name} "
+                    )

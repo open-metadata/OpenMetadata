@@ -93,11 +93,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public String getFullyQualifiedNameHash(DashboardDataModel dashboardDataModel) {
-    return FullyQualifiedName.buildHash(dashboardDataModel.getFullyQualifiedName());
-  }
-
-  @Override
   public void prepare(DashboardDataModel dashboardDataModel) throws IOException {
     DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());

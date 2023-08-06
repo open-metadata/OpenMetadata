@@ -477,12 +477,6 @@
           <artifactId>log4j-api</artifactId>
           <version>${log4j.version}</version>
       </dependency>
-      <dependency>
-        <groupId>com.wix</groupId>
-        <artifactId>wix-embedded-mysql</artifactId>
-        <version>4.6.2</version>
-        <scope>test</scope>
-      </dependency>
       <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
       <dependency>
         <groupId>javax.json</groupId>

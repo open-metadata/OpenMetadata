@@ -23,7 +23,7 @@ import { ENTITIES, uuid } from '../../constants/constants';
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/users*', 'settingsPage');
+    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     verifyResponseStatusCode('@settingsPage', 200);

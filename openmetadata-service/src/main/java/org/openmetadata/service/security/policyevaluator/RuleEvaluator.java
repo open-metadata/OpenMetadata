@@ -75,7 +75,7 @@ public class RuleEvaluator {
   public boolean matchAllTags(String... tagFQNs) throws IOException {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        TagLabelCache.getInstance().getTag(tagFqn);
+        TagLabelCache.getTag(tagFqn);
       }
       return false;
     }
@@ -102,7 +102,7 @@ public class RuleEvaluator {
   public boolean matchAnyTag(String... tagFQNs) throws IOException {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        TagLabelCache.getInstance().getTag(tagFqn);
+        TagLabelCache.getTag(tagFqn);
       }
       return false;
     }
@@ -151,7 +151,7 @@ public class RuleEvaluator {
   public boolean inAnyTeam(String... teams) {
     if (expressionValidation) {
       for (String team : teams) {
-        SubjectCache.getInstance().getTeamByName(team);
+        SubjectCache.getTeamByName(team);
       }
       return false;
     }
@@ -179,7 +179,7 @@ public class RuleEvaluator {
   public boolean hasAnyRole(String... roles) {
     if (expressionValidation) {
       for (String role : roles) {
-        RoleCache.getInstance().getRole(role);
+        RoleCache.getRole(role);
       }
       return false;
     }

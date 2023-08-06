@@ -31,7 +31,7 @@ import { Paging } from 'generated/type/paging';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { ServicesType } from 'interface/service.interface';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import { EntityTags, PagingWithoutTotal, ServiceTypes } from 'Models';
+import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -57,10 +57,8 @@ interface ServiceMainTabContentProps {
   data: ServicePageData[];
   isServiceLoading: boolean;
   paging: Paging;
-  fetchServiceExtraInfo: (
-    paging?: PagingWithoutTotal,
-    isDataModel?: boolean
-  ) => void;
+  currentPage: number;
+  pagingHandler: (cursorType: string | number, activePage?: number) => void;
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
 }
 
@@ -81,7 +79,8 @@ function ServiceMainTabContent({
   data,
   isServiceLoading,
   paging,
-  fetchServiceExtraInfo,
+  pagingHandler,
+  currentPage,
   serviceDetails,
   saveUpdatedServiceData,
 }: ServiceMainTabContentProps) {
@@ -91,7 +90,6 @@ function ServiceMainTabContent({
     serviceCategory: ServiceTypes;
   }>();
   const [isEdit, setIsEdit] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
   const tags = getTagsWithoutTier(serviceDetails?.tags ?? []);
@@ -156,6 +154,7 @@ function ServiceMainTabContent({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        className: 'd-block w-max-200 truncate',
         render: (_, record: ServicePageData) => {
           return (
             <Link
@@ -246,17 +245,6 @@ function ServiceMainTabContent({
         : []),
     ];
   }, [serviceCategory]);
-
-  const pagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      fetchServiceExtraInfo({
-        [cursorType]: paging[cursorType as keyof typeof paging],
-      });
-      setCurrentPage(activePage ?? 1);
-    },
-    []
-  );
-
   const entityType = useMemo(
     () => getEntityTypeFromServiceCategory(serviceCategory),
     [serviceCategory]
@@ -302,23 +290,23 @@ function ServiceMainTabContent({
             </Row>
           </Col>
           <Col data-testid="table-container" span={24}>
-            <Table
-              bordered
-              columns={tableColumn}
-              components={tableComponent}
-              data-testid="service-children-table"
-              dataSource={data}
-              loading={{
-                spinning: isServiceLoading,
-                indicator: <Loader size="small" />,
-              }}
-              locale={{
-                emptyText: <ErrorPlaceHolder className="m-y-md" />,
-              }}
-              pagination={false}
-              rowKey="id"
-              size="small"
-            />
+            {isServiceLoading ? (
+              <Loader />
+            ) : (
+              <Table
+                bordered
+                columns={tableColumn}
+                components={tableComponent}
+                data-testid="service-children-table"
+                dataSource={data}
+                locale={{
+                  emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                }}
+                pagination={false}
+                rowKey="id"
+                size="small"
+              />
+            )}
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
               !isEmpty(data) && (
                 <NextPrevious

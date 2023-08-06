@@ -109,11 +109,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  @Override
-  public String getFullyQualifiedNameHash(Domain entity) {
-    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-  }
-
   public class DomainUpdater extends EntityUpdater {
     public DomainUpdater(Domain original, Domain updated, Operation operation) {
       super(original, updated, operation);

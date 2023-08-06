@@ -150,6 +150,25 @@ This is a sample config for Clickhouse:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=35 %}
+
+**https**: Enable this flag when the when the Clickhouse instance is hosted via HTTPS protocol. This flag is useful when you are using `clickhouse+http` connection scheme.
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=36 %}
+
+**secure**: Establish secure connection with ClickHouse. ClickHouse supports secure communication over SSL/TLS to protect data in transit, by checking this option, it establishes secure connection with ClickHouse. This flag is useful when you are using `clickhouse+native` connection scheme.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=37 %}
+
+**keyfile**: The key file path is the location when ClickHouse looks for a file containing the private key needed for secure communication over SSL/TLS. By default, ClickHouse will look for the key file in the `/etc/clickhouse-server directory`, with the file name `server.key`. However, this can be customized in the ClickHouse configuration file (`config.xml`). This flag is useful when you are using `clickhouse+native` connection scheme and the secure connection flag is enabled.
+
+{% /codeInfo %}
+
 
 #### Source Configuration - Source Config
 
@@ -223,6 +242,15 @@ source:
 ```yaml {% srNumber=6 %}
       # scheme: clickhouse+http (default), or clickhouse+native
 ```
+```yaml {% srNumber=35 %}
+      # https: false
+```
+```yaml {% srNumber=36 %}
+      # secure: true
+```
+```yaml {% srNumber=37 %}
+      # keyfile: /etc/clickhouse-server/server.key
+```
 ```yaml {% srNumber=7 %}
       # connectionOptions:
       #   key: value
@@ -268,7 +296,7 @@ sink:
   config: {}
 ```
 
-{% partial file="workflow-config-yaml.md" /%}
+{% partial file="/v1.1.1/connectors/workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 

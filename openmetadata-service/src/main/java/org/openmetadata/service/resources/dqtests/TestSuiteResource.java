@@ -54,7 +54,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -304,11 +303,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createExecutable(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
-    Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // check if entity exists
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     testSuite = setExecutableTestSuiteOwner(testSuite);
-    testSuite = setExecutableTestSuiteName(testSuite);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -372,7 +369,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createOrUpdateExecutable(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
-    Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // Check if table exists
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
@@ -548,16 +544,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       testSuite.setExecutableEntityReference(entityReference);
     }
     return testSuite;
-  }
-
-  private TestSuite setExecutableTestSuiteName(TestSuite testSuite) {
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
-      return testSuite;
-    }
-    String name = testSuite.getName();
-    String hashedName = FullyQualifiedName.buildHash(name + ".testSuite");
-
-    return testSuite.withDisplayName(name).withName(hashedName);
   }
 
   private TestSuite setExecutableTestSuiteOwner(TestSuite testSuite) throws IOException {

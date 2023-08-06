@@ -154,7 +154,7 @@ public class SystemRepository {
       }
       dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       // Invalidate Cache
-      SettingsCache.getInstance().invalidateSettings(setting.getConfigType().value());
+      SettingsCache.invalidateSettings(setting.getConfigType().value());
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(Response.Status.INTERNAL_SERVER_ERROR, ex.getMessage());

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Space, Table, Typography } from 'antd';
+import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
@@ -229,19 +229,11 @@ const SchemaTable = ({
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
             toLower(dataTypeDisplay)
           ) : (
-            <Popover
-              destroyTooltipOnHide
-              content={toLower(dataTypeDisplay)}
-              overlayInnerStyle={{
-                maxWidth: '420px',
-                overflowWrap: 'break-word',
-                textAlign: 'center',
-              }}
-              trigger="hover">
+            <Tooltip title={toLower(dataTypeDisplay)}>
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay || record.dataType}
               </Typography.Text>
-            </Popover>
+            </Tooltip>
           )
         ) : (
           '--'

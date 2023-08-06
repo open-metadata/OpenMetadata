@@ -3,7 +3,9 @@ package org.openmetadata.service.elasticsearch.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
@@ -20,6 +22,11 @@ public class PipelineIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
+    if (pipeline.getOwner() != null) {
+      EntityReference owner = pipeline.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      pipeline.setOwner(owner);
+    }
     Map<String, Object> doc = JsonUtils.getMap(pipeline);
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();

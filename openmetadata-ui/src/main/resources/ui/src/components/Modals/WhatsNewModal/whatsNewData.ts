@@ -18,9 +18,9 @@ import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
 import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 
-export const LATEST_VERSION_ID = 16;
+export const LATEST_VERSION_ID = 17;
 
-export const COOKIE_VERSION = 'VERSION_1_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_1_1'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -876,7 +876,7 @@ export const WHATS_NEW = [
   },
   {
     id: 16,
-    version: 'v1.1',
+    version: 'v1.1.0',
     description: 'Released on 29th Jun 2023.',
     features: [
       {
@@ -932,6 +932,35 @@ export const WHATS_NEW = [
 - Name and FQN hashing of data in the database. This reduces the length of the data being stored and indexed, allowing us for longer FQNs in the Metadata Standard.
 - Improved monitoring of the Pipeline Service Client health. Any status errors between the OpenMetadata server and the Pipeline Service Client are now surfaced in a Prometheus metric *pipelineServiceClientStatus_counter_total*
 - Added AWS OpenSearch client-specific support. This allows us to update the Elasticsearch version support up to 7.16.
+      `,
+    },
+  },
+  {
+    id: 17,
+    version: 'v1.1.1',
+    description: 'Released on 4th Aug 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- User profile page UI / UX improvements
+- Superset Connection fixes for Basic and IAM auth type
+- Fix task flow bugs
+- UI / UX improvements for Service, Database, and Schema pages
+- Support custom cron for schedule ingestion
+`,
+      'Data Quality': `- Fix BigQuery, MSSQL, and Clickhouse profiling errors`,
+      Ingestion: `- Fixed Airflow lineage extraction
+- Added support for Databricks complex columns comments
+- Fixed Athena lineage and usage parameter validation
+- Airflow Managed APIs now support Airflow 2.6`,
+      Connectors: `- New Qliksense Connector
+- Hive supports extracting metadata directly from the metastore to speed up the execution. Users whose metastore is not exposed can still run the extraction pointing to Hive
+- Added Usage & Lineage connector for Trino
+- Impala scheme has been deprecated from Hive connector. Users can use the Impala connector instead
+- Snowflake can now ingest TRANSIENT tables
+- Added support for JSON fields in SingleStore`,
+      Backend: `- Bumped table and column names length
+- Aggregation Improvements for Search
+- Test Suite Improvements
       `,
     },
   },

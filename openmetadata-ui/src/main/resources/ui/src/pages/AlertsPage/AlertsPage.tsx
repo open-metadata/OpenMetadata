@@ -185,37 +185,37 @@ const AlertsPage = () => {
           </div>
         </Col>
         <Col span={24}>
-          <Table
-            bordered
-            columns={columns}
-            dataSource={alerts}
-            loading={{
-              spinning: loading,
-              indicator: <Loader size="small" />,
-            }}
-            locale={{
-              emptyText: !loading && (
-                <ErrorPlaceHolder
-                  permission
-                  className="p-y-md"
-                  doc={ALERTS_DOCS}
-                  heading={t('label.alert')}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() =>
-                    history.push(
-                      getSettingPath(
-                        GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_ALERTS
+          {loading ? (
+            <Loader />
+          ) : (
+            <Table
+              bordered
+              columns={columns}
+              dataSource={alerts}
+              locale={{
+                emptyText: !loading && (
+                  <ErrorPlaceHolder
+                    permission
+                    className="p-y-md"
+                    doc={ALERTS_DOCS}
+                    heading={t('label.alert')}
+                    type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                    onClick={() =>
+                      history.push(
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.NOTIFICATIONS,
+                          GlobalSettingOptions.ADD_ALERTS
+                        )
                       )
-                    )
-                  }
-                />
-              ),
-            }}
-            pagination={false}
-            rowKey="id"
-            size="middle"
-          />
+                    }
+                  />
+                ),
+              }}
+              pagination={false}
+              rowKey="id"
+              size="middle"
+            />
+          )}
         </Col>
         <Col span={24}>
           {Boolean(

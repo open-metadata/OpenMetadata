@@ -32,6 +32,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -40,7 +41,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
 import { Include } from 'generated/type/include';
 import { State, TagSource } from 'generated/type/tagLabel';
-import { isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, {
@@ -61,12 +62,14 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getEntityMissingError } from 'utils/CommonUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getExplorePath,
+  INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -86,7 +89,7 @@ import {
 } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getTagsWithoutTier,
   getTierTags,
@@ -121,14 +124,13 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
     useState<number>(0);
 
-  const [error, setError] = useState('');
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -148,7 +150,7 @@ const DatabaseDetails: FunctionComponent = () => {
       );
       setDatabasePermission(response);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     } finally {
       setIsLoading(false);
     }
@@ -176,13 +178,8 @@ const DatabaseDetails: FunctionComponent = () => {
           }
           resolve();
         })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.database schema'),
-            })
-          );
+        .catch(() => {
+          // Error
 
           reject();
         })
@@ -217,8 +214,8 @@ const DatabaseDetails: FunctionComponent = () => {
           throw t('server.unexpected-response');
         }
       })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.entity-feed-fetch-error'));
+      .catch(() => {
+        // Error
       });
   };
 
@@ -235,19 +232,10 @@ const DatabaseDetails: FunctionComponent = () => {
           setServiceType(serviceType);
           setShowDeletedSchemas(res.deleted ?? false);
           fetchDatabaseSchemasAndDBTModels();
-        } else {
-          throw t('server.unexpected-response');
         }
       })
-      .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.database'),
-          })
-        );
-        setError(errMsg);
-        showErrorToast(errMsg);
+      .catch(() => {
+        // Error
       })
       .finally(() => {
         setIsLoading(false);
@@ -300,7 +288,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(databaseFQN, key),
+        pathname: getDatabaseDetailsPath(getDecodedFqn(databaseFQN), key),
       });
     }
   };
@@ -312,9 +300,9 @@ const DatabaseDetails: FunctionComponent = () => {
     const pagingString = `&${cursorType}=${
       databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
-    setIsLoading(true);
+    setSchemaDataLoading(true);
     fetchDatabaseSchemas(pagingString).finally(() => {
-      setIsLoading(false);
+      setSchemaDataLoading(false);
     });
     setCurrentPage(activePage ?? 1);
   };
@@ -435,12 +423,14 @@ const DatabaseDetails: FunctionComponent = () => {
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
+        width: 120,
         render: (text: EntityReference) => getEntityName(text) || '--',
       },
       {
         title: t('label.usage'),
         dataIndex: 'usageSummary',
         key: 'usageSummary',
+        width: 120,
         render: (text: UsageDetails) =>
           getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
       },
@@ -581,6 +571,11 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   }, [databaseId]);
 
+  const handleShowDeletedSchemas = useCallback((value: boolean) => {
+    setShowDeletedSchemas(value);
+    setCurrentPage(INITIAL_PAGING_VALUE);
+  }, []);
+
   const editTagsPermission = useMemo(
     () =>
       (databasePermission.EditTags || databasePermission.EditAll) &&
@@ -636,7 +631,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       <Switch
                         checked={showDeletedSchemas}
                         data-testid="show-deleted"
-                        onClick={setShowDeletedSchemas}
+                        onClick={handleShowDeletedSchemas}
                       />
                       <Typography.Text className="m-l-xs">
                         {t('label.deleted')}
@@ -717,6 +712,7 @@ const DatabaseDetails: FunctionComponent = () => {
       showDeletedSchemas,
       editTagsPermission,
       editDescriptionPermission,
+      handleShowDeletedSchemas,
     ]
   );
 
@@ -726,14 +722,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   if (isLoading || isDatabaseDetailsLoading) {
     return <Loader />;
-  }
-
-  if (error) {
-    return (
-      <ErrorPlaceHolder>
-        <p data-testid="error-message">{error}</p>
-      </ErrorPlaceHolder>
-    );
   }
 
   if (!(databasePermission.ViewAll || databasePermission.ViewBasic)) {
@@ -746,44 +734,50 @@ const DatabaseDetails: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(database),
       })}>
-      <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
-          <DataAssetsHeader
-            isRecursiveDelete
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
-            dataAsset={database}
-            entityType={EntityType.DATABASE}
-            permissions={databasePermission}
-            onDisplayNameUpdate={handleUpdateDisplayName}
-            onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={handleRestoreDatabase}
-            onTierUpdate={handleUpdateTier}
-          />
-        </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={activeTabHandler}
-          />
-        </Col>
+      {isEmpty(database) ? (
+        <ErrorPlaceHolder className="m-0">
+          {getEntityMissingError(EntityType.DATABASE, databaseFQN)}
+        </ErrorPlaceHolder>
+      ) : (
+        <Row gutter={[0, 12]}>
+          <Col className="p-x-lg" span={24}>
+            <DataAssetsHeader
+              isRecursiveDelete
+              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              dataAsset={database}
+              entityType={EntityType.DATABASE}
+              permissions={databasePermission}
+              onDisplayNameUpdate={handleUpdateDisplayName}
+              onOwnerUpdate={handleUpdateOwner}
+              onRestoreDataAsset={handleRestoreDatabase}
+              onTierUpdate={handleUpdateTier}
+            />
+          </Col>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.SCHEMA}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={activeTabHandler}
+            />
+          </Col>
 
-        {threadLink ? (
-          <ActivityThreadPanel
-            createThread={createThread}
-            deletePostHandler={deleteFeed}
-            open={Boolean(threadLink)}
-            postFeedHandler={postFeed}
-            threadLink={threadLink}
-            updateThreadHandler={updateFeed}
-            onCancel={onThreadPanelClose}
-          />
-        ) : null}
-      </Row>
+          {threadLink ? (
+            <ActivityThreadPanel
+              createThread={createThread}
+              deletePostHandler={deleteFeed}
+              open={Boolean(threadLink)}
+              postFeedHandler={postFeed}
+              threadLink={threadLink}
+              updateThreadHandler={updateFeed}
+              onCancel={onThreadPanelClose}
+            />
+          ) : null}
+        </Row>
+      )}
     </PageLayoutV1>
   );
 };
 
-export default observer(DatabaseDetails);
+export default observer(withActivityFeed(DatabaseDetails));

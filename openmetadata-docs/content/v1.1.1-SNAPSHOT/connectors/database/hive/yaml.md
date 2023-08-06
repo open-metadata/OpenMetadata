@@ -99,6 +99,33 @@ This is a sample config for Hive:
 
 {% /codeInfo %}
 
+
+{% codeInfo srNumber=22 %}
+
+#### For MySQL Metastore Connection:
+You can also ingest the metadata using Mysql metastore. This step is optional if metastore details are not provided then we will query the hive server directly.
+
+- **username**: Specify the User to connect to MySQL Metastore. It should have enough privileges to read all the metadata.
+- **password**: Password to connect to MySQL.
+- **hostPort**: Enter the fully qualified hostname and port number for your MySQL Metastore deployment in the Host and Port field in the format `hostname:port`.
+- **databaseSchema**: Enter the database schema which is associated with the metastore.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=3 %}
+
+#### For Postgres Metastore Connection:
+
+You can also ingest the metadata using Postgres metastore. This step is optional if metastore details are not provided then we will query the hive server directly.
+
+- **username**: Specify the User to connect to Postgres Metastore. It should have enough privileges to read all the metadata.
+- **password**: Password to connect to Postgres.
+- **hostPort**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field in the format `hostname:port`.
+- **database**: Initial Postgres database to connect to. Specify the name of database associated with metastore instance.
+
+{% /codeInfo %}
+
+
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=7 %}
@@ -166,6 +193,26 @@ source:
 ```yaml {% srNumber=4 %}
       hostPort: <hive connection host & port>
 ```
+
+```yaml {% srNumber=22 %}
+      # For MySQL Metastore Connection
+      # metastoreConnection:
+      #   type: Mysql
+      #   username: <username>
+      #   password: <password>
+      #   hostPort: <hostPort>
+      #   databaseSchema: metastore
+
+```
+```yaml {% srNumber=23 %}
+      # For Postgres Metastore Connection
+      # metastoreConnection:
+      #   type: Postgres
+      #   username: <username>
+      #   password: <password>
+      #   hostPort: <hostPort>
+      #   database: metastore
+```
 ```yaml {% srNumber=5 %}
       # connectionOptions:
       #   key: value
@@ -212,7 +259,7 @@ sink:
   config: {}
 ```
 
-{% partial file="workflow-config-yaml.md" /%}
+{% partial file="/v1.1.1/connectors/workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 

@@ -22,6 +22,8 @@ server:
   adminConnectors:
     - type: http
       port: 0
+  requestLog:
+    type: external
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
