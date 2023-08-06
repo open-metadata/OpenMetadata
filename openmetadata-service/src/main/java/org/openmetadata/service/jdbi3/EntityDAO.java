@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -317,7 +318,12 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default T jsonToEntity(String json, String identity) {
     Class<T> clz = getEntityClass();
-    T entity = json != null ? JsonUtils.readValue(json, clz) : null;
+    T entity = null;
+    try {
+      entity = json != null ? JsonUtils.readValue(json, clz) : null;
+    } catch (IOException e) {
+      throw new UnhandledServerException("Failed to read JSON", e);
+    }
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));

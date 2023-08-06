@@ -130,7 +130,7 @@ public class TagLabelCache {
 
   static class TagLoader extends CacheLoader<String, Tag> {
     @Override
-    public Tag load(@CheckForNull String tagName) throws IOException {
+    public Tag load(@CheckForNull String tagName) {
       Tag tag = Entity.getEntityByName(Entity.TAG, tagName, "", NON_DELETED);
       LOG.info("Loaded tag {}:{}", tag.getName(), tag.getId());
       return tag;
@@ -149,7 +149,7 @@ public class TagLabelCache {
 
   static class GlossaryTermLoader extends CacheLoader<String, GlossaryTerm> {
     @Override
-    public GlossaryTerm load(@CheckForNull String glossaryTermName) throws IOException {
+    public GlossaryTerm load(@CheckForNull String glossaryTermName) {
       GlossaryTerm glossaryTerm = Entity.getEntityByName(Entity.GLOSSARY_TERM, glossaryTermName, "", NON_DELETED);
       LOG.info("Loaded glossaryTerm {}:{}", glossaryTerm.getName(), glossaryTerm.getId());
       return glossaryTerm;
@@ -158,7 +158,7 @@ public class TagLabelCache {
 
   static class GlossaryLoader extends CacheLoader<String, Glossary> {
     @Override
-    public Glossary load(@CheckForNull String glossaryName) throws IOException {
+    public Glossary load(@CheckForNull String glossaryName) {
       Glossary glossary = Entity.getEntityByName(Entity.GLOSSARY, glossaryName, "", NON_DELETED);
       LOG.info("Loaded glossary {}:{}", glossary.getName(), glossary.getId());
       return glossary;

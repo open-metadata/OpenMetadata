@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
@@ -31,6 +32,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
@@ -47,6 +49,9 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
@@ -63,14 +68,18 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -97,7 +106,6 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -109,7 +117,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelCache;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -153,6 +160,16 @@ import org.openmetadata.service.util.ResultList;
  */
 @Slf4j
 public abstract class EntityRepository<T extends EntityInterface> {
+  public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
+      CacheBuilder.newBuilder()
+          .maximumSize(5000)
+          .expireAfterWrite(30, TimeUnit.SECONDS)
+          .build(new EntityLoaderWithName());
+  public static final LoadingCache<Pair<String, UUID>, EntityInterface> CACHE_WITH_ID =
+      CacheBuilder.newBuilder()
+          .maximumSize(5000)
+          .expireAfterWrite(30, TimeUnit.SECONDS)
+          .build(new EntityLoaderWithId());
   private final String collectionPath;
   private final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -294,7 +311,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Set fullyQualifiedName of an entity */
   public void setFullyQualifiedName(T entity) {
-    entity.setFullyQualifiedName(EntityInterfaceUtil.quoteName(entity.getName()));
+    entity.setFullyQualifiedName(quoteName(entity.getName()));
   }
 
   /** Update an entity based suggested description and tags in the task */
@@ -383,16 +400,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include) {
-    T entity = dao.findEntityById(id, include);
-    setFieldsInternal(entity, fields);
-    setInheritedFields(entity, fields);
+    // Always get the entity to ensure read-after-write consistency
+    CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+    T entity = find(id, fields, include);
+    if (entity == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+    // TODO move setting HREF to setFields
     return withHref(uriInfo, entity);
   }
 
+  /** Find method is used for getting entity from the cache. Returns null if entity is not found */
   @Transaction
-  public final T findOrNull(UUID id, String fields, Include include) {
-    String json = dao.findJsonById(id, include);
-    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+  public T find(UUID id, String fields, Include include) {
+    return find(id, getFields(fields), include);
+  }
+
+  @Transaction
+  public T find(UUID id, Fields fields, Include include) {
+    try {
+      @SuppressWarnings("unchecked")
+      T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
+          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+        return null;
+      }
+      setFieldsInternal(entity, fields);
+      setInheritedFields(entity, fields);
+      return entity;
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
   }
 
   @Transaction
@@ -402,16 +441,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) {
-    T entity = dao.findEntityByName(fqn, include);
-    setFieldsInternal(entity, fields);
-    setInheritedFields(entity, fields);
+    // Always get the entity to ensure read-after-write consistency
+    CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+    T entity = findByName(fqn, fields, include);
+    if (entity == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+    }
     return withHref(uriInfo, entity);
   }
 
+  /** Find method is used for getting entity from the cache. Returns null if entity is not found */
   @Transaction
-  public final T findByNameOrNull(String fqn, String fields, Include include) {
-    String json = dao.findJsonByFqn(fqn, include);
-    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+  public T findByName(String fqn, String fields, Include include) {
+    return findByName(fqn, getFields(fields), include);
+  }
+
+  @Transaction
+  public T findByName(String fqn, Fields fields, Include include) {
+    try {
+      @SuppressWarnings("unchecked")
+      T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
+      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
+          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+        return null;
+      }
+      setFieldsInternal(entity, fields);
+      setInheritedFields(entity, fields);
+      return entity;
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   @Transaction
@@ -572,7 +631,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   T setFieldsInternal(T entity, Fields fields) {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
-    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
+    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
     entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : null);
@@ -845,6 +904,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the threads that are about this entity
     Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
+    // Remove entity from the cache
+    CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entityInterface.getId()));
+    CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entityInterface.getFullyQualifiedName()));
+
     // Finally, delete the entity
     dao.delete(id);
   }
@@ -910,6 +973,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (update) {
       dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
       LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
     } else {
       dao.insert(entity, entity.getFullyQualifiedName());
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -1044,7 +1109,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionDAO().delete(entity.getId().toString(), fieldFQN);
   }
 
-  public ObjectNode getExtension(T entity) {
+  public Object getExtension(T entity) {
+    if (!supportsExtension || entity.getExtension() != null) {
+      return entity.getExtension();
+    }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
     List<ExtensionRecord> records =
         daoCollection.entityExtensionDAO().getExtensions(entity.getId().toString(), fieldFQNPrefix);
@@ -1129,6 +1197,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  protected List<TagLabel> getTags(T entity) {
+    return !supportsTags || entity.getTags() != null ? entity.getTags() : getTags(entity.getFullyQualifiedName());
+  }
+
   protected List<TagLabel> getTags(String fqn) {
     return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
   }
@@ -1137,7 +1209,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsFollower || entity == null) {
       return Collections.emptyList();
     }
-    return findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
+    return entity.getFollowers() != null
+        ? entity.getFollowers()
+        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
   }
 
   protected Votes getVotes(T entity) {
@@ -1149,7 +1223,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityRelationshipRecord> records =
         findFromRecords(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      VoteRequest.VoteType type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteRequest.VoteType.class);
+      VoteRequest.VoteType type;
+      type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteRequest.VoteType.class);
       if (type == VoteRequest.VoteType.VOTED_UP) {
         upVoters.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
       } else if (type == VoteRequest.VoteType.VOTED_DOWN) {
@@ -1362,16 +1437,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityReference getOwner(T entity) {
-    return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
+    return !supportsOwner || entity.getOwner() != null
+        ? entity.getOwner()
+        : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
   public EntityReference getDomain(T entity) {
-    return getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
+    return entity.getDomain() != null
+        ? entity.getDomain()
+        : getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
   }
 
   private List<EntityReference> getDataProducts(T entity) {
-    if (!supportsDataProducts || entity == null) {
-      return null;
+    if (!supportsDataProducts || entity.getDataProducts() != null) {
+      return entity.getDataProducts();
     }
     return findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
   }
@@ -1566,7 +1645,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : SubjectCache.getSubjectContext(updated.getUpdatedBy()).getUser();
+              : getEntityByName(Entity.USER, quoteName(updated.getUpdatedBy()), "", NON_DELETED);
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -2122,6 +2201,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // The scale was reduced. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
+    }
+  }
+
+  static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, EntityInterface> {
+    @Override
+    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) throws IOException {
+      String entityType = fqnPair.getLeft();
+      String fqn = fqnPair.getRight();
+      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+      return repository.getDao().findEntityByName(fqn, ALL);
+    }
+  }
+
+  static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
+    @Override
+    public EntityInterface load(@CheckForNull Pair<String, UUID> idPair) throws IOException {
+      String entityType = idPair.getLeft();
+      UUID id = idPair.getRight();
+      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+      return repository.getDao().findEntityById(id, ALL);
     }
   }
 }

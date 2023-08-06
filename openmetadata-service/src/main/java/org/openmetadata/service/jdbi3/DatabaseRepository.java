@@ -73,14 +73,22 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (database == null) {
       return null;
     }
-    return findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+    return database.getDatabaseSchemas() != null
+        ? database.getDatabaseSchemas()
+        : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
   public Database setFields(Database database, Fields fields) {
-    database.setService(getContainer(database.getId()));
+    if (database.getService() != null) {
+      database.setService(getContainer(database.getId()));
+    }
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
-    database.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
+    if (database.getUsageSummary() == null) {
+      database.setUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
+              : null);
+    }
     return database;
   }
 

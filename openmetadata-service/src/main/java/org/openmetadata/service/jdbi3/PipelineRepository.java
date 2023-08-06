@@ -236,7 +236,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private void getTaskTags(boolean setTags, List<Task> tasks) {
     for (Task t : listOrEmpty(tasks)) {
-      t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : null);
+      if (t.getTags() == null) {
+        t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : null);
+      }
     }
   }
 

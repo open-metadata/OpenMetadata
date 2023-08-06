@@ -254,7 +254,7 @@ public class TableRepository extends EntityRepository<Table> {
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
       getColumnTags(true, table.getColumns());
-      table.setTags(getTags(table.getFullyQualifiedName()));
+      table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
 
@@ -760,8 +760,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
-      getColumnTags(setTags, c.getChildren());
+      if (c.getTags() == null) {
+        c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
+        getColumnTags(setTags, c.getChildren());
+      }
     }
   }
 
@@ -963,8 +965,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
-    return JsonUtils.readObjects(
-        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
+      return JsonUtils.readObjects(
+          daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
   }
 
   private void getCustomMetrics(boolean setMetrics, Table table) {

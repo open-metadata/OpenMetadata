@@ -68,7 +68,9 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   public EntityReference getBotUser(Bot bot) {
-    return getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
+    return bot.getBotUser() != null
+        ? bot.getBotUser()
+        : getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
   }
 
   public class BotUpdater extends EntityUpdater {

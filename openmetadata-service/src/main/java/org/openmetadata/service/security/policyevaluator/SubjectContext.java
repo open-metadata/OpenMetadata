@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.security.policyevaluator.SubjectCache.TEAM_FIELDS;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -25,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
@@ -77,8 +79,12 @@ public class SubjectContext {
       SubjectContext subjectContext = SubjectCache.getSubjectContext(owner.getName());
       return subjectContext.isUserUnderTeam(parentTeam);
     } else if (owner.getType().equals(Entity.TEAM)) {
-      Team team = SubjectCache.getTeam(owner.getId());
-      return isInTeam(parentTeam, team.getEntityReference());
+      try {
+        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+        return isInTeam(parentTeam, team.getEntityReference());
+      } catch (Exception ex) {
+        // Ignore and return false
+      }
     }
     return false;
   }
@@ -237,8 +243,12 @@ public class SubjectContext {
 
       // Finally, iterate over policies of teams that own the resource
       if (resourceOwner != null && resourceOwner.getType().equals(Entity.TEAM)) {
-        Team team = SubjectCache.getTeam(resourceOwner.getId());
-        iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
+        try {
+          Team team = Entity.getEntity(Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
+        } catch (Exception ex) {
+          // Ignore
+        }
       }
     }
 
@@ -273,7 +283,7 @@ public class SubjectContext {
 
     /** Policy iterator for a team */
     TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited, boolean skipRoles) {
-      Team team = SubjectCache.getTeam(teamId);
+      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
 
       // If a team is already visited (because user can belong to multiple teams
       // and a team can belong to multiple teams) then don't visit the roles/policies of that team

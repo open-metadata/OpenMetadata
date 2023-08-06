@@ -139,9 +139,6 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     store(user, update);
-    if (update) {
-      SubjectCache.invalidateUser(user.getName());
-    }
 
     // Restore the relationships
     user.withRoles(roles).withTeams(teams);
@@ -171,17 +168,6 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public UserUpdater getUpdater(User original, User updated, Operation operation) {
     return new UserUpdater(original, updated, operation);
-  }
-
-  @Override
-  protected void postDelete(User entity) {
-    SubjectCache.invalidateUser(entity.getName());
-  }
-
-  @Override
-  protected void cleanup(User user) {
-    super.cleanup(user);
-    SubjectCache.invalidateUser(user.getName());
   }
 
   @Override

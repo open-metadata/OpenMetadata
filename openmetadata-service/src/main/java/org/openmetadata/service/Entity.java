@@ -229,7 +229,7 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     include = repository.supportsSoftDelete ? Include.ALL : include;
-    return repository.getDao().findEntityReferenceById(id, include);
+    return repository.get(null, id, repository.getFields(""), include).getEntityReference();
   }
 
   public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
@@ -285,21 +285,20 @@ public final class Entity {
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id, fieldList, include);
+    T entity = (T) entityRepository.find(id, entityRepository.getFields(fields), include);
     if (entity == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
     return entity;
   }
 
+  // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.getByName(null, fqn, fieldList, include);
+    T entity = (T) entityRepository.findByName(fqn, entityRepository.getFields(fields), include);
     if (entity == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }

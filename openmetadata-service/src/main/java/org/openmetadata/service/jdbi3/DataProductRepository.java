@@ -47,7 +47,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   // TODO to to inheritance for experts
   private List<EntityReference> getExperts(DataProduct entity) {
-    return findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
+    return entity.getExperts() != null
+        ? entity.getExperts()
+        : findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
   }
 
   @Override

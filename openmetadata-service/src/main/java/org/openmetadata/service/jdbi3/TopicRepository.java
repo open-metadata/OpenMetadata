@@ -154,7 +154,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Set the fields tags. Will be used to mask the sample data
     if (!authorizePII) {
       getFieldTags(true, topic.getMessageSchema().getSchemaFields());
-      topic.setTags(getTags(topic.getFullyQualifiedName()));
+      topic.setTags(getTags(topic));
       return PIIMasker.getSampleData(topic);
     }
 
@@ -186,8 +186,10 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   private void getFieldTags(boolean setTags, List<Field> fields) {
     for (Field f : listOrEmpty(fields)) {
-      f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
-      getFieldTags(setTags, f.getChildren());
+      if (f.getTags() == null) {
+        f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
+        getFieldTags(setTags, f.getChildren());
+      }
     }
   }
 

@@ -68,7 +68,9 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   private EntityReference getParentContainer(Container container) {
     if (container == null) return null;
-    return getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
+    return container.getParent() != null
+        ? container.getParent()
+        : getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
   }
 
   private void setDefaultFields(Container container) {
@@ -81,7 +83,9 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container == null) {
       return Collections.emptyList();
     }
-    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
+    return nullOrEmpty(container.getChildren())
+        ? container.getChildren()
+        : findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }
 
   @Override

@@ -70,11 +70,17 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private int getTermCount(Classification category) {
+    if (category.getTermCount() != null) {
+      return category.getTermCount();
+    }
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getFullyQualifiedName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
+    if (classification.getUsageCount() != null) {
+      return classification.getUsageCount();
+    }
     return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
   }
 

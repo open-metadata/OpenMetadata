@@ -140,10 +140,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
     getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
+    if (dashboardDataModel.getService() != null) {
+      dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
+    }
     return dashboardDataModel
-        .withService(getContainer(dashboardDataModel.getId()))
         .withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboardDataModel) : null)
-        .withTags(fields.contains(FIELD_TAGS) ? getTags(dashboardDataModel.getFullyQualifiedName()) : null);
+        .withTags(fields.contains(FIELD_TAGS) ? getTags(dashboardDataModel) : null);
   }
 
   @Override
@@ -158,8 +160,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
-      getColumnTags(setTags, c.getChildren());
+      if (c.getTags() == null) {
+        c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
+        getColumnTags(setTags, c.getChildren());
+      }
     }
   }
 

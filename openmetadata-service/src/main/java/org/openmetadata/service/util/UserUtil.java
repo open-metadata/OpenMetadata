@@ -19,7 +19,6 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -59,8 +58,7 @@ public final class UserUtil {
     }
   }
 
-  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin)
-      throws IOException {
+  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser = null;
     try {

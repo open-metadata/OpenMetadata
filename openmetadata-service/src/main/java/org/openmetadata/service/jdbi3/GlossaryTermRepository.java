@@ -73,7 +73,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : null);
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : null);
   }
 

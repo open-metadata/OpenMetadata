@@ -116,7 +116,7 @@ public class SubscriptionUtil {
                 User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
                 data.add(user.getEmail());
               } else {
-                Team team = SubjectCache.getTeam(owner.getId());
+                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
                 data.add(team.getEmail());
               }
             } else {
@@ -125,7 +125,7 @@ public class SubscriptionUtil {
                 User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
                 profile = user.getProfile();
               } else if (TEAM.equals(owner.getType())) {
-                Team team = SubjectCache.getTeam(owner.getId());
+                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
                 profile = team.getProfile();
               }
               data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));

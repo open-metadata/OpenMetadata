@@ -66,9 +66,9 @@ public class ResourceContext implements ResourceContextInterface {
         fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
       }
       if (id != null) {
-        entity = entityRepository.findOrNull(id, fields, Include.NON_DELETED);
+        entity = entityRepository.find(id, fields, Include.NON_DELETED);
       } else if (name != null) {
-        entity = entityRepository.findByNameOrNull(name, fields, Include.NON_DELETED);
+        entity = entityRepository.findByName(name, fields, Include.NON_DELETED);
       }
     }
     return entity;

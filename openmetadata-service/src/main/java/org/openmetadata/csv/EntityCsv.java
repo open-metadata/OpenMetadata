@@ -195,7 +195,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     EntityInterface entity = entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
     if (entity == null) {
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-      entity = entityRepository.findByNameOrNull(fqn, "", Include.NON_DELETED);
+      entity = entityRepository.findByName(fqn, "", Include.NON_DELETED);
     }
     return entity;
   }
@@ -361,7 +361,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       repository.setFullyQualifiedName(entity);
       responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), "", Include.NON_DELETED) == null
+          repository.findByName(entity.getFullyQualifiedName(), "", Include.NON_DELETED) == null
               ? Response.Status.CREATED
               : Response.Status.OK;
       // Track the dryRun created entities, as they may be referred by other entities being created during import
