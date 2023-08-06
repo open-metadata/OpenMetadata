@@ -13,6 +13,8 @@
 Module to define overriden dialect methods
 """
 
+from typing import Optional
+
 import sqlalchemy.types as sqltypes
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
@@ -33,6 +35,14 @@ from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
 )
+
+
+def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
+
+    if entity_name:
+        return fqn.quote_name(entity_name)
+
+    return None
 
 
 def get_table_names_reflection(self, schema=None, **kw):
@@ -229,14 +239,15 @@ def _current_database_schema(self, connection, **kw):  # pylint: disable=unused-
         "select current_database(), current_schema();"
     ).fetchone()
     return (
-        self.normalize_name(fqn.quote_name(res[0])),
+        self.normalize_name(_quoted_name(entity_name=res[0])),
         self.normalize_name(res[1]),
     )
 
 
 @reflection.cache
 def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-    schema = fqn.quote_name(schema or self.default_schema_name)
+    schema = schema or self.default_schema_name
+    schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
     full_schema_name = self._denormalize_quote_join(
         current_database, schema if schema else current_schema
@@ -251,7 +262,8 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
     """
     Gets all foreign keys for a table
     """
-    schema = fqn.quote_name(schema or self.default_schema_name)
+    schema = schema or self.default_schema_name
+    schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
     full_schema_name = self._denormalize_quote_join(
         current_database, schema if schema else current_schema
@@ -265,7 +277,8 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 def get_unique_constraints(self, connection, table_name, schema, **kw):
-    schema = fqn.quote_name(schema or self.default_schema_name)
+    schema = schema or self.default_schema_name
+    schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
     full_schema_name = self._denormalize_quote_join(
         current_database, schema if schema else current_schema

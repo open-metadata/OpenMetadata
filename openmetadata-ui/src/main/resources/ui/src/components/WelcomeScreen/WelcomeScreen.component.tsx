@@ -41,16 +41,17 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
 
   return (
     <Card
-      className="welcome-screen-container"
+      className="welcome-screen-container card-body-border-none card-padding-0"
       extra={
         <Button
           className="flex-center welcome-screen-close-btn"
+          data-testid="welcome-screen-close-btn"
           icon={<CloseIcon height={12} width={12} />}
           type="text"
           onClick={onClose}
         />
       }>
-      <Row gutter={16}>
+      <Row className="p-md welcome-screen-full-height" gutter={16}>
         <Col span={12}>
           <img
             alt="welcome screen image"
@@ -60,7 +61,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
           />
         </Col>
         <Col span={12}>
-          <Space direction="vertical">
+          <Space className="m-y-xlg" direction="vertical">
             <div>
               <Paragraph className="welcome-screen-header-first-line m-b-0">
                 {t('message.hi-user-welcome-to', {

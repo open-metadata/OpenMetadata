@@ -154,6 +154,7 @@ function ServiceMainTabContent({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        className: 'd-block w-max-200 truncate',
         render: (_, record: ServicePageData) => {
           return (
             <Link
@@ -289,23 +290,23 @@ function ServiceMainTabContent({
             </Row>
           </Col>
           <Col data-testid="table-container" span={24}>
-            <Table
-              bordered
-              columns={tableColumn}
-              components={tableComponent}
-              data-testid="service-children-table"
-              dataSource={data}
-              loading={{
-                spinning: isServiceLoading,
-                indicator: <Loader size="small" />,
-              }}
-              locale={{
-                emptyText: <ErrorPlaceHolder className="m-y-md" />,
-              }}
-              pagination={false}
-              rowKey="id"
-              size="small"
-            />
+            {isServiceLoading ? (
+              <Loader />
+            ) : (
+              <Table
+                bordered
+                columns={tableColumn}
+                components={tableComponent}
+                data-testid="service-children-table"
+                dataSource={data}
+                locale={{
+                  emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                }}
+                pagination={false}
+                rowKey="id"
+                size="small"
+              />
+            )}
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
               !isEmpty(data) && (
                 <NextPrevious

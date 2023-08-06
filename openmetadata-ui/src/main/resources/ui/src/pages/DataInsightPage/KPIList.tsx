@@ -201,19 +201,22 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   return (
     <>
       <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          data-testid="kpi-table"
-          dataSource={kpiList}
-          loading={{ spinning: isLoading, indicator: <Loader /> }}
-          locale={{
-            emptyText: noDataPlaceHolder,
-          }}
-          pagination={false}
-          rowKey="name"
-          size="small"
-        />
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Table
+            bordered
+            columns={columns}
+            data-testid="kpi-table"
+            dataSource={kpiList}
+            locale={{
+              emptyText: noDataPlaceHolder,
+            }}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
+        )}
       </Col>
       {kpiList.length > PAGE_SIZE_MEDIUM && (
         <Col span={24}>

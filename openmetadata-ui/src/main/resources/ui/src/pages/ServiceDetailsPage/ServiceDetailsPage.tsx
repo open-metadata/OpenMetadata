@@ -97,6 +97,8 @@ import { getPipelines } from 'rest/pipelineAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getEntityMissingError } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getEditConnectionPath } from 'utils/RouterUtils';
@@ -106,6 +108,7 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from 'utils/ServiceUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
@@ -153,6 +156,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
+    useState(false);
   const [isServiceLoading, setIsServiceLoading] = useState(true);
   const [dataModel, setDataModel] = useState<Array<ServicePageData>>([]);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
@@ -233,10 +238,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const getAllIngestionWorkflows = useCallback(
     async (paging?: string) => {
       try {
-        setIsLoading(true);
+        setIsIngestionPipelineLoading(true);
         const response = await getIngestionPipelines(
           ['owner', 'pipelineStatuses'],
-          serviceFQN,
+          getDecodedFqn(serviceFQN),
           paging
         );
 
@@ -249,7 +254,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       } catch (error) {
         // Error
       } finally {
-        setIsLoading(false);
+        setIsIngestionPipelineLoading(false);
       }
     },
     [serviceFQN, paging]
@@ -327,16 +332,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [updateCurrentSelectedIngestion]
   );
 
-  const handleEnableDisableIngestion = useCallback(async (id: string) => {
-    try {
-      const response = await enableDisableIngestionPipelineById(id);
-      if (response.data) {
-        updateCurrentSelectedIngestion(id, response.data, 'enabled');
+  const handleEnableDisableIngestion = useCallback(
+    async (id: string) => {
+      try {
+        const response = await enableDisableIngestionPipelineById(id);
+        if (response.data) {
+          updateCurrentSelectedIngestion(id, response.data, 'enabled');
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  }, []);
+    },
+    [updateCurrentSelectedIngestion]
+  );
 
   const deleteIngestionById = useCallback(
     async (id: string, displayName: string) => {
@@ -375,7 +383,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
-        decodeURIComponent(serviceFQN),
+        getDecodedFqn(serviceFQN),
         'owner,tags,usageSummary',
         paging,
         include
@@ -404,7 +412,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
-        serviceFQN,
+        getDecodedFqn(serviceFQN),
         'owner,usageSummary,tags',
         paging,
         include
@@ -420,7 +428,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       try {
         setIsServiceLoading(true);
         const { data, paging: resPaging } = await getDataModels({
-          service: serviceFQN,
+          service: getDecodedFqn(serviceFQN),
           fields: 'owner,tags,followers',
           include,
           ...params,
@@ -441,7 +449,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
-        serviceFQN,
+        getDecodedFqn(serviceFQN),
         'owner,tags',
         paging,
         include
@@ -455,7 +463,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchMlModal = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
-        serviceFQN,
+        getDecodedFqn(serviceFQN),
         'owner,tags',
         paging,
         include
@@ -469,7 +477,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchContainers = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
-        service: serviceFQN,
+        service: getDecodedFqn(serviceFQN),
         fields: 'owner,tags',
         paging,
         root: true,
@@ -770,7 +778,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             handleEnableDisableIngestion={handleEnableDisableIngestion}
             ingestionList={ingestionPipelines}
             isAirflowAvailable={isAirflowAvailable}
-            isLoading={isLoading}
+            isLoading={isIngestionPipelineLoading}
             paging={ingestionPaging}
             permissions={servicePermission}
             serviceCategory={serviceCategory as ServiceCategory}
@@ -785,7 +793,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ),
     [
       isAirflowAvailable,
-      isLoading,
+      isIngestionPipelineLoading,
       airflowEndpoint,
       serviceDetails,
       deleteIngestionById,
@@ -1008,31 +1016,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
       })}>
-      <Row data-testid="service-page" gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
-          <DataAssetsHeader
-            isRecursiveDelete
-            allowSoftDelete={false}
-            dataAsset={serviceDetails}
-            entityType={entityType}
-            permissions={servicePermission}
-            onDisplayNameUpdate={handleUpdateDisplayName}
-            onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={() => Promise.resolve()}
-            onTierUpdate={handleUpdateTier}
-          />
-        </Col>
+      {isEmpty(serviceDetails) ? (
+        <ErrorPlaceHolder className="m-0">
+          {getEntityMissingError(serviceCategory as string, serviceFQN)}
+        </ErrorPlaceHolder>
+      ) : (
+        <Row data-testid="service-page" gutter={[0, 12]}>
+          <Col className="p-x-lg" span={24}>
+            <DataAssetsHeader
+              isRecursiveDelete
+              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              allowSoftDelete={false}
+              dataAsset={serviceDetails}
+              entityType={entityType}
+              permissions={servicePermission}
+              onDisplayNameUpdate={handleUpdateDisplayName}
+              onOwnerUpdate={handleUpdateOwner}
+              onRestoreDataAsset={() => Promise.resolve()}
+              onTierUpdate={handleUpdateTier}
+            />
+          </Col>
 
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={activeTabHandler}
-          />
-        </Col>
-      </Row>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={activeTabHandler}
+            />
+          </Col>
+        </Row>
+      )}
     </PageLayoutV1>
   );
 };

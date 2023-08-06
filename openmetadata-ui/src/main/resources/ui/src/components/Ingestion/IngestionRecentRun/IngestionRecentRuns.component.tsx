@@ -22,6 +22,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -54,7 +55,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     setLoading(true);
     try {
       const response = await getRunHistoryForPipeline(
-        ingestion.fullyQualifiedName || '',
+        getEncodedFqn(ingestion.fullyQualifiedName || ''),
         queryParams
       );
 

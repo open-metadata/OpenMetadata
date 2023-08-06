@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getLoadingStatus } from 'utils/CommonUtils';
 import { getEditIngestionPath, getLogsViewerPath } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 
@@ -43,6 +44,7 @@ function PipelineActions({
 
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+  const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
 
@@ -78,12 +80,25 @@ function PipelineActions({
       .catch(() => setCurrDeployId({ id: '', state: '' }));
   };
 
+  const onPauseUnpauseClick = async (id: string) => {
+    setCurrPauseId({ id, state: 'waiting' });
+    try {
+      await handleEnableDisableIngestion(id);
+      setCurrPauseId({ id, state: 'success' });
+      setTimeout(() => setCurrPauseId({ id: '', state: '' }), 1000);
+    } catch {
+      setCurrPauseId({ id: '', state: '' });
+    }
+  };
+
   const handleUpdate = (ingestion: IngestionPipeline) => {
     history.push(
       getEditIngestionPath(
         serviceCategory,
         serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
+        getEncodedFqn(
+          ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`
+        ),
         ingestion.pipelineType
       )
     );
@@ -165,8 +180,8 @@ function PipelineActions({
               data-testid="pause"
               disabled={getIngestionPermission(record.name)}
               type="link"
-              onClick={() => handleEnableDisableIngestion(record.id || '')}>
-              {t('label.pause')}
+              onClick={() => onPauseUnpauseClick(record.id || '')}>
+              {getLoadingStatus(currPauseId, record.id, t('label.pause'))}
             </Button>
           </>
         ) : (
@@ -175,8 +190,8 @@ function PipelineActions({
             data-testid="unpause"
             disabled={getIngestionPermission(record.name)}
             type="link"
-            onClick={() => handleEnableDisableIngestion(record.id || '')}>
-            {t('label.unpause')}
+            onClick={() => onPauseUnpauseClick(record.id || '')}>
+            {getLoadingStatus(currPauseId, record.id, t('label.unpause'))}
           </Button>
         )}
         <Divider className="border-gray" type="vertical" />
@@ -214,7 +229,7 @@ function PipelineActions({
           to={getLogsViewerPath(
             serviceCategory,
             record.service?.name || '',
-            record?.fullyQualifiedName || record?.name || ''
+            getEncodedFqn(record?.fullyQualifiedName || record?.name || '')
           )}>
           <Button
             className="p-x-xss"

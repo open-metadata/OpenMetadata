@@ -125,6 +125,15 @@ const TableDetailsPageV1 = () => {
     () => tablePermissions.ViewAll || tablePermissions.ViewTests,
     [tablePermissions]
   );
+  const tableFqn = useMemo(
+    () =>
+      getPartialNameFromTableFQN(
+        datasetFQN,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      ),
+    [datasetFQN]
+  );
 
   const fetchTableDetails = async () => {
     setLoading(true);
@@ -136,7 +145,7 @@ const TableDetailsPageV1 = () => {
       if (viewTestSuitePermission) {
         fields += `,${TabSpecificField.TESTSUITE}`;
       }
-      const details = await getTableDetailsByFQN(datasetFQN, fields);
+      const details = await getTableDetailsByFQN(tableFqn, fields);
 
       setTableDetails(details);
       addToRecentViewed({
@@ -248,11 +257,11 @@ const TableDetailsPageV1 = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(
-    async (datasetFQN) => {
+    async (tableFqn) => {
       try {
         const tablePermission = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
-          datasetFQN
+          tableFqn
         );
 
         setTablePermissions(tablePermission);
@@ -270,15 +279,15 @@ const TableDetailsPageV1 = () => {
   );
 
   useEffect(() => {
-    if (datasetFQN) {
-      fetchResourcePermission(datasetFQN);
+    if (tableFqn) {
+      fetchResourcePermission(tableFqn);
     }
-  }, [datasetFQN]);
+  }, [tableFqn]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.TABLE,
-      datasetFQN,
+      tableFqn,
       setEntityFieldThreadCount,
       setFeedCount
     );
@@ -287,7 +296,7 @@ const TableDetailsPageV1 = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(getTableTabPath(datasetFQN, activeKey));
+        history.push(getTableTabPath(tableFqn, activeKey));
       }
     }
   };
@@ -437,7 +446,7 @@ const TableDetailsPageV1 = () => {
                 EntityField.DESCRIPTION,
                 entityFieldThreadCount
               )}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={
@@ -453,7 +462,7 @@ const TableDetailsPageV1 = () => {
             />
             <SchemaTab
               columnName={getPartialNameFromTableFQN(
-                datasetFQN,
+                tableFqn,
                 [FqnPart['Column']],
                 FQN_SEPARATOR_CHAR
               )}
@@ -462,7 +471,7 @@ const TableDetailsPageV1 = () => {
                 EntityField.COLUMNS,
                 entityFieldThreadCount
               )}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               hasDescriptionEditAccess={
                 tablePermissions.EditAll || tablePermissions.EditDescription
               }
@@ -490,7 +499,7 @@ const TableDetailsPageV1 = () => {
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
               permission={
@@ -505,7 +514,7 @@ const TableDetailsPageV1 = () => {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
               permission={
@@ -821,7 +830,7 @@ const TableDetailsPageV1 = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(getVersionPath(EntityType.TABLE, datasetFQN, version + ''));
+      history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version]);
 
   useEffect(() => {
@@ -833,7 +842,7 @@ const TableDetailsPageV1 = () => {
         getEntityFeedCount();
       }
     }
-  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
+  }, [tableFqn, isTourOpen, isTourPage, tablePermissions]);
 
   useEffect(() => {
     if (tableDetails) {

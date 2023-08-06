@@ -184,11 +184,6 @@ public class TableRepository extends EntityRepository<Table> {
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
-  @Override
-  public String getFullyQualifiedNameHash(Table entity) {
-    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-  }
-
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException {
     // Validate the request content
@@ -599,7 +594,7 @@ public class TableRepository extends EntityRepository<Table> {
       stored.setTags(modelColumn.getTags());
     }
     applyTags(table.getColumns());
-    dao.update(table.getId(), FullyQualifiedName.buildHash(table.getFullyQualifiedName()), JsonUtils.pojoToJson(table));
+    dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNER), FIELD_OWNER));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -722,7 +717,7 @@ public class TableRepository extends EntityRepository<Table> {
           break;
         }
       }
-      if (childrenName != "" && column != null) {
+      if (!"".equals(childrenName) && column != null) {
         column = getChildrenColumn(column.getChildren(), childrenName);
       }
       if (column == null) {
@@ -753,9 +748,9 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     if (childrenColumn == null) {
-      for (int i = 0; i < column.size(); i++) {
-        if (column.get(i).getChildren() != null) {
-          childrenColumn = getChildrenColumn(column.get(i).getChildren(), childrenName);
+      for (Column value : column) {
+        if (value.getChildren() != null) {
+          childrenColumn = getChildrenColumn(value.getChildren(), childrenName);
           if (childrenColumn != null) {
             break;
           }
@@ -833,8 +828,8 @@ public class TableRepository extends EntityRepository<Table> {
                   daoCollection
                       .fieldRelationshipDAO()
                       .find(
-                          FullyQualifiedName.buildHash(fromEntityFQN),
-                          FullyQualifiedName.buildHash(toEntityFQN),
+                          fromEntityFQN,
+                          toEntityFQN,
                           entityRelationType,
                           entityRelationType,
                           Relationship.JOINED_WITH.ordinal()))
@@ -848,8 +843,8 @@ public class TableRepository extends EntityRepository<Table> {
       daoCollection
           .fieldRelationshipDAO()
           .upsert(
-              FullyQualifiedName.buildHash(fromEntityFQN),
-              FullyQualifiedName.buildHash(toEntityFQN),
+              fromEntityFQN,
+              toEntityFQN,
               fromEntityFQN,
               toEntityFQN,
               entityRelationType,
@@ -905,7 +900,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<Pair<String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
             .listBidirectional(
-                FullyQualifiedName.buildHash(table.getFullyQualifiedName()),
+                table.getFullyQualifiedName(),
                 FIELD_RELATION_TABLE_TYPE,
                 FIELD_RELATION_TABLE_TYPE,
                 Relationship.JOINED_WITH.ordinal())
@@ -927,7 +922,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<Triple<String, String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
             .listBidirectionalByPrefix(
-                FullyQualifiedName.buildHash(table.getFullyQualifiedName()),
+                table.getFullyQualifiedName(),
                 FIELD_RELATION_COLUMN_TYPE,
                 FIELD_RELATION_COLUMN_TYPE,
                 Relationship.JOINED_WITH.ordinal())

@@ -214,7 +214,7 @@ source:
       password: <password>
       hostPort: <hostPort>
       # database: <database>
-
+```
 ```yaml {% srNumber=7 %}
       # connectionOptions:
       #   key: value
@@ -262,7 +262,7 @@ sink:
   config: {}
 ```
 
-{% partial file="workflow-config-yaml.md" /%}
+{% partial file="/v1.1.1/connectors/workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 
