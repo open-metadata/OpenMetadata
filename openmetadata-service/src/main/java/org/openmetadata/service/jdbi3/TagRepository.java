@@ -114,7 +114,10 @@ public class TagRepository extends EntityRepository<Tag> {
   public Tag setFields(Tag tag, Fields fields) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     tag.setChildren(fields.contains("children") ? getChildren(tag) : null);
-    return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
+    if (tag.getUsageCount() == null) {
+      tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
+    }
+    return tag;
   }
 
   private Integer getUsageCount(Tag tag) {
@@ -122,15 +125,19 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private List<EntityReference> getChildren(Tag entity) {
-    return findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
+    return entity.getChildren() != null
+        ? entity.getChildren()
+        : findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
   }
 
   private EntityReference getParent(Tag tag) {
-    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
+    return tag.getParent() != null ? tag.getParent() : getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
   }
 
   private EntityReference getClassification(Tag tag) {
-    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
+    return tag.getClassification() != null
+        ? tag.getClassification()
+        : getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
   }
 
   private void addClassificationRelationship(Tag term) {

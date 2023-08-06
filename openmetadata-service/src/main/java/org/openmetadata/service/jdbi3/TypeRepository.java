@@ -119,6 +119,9 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {
+    if (type.getCustomProperties() != null) {
+      return type.getCustomProperties();
+    }
     if (type.getCategory().equals(Category.Field)) {
       return null; // Property type fields don't support custom properties
     }

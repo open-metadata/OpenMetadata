@@ -140,7 +140,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
     getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
-    if (dashboardDataModel.getService() != null) {
+    if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
     return dashboardDataModel

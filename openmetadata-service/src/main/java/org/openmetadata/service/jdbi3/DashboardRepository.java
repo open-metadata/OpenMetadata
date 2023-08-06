@@ -84,7 +84,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public Dashboard setFields(Dashboard dashboard, Fields fields) {
-    if (dashboard.getService() != null) {
+    if (dashboard.getService() == null) {
       dashboard.setService(getContainer(dashboard.getId()));
     }
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);

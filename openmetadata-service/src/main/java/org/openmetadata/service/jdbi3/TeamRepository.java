@@ -99,10 +99,14 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : null);
     team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? getInheritedRoles(team) : null);
     team.setParents(fields.contains(PARENTS_FIELD) ? getParents(team) : null);
-    team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
+    if (team.getChildren() == null) {
+      team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
+    }
     team.setPolicies(fields.contains("policies") ? getPolicies(team) : null);
     team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : null);
-    team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : null);
+    if (team.getUserCount() == null) {
+      team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : null);
+    }
     return team;
   }
 
@@ -400,11 +404,11 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getChildrenCount(Team team) {
-    return getChildren(team.getId()).size();
+    return team.getChildrenCount() != null ? team.getChildrenCount() : getChildren(team.getId()).size();
   }
 
   private List<EntityReference> getPolicies(Team team) {
-    return findTo(team.getId(), TEAM, Relationship.HAS, POLICY);
+    return team.getPolicies() != null ? team.getPolicies() : findTo(team.getId(), TEAM, Relationship.HAS, POLICY);
   }
 
   private void populateChildren(Team team) {

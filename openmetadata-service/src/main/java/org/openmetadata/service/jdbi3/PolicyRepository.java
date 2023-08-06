@@ -57,12 +57,16 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /* Get all the teams that use this policy */
   private List<EntityReference> getTeams(Policy policy) {
-    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
+    return policy.getTeams() != null
+        ? policy.getTeams()
+        : findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
   }
 
   /* Get all the roles that use this policy */
   private List<EntityReference> getRoles(Policy policy) {
-    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
+    return policy.getRoles() != null
+        ? policy.getRoles()
+        : findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
   }
 
   @Override

@@ -52,6 +52,9 @@ public class QueryRepository extends EntityRepository<Query> {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
+    if (queryEntity.getQueryUsedIn() != null) {
+      return queryEntity.getQueryUsedIn();
+    }
     return findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
   }
 

@@ -120,7 +120,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public Topic setFields(Topic topic, Fields fields) {
-    topic.setService(getContainer(topic.getId()));
+    if (topic.getService() != null) {
+      topic.setService(getContainer(topic.getId()));
+    }
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     if (topic.getMessageSchema() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), topic.getMessageSchema().getSchemaFields());

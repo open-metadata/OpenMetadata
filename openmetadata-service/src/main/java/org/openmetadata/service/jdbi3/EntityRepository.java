@@ -1218,6 +1218,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsVotes || entity == null) {
       return new Votes();
     }
+    if (entity.getVotes() != null) {
+      return entity.getVotes();
+    }
     List<EntityReference> upVoters = new ArrayList<>();
     List<EntityReference> downVoters = new ArrayList<>();
     List<EntityRelationshipRecord> records =
@@ -1547,10 +1550,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getIngestionPipelines(T service) {
-    List<EntityRelationshipRecord> records =
+    List<EntityRelationshipRecord> pipelines =
         findToRecords(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
     List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+    for (EntityRelationshipRecord entityRelationshipRecord : pipelines) {
       ingestionPipelines.add(
           daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }

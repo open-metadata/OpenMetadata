@@ -159,7 +159,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) {
-    EntityReference schemaRef = getContainer(table.getId());
+    EntityReference schemaRef =
+        table.getDatabaseSchema() != null ? table.getDatabaseSchema() : getContainer(table.getId());
+    // TODO optimize
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
@@ -965,8 +967,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
-      return JsonUtils.readObjects(
-          daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
+    return JsonUtils.readObjects(
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
   }
 
   private void getCustomMetrics(boolean setMetrics, Table table) {

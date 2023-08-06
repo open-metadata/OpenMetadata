@@ -87,9 +87,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private void setDefaultFields(DatabaseSchema schema) {
-    EntityReference databaseRef = getContainer(schema.getId());
-    Database database = Entity.getEntity(databaseRef, "", Include.ALL);
-    schema.withDatabase(databaseRef).withService(database.getService());
+    EntityReference databaseRef = schema.getDatabase() != null ? schema.getDatabase() : getContainer(schema.getId());
+    if (schema.getService() == null) {
+      Database database = Entity.getEntity(databaseRef, "", Include.ALL);
+      schema.withDatabase(databaseRef).withService(database.getService());
+    }
   }
 
   @Override

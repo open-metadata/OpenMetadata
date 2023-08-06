@@ -100,10 +100,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
+    return glossary.getUsageCount() != null
+        ? glossary.getUsageCount()
+        : daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
   }
 
   private Integer getTermCount(Glossary glossary) {
+    if (glossary.getTermCount() != null) {
+      return glossary.getTermCount();
+    }
     ListFilter filter =
         new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
     return daoCollection.glossaryTermDAO().listCount(filter);
@@ -134,7 +139,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private List<EntityReference> getReviewers(Glossary entity) {
-    return findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
+    return entity.getReviewers() != null
+        ? entity.getReviewers()
+        : findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {

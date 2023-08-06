@@ -101,7 +101,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) {
-    pipeline.setService(getContainer(pipeline.getId()));
+    if (pipeline.getService() == null) {
+      pipeline.setService(getContainer(pipeline.getId()));
+    }
     pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
     if (!fields.contains(TASKS_FIELD)) {
@@ -111,6 +113,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
+    if (pipeline.getPipelineStatus() != null) {
+      return pipeline.getPipelineStatus();
+    }
     return JsonUtils.readValue(
         getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);

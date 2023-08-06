@@ -112,6 +112,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestSuite(TestCase test) {
+    if (test.getTestSuite() != null) {
+      return test.getTestSuite();
+    }
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
@@ -126,6 +129,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private List<TestSuite> getTestSuites(TestCase test) {
+    if (test.getTestSuites() != null) {
+      return test.getTestSuites();
+    }
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
@@ -136,7 +142,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestDefinition(TestCase test) {
-    return getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
+    return test.getTestDefinition() != null
+        ? test.getTestDefinition()
+        : getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
   }
 
   private void validateTestParameters(
@@ -261,6 +269,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private TestCaseResult getTestCaseResult(TestCase testCase) {
+    if (testCase.getTestCaseResult() != null) {
+      return testCase.getTestCaseResult();
+    }
     return JsonUtils.readValue(
         getLatestExtensionFromTimeseries(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
         TestCaseResult.class);

@@ -37,9 +37,16 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) {
-    metrics.setService(getContainer(metrics.getId())); // service is a default field
-    return metrics.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
+    if (metrics.getService() == null) {
+      metrics.setService(getContainer(metrics.getId())); // service is a default field
+    }
+    if (metrics.getUsageSummary() == null) {
+      metrics.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId())
+              : null);
+    }
+    return metrics;
   }
 
   @Override

@@ -57,6 +57,7 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public T setFields(T entity, EntityUtil.Fields fields) {
+    // TODO add getPipelines to ServiceEntityInterface
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     return entity;
   }

@@ -38,12 +38,16 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
+    // TODO add getPipelines method
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setSummary(fields.contains("summary") ? getTestSummary(entity) : null);
     return entity.withTests(fields.contains("tests") ? getTestCases(entity) : null);
   }
 
   private TestSummary getTestSummary(TestSuite entity) {
+    if (entity.getSummary() != null) {
+      return entity.getSummary();
+    }
     List<EntityReference> testCases = getTestCases(entity);
     List<String> testCaseFQNs =
         testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
@@ -58,7 +62,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) {
-    return findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    return entity.getTests() != null
+        ? entity.getTests()
+        : findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }
 
   @Override

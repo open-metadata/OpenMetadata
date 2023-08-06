@@ -83,7 +83,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container == null) {
       return Collections.emptyList();
     }
-    return nullOrEmpty(container.getChildren())
+    return !nullOrEmpty(container.getChildren())
         ? container.getChildren()
         : findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }

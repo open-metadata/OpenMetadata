@@ -49,15 +49,21 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private EntityReference getParent(Domain entity) {
-    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, DOMAIN, false);
+    return entity.getParent() != null
+        ? entity.getParent()
+        : getFromEntityRef(entity.getId(), Relationship.CONTAINS, DOMAIN, false);
   }
 
   private List<EntityReference> getChildren(Domain entity) {
-    return findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
+    return entity.getChildren() != null
+        ? entity.getChildren()
+        : findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
   }
 
   private List<EntityReference> getExperts(Domain entity) {
-    return findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
+    return entity.getExperts() != null
+        ? entity.getExperts()
+        : findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
   }
 
   @Override

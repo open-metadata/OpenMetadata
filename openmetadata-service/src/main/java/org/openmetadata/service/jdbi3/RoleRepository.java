@@ -46,15 +46,21 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) {
-    return findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
+    return role.getPolicies() != null
+        ? role.getPolicies()
+        : findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
   }
 
   private List<EntityReference> getUsers(@NonNull Role role) {
-    return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
+    return role.getUsers() != null
+        ? role.getUsers()
+        : findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
   }
 
   private List<EntityReference> getTeams(@NonNull Role role) {
-    return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
+    return role.getTeams() != null
+        ? role.getTeams()
+        : findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
   }
 
   @Override

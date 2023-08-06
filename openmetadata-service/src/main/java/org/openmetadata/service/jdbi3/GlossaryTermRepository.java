@@ -121,23 +121,33 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), term.getFullyQualifiedName());
+    return term.getUsageCount() != null
+        ? term.getUsageCount()
+        : daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), term.getFullyQualifiedName());
   }
 
   private EntityReference getParent(GlossaryTerm entity) {
-    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, GLOSSARY_TERM, false);
+    return entity.getParent() != null
+        ? entity.getParent()
+        : getFromEntityRef(entity.getId(), Relationship.CONTAINS, GLOSSARY_TERM, false);
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) {
-    return findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
+    return entity.getChildren() != null
+        ? entity.getChildren()
+        : findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) {
-    return findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
+    return entity.getRelatedTerms() != null
+        ? entity.getRelatedTerms()
+        : findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) {
-    return findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
+    return entity.getRelatedTerms() != null
+        ? entity.getRelatedTerms()
+        : findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
   }
 
   @Override
