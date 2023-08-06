@@ -86,6 +86,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
   }
 
+  public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
+    schema.setTables(fields.contains("tables") ? schema.getTables() : null);
+    return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
+  }
+
   private void setDefaultFields(DatabaseSchema schema) {
     EntityReference databaseRef = schema.getDatabase() != null ? schema.getDatabase() : getContainer(schema.getId());
     if (schema.getService() == null) {

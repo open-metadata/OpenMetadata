@@ -1,9 +1,9 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
@@ -11,8 +11,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Builds ResourceContext lazily. ResourceContext includes all the attributes of a resource a user is trying to access
@@ -20,16 +22,35 @@ import org.openmetadata.service.util.EntityUtil;
  *
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
-@Builder
-public class ResourceContext implements ResourceContextInterface {
-  @NonNull @Getter private String resource;
-  @NonNull private EntityRepository<? extends EntityInterface> entityRepository;
-  private UUID id;
-  private String name;
-  private EntityInterface entity; // Will be lazily initialized
+public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+  @NonNull @Getter private final String resource;
+  private final EntityRepository<T> entityRepository;
+  private final UUID id;
+  private final String name;
+  private T entity; // Will be lazily initialized
 
-  // Builder class added for getting around javadoc errors. This class will be filled in by lombok.
-  public static class ResourceContextBuilder {}
+  public ResourceContext(String resource) {
+    this.resource = resource;
+    this.id = null;
+    this.name = null;
+    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+  }
+
+  public ResourceContext(String resource, UUID id, String name) {
+    this.resource = resource;
+    this.id = id;
+    this.name = name;
+    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+  }
+
+  @VisibleForTesting
+  public ResourceContext(String resource, T entity, EntityRepository<T> repository) {
+    this.resource = resource;
+    this.id = null;
+    this.name = null;
+    this.entity = entity;
+    this.entityRepository = repository;
+  }
 
   @Override
   public EntityReference getOwner() {
@@ -65,10 +86,18 @@ public class ResourceContext implements ResourceContextInterface {
       if (entityRepository.isSupportsDomain()) {
         fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
       }
+      try {
       if (id != null) {
-        entity = entityRepository.find(id, fields, Include.NON_DELETED);
+        entity = (T) entityRepository.find(id, Include.NON_DELETED);
       } else if (name != null) {
-        entity = entityRepository.findByName(name, fields, Include.NON_DELETED);
+        entity = (T) entityRepository.findByName(name, Include.NON_DELETED);
+      }
+      } catch(EntityNotFoundException e) {
+        entity = null;
+      }
+      if (entity != null) {
+        Fields fieldList = entityRepository.getFields(fields);
+        entityRepository.setFieldsInternal(entity, fieldList);
       }
     }
     return entity;

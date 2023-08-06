@@ -1051,7 +1051,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1088,7 +1088,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
       tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     } else {
@@ -1118,7 +1118,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createAccessToken(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersonalToken tokenRequest) {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED, false);
     if (Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =

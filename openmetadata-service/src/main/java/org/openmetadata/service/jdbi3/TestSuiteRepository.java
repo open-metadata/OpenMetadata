@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
@@ -38,10 +39,16 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
-    // TODO add getPipelines method
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
-    entity.setSummary(fields.contains("summary") ? getTestSummary(entity) : null);
-    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : null);
+    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    entity.setSummary(fields.contains("summary") ? getTestSummary(entity) : entity.getSummary());
+    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
+  }
+
+  @Override
+  public TestSuite clearFields(TestSuite entity, EntityUtil.Fields fields) {
+    entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
+    entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
+    return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
   }
 
   private TestSummary getTestSummary(TestSuite entity) {
@@ -62,7 +69,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) {
-    return entity.getTests() != null
+    return !nullOrEmpty(entity.getTests())
         ? entity.getTests()
         : findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }

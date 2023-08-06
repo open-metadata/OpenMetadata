@@ -25,6 +25,11 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
+  public TestDefinition clearFields(TestDefinition entity, EntityUtil.Fields fields) {
+    return entity; // Nothing to set
+  }
+
+  @Override
   public void prepare(TestDefinition entity) {
     // validate test platforms
     if (CommonUtil.nullOrEmpty(entity.getTestPlatforms())) {

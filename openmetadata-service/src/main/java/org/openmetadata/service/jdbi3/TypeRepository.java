@@ -17,6 +17,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
@@ -35,7 +36,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -53,7 +53,13 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public Type setFields(Type type, Fields fields) {
-    return type.withCustomProperties(fields.contains("customProperties") ? getCustomProperties(type) : null);
+    return type.withCustomProperties(
+        fields.contains("customProperties") ? getCustomProperties(type) : type.getCustomProperties());
+  }
+
+  @Override
+  public Type clearFields(Type type, Fields fields) {
+    return type.withCustomProperties(fields.contains("customProperties") ? type.getCustomProperties() : null);
   }
 
   @Override
@@ -119,7 +125,7 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {
-    if (type.getCustomProperties() != null) {
+    if (!nullOrEmpty(type.getCustomProperties())) {
       return type.getCustomProperties();
     }
     if (type.getCategory().equals(Category.Field)) {
@@ -132,12 +138,7 @@ public class TypeRepository extends EntityRepository<Type> {
             .listToByPrefix(
                 getCustomPropertyFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
-      CustomProperty property;
-      try {
-        property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
-      } catch (IOException e) {
-        throw new UnhandledServerException("Failed to read JSON", e);
-      }
+      CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(dao.findEntityReferenceByName(result.getMiddle()));
       customProperties.add(property);
     }

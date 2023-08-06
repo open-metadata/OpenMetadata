@@ -63,6 +63,14 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
+  public T clearFields(T entity, EntityUtil.Fields fields) {
+    if (!fields.contains("pipelines")) {
+      entity.setPipelines(null);
+    }
+    return entity;
+  }
+
+  @Override
   public void prepare(T service) {
     /* Nothing to do */
     service

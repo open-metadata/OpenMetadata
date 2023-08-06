@@ -229,7 +229,7 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     include = repository.supportsSoftDelete ? Include.ALL : include;
-    return repository.get(null, id, repository.getFields(""), include).getEntityReference();
+    return repository.getReference(id, include);
   }
 
   public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
@@ -240,7 +240,7 @@ public final class Entity {
     if (repository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
-    return repository.getDao().findEntityReferenceByName(fqn, include);
+    return repository.getReferenceByName(fqn, include);
   }
 
   public static EntityReference getOwner(@NonNull EntityReference reference) {
@@ -286,10 +286,7 @@ public final class Entity {
   public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.find(id, entityRepository.getFields(fields), include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
+    T entity = (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, true);
     return entity;
   }
 
@@ -298,10 +295,7 @@ public final class Entity {
   public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.findByName(fqn, entityRepository.getFields(fields), include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
-    }
+    T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, true);
     return entity;
   }
 

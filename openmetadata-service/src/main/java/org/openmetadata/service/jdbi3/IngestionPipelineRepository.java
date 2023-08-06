@@ -79,6 +79,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  public IngestionPipeline clearFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    return ingestionPipeline;
+  }
+
+  @Override
   public void prepare(IngestionPipeline ingestionPipeline) {
     EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);

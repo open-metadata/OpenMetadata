@@ -83,7 +83,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (database.getService() == null) {
       database.setService(getContainer(database.getId()));
     }
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
     if (database.getUsageSummary() == null) {
       database.setUsageSummary(
           fields.contains("usageSummary")
@@ -91,6 +92,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
               : null);
     }
     return database;
+  }
+
+  public Database clearFields(Database database, Fields fields) {
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    return database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
   @Override

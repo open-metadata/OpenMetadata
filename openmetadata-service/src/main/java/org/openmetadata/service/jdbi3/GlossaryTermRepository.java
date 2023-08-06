@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -70,10 +72,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) {
     entity.withGlossary(getGlossary(entity)).withParent(getParent(entity));
-    entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
-    entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
-    entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : null);
-    return entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : null);
+    entity.setChildren(fields.contains("children") ? getChildren(entity) : entity.getChildren());
+    entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : entity.getRelatedTerms());
+    entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+    return entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
+  }
+
+  @Override
+  public GlossaryTerm clearFields(GlossaryTerm entity, Fields fields) {
+    entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
+    entity.setRelatedTerms(fields.contains("relatedTerms") ? entity.getRelatedTerms() : null);
+    entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? entity.getReviewers() : null);
+    return entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
   }
 
   @Override
@@ -133,20 +143,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) {
-    return entity.getChildren() != null
+    return !nullOrEmpty(entity.getChildren())
         ? entity.getChildren()
         : findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) {
-    return entity.getRelatedTerms() != null
+    return !nullOrEmpty(entity.getRelatedTerms())
         ? entity.getRelatedTerms()
         : findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) {
-    return entity.getRelatedTerms() != null
-        ? entity.getRelatedTerms()
+    return !nullOrEmpty(entity.getReviewers())
+        ? entity.getReviewers()
         : findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
   }
 
@@ -220,7 +230,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
-    return getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
+    return term.getGlossary() != null
+        ? term.getGlossary()
+        : getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
   }
 
   public EntityReference getGlossary(String id) {
@@ -352,6 +364,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .tagUsageDAO()
             .rename(TagSource.GLOSSARY.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
+        invalidateTerm(original.getId());
       }
     }
 
@@ -372,10 +385,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (glossaryChanged) {
         updateGlossaryRelationship(original, updated);
         recordChange("glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);
+        invalidateTerm(original.getId());
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+        invalidateTerm(original.getId());
       }
     }
 
@@ -405,6 +420,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     private void deleteParentRelationship(GlossaryTerm term) {
       if (term.getParent() != null) {
         deleteRelationship(term.getParent().getId(), GLOSSARY_TERM, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
+      }
+    }
+
+    private void invalidateTerm(UUID termId) {
+      // The name of the glossary term changed or parent change. Invalidate that tag and all the children from the cache
+      List<EntityRelationshipRecord> tagRecords =
+          findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
+      for (EntityRelationshipRecord tagRecord : tagRecords) {
+        invalidateTerm(tagRecord.getId());
       }
     }
   }

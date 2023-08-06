@@ -44,9 +44,14 @@ public class MetricsRepository extends EntityRepository<Metrics> {
       metrics.withUsageSummary(
           fields.contains("usageSummary")
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId())
-              : null);
+              : metrics.getUsageSummary());
     }
     return metrics;
+  }
+
+  @Override
+  public Metrics clearFields(Metrics metrics, Fields fields) {
+    return metrics.withUsageSummary(fields.contains("usageSummary") ? metrics.getUsageSummary() : null);
   }
 
   @Override

@@ -54,7 +54,6 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
@@ -210,11 +209,7 @@ public final class EntityUtil {
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
     for (String json : jsonList) {
       TestCaseResult testCaseResult;
-      try {
-        testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-      } catch (IOException e) {
-        throw new UnhandledServerException("Failed to read JSON", e);
-      }
+      testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
       String status = testCaseResult.getTestCaseStatus().toString();
       testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
     }

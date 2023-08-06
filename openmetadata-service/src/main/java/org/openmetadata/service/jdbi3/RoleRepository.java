@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static java.lang.Boolean.FALSE;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.POLICIES;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
@@ -40,25 +41,32 @@ public class RoleRepository extends EntityRepository<Role> {
 
   @Override
   public Role setFields(Role role, Fields fields) {
-    role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : null);
-    role.setTeams(fields.contains("teams") ? getTeams(role) : null);
-    return role.withUsers(fields.contains("users") ? getUsers(role) : null);
+    role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : role.getPolicies());
+    role.setTeams(fields.contains("teams") ? getTeams(role) : role.getTeams());
+    return role.withUsers(fields.contains("users") ? getUsers(role) : role.getUsers());
+  }
+
+  @Override
+  public Role clearFields(Role role, Fields fields) {
+    role.setPolicies(fields.contains(POLICIES) ? role.getPolicies() : null);
+    role.setTeams(fields.contains("teams") ? role.getTeams() : null);
+    return role.withUsers(fields.contains("users") ? role.getUsers() : null);
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) {
-    return role.getPolicies() != null
+    return !nullOrEmpty(role.getPolicies())
         ? role.getPolicies()
         : findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
   }
 
   private List<EntityReference> getUsers(@NonNull Role role) {
-    return role.getUsers() != null
+    return !nullOrEmpty(role.getUsers())
         ? role.getUsers()
         : findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
   }
 
   private List<EntityReference> getTeams(@NonNull Role role) {
-    return role.getTeams() != null
+    return !nullOrEmpty(role.getTeams())
         ? role.getTeams()
         : findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
   }

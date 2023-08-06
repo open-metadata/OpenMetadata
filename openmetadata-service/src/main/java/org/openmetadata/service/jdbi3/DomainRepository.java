@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 
 import java.util.List;
@@ -43,9 +44,16 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public Domain setFields(Domain entity, Fields fields) {
-    entity.withParent(fields.contains("parent") ? getParent(entity) : null);
-    entity.withChildren(fields.contains("children") ? getChildren(entity) : null);
-    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
+    entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
+    entity.withChildren(fields.contains("children") ? getChildren(entity) : entity.getChildren());
+    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : entity.getExperts());
+  }
+
+  @Override
+  public Domain clearFields(Domain entity, Fields fields) {
+    entity.withParent(fields.contains("parent") ? entity.getParent() : null);
+    entity.withChildren(fields.contains("children") ? entity.getChildren() : null);
+    return entity.withExperts(fields.contains("experts") ? entity.getExperts() : null);
   }
 
   private EntityReference getParent(Domain entity) {
@@ -55,13 +63,13 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private List<EntityReference> getChildren(Domain entity) {
-    return entity.getChildren() != null
+    return !nullOrEmpty(entity.getChildren())
         ? entity.getChildren()
         : findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
   }
 
   private List<EntityReference> getExperts(Domain entity) {
-    return entity.getExperts() != null
+    return !nullOrEmpty(entity.getExperts())
         ? entity.getExperts()
         : findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
   }

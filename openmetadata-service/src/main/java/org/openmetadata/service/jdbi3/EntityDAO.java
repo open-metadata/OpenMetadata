@@ -19,7 +19,6 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -33,7 +32,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -257,7 +255,7 @@ public interface EntityDAO<T extends EntityInterface> {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
-  default void insert(String nameHash, EntityInterface entity, String fqn) throws JsonProcessingException {
+  default void insert(String nameHash, EntityInterface entity, String fqn) {
     insert(getTableName(), nameHash, fqn, JsonUtils.pojoToJson(entity));
   }
 
@@ -265,7 +263,7 @@ public interface EntityDAO<T extends EntityInterface> {
     update(getTableName(), getNameHashColumn(), fqn, id.toString(), json);
   }
 
-  default void update(EntityInterface entity) throws JsonProcessingException {
+  default void update(EntityInterface entity) {
     update(
         getTableName(),
         getNameHashColumn(),
@@ -274,7 +272,7 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
-  default void update(String nameHashColumn, EntityInterface entity) throws JsonProcessingException {
+  default void update(String nameHashColumn, EntityInterface entity) {
     update(
         getTableName(),
         nameHashColumn,
@@ -318,12 +316,7 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default T jsonToEntity(String json, String identity) {
     Class<T> clz = getEntityClass();
-    T entity = null;
-    try {
-      entity = json != null ? JsonUtils.readValue(json, clz) : null;
-    } catch (IOException e) {
-      throw new UnhandledServerException("Failed to read JSON", e);
-    }
+    T entity = json != null ? JsonUtils.readValue(json, clz) : null;
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));

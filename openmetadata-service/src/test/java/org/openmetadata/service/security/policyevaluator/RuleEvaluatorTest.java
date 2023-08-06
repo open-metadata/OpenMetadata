@@ -3,6 +3,8 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -14,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,7 +34,6 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
@@ -48,8 +48,23 @@ class RuleEvaluatorTest {
   public static void setup() {
     TeamRepository teamRepository = mock(TeamRepository.class);
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository, null);
-    Mockito.when(teamRepository.find(any(UUID.class), (Fields) isNull(), any(Include.class)))
+    Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
         .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+    Mockito.when(teamRepository.getReference(any(UUID.class), any(Include.class)))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID
+                    .get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0)))
+                    .getEntityReference());
+
+    Mockito.when(teamRepository.findByName(anyString(), any(Include.class)))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+
+    Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+
+    Mockito.when(teamRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     TableRepository tableRepository = mock(TableRepository.class);
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository, null);
@@ -57,9 +72,7 @@ class RuleEvaluatorTest {
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
 
     user = new User().withId(UUID.randomUUID()).withName("user");
-    resourceContext =
-        ResourceContext.builder().resource("table").entity(table).entityRepository(mock(TableRepository.class)).build();
-
+    resourceContext = new ResourceContext("table", table, mock(TableRepository.class));
     subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
@@ -150,7 +163,7 @@ class RuleEvaluatorTest {
   }
 
   @Test
-  void test_matchTeam() throws ExecutionException {
+  void test_matchTeam() {
     // Create a team hierarchy
     Team team1 = createTeam("team1", null);
     Team team11 = createTeam("team11", "team1");
@@ -189,7 +202,7 @@ class RuleEvaluatorTest {
   }
 
   @Test
-  void test_inAnyTeam() throws ExecutionException {
+  void test_inAnyTeam() {
     // Create a team hierarchy
     Team team1 = createTeam("team1", null);
     createTeam("team11", "team1");
@@ -216,7 +229,7 @@ class RuleEvaluatorTest {
   }
 
   @Test
-  void test_hasAnyRole() throws ExecutionException {
+  void test_hasAnyRole() {
     // Create a team hierarchy
     Team team1 = createTeamWithRole("team1", null);
     Team team11 = createTeamWithRole("team11", "team1");
@@ -254,19 +267,19 @@ class RuleEvaluatorTest {
     return tagLabels;
   }
 
-  private Team createTeam(String teamName, String parentName) throws ExecutionException {
+  private Team createTeam(String teamName, String parentName) {
     UUID teamId = UUID.nameUUIDFromBytes(teamName.getBytes(StandardCharsets.UTF_8));
     Team team = new Team().withName(teamName).withId(teamId);
     if (parentName != null) {
       UUID parentId = UUID.nameUUIDFromBytes(parentName.getBytes(StandardCharsets.UTF_8));
-      Team parentTeam = Entity.getEntity(Entity.TEAM, parentId, "description", Include.NON_DELETED);
-      team.setParents(listOf(parentTeam.getEntityReference()));
+      EntityReference parentTeam = Entity.getEntityReferenceById(Entity.TEAM, parentId, Include.NON_DELETED);
+      team.setParents(listOf(parentTeam));
     }
     EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.TEAM, team.getId()), team);
     return team;
   }
 
-  private Team createTeamWithRole(String teamName, String parentName) throws ExecutionException {
+  private Team createTeamWithRole(String teamName, String parentName) {
     Team team = createTeam(teamName, parentName);
     Role role = createRole(teamName); // Create a role with same name as the teamName
     team.setDefaultRoles(listOf(role.getEntityReference()));

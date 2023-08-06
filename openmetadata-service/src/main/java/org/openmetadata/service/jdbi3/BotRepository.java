@@ -38,6 +38,11 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
+  public Bot clearFields(Bot entity, Fields fields) {
+    return entity; // Nothing to do
+  }
+
+  @Override
   public void prepare(Bot entity) {
     User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
     entity.withBotUser(user.getEntityReference());

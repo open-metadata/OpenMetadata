@@ -62,6 +62,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
+  public EventSubscription clearFields(EventSubscription entity, Fields fields) {
+    return entity.withStatusDetails(fields.contains("statusDetails") ? entity.getStatusDetails() : null);
+  }
+
+  @Override
   public void prepare(EventSubscription entity) {
     validateFilterRules(entity);
   }

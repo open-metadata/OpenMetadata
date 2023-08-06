@@ -170,7 +170,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = repository.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
+      GlossaryTerm parentTerm = repository.find(parentTermParam, Include.NON_DELETED);
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary

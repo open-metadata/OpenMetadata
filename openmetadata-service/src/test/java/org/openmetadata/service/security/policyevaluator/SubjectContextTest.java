@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -45,7 +46,6 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
-import org.openmetadata.service.util.EntityUtil.Fields;
 
 public class SubjectContextTest {
   private static List<Role> team1Roles;
@@ -76,23 +76,23 @@ public class SubjectContextTest {
   public static void setup() {
     UserRepository userRepository = mock(UserRepository.class);
     Entity.registerEntity(User.class, Entity.USER, userRepository, null);
-    Mockito.when(userRepository.findByName(anyString(), (Fields) isNull(), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.USER, i.getArgument(0))));
+    Mockito.when(userRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.USER, i.getArgument(1))));
 
     TeamRepository teamRepository = mock(TeamRepository.class);
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository, null);
-    Mockito.when(teamRepository.find(any(UUID.class), (Fields) isNull(), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+    Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     RoleRepository roleRepository = mock(RoleRepository.class);
     Entity.registerEntity(Role.class, Entity.ROLE, roleRepository, null);
-    Mockito.when(roleRepository.find(any(UUID.class), (Fields) isNull(), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.ROLE, i.getArgument(0))));
+    Mockito.when(roleRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.ROLE, i.getArgument(1))));
 
     PolicyRepository policyRepository = mock(PolicyRepository.class);
     Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository, null);
-    Mockito.when(policyRepository.find(any(UUID.class), (Fields) isNull(), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.POLICY, i.getArgument(0))));
+    Mockito.when(policyRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.POLICY, i.getArgument(1))));
 
     // Create team hierarchy:
     //                           team1

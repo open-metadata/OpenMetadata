@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static java.lang.Boolean.FALSE;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
@@ -51,20 +52,26 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public Policy setFields(Policy policy, Fields fields) {
-    policy.setTeams(fields.contains("teams") ? getTeams(policy) : null);
-    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : null);
+    policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
+    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
+  }
+
+  @Override
+  public Policy clearFields(Policy policy, Fields fields) {
+    policy.setTeams(fields.contains("teams") ? policy.getTeams() : null);
+    return policy.withRoles(fields.contains("roles") ? policy.getRoles() : null);
   }
 
   /* Get all the teams that use this policy */
   private List<EntityReference> getTeams(Policy policy) {
-    return policy.getTeams() != null
+    return !nullOrEmpty(policy.getTeams())
         ? policy.getTeams()
         : findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
   }
 
   /* Get all the roles that use this policy */
   private List<EntityReference> getRoles(Policy policy) {
-    return policy.getRoles() != null
+    return !nullOrEmpty(policy.getRoles())
         ? policy.getRoles()
         : findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
   }

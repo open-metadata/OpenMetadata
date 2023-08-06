@@ -145,7 +145,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     EntityUtil.Fields fields = getFields(fieldsParam);
 
     ResourceContext resourceContext;
-    resourceContext = getResourceContext(entityType, repository).build();
+    resourceContext = getResourceContext();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
 
     return super.listInternal(

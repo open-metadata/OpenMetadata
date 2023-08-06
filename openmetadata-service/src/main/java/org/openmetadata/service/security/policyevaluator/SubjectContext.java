@@ -54,7 +54,7 @@ public class SubjectContext {
       return true; // Owner is same as user.
     }
     if (owner.getType().equals(Entity.TEAM)) {
-      for (EntityReference userTeam : user.getTeams()) {
+      for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
         if (userTeam.getName().equals(owner.getName())) {
           return true; // Owner is a team, and the user is part of this team.
         }
@@ -65,7 +65,7 @@ public class SubjectContext {
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   public boolean isUserUnderTeam(String parentTeam) {
-    for (EntityReference userTeam : user.getTeams()) {
+    for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
       if (isInTeam(parentTeam, userTeam)) {
         return true;
       }
