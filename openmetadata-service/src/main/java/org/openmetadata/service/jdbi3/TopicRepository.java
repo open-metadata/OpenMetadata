@@ -24,8 +24,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -71,7 +69,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void prepare(Topic topic) throws IOException {
+  public void prepare(Topic topic) {
     MessagingService messagingService = Entity.getEntity(topic.getService(), "", ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
@@ -83,7 +81,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void storeEntity(Topic topic, boolean update) throws IOException {
+  public void storeEntity(Topic topic, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = topic.getService();
     topic.withService(null);
@@ -111,7 +109,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setInheritedFields(Topic topic, Fields fields) throws IOException {
+  public Topic setInheritedFields(Topic topic, Fields fields) {
     // If topic does not have domain, then inherit it from parent messaging service
     if (fields.contains(FIELD_DOMAIN) && topic.getDomain() == null) {
       MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
@@ -121,7 +119,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setFields(Topic topic, Fields fields) throws IOException {
+  public Topic setFields(Topic topic, Fields fields) {
     topic.setService(getContainer(topic.getId()));
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     if (topic.getMessageSchema() != null) {
@@ -142,7 +140,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
   }
 
-  public Topic getSampleData(UUID topicId, boolean authorizePII) throws IOException {
+  public Topic getSampleData(UUID topicId, boolean authorizePII) {
     // Validate the request content
     Topic topic = dao.findEntityById(topicId);
 
@@ -164,7 +162,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Transaction
-  public Topic addSampleData(UUID topicId, TopicSampleData sampleData) throws IOException {
+  public Topic addSampleData(UUID topicId, TopicSampleData sampleData) {
     // Validate the request content
     Topic topic = daoCollection.topicDAO().findEntityById(topicId);
 
@@ -269,8 +267,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
-      throws IOException {
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("messageSchema")) {
       String schemaName = entityLink.getArrayFieldName();
       String childrenSchemaName = "";
@@ -351,7 +348,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
       recordChange("minimumInSyncReplicas", original.getMinimumInSyncReplicas(), updated.getMinimumInSyncReplicas());
       recordChange("partitions", original.getPartitions(), updated.getPartitions());
@@ -377,7 +374,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       updateCleanupPolicies(original, updated);
     }
 
-    private void updateCleanupPolicies(Topic original, Topic updated) throws JsonProcessingException {
+    private void updateCleanupPolicies(Topic original, Topic updated) {
       List<CleanupPolicy> added = new ArrayList<>();
       List<CleanupPolicy> deleted = new ArrayList<>();
       recordListChange(
@@ -390,8 +387,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     private void updateSchemaFields(
-        String fieldName, List<Field> origFields, List<Field> updatedFields, BiPredicate<Field, Field> fieldMatch)
-        throws IOException {
+        String fieldName, List<Field> origFields, List<Field> updatedFields, BiPredicate<Field, Field> fieldMatch) {
       List<Field> deletedFields = new ArrayList<>();
       List<Field> addedFields = new ArrayList<>();
       recordListChange(fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);
@@ -445,7 +441,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       majorVersionChange = majorVersionChange || !deletedFields.isEmpty();
     }
 
-    private void updateFieldDescription(Field origField, Field updatedField) throws JsonProcessingException {
+    private void updateFieldDescription(Field origField, Field updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
         // Revert the non-empty field description if being updated by a bot
         updatedField.setDescription(origField.getDescription());
@@ -455,7 +451,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange(field, origField.getDescription(), updatedField.getDescription());
     }
 
-    private void updateFieldDisplayName(Field origField, Field updatedField) throws JsonProcessingException {
+    private void updateFieldDisplayName(Field origField, Field updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
         // Revert the non-empty field description if being updated by a bot
         updatedField.setDisplayName(origField.getDisplayName());
@@ -465,7 +461,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
     }
 
-    private void updateFieldDataTypeDisplay(Field origField, Field updatedField) throws JsonProcessingException {
+    private void updateFieldDataTypeDisplay(Field origField, Field updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
         // Revert the non-empty field dataTypeDisplay if being updated by a bot
         updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());

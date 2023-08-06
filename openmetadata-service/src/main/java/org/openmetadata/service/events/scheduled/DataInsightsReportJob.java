@@ -161,12 +161,12 @@ public class DataInsightsReportJob implements Job {
     }
   }
 
-  private List<Kpi> getAvailableKpi() throws IOException {
+  private List<Kpi> getAvailableKpi() {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
     return repository.listAll(repository.getFields("dataInsightChart"), new ListFilter(Include.NON_DELETED));
   }
 
-  private KpiResult getKpiResult(String fqn) throws IOException {
+  private KpiResult getKpiResult(String fqn) {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
     return repository.getKpiResult(fqn);
   }
@@ -384,8 +384,7 @@ public class DataInsightsReportJob implements Job {
       DataInsightChartResult.DataInsightChartType chartType,
       Double percentCompleted,
       Double percentChange,
-      int numberOfDaysChange)
-      throws IOException {
+      int numberOfDaysChange) {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;

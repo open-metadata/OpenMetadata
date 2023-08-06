@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -122,8 +121,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           String before,
       @Parameter(description = "Returns list of DataProduct after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     return listInternal(uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
   }
 
@@ -148,8 +146,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
@@ -175,8 +172,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
+          String fieldsParam) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
   }
 
@@ -195,8 +191,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -223,8 +218,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               description = "DataProduct version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -241,8 +235,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create) {
     DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataProduct);
   }
@@ -261,8 +254,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create) {
     DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);
   }
@@ -287,8 +279,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -305,8 +296,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, true, true);
   }
 
@@ -324,12 +314,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
 
-  private DataProduct getDataProduct(CreateDataProduct create, String user) throws IOException {
+  private DataProduct getDataProduct(CreateDataProduct create, String user) {
     List<String> experts =
         create.getExperts() == null
             ? create.getExperts()

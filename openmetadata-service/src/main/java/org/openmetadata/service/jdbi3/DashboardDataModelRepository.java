@@ -20,8 +20,6 @@ import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import javax.json.JsonPatch;
 import lombok.SneakyThrows;
@@ -65,7 +63,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("columns")) {
       DashboardDataModel dashboardDataModel =
           getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
@@ -93,7 +91,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void prepare(DashboardDataModel dashboardDataModel) throws IOException {
+  public void prepare(DashboardDataModel dashboardDataModel) {
     DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());
@@ -103,7 +101,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) throws JsonProcessingException {
+  public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = dashboardDataModel.getOwner();
     List<TagLabel> tags = dashboardDataModel.getTags();
@@ -131,7 +129,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public DashboardDataModel setInheritedFields(DashboardDataModel dataModel, Fields fields) throws IOException {
+  public DashboardDataModel setInheritedFields(DashboardDataModel dataModel, Fields fields) {
     if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(dataModel.getDomain())) {
       DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "domain", ALL);
       dataModel.setDomain(dashboardService.getDomain());
@@ -140,7 +138,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) throws IOException {
+  public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
     getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
     return dashboardDataModel
         .withService(getContainer(dashboardDataModel.getId()))
@@ -203,7 +201,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
     }

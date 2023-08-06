@@ -1,6 +1,5 @@
 package org.openmetadata.service.elasticsearch;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +37,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     return doc;
   }
 
-  public Map<String, Object> buildESDocForCreate() throws IOException {
+  public Map<String, Object> buildESDocForCreate() {
     EntityReference testSuiteEntityReference = testCase.getTestSuite();
     TestSuite testSuite = getTestSuite(testSuiteEntityReference.getId());
     List<TestSuite> testSuiteArray = new ArrayList<>();
@@ -49,7 +48,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     return doc;
   }
 
-  private TestSuite getTestSuite(UUID testSuiteId) throws IOException {
+  private TestSuite getTestSuite(UUID testSuiteId) {
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "", Include.ALL);
     return new TestSuite()
         .withId(testSuite.getId())

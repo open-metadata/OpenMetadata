@@ -18,8 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.POLICIES;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.NonNull;
@@ -42,21 +40,21 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  public Role setFields(Role role, Fields fields) throws IOException {
+  public Role setFields(Role role, Fields fields) {
     role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : null);
     role.setTeams(fields.contains("teams") ? getTeams(role) : null);
     return role.withUsers(fields.contains("users") ? getUsers(role) : null);
   }
 
-  private List<EntityReference> getPolicies(@NonNull Role role) throws IOException {
+  private List<EntityReference> getPolicies(@NonNull Role role) {
     return findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
   }
 
-  private List<EntityReference> getUsers(@NonNull Role role) throws IOException {
+  private List<EntityReference> getUsers(@NonNull Role role) {
     return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
   }
 
-  private List<EntityReference> getTeams(@NonNull Role role) throws IOException {
+  private List<EntityReference> getTeams(@NonNull Role role) {
     return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
   }
 
@@ -71,7 +69,7 @@ public class RoleRepository extends EntityRepository<Role> {
    * storeEntity method call.
    */
   @Override
-  public void prepare(Role role) throws IOException {
+  public void prepare(Role role) {
     if (listOrEmpty(role.getPolicies()).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
     }
@@ -86,7 +84,7 @@ public class RoleRepository extends EntityRepository<Role> {
    */
   @Override
   @Transaction
-  public void storeEntity(Role role, boolean update) throws IOException {
+  public void storeEntity(Role role, boolean update) {
     // Don't store policy. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();
     role.withPolicies(null);
@@ -118,7 +116,7 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  protected void cleanup(Role role) throws IOException {
+  protected void cleanup(Role role) {
     super.cleanup(role);
     RoleCache.invalidateRole(role.getId());
   }
@@ -130,12 +128,11 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 
-    private void updatePolicies(List<EntityReference> origPolicies, List<EntityReference> updatedPolicies)
-        throws JsonProcessingException {
+    private void updatePolicies(List<EntityReference> origPolicies, List<EntityReference> updatedPolicies) {
       // Record change description
       List<EntityReference> deletedPolicies = new ArrayList<>();
       List<EntityReference> addedPolicies = new ArrayList<>();

@@ -1,6 +1,5 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +43,7 @@ public class RuleEvaluator {
       description = "Returns true if the entity being accessed has no owner",
       examples = {"noOwner()", "!noOwner", "noOwner() || isOwner()"})
   @SuppressWarnings("unused") // Used in SpelExpressions
-  public boolean noOwner() throws IOException {
+  public boolean noOwner() {
     if (expressionValidation) {
       return false;
     }
@@ -56,7 +55,7 @@ public class RuleEvaluator {
       input = "none",
       description = "Returns true if the logged in user is the owner of the entity being accessed",
       examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"})
-  public boolean isOwner() throws IOException {
+  public boolean isOwner() {
     if (expressionValidation) {
       return false;
     }
@@ -72,7 +71,7 @@ public class RuleEvaluator {
       description = "Returns true if the entity being accessed has all the tags given as input",
       examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
   @SuppressWarnings("ununsed")
-  public boolean matchAllTags(String... tagFQNs) throws IOException {
+  public boolean matchAllTags(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
         TagLabelCache.getTag(tagFqn);
@@ -99,7 +98,7 @@ public class RuleEvaluator {
       description = "Returns true if the entity being accessed has at least one of the tags given as input",
       examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
   @SuppressWarnings("unused") // Used in SpelExpressions
-  public boolean matchAnyTag(String... tagFQNs) throws IOException {
+  public boolean matchAnyTag(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
         TagLabelCache.getTag(tagFqn);
@@ -128,7 +127,7 @@ public class RuleEvaluator {
               + "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
       examples = {"matchTeam()"})
   @SuppressWarnings("unused") // Used in SpelExpressions
-  public boolean matchTeam() throws IOException {
+  public boolean matchTeam() {
     if (expressionValidation) {
       return false;
     }

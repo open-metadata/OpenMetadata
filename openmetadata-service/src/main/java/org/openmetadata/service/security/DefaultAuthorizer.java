@@ -16,7 +16,6 @@ package org.openmetadata.service.security;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 
-import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +58,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException {
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
@@ -69,8 +68,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
-      throws IOException {
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin()) {
       return;

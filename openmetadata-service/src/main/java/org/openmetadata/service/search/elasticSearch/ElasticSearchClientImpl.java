@@ -368,7 +368,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     XContentParser filterParser =
         XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-    QueryBuilder filter = searchSourceBuilder.fromXContent(filterParser).query();
+    QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
 
     BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(filter);
     searchSourceBuilder

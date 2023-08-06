@@ -203,7 +203,7 @@ public final class UserUtil {
     EntityRepository<User> userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       return userRepository.getByName(null, user.getName(), new Fields(Set.of("authenticationMechanism")));
-    } catch (IOException | EntityNotFoundException e) {
+    } catch (EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
     }
