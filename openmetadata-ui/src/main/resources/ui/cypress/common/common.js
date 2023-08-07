@@ -31,6 +31,10 @@ const ADMIN = 'admin';
 
 const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
 
+export const replaceAllSpacialCharWith_ = (text) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+};
+
 const isDatabaseService = (type) => type === 'database';
 
 export const checkServiceFieldSectionHighlighting = (field) => {
@@ -335,7 +339,9 @@ export const testServiceCreationAndIngestion = ({
 
   scheduleIngestion();
 
-  cy.contains(`${serviceName}_metadata`).should('be.visible');
+  cy.contains(`${replaceAllSpacialCharWith_(serviceName)}_metadata`).should(
+    'be.visible'
+  );
 
   // wait for ingestion to run
   cy.clock();
@@ -1035,14 +1041,10 @@ export const updateDescriptionForIngestedTables = (
 ) => {
   interceptURL(
     'GET',
-    `/api/v1/services/ingestionPipelines?fields=*&service=${serviceName}`,
+    `/api/v1/services/ingestionPipelines?fields=*&service=*`,
     'ingestionPipelines'
   );
-  interceptURL(
-    'GET',
-    `/api/v1/*?service=${serviceName}&fields=*`,
-    'serviceDetails'
-  );
+  interceptURL('GET', `/api/v1/*?service=*&fields=*`, 'serviceDetails');
   interceptURL(
     'GET',
     `/api/v1/system/config/pipeline-service-client`,
@@ -1088,7 +1090,11 @@ export const updateDescriptionForIngestedTables = (
     '/api/v1/services/ingestionPipelines/trigger/*',
     'checkRun'
   );
-  cy.get(`[data-row-key*="${serviceName}_metadata"] [data-testid="run"]`)
+  cy.get(
+    `[data-row-key*="${replaceAllSpacialCharWith_(
+      serviceName
+    )}_metadata"] [data-testid="run"]`
+  )
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@checkRun', 200);
