@@ -70,7 +70,9 @@ describe('Data Insight settings page should work properly', () => {
 
     cy.get('[data-testid="next-button"]').click();
 
-    cy.intercept('POST', '/api/v1/services/ingestionPipelines').as(
+    interceptURL(
+      'POST',
+      '/api/v1/services/ingestionPipelines',
       'postIngestionPipeline'
     );
 
@@ -124,7 +126,9 @@ describe('Data Insight settings page should work properly', () => {
 
     cy.get('[data-testid="next-button"]').click();
 
-    cy.intercept('PUT', '/api/v1/services/ingestionPipelines').as(
+    interceptURL(
+      'PUT',
+      '/api/v1/services/ingestionPipelines',
       'putIngestionPipeline'
     );
 
