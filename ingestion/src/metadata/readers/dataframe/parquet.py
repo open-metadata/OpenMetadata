@@ -46,9 +46,7 @@ class ParquetDataFrameReader(DataFrameReader):
         raise FileFormatException(config_source=config_source, file_name=key)
 
     @_read_parquet_dispatch.register
-    def _(
-        self, _: GCSConfig, key: str, bucket_name: str, **kwargs
-    ) -> DatalakeColumnWrapper:
+    def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """
         Read the CSV file from the gcs bucket and return a dataframe
         """
