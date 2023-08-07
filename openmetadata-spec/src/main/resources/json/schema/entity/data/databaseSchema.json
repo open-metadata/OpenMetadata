@@ -104,7 +104,7 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
     "sourceUrl": {
-      "description": "Source URL of table.",
+      "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "domain" : {

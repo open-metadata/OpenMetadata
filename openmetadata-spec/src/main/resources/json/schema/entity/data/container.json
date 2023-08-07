@@ -169,7 +169,7 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
     "sourceUrl": {
-      "description": "Source URL of table.",
+      "description": "Source URL of container.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "domain" : {
