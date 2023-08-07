@@ -127,10 +127,12 @@ const TableDetailsPageV1 = () => {
   );
   const tableFqn = useMemo(
     () =>
-      getPartialNameFromTableFQN(
-        datasetFQN,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
+      encodeURI(
+        getPartialNameFromTableFQN(
+          decodeURI(datasetFQN),
+          [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+          FQN_SEPARATOR_CHAR
+        )
       ),
     [datasetFQN]
   );
