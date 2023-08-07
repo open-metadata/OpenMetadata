@@ -11,27 +11,20 @@
  *  limitations under the License.
  */
 
+import { Divider } from 'antd';
+import classNames from 'classnames';
 import React, { FC } from 'react';
-import { FeedListSeparatorProp } from './ActivityFeedList.interface';
+import { FeedListSeparatorProp } from '../ActivityFeedList/ActivityFeedList.interface';
+import './feed-list-seprator.less';
 
 const FeedListSeparator: FC<FeedListSeparatorProp> = ({
   className,
   relativeDay,
 }) => {
   return (
-    <div className={className}>
-      <div className="d-flex justify-center">
-        <hr
-          className="absolute w-full"
-          data-testid="separator"
-          style={{ borderBottomWidth: '0.5px' }}
-        />
-
-        {relativeDay ? (
-          <span data-testid="relativeday">{relativeDay}</span>
-        ) : null}
-      </div>
-    </div>
+    <Divider className={classNames('feed-list-seprator', className)}>
+      {relativeDay}
+    </Divider>
   );
 };
 

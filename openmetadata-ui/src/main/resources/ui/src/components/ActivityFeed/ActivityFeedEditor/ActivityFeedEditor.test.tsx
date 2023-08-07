@@ -78,12 +78,9 @@ describe('Test Activity Feed Editor Component', () => {
   });
 
   it('should have passed button classes', async () => {
-    const { container } = render(
-      <ActivityFeedEditor {...mockProp} buttonClass="xyz" />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<ActivityFeedEditor {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
 
     const editor = await findByTestId(container, 'feed-editor');
     const sendButton = await findByTestId(container, 'send-button');

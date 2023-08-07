@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-
-export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
-  const { t } = useTranslation();
-
-  return editorValue.length > 2 ? (
-    <p
-      className="text-grey-muted m-t-xss absolute"
-      data-testid="key-help"
-      style={{ fontSize: '10px', right: 0 }}>
-      <kbd>{t('label.shift')}</kbd>
-      {t('label.plus-symbol')} <kbd>{t('label.return')}</kbd>{' '}
-      {t('message.to-add-new-line')}
-    </p>
-  ) : null;
-};
+.feed-list-seprator {
+  .ant-divider-inner-text {
+    background-color: rgb(220, 227, 236);
+    border-radius: 0.25rem;
+    color: #757575;
+    font-weight: 500;
+    font-size: 14px;
+  }
+}

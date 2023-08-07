@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Drawer } from 'antd';
+import { Drawer, Row } from 'antd';
+import Col from 'antd/es/grid/col';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { ThreadType } from 'generated/api/feed/createThread';
@@ -70,15 +71,19 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <div className="m-t-md" id="feed-panel">
-          <FeedPanelBodyV1
-            isOpenInDrawer
-            showThread
-            feed={selectedThread as Thread}
-            hidePopover={false}
-          />
-          <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
-        </div>
+        <Row gutter={[16, 16]} id="feed-panel">
+          <Col span={24}>
+            <FeedPanelBodyV1
+              isOpenInDrawer
+              showThread
+              feed={selectedThread as Thread}
+              hidePopover={false}
+            />
+          </Col>
+          <Col span={24}>
+            <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
+          </Col>
+        </Row>
       )}
     </Drawer>
   );

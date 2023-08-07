@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Divider } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,18 +80,18 @@ const ActivityThread: FC<ActivityThreadProp> = ({
         ) : null}
         {repliesLength > 0 ? (
           <div data-testid="replies">
-            <div className="d-flex">
-              <span data-testid="replies-count">
-                {getReplyText(
-                  repliesLength,
-                  t('label.reply-lowercase'),
-                  t('label.reply-lowercase-plural')
-                )}
-              </span>
-              <span className="flex-auto self-center ">
-                <hr />
-              </span>
-            </div>
+            <Divider
+              plain
+              className="m-y-sm"
+              data-testid="replies-count"
+              orientation="left">
+              {getReplyText(
+                repliesLength,
+                t('label.reply-lowercase'),
+                t('label.reply-lowercase-plural')
+              )}
+            </Divider>
+
             {threadData?.posts?.map((reply, key) => (
               <ActivityFeedCard
                 isEntityFeed

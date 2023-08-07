@@ -18,26 +18,23 @@ import { ReactComponent as IconPaperPlanePrimary } from '../../../assets/svg/pap
 
 interface SendButtonProp {
   editorValue: string;
-  buttonClass: string;
+  className?: string;
   onSaveHandler: () => void;
 }
 
 export const SendButton: FC<SendButtonProp> = ({
   editorValue,
-  buttonClass,
+  className,
   onSaveHandler,
 }) => (
-  <div
-    className="absolute d-flex flex-row items-center justify-end"
-    onClick={(e) => e.stopPropagation()}>
-    <Button
-      className={classNames('p-0', buttonClass)}
-      data-testid="send-button"
-      disabled={editorValue.length === 0}
-      size="small"
-      type="text"
-      onClick={onSaveHandler}>
-      <IconPaperPlanePrimary height={18} width={18} />
-    </Button>
-  </div>
+  <Button
+    className={classNames('absolute', className)}
+    data-testid="send-button"
+    disabled={editorValue.length === 0}
+    icon={<IconPaperPlanePrimary height={18} width={18} />}
+    size="small"
+    style={{ bottom: '2px', right: '5px' }}
+    type="text"
+    onClick={onSaveHandler}
+  />
 );

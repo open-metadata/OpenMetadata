@@ -33,7 +33,7 @@ import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
+import FeedListSeparator from '../FeedListSeprator/FeedListSeparator';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
@@ -66,10 +66,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
       {relativeDays.map((d, i) => {
         return (
           <div data-testid={`thread${i}`} key={i}>
-            <FeedListSeparator
-              className="relative m-t-xss m-b-sm"
-              relativeDay={d}
-            />
+            <FeedListSeparator relativeDay={d} />
             {updatedThreads
               .filter((f) => f.relativeDay === d)
               .map((thread, index) => {
