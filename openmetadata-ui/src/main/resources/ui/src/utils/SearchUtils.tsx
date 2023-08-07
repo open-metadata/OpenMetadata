@@ -164,13 +164,14 @@ export const getSuggestionElement = (
   }
 
   const entityLink = getEntityLink(index, fqdn);
+  const dataTestId = `${getPartialNameFromTableFQN(fqdn, [
+    FqnPart.Service,
+  ])}-${name}`.replaceAll(`"`, '');
 
   const retn = (
     <div
       className="d-flex items-center hover:tw-bg-body-hover"
-      data-testid={`${getPartialNameFromTableFQN(fqdn, [
-        FqnPart.Service,
-      ])}-${name}`}
+      data-testid={dataTestId}
       key={fqdn}>
       <img
         alt={serviceType}
