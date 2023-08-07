@@ -164,6 +164,26 @@ A possible approach here is to update your `airflow.cfg` entries with:
 auth_backends = airflow.api.auth.backend.basic_auth
 ```
 
+#### DAG Generated Configs
+
+Every time a DAG is created from OpenMetadata, it will also create a JSON file with some information about the
+workflow that needs to be executed. By default, these files live under `${AIRFLOW_HOME}/dag_generated_configs`, which
+in most environments translates to `/opt/airflow/dag_generated_configs`.
+
+You can change this directory by specifying the environment variable `AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS`
+or updating the `airflow.cfg` with:
+
+```cfg
+[openmetadata_airflow_apis]
+dag_generated_configs=/opt/airflow/dag_generated_configs
+```
+
+A safe way to validate if the configuration is properly set in Airflow is to run:
+
+```bash
+airflow config get-value openmetadata_airflow_apis dag_generated_configs
+```
+
 ### 4. Configure in the OpenMetadata Server
 
 After installing the Airflow APIs, you will need to update your OpenMetadata Server.
