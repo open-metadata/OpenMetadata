@@ -53,7 +53,7 @@ class GitHubReader(ApiReader):
         """
         return base64.b64decode(json_response["content"]).decode(UTF_8)
 
-    def read(self, path: str) -> str:
+    def read(self, path: str, **__) -> str:
         """
         Read a file from a GitHub Repo and return its
         contents as a string

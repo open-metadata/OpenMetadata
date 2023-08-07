@@ -51,6 +51,14 @@ class JSONDataFrameReader(DataFrameReader):
         is_profiler: bool = False,
         **__
     ) -> DatalakeColumnWrapper:
+        """
+        Decompress a JSON file (if needed) and read its contents
+        as a dataframe.
+
+        Note that for the metadata we need to flag nested columns with a
+        custom separator. For the profiler this is not needed. We require the
+        correct column name to match with the metadata description.
+        """
         # pylint: disable=import-outside-toplevel
         from pandas import json_normalize
 

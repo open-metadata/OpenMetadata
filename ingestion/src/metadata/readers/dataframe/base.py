@@ -25,6 +25,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+class FileFormatException(Exception):
+    def __init__(self, config_source: Any, file_name: str) -> None:
+        message = f"Missing implementation for {config_source.__class__.__name__} for {file_name}"
+        super().__init__(message)
+
+
 class DataFrameReadException(Exception):
     """
     To be raised by any errors with the read calls

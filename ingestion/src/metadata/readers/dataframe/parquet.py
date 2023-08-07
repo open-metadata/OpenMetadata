@@ -26,9 +26,8 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     LocalConfig,
 )
-from metadata.readers.dataframe.base import DataFrameReader
+from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.common import dataframe_to_chunks
-from metadata.readers.dataframe.exceptions import FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
 from metadata.readers.models import ConfigSource
@@ -111,8 +110,11 @@ class ParquetDataFrameReader(DataFrameReader):
         return dataframe_to_chunks(dataframe)
 
     @_read_parquet_dispatch.register
-    def _(  # pylint: disable=unused-argument
-        self, _: LocalConfig, key: str, bucket_name: str
+    def _(
+        self,
+        _: LocalConfig,
+        key: str,
+        bucket_name: str,  # pylint: disable=unused-argument
     ) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
 

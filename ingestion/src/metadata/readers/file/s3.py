@@ -25,7 +25,7 @@ class S3Reader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, **__) -> bytes:
         try:
             return self.client.get_object(Bucket=bucket_name, Key=path)["Body"].read()
         except Exception as err:

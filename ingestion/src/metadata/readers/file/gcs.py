@@ -25,7 +25,7 @@ class GCSReader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, **__) -> bytes:
         try:
             return (
                 self.client.get_bucket(bucket_name).get_blob(path).download_as_string()

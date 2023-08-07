@@ -46,7 +46,7 @@ class ADLSReader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, **__) -> bytes:
         try:
             container_client = self.client.get_container_client(bucket_name)
             return container_client.get_blob_client(path).download_blob().readall()
