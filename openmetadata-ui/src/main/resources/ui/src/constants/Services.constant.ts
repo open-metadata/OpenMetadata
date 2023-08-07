@@ -275,6 +275,17 @@ export const DEF_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden' },
 };
 
+export const INGESTION_WORKFLOW_UI_SCHEMA = {
+  type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  'ui:order': [
+    'name',
+    'databaseFilterPattern',
+    'schemaFilterPattern',
+    'tableFilterPattern',
+    '*',
+  ],
+};
+
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
   connection: {

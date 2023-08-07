@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import validator from '@rjsf/validator-ajv8';
+import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { LOADING_STATE } from 'enums/common.enum';
 import { Connection } from 'generated/api/services/createDatabaseService';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
@@ -67,7 +69,6 @@ import {
   AddIngestionState,
   ModifiedDbtConfig,
 } from './addIngestion.interface';
-import ConfigureIngestion from './Steps/ConfigureIngestion';
 import DataInsightMetadataToESConfigForm from './Steps/DataInsightMetadataToESConfigForm/DataInsightMetadataToESConfigForm';
 import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
 import ScheduleInterval from './Steps/ScheduleInterval';
@@ -767,18 +768,11 @@ const AddIngestion = ({
 
       <div className="tw-pt-7">
         {activeIngestionStep === 1 && (
-          <ConfigureIngestion
-            data={state}
-            formType={status}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleShowFilter={handleShowFilter}
-            pipelineType={pipelineType}
-            serviceCategory={serviceCategory}
-            onCancel={handleCancelClick}
-            onChange={handleStateChange}
-            onFocus={onFocus}
-            onNext={handleNext}
+          <IngestionWorkflowForm
+            pipeLineType={pipelineType}
+            schema={{}}
+            validator={validator}
+            workflowName={state.ingestionName}
           />
         )}
 

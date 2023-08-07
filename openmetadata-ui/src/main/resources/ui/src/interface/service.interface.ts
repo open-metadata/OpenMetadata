@@ -15,6 +15,7 @@ import {
   StorageConnection,
   StorageService,
 } from 'generated/entity/services/storageService';
+import { DatabaseServiceMetadataPipelineClass } from 'generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   DashboardConnection,
   DashboardService,
@@ -99,3 +100,7 @@ export type ConfigData =
   | MlModelConnection
   | MetadataConnection
   | StorageConnection;
+
+export type IngestionWorkflowData = DatabaseServiceMetadataPipelineClass & {
+  name: string;
+};
