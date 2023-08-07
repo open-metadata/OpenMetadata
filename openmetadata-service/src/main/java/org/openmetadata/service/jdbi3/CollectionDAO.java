@@ -91,6 +91,7 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -232,6 +233,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   StorageServiceDAO storageServiceDAO();
+
+  @CreateSqlObject
+  SearchServiceDAO searchServiceDAO();
 
   @CreateSqlObject
   ContainerDAO containerDAO();
@@ -409,6 +413,23 @@ public interface CollectionDAO {
     @Override
     default Class<StorageService> getEntityClass() {
       return StorageService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface SearchServiceDAO extends EntityDAO<SearchService> {
+    @Override
+    default String getTableName() {
+      return "search_service_entity";
+    }
+
+    @Override
+    default Class<SearchService> getEntityClass() {
+      return SearchService.class;
     }
 
     @Override

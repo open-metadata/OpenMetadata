@@ -292,6 +292,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference MLFLOW_REFERENCE;
 
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
+  public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
 
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
