@@ -22,7 +22,6 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -3346,11 +3345,7 @@ public interface CollectionDAO {
         String rowNumber = rs.getString("row_num");
         String json = rs.getString("json");
         ReportData reportData;
-        try {
-          reportData = JsonUtils.readValue(json, ReportData.class);
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
+        reportData = JsonUtils.readValue(json, ReportData.class);
         return new ReportDataRow(rowNumber, reportData);
       }
     }
@@ -3483,26 +3478,22 @@ public interface CollectionDAO {
       Settings settings = new Settings();
       settings.setConfigType(configType);
       Object value;
-      try {
-        switch (configType) {
-          case EMAIL_CONFIGURATION:
-            value = JsonUtils.readValue(json, SmtpSettings.class);
-            break;
-          case CUSTOM_LOGO_CONFIGURATION:
-            value = JsonUtils.readValue(json, LogoConfiguration.class);
-            break;
-          case SLACK_APP_CONFIGURATION:
-            value = JsonUtils.readValue(json, String.class);
-            break;
-          case SLACK_BOT:
-          case SLACK_INSTALLER:
-            value = JsonUtils.readValue(json, new TypeReference<HashMap<String, Object>>() {});
-            break;
-          default:
-            throw new IllegalArgumentException("Invalid Settings Type " + configType);
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      switch (configType) {
+        case EMAIL_CONFIGURATION:
+          value = JsonUtils.readValue(json, SmtpSettings.class);
+          break;
+        case CUSTOM_LOGO_CONFIGURATION:
+          value = JsonUtils.readValue(json, LogoConfiguration.class);
+          break;
+        case SLACK_APP_CONFIGURATION:
+          value = JsonUtils.readValue(json, String.class);
+          break;
+        case SLACK_BOT:
+        case SLACK_INSTALLER:
+          value = JsonUtils.readValue(json, new TypeReference<HashMap<String, Object>>() {});
+          break;
+        default:
+          throw new IllegalArgumentException("Invalid Settings Type " + configType);
       }
       settings.setConfigValue(value);
       return settings;
@@ -3512,14 +3503,10 @@ public interface CollectionDAO {
   class TokenRowMapper implements RowMapper<TokenInterface> {
     @Override
     public TokenInterface map(ResultSet rs, StatementContext ctx) throws SQLException {
-      try {
-        return getToken(TokenType.fromValue(rs.getString("tokenType")), rs.getString("json"));
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      return getToken(TokenType.fromValue(rs.getString("tokenType")), rs.getString("json"));
     }
 
-    public static TokenInterface getToken(TokenType type, String json) throws IOException {
+    public static TokenInterface getToken(TokenType type, String json) {
       TokenInterface resp;
       switch (type) {
         case EMAIL_VERIFICATION:

@@ -62,7 +62,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following owners from the List.",
       examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyOwnerName(String... ownerNameList) throws IOException {
+  public boolean matchAnyOwnerName(String... ownerNameList) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -239,7 +239,7 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
-  public static EntityInterface getEntity(ChangeEvent event) throws IOException {
+  public static EntityInterface getEntity(ChangeEvent event) {
     Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(event.getEntityType());
     if (entityClass != null) {
       EntityInterface entity;

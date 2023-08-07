@@ -109,7 +109,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   @Override
-  protected void upgrade() throws IOException {
+  protected void upgrade() {
     // This should be deleted once 0.13 is deprecated
     // For all the existing bots, add ingestion bot role
     ResultList<Bot> bots =
@@ -161,8 +161,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return listInternal(uriInfo, securityContext, "", new ListFilter(include), limitParam, before, after);
   }
 
@@ -183,8 +182,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return getInternal(uriInfo, securityContext, id, "", include);
   }
 
@@ -210,8 +208,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), "", include);
   }
 
@@ -230,8 +227,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -258,8 +254,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               description = "bot version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -275,8 +270,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
     Bot bot = getBot(securityContext, create);
     return create(uriInfo, securityContext, bot);
   }
@@ -294,7 +288,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
     Bot bot = getBot(securityContext, create);
     return createOrUpdate(uriInfo, securityContext, bot);
   }
@@ -319,8 +313,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -341,8 +334,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
@@ -363,8 +355,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name) {
     return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
   }
 
@@ -381,12 +372,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class)))
       })
   public Response restoreBot(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Bot getBot(CreateBot create, String user) throws IOException {
+  private Bot getBot(CreateBot create, String user) {
     return copy(new Bot(), create, user)
         .withBotUser(getEntityReference(Entity.USER, EntityInterfaceUtil.quoteName(create.getBotUser())))
         .withProvider(create.getProvider())
@@ -407,7 +397,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return repository.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
-  private Bot getBot(SecurityContext securityContext, CreateBot create) throws IOException {
+  private Bot getBot(SecurityContext securityContext, CreateBot create) {
     Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
     Bot originalBot = retrieveBot(EntityInterfaceUtil.quoteName(bot.getName()));
     User botUser = retrieveUser(bot);

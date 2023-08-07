@@ -15,15 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -45,23 +42,24 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public DataProduct setFields(DataProduct entity, Fields fields) throws IOException {
+  public DataProduct setFields(DataProduct entity, Fields fields) {
     return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
   }
 
   // TODO to to inheritance for experts
-  private List<EntityReference> getExperts(DataProduct entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
+  private List<EntityReference> getExperts(DataProduct entity) {
+    List<CollectionDAO.EntityRelationshipRecord> ids =
+        findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   @Override
-  public void prepare(DataProduct entity) throws IOException {
+  public void prepare(DataProduct entity) {
     // Parent, Experts, Owner are already validated
   }
 
   @Override
-  public void storeEntity(DataProduct entity, boolean update) throws IOException {
+  public void storeEntity(DataProduct entity, boolean update) {
     EntityReference domain = entity.getDomain();
     List<EntityReference> experts = entity.getExperts();
     entity.withDomain(null).withExperts(null);
@@ -100,11 +98,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateExperts();
     }
 
-    private void updateExperts() throws JsonProcessingException {
+    private void updateExperts() {
       List<EntityReference> origExperts = listOrEmpty(original.getExperts());
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(

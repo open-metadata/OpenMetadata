@@ -15,8 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Chart;
@@ -41,14 +39,14 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void prepare(Chart chart) throws IOException {
+  public void prepare(Chart chart) {
     DashboardService dashboardService = Entity.getEntity(chart.getService(), "", Include.ALL);
     chart.setService(dashboardService.getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
   }
 
   @Override
-  public void storeEntity(Chart chart, boolean update) throws JsonProcessingException {
+  public void storeEntity(Chart chart, boolean update) {
     // Relationships and fields such as tags are not stored as part of json
     EntityReference service = chart.getService();
     chart.withService(null);
@@ -64,7 +62,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public Chart setFields(Chart chart, Fields fields) throws IOException {
+  public Chart setFields(Chart chart, Fields fields) {
     chart.setService(getContainer(chart.getId()));
     return chart.withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(chart) : null);
   }
@@ -90,7 +88,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("chartType", original.getChartType(), updated.getChartType());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }

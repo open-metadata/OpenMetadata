@@ -38,7 +38,7 @@ public interface AuthenticatorHandler {
 
   User lookUserInProvider(String userName);
 
-  default User registerUser(RegistrationRequest registrationRequest) throws IOException {
+  default User registerUser(RegistrationRequest registrationRequest) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -46,7 +46,7 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
+  default void confirmEmailRegistration(UriInfo uriInfo, String emailToken) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -71,7 +71,7 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+  default JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 

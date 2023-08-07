@@ -14,7 +14,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
-import java.io.IOException;
 import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
@@ -57,7 +56,7 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
-  public T setFields(T entity, EntityUtil.Fields fields) throws IOException {
+  public T setFields(T entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     return entity;
   }
@@ -77,7 +76,7 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
-  public void storeEntity(T service, boolean update) throws IOException {
+  public void storeEntity(T service, boolean update) {
     store(service, update);
   }
 
@@ -86,7 +85,7 @@ public abstract class ServiceEntityRepository<
     // No relationships to store beyond what is stored in the super class
   }
 
-  public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) throws IOException {
+  public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) {
     T service = dao.findEntityById(serviceId);
     service.setTestConnectionResult(testConnectionResult);
     dao.update(serviceId, service.getFullyQualifiedName(), JsonUtils.pojoToJson(service));
@@ -113,11 +112,11 @@ public abstract class ServiceEntityRepository<
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateConnection();
     }
 
-    private void updateConnection() throws IOException {
+    private void updateConnection() {
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
       String origJson = JsonUtils.pojoToJson(origConn);

@@ -1,6 +1,5 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -33,7 +32,7 @@ public class ResourceContext implements ResourceContextInterface {
   public static class ResourceContextBuilder {}
 
   @Override
-  public EntityReference getOwner() throws IOException {
+  public EntityReference getOwner() {
     resolveEntity();
     if (entity == null) {
       return null;
@@ -44,17 +43,17 @@ public class ResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public List<TagLabel> getTags() throws IOException {
+  public List<TagLabel> getTags() {
     resolveEntity();
     return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
   }
 
   @Override
-  public EntityInterface getEntity() throws IOException {
+  public EntityInterface getEntity() {
     return resolveEntity();
   }
 
-  private EntityInterface resolveEntity() throws IOException {
+  private EntityInterface resolveEntity() {
     if (entity == null) {
       String fields = "";
       if (entityRepository.isSupportsOwner()) {

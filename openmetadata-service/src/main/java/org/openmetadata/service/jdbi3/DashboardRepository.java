@@ -18,8 +18,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -60,7 +58,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("charts")) {
       Dashboard dashboard = getByName(null, entityLink.getEntityFQN(), getFields("charts,tags"), Include.ALL);
       EntityReference chart =
@@ -84,7 +82,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
+  public Dashboard setFields(Dashboard dashboard, Fields fields) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
@@ -106,7 +104,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withService(original.getService());
   }
 
-  private void populateService(Dashboard dashboard) throws IOException {
+  private void populateService(Dashboard dashboard) {
     DashboardService service = Entity.getEntity(dashboard.getService(), "", Include.NON_DELETED);
     dashboard.setService(service.getEntityReference());
     dashboard.setServiceType(service.getServiceType());
@@ -121,14 +119,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void prepare(Dashboard dashboard) throws IOException {
+  public void prepare(Dashboard dashboard) {
     populateService(dashboard);
     dashboard.setCharts(EntityUtil.getEntityReferences(dashboard.getCharts(), Include.NON_DELETED));
     dashboard.setDataModels(EntityUtil.getEntityReferences(dashboard.getDataModels(), Include.NON_DELETED));
   }
 
   @Override
-  public void storeEntity(Dashboard dashboard, boolean update) throws JsonProcessingException {
+  public void storeEntity(Dashboard dashboard, boolean update) {
     // Relationships and fields such as service are not stored as part of json
     EntityReference service = dashboard.getService();
     List<EntityReference> charts = dashboard.getCharts();
@@ -164,7 +162,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return new DashboardUpdater(original, updated, operation);
   }
 
-  private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) throws IOException {
+  private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
     if (dashboard == null) {
       return Collections.emptyList();
     }
@@ -179,7 +177,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       update(Entity.CHART, "charts", listOrEmpty(updated.getCharts()), listOrEmpty(original.getCharts()));
       update(
           Entity.DASHBOARD_DATA_MODEL,
@@ -190,8 +188,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     private void update(
-        String entityType, String field, List<EntityReference> updEntities, List<EntityReference> oriEntities)
-        throws JsonProcessingException {
+        String entityType, String field, List<EntityReference> updEntities, List<EntityReference> oriEntities) {
       // Remove all entity type associated with this dashboard
       deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
 
@@ -205,7 +202,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       recordListChange(field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
-    public void updateDashboardUrl(Dashboard original, Dashboard updated) throws IOException {
+    public void updateDashboardUrl(Dashboard original, Dashboard updated) {
       recordChange(DASHBOARD_URL, original.getSourceUrl(), updated.getSourceUrl());
     }
   }

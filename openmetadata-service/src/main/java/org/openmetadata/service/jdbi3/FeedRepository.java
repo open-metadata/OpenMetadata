@@ -30,9 +30,7 @@ import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_NAME;
 import static org.openmetadata.service.util.RestUtil.DELETED_USER_DISPLAY;
 import static org.openmetadata.service.util.RestUtil.DELETED_USER_NAME;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import io.jsonwebtoken.lang.Collections;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -131,22 +129,18 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException {
+  public Thread create(Thread thread) {
     // Validate about data entity is valid and get the owner for that entity
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityRepository<?> repository = Entity.getEntityRepository(about.getEntityType());
-    String field = "owner";
-    if (!repository.supportsOwner) {
-      field = "id";
-    }
+    String field = repository.supportsOwner ? "owner" : "";
     EntityInterface aboutEntity = Entity.getEntity(about, field, ALL);
     thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     return createThread(thread, about, aboutEntity.getOwner());
   }
 
   @Transaction
-  private Thread createThread(Thread thread, EntityLink about, EntityReference entityOwner)
-      throws JsonProcessingException {
+  private Thread createThread(Thread thread, EntityLink about, EntityReference entityOwner) {
     // Validate user creating thread
     User createdByUser = SubjectCache.getInstance().getUser(thread.getCreatedBy());
 
@@ -198,7 +192,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread, ContainerResponseContext responseContext) throws IOException {
+  public Thread create(Thread thread, ContainerResponseContext responseContext) {
     // Validate about data entity is valid and get the owner for that entity
     EntityInterface entity;
     // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
@@ -219,28 +213,26 @@ public class FeedRepository {
     return createThread(thread, about, owner);
   }
 
-  public Thread get(String id) throws IOException {
+  public Thread get(String id) {
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
     sortPosts(thread);
     return thread;
   }
 
-  public Thread getTask(Integer id) throws IOException {
+  public Thread getTask(Integer id) {
     Thread task = EntityUtil.validate(id.toString(), dao.feedDAO().findByTaskId(id), Thread.class);
     sortPosts(task);
     return populateAssignees(task);
   }
 
-  public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user, CloseTask closeTask)
-      throws IOException {
+  public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user, CloseTask closeTask) {
     // Update the attributes
     closeTask(thread, EntityInterfaceUtil.quoteName(user), closeTask.getComment());
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
 
-  public PatchResponse<Thread> resolveTask(UriInfo uriInfo, Thread thread, String user, ResolveTask resolveTask)
-      throws IOException {
+  public PatchResponse<Thread> resolveTask(UriInfo uriInfo, Thread thread, String user, ResolveTask resolveTask) {
     // perform the task
     TaskDetails task = thread.getTask();
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -259,7 +251,7 @@ public class FeedRepository {
     return tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(", "));
   }
 
-  private void addClosingPost(Thread thread, String user, String closingComment) throws IOException {
+  private void addClosingPost(Thread thread, String user, String closingComment) {
     // Add a post to the task
     String message;
     if (closingComment != null) {
@@ -294,14 +286,10 @@ public class FeedRepository {
             .withFrom(user)
             .withReactions(java.util.Collections.emptyList())
             .withPostTs(System.currentTimeMillis());
-    try {
-      addPostToThread(thread.getId().toString(), post, user);
-    } catch (IOException exception) {
-      LOG.error("Unable to post a reply to the Task upon closing.", exception);
-    }
+    addPostToThread(thread.getId().toString(), post, user);
   }
 
-  private void closeTask(Thread thread, String user, String closingComment) throws IOException {
+  private void closeTask(Thread thread, String user, String closingComment) {
     TaskDetails task = thread.getTask();
     task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
     thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
@@ -333,7 +321,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread addPostToThread(String id, Post post, String userName) throws IOException {
+  public Thread addPostToThread(String id, Post post, String userName) {
     // Validate the user posting the message
     User fromUser = SubjectCache.getInstance().getUser(post.getFrom());
 
@@ -365,7 +353,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) throws IOException {
+  public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
     posts = posts.stream().filter(p -> !p.getId().equals(post.getId())).collect(Collectors.toList());
@@ -407,10 +395,6 @@ public class FeedRepository {
         // Continue deletion
       }
     }
-  }
-
-  public EntityReference getOwnerReference(String username) {
-    return dao.userDAO().findEntityByName(EntityInterfaceUtil.quoteName(username)).getEntityReference();
   }
 
   @Transaction
@@ -466,14 +450,13 @@ public class FeedRepository {
     return new ThreadCount().withTotalCount(totalCount.get()).withCounts(entityLinkThreadCounts);
   }
 
-  public List<Post> listPosts(String threadId) throws IOException {
+  public List<Post> listPosts(String threadId) {
     return get(threadId).getPosts();
   }
 
   /** List threads based on the filters and limits in the order of the updated timestamp. */
   @Transaction
-  public ResultList<Thread> list(FeedFilter filter, String link, int limitPosts, String userId, int limit)
-      throws IOException {
+  public ResultList<Thread> list(FeedFilter filter, String link, int limitPosts, String userId, int limit) {
     int total;
     List<Thread> threads;
     // No filters are enabled. Listing all the threads
@@ -574,8 +557,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch)
-      throws IOException {
+  public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch) {
     // Apply JSON patch to the original post to get the updated post
     Post updated = JsonUtils.applyPatch(post, patch, Post.class);
 
@@ -600,8 +582,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
-      throws IOException {
+  public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original thread that can be updated during PATCH operation
     Thread original = get(id.toString());
     if (original.getTask() != null) {
@@ -649,8 +630,7 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updatedHref, change);
   }
 
-  public void checkPermissionsForResolveTask(Thread thread, boolean closeTask, SecurityContext securityContext)
-      throws IOException {
+  public void checkPermissionsForResolveTask(Thread thread, boolean closeTask, SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = SubjectCache.getInstance().getUser(userName);
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -703,17 +683,12 @@ public class FeedRepository {
   private void populateUserReactions(List<Reaction> reactions) {
     if (!Collections.isEmpty(reactions)) {
       reactions.forEach(
-          reaction -> {
-            try {
-              reaction.setUser(Entity.getEntityReferenceById(Entity.USER, reaction.getUser().getId(), Include.ALL));
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          });
+          reaction ->
+              reaction.setUser(Entity.getEntityReferenceById(Entity.USER, reaction.getUser().getId(), Include.ALL)));
     }
   }
 
-  private boolean patchUpdate(Thread original, Thread updated) throws JsonProcessingException {
+  private boolean patchUpdate(Thread original, Thread updated) {
     // store the updated thread
     // if there is no change, there is no need to apply patch
     if (fieldsChanged(original, updated)) {
@@ -724,7 +699,7 @@ public class FeedRepository {
     return false;
   }
 
-  private boolean patchUpdate(Thread thread, Post originalPost, Post updatedPost) throws JsonProcessingException {
+  private boolean patchUpdate(Thread thread, Post originalPost, Post updatedPost) {
     // store the updated post
     // if there is no change, there is no need to apply patch
     if (fieldsChanged(originalPost, updatedPost)) {
@@ -806,7 +781,7 @@ public class FeedRepository {
   }
 
   /** Return the tasks assigned to the user. */
-  private FilteredThreads getTasksAssignedTo(FeedFilter filter, String userId, int limit) throws IOException {
+  private FilteredThreads getTasksAssignedTo(FeedFilter filter, String userId, int limit) {
     List<String> teamIds = getTeamIds(userId);
     List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
@@ -839,8 +814,6 @@ public class FeedRepository {
             ref.setName(DELETED_USER_NAME);
             ref.setDisplayName(DELETED_USER_DISPLAY);
           }
-        } catch (IOException ioException) {
-          throw new RuntimeException(ioException);
         }
       }
       assignees.sort(compareEntityReference);
@@ -850,7 +823,7 @@ public class FeedRepository {
   }
 
   /** Return the tasks created by or assigned to the user. */
-  private FilteredThreads getTasksOfUser(FeedFilter filter, String userId, int limit) throws IOException {
+  private FilteredThreads getTasksOfUser(FeedFilter filter, String userId, int limit) {
     String username = SubjectCache.getInstance().getUserById(userId).getName();
     List<String> teamIds = getTeamIds(userId);
     List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
@@ -865,7 +838,7 @@ public class FeedRepository {
   }
 
   /** Return the tasks created by the user. */
-  private FilteredThreads getTasksAssignedBy(FeedFilter filter, String userId, int limit) throws IOException {
+  private FilteredThreads getTasksAssignedBy(FeedFilter filter, String userId, int limit) {
     String username = SubjectCache.getInstance().getUserById(userId).getName();
     List<String> jsons = dao.feedDAO().listTasksAssigned(username, limit, filter.getCondition());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
@@ -877,7 +850,7 @@ public class FeedRepository {
    * Return the threads associated with user/team owned entities and the threads that were created by or replied to by
    * the user.
    */
-  private FilteredThreads getThreadsByOwner(FeedFilter filter, String userId, int limit) throws IOException {
+  private FilteredThreads getThreadsByOwner(FeedFilter filter, String userId, int limit) {
     // add threads on user or team owned entities
     // and threads created by or replied to by the user
     List<String> teamIds = getTeamIds(userId);
@@ -888,7 +861,7 @@ public class FeedRepository {
   }
 
   /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
-  private FilteredThreads getThreadsByMentions(FeedFilter filter, String userId, int limit) throws IOException {
+  private FilteredThreads getThreadsByMentions(FeedFilter filter, String userId, int limit) {
 
     User user = SubjectCache.getInstance().getUserById(userId);
     String userNameHash = getUserNameHash(user);
@@ -919,7 +892,7 @@ public class FeedRepository {
   }
 
   /** Returns the threads that are associated with the entities followed by the user. */
-  private FilteredThreads getThreadsByFollows(FeedFilter filter, String userId, int limit) throws IOException {
+  private FilteredThreads getThreadsByFollows(FeedFilter filter, String userId, int limit) {
     List<String> teamIds = getTeamIds(userId);
     List<String> jsons =
         dao.feedDAO()
