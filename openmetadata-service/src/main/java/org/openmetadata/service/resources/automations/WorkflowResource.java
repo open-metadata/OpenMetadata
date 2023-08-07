@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -159,8 +158,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           String workflowType,
       @Parameter(description = "Filter by status", schema = @Schema(implementation = WorkflowStatus.class))
           @QueryParam("status")
-          String status)
-      throws IOException {
+          String status) {
     ListFilter filter = new ListFilter(include);
     if (workflowType != null) {
       filter.addQueryParam("workflowType", workflowType);
@@ -192,8 +190,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -223,8 +220,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
@@ -256,8 +252,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
@@ -284,8 +279,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               description = "Workflow version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return decryptOrNullify(securityContext, super.getVersionInternal(securityContext, id, version));
   }
 
@@ -302,8 +296,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create) {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, unmask(workflow));
     return Response.fromResponse(response)
@@ -327,8 +320,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   public PipelineServiceClientResponse runAutomationsWorkflow(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Context SecurityContext securityContext)
-      throws IOException {
+      @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(FIELD_OWNER);
     Workflow workflow = repository.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
@@ -361,8 +353,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -381,8 +372,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create) {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
     workflow = unmask(workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
@@ -408,8 +398,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -434,8 +423,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     Response response = deleteByName(uriInfo, securityContext, name, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -455,15 +443,14 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class)))
       })
   public Response restoreWorkflow(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
   }
 
-  private Workflow getWorkflow(CreateWorkflow create, String user) throws IOException {
+  private Workflow getWorkflow(CreateWorkflow create, String user) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
     return copy(new Workflow(), create, user)
@@ -496,7 +483,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           securityContext,
           new OperationContext(entityType, MetadataOperation.VIEW_ALL),
           getResourceContextById(workflow.getId()));
-    } catch (AuthorizationException | IOException e) {
+    } catch (AuthorizationException e) {
       Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       if (workflowConverted.getRequest() instanceof TestServiceConnectionRequest) {
         ((ServiceConnectionEntityInterface)

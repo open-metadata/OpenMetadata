@@ -20,7 +20,6 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -253,7 +252,7 @@ public interface EntityDAO<T extends EntityInterface> {
   int delete(@Define("table") String table, @Bind("id") String id);
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(EntityInterface entity, String fqn) throws JsonProcessingException {
+  default void insert(EntityInterface entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
@@ -294,11 +293,11 @@ public interface EntityDAO<T extends EntityInterface> {
     return include == Include.DELETED ? " AND deleted = TRUE" : "";
   }
 
-  default T findEntityById(UUID id, Include include) throws IOException {
+  default T findEntityById(UUID id, Include include) {
     return jsonToEntity(findById(getTableName(), id.toString(), getCondition(include)), id.toString());
   }
 
-  default T findEntityById(UUID id) throws IOException {
+  default T findEntityById(UUID id) {
     return findEntityById(id, Include.NON_DELETED);
   }
 
@@ -316,7 +315,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return jsonToEntity(findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
   }
 
-  default T jsonToEntity(String json, String identity) throws IOException {
+  default T jsonToEntity(String json, String identity) {
     Class<T> clz = getEntityClass();
     T entity = json != null ? JsonUtils.readValue(json, clz) : null;
     if (entity == null) {
@@ -326,7 +325,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return entity;
   }
 
-  default EntityReference findEntityReferenceById(UUID id) throws IOException {
+  default EntityReference findEntityReferenceById(UUID id) {
     return findEntityById(id).getEntityReference();
   }
 
@@ -334,7 +333,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return findEntityByName(fqn).getEntityReference();
   }
 
-  default EntityReference findEntityReferenceById(UUID id, Include include) throws IOException {
+  default EntityReference findEntityReferenceById(UUID id, Include include) {
     return findEntityById(id, include).getEntityReference();
   }
 

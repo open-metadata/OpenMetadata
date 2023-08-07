@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -140,8 +139,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testSuiteType", testSuiteType);
     EntityUtil.Fields fields = getFields(fieldsParam);
@@ -169,8 +167,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -200,8 +197,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -233,8 +229,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -261,8 +256,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "Test Suite version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -279,8 +273,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create) {
     create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
@@ -301,8 +294,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createExecutable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     testSuite = setExecutableTestSuiteOwner(testSuite);
@@ -329,8 +321,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -346,8 +337,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create) {
     create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
@@ -367,8 +357,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
       })
   public Response createOrUpdateExecutable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
@@ -392,8 +381,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the logical test suite", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
-      throws IOException {
+          UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
@@ -424,8 +412,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "FQN of the logical test suite", schema = @Schema(type = "String")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
@@ -460,8 +447,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the test suite", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
@@ -495,8 +481,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
@@ -522,12 +507,11 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
       })
   public Response restoreTestSuite(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private TestSuite getTestSuite(CreateTestSuite create, String user) throws IOException {
+  private TestSuite getTestSuite(CreateTestSuite create, String user) {
     TestSuite testSuite =
         copy(new TestSuite(), create, user)
             .withDescription(create.getDescription())
@@ -546,7 +530,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return testSuite;
   }
 
-  private TestSuite setExecutableTestSuiteOwner(TestSuite testSuite) throws IOException {
+  private TestSuite setExecutableTestSuiteOwner(TestSuite testSuite) {
     Table tableEntity =
         Entity.getEntity(
             testSuite.getExecutableEntityReference().getType(),
@@ -559,8 +543,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   @Override
   public TestSuite getByNameInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
-      throws IOException {
+      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include) {
     return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 }

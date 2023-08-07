@@ -173,8 +173,7 @@ public class MetadataServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = getFields(fieldsParam);
     ResultList<MetadataService> metadataServices;
@@ -216,8 +215,7 @@ public class MetadataServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     MetadataService metadataService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
   }
@@ -251,8 +249,7 @@ public class MetadataServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     MetadataService metadataService =
         getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
@@ -275,8 +272,7 @@ public class MetadataServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TestConnectionResult testConnectionResult)
-      throws IOException {
+      @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     MetadataService service = repository.addTestConnectionResult(id, testConnectionResult);
@@ -298,8 +294,8 @@ public class MetadataServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -309,7 +305,7 @@ public class MetadataServiceResource
                   try {
                     MetadataService metadataService = JsonUtils.readValue((String) json, MetadataService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, metadataService));
-                  } catch (IOException e) {
+                  } catch (Exception e) {
                     return json;
                   }
                 })
@@ -342,8 +338,7 @@ public class MetadataServiceResource
               description = "Metadata Service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     MetadataService metadataService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, metadataService);
   }
@@ -362,8 +357,7 @@ public class MetadataServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService create) {
     MetadataService service = getMetadataService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
@@ -384,8 +378,7 @@ public class MetadataServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService update)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService update) {
     MetadataService service = getMetadataService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
@@ -412,8 +405,7 @@ public class MetadataServiceResource
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -438,8 +430,8 @@ public class MetadataServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -464,8 +456,7 @@ public class MetadataServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
   }
 
@@ -482,12 +473,11 @@ public class MetadataServiceResource
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private MetadataService getMetadataService(CreateMetadataService create, String user) throws IOException {
+  private MetadataService getMetadataService(CreateMetadataService create, String user) {
     return copy(new MetadataService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

@@ -7,7 +7,6 @@ import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
 import static org.openmetadata.service.util.RestUtil.ENTITY_UPDATED;
 import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -58,7 +57,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public TestCase setFields(TestCase test, Fields fields) throws IOException {
+  public TestCase setFields(TestCase test, Fields fields) {
     test.setTestSuites(fields.contains("testSuites") ? getTestSuites(test) : null);
     test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
@@ -66,7 +65,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
-      String fqn, Long timestamp, String user, JsonPatch patch) throws IOException {
+      String fqn, Long timestamp, String user, JsonPatch patch) {
     String change = ENTITY_NO_CHANGE;
     TestCaseResult original =
         JsonUtils.readValue(
@@ -98,7 +97,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void prepare(TestCase test) throws IOException {
+  public void prepare(TestCase test) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
@@ -112,7 +111,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
   }
 
-  private EntityReference getTestSuite(TestCase test) throws IOException {
+  private EntityReference getTestSuite(TestCase test) {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
@@ -132,18 +131,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
     return records.stream()
-        .map(
-            testSuiteId -> {
-              try {
-                return Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
-            })
+        .map(testSuiteId -> Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL))
         .collect(Collectors.toList());
   }
 
-  private EntityReference getTestDefinition(TestCase test) throws IOException {
+  private EntityReference getTestDefinition(TestCase test) {
     return getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
   }
 
@@ -170,7 +162,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void storeEntity(TestCase test, boolean update) throws IOException {
+  public void storeEntity(TestCase test, boolean update) {
     EntityReference testSuite = test.getTestSuite();
     EntityReference testDefinition = test.getTestDefinition();
 
@@ -183,7 +175,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void storeRelationships(TestCase test) throws IOException {
+  public void storeRelationships(TestCase test) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
@@ -195,7 +187,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Transaction
   public RestUtil.PutResponse<?> addTestCaseResult(
-      String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) throws IOException {
+      String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
@@ -221,7 +213,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) throws IOException {
+  public RestUtil.PutResponse<?> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
     TestCaseResult storedTestCaseResult =
@@ -268,13 +260,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withPreviousVersion(prevVersion);
   }
 
-  private TestCaseResult getTestCaseResult(TestCase testCase) throws IOException {
+  private TestCaseResult getTestCaseResult(TestCase testCase) {
     return JsonUtils.readValue(
         getLatestExtensionFromTimeseries(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
         TestCaseResult.class);
   }
 
-  public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) throws IOException {
+  public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) {
     List<TestCaseResult> testCaseResults;
     testCaseResults =
         JsonUtils.readObjects(
@@ -286,7 +278,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
   }
 
-  public void isTestSuiteExecutable(String testSuiteFqn) throws IOException {
+  public void isTestSuiteExecutable(String testSuiteFqn) {
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
     if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(
@@ -296,8 +288,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
-      throws IOException {
+  public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds) {
     bulkAddToRelationship(testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     List<EntityReference> testCasesEntityReferences = new ArrayList<>();
     for (UUID testCaseId : testCaseIds) {
@@ -316,8 +307,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASES_ADDED);
   }
 
-  public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId)
-      throws IOException {
+  public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     EntityReference entityReference = Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
@@ -325,7 +315,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
   }
 
-  public TestSummary getTestSummary(UUID testSuiteId) throws IOException {
+  public TestSummary getTestSummary(UUID testSuiteId) {
     List<String> testCaseFQNs;
     if (testSuiteId == null) {
       List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
@@ -350,7 +340,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       EntityLink origEntityLink = EntityLink.parse(original.getEntityLink());
       EntityReference origTableRef = EntityUtil.validateEntityLink(origEntityLink);
 

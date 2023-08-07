@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 
 import com.lmax.disruptor.BatchEventProcessor;
-import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -78,7 +77,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public void storeEntity(EventSubscription entity, boolean update) throws IOException {
+  public void storeEntity(EventSubscription entity, boolean update) {
     store(entity, update);
   }
 
@@ -212,7 +211,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());

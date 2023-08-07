@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.services;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import java.io.IOException;
 import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import org.openmetadata.annotations.utils.AnnotationChecker;
@@ -24,7 +23,6 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -82,12 +80,8 @@ public abstract class ServiceEntityResource<
   protected T nullifyRequiredConnectionParameters(T service) {
     Object connectionConfig = retrieveServiceConnectionConfig(service, true);
     if (AnnotationChecker.isExposedFieldPresent(connectionConfig.getClass())) {
-      try {
-        service.getConnection().setConfig(JsonUtils.toExposedEntity(connectionConfig, connectionConfig.getClass()));
-        return service;
-      } catch (IOException e) {
-        throw new UnhandledServerException(e.getMessage(), e.getCause());
-      }
+      service.getConnection().setConfig(JsonUtils.toExposedEntity(connectionConfig, connectionConfig.getClass()));
+      return service;
     }
     return nullifyConnection(service);
   }

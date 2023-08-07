@@ -157,7 +157,7 @@ public class SecretsManagerUpdateService {
               service ->
                   !Objects.isNull(service.getConnection()) && !Objects.isNull(service.getConnection().getConfig()))
           .collect(Collectors.toList());
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -207,7 +207,7 @@ public class SecretsManagerUpdateService {
           .getData().stream()
           .filter(user -> Boolean.TRUE.equals(user.getIsBot()))
           .collect(Collectors.toList());
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -233,7 +233,7 @@ public class SecretsManagerUpdateService {
               ingestionPipelineRepository.getDao().listCount(new ListFilter()),
               null)
           .getData();
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -248,7 +248,7 @@ public class SecretsManagerUpdateService {
               workflowRepository.getDao().listCount(new ListFilter()),
               null)
           .getData();
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }

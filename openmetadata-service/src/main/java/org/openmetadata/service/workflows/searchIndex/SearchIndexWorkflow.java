@@ -19,7 +19,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getT
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -68,8 +67,8 @@ public class SearchIndexWorkflow implements Runnable {
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
   private final Processor entityProcessor;
-  private Processor dataInsightProcessor;
-  private Sink searchIndexSink;
+  private final Processor dataInsightProcessor;
+  private final Sink searchIndexSink;
   private final SearchClient searchClient;
   @Getter final EventPublisherJob jobData;
   private final CollectionDAO dao;
@@ -303,7 +302,7 @@ public class SearchIndexWorkflow implements Runnable {
       WebSocketManager.getInstance()
           .sendToOne(
               jobData.getStartedBy(), WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
-    } catch (JsonProcessingException ex) {
+    } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
   }

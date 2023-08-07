@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -215,7 +214,7 @@ public final class Entity {
     return Collections.unmodifiableList(ENTITY_LIST);
   }
 
-  public static EntityReference getEntityReference(EntityReference ref, Include include) throws IOException {
+  public static EntityReference getEntityReference(EntityReference ref, Include include) {
     if (ref == null) {
       return null;
     }
@@ -224,8 +223,7 @@ public final class Entity {
         : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), include);
   }
 
-  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
-      throws IOException {
+  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include) {
     EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (repository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
@@ -245,7 +243,7 @@ public final class Entity {
     return repository.getDao().findEntityReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException {
+  public static EntityReference getOwner(@NonNull EntityReference reference) {
     EntityRepository<?> repository = getEntityRepository(reference.getType());
     return repository.getOwner(reference);
   }
@@ -274,18 +272,18 @@ public final class Entity {
     return entityRepository.getFields(String.join(",", fields));
   }
 
-  public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
+  public static <T> T getEntity(EntityReference ref, String fields, Include include) {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
   }
 
-  public static <T> T getEntity(EntityLink link, String fields, Include include) throws IOException {
+  public static <T> T getEntity(EntityLink link, String fields, Include include) {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) throws IOException {
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
@@ -297,8 +295,7 @@ public final class Entity {
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include)
-      throws IOException {
+  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
@@ -335,12 +332,12 @@ public final class Entity {
   }
 
   public static void deleteEntity(
-      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) throws IOException {
+      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.delete(updatedBy, entityId, recursive, hardDelete);
   }
 
-  public static void restoreEntity(String updatedBy, String entityType, UUID entityId) throws IOException {
+  public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.restoreEntity(updatedBy, entityType, entityId);
   }

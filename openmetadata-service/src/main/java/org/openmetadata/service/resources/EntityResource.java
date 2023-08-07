@@ -101,8 +101,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ListFilter filter,
       int limitParam,
       String before,
-      String after)
-      throws IOException {
+      String after) {
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext = new OperationContext(entityType, getViewOperations(fields));
     return listInternal(
@@ -126,8 +125,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after,
       OperationContext operationContext,
-      ResourceContextInterface resourceContext)
-      throws IOException {
+      ResourceContextInterface resourceContext) {
     RestUtil.validateCursors(before, after);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
@@ -140,8 +138,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return addHref(uriInfo, resultList);
   }
 
-  public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include)
-      throws IOException {
+  public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     return getInternal(uriInfo, securityContext, id, fields, include, operationContext, getResourceContextById(id));
@@ -154,13 +151,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Fields fields,
       Include include,
       OperationContext operationContext,
-      ResourceContextInterface resourceContext)
-      throws IOException {
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return addHref(uriInfo, repository.get(uriInfo, id, fields, include));
   }
 
-  public T getVersionInternal(SecurityContext securityContext, UUID id, String version) throws IOException {
+  public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     return getVersionInternal(securityContext, id, version, operationContext, getResourceContextById(id));
   }
@@ -170,13 +166,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       String version,
       OperationContext operationContext,
-      ResourceContextInterface resourceContext)
-      throws IOException {
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.getVersion(id, version);
   }
 
-  protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) throws IOException {
+  protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
@@ -185,15 +180,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext,
       UUID id,
       OperationContext operationContext,
-      ResourceContextInterface resourceContext)
-      throws IOException {
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.listVersions(id);
   }
 
   public T getByNameInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
-      throws IOException {
+      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     return getByNameInternal(
@@ -207,20 +200,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Fields fields,
       Include include,
       OperationContext operationContext,
-      ResourceContextInterface resourceContext)
-      throws IOException {
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include));
   }
 
-  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
+  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     entity = addHref(uriInfo, repository.create(uriInfo, entity));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
-  public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
+  public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     repository.prepareInternal(entity);
 
     // If entity does not exist, this is a create operation, else update operation
@@ -232,8 +224,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
-  public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch)
-      throws IOException {
+  public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response = repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
@@ -242,8 +233,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response delete(
-      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean recursive, boolean hardDelete)
-      throws IOException {
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean recursive, boolean hardDelete) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
@@ -253,8 +243,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response deleteByName(
-      UriInfo uriInfo, SecurityContext securityContext, String name, boolean recursive, boolean hardDelete)
-      throws IOException {
+      UriInfo uriInfo, SecurityContext securityContext, String name, boolean recursive, boolean hardDelete) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     DeleteResponse<T> response =
@@ -263,7 +252,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
-  public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) throws IOException {
+  public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response = repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
@@ -285,7 +274,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());
   }
 
-  public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {
+  public T copy(T entity, CreateEntity request, String updatedBy) {
     EntityReference owner = repository.validateOwner(request.getOwner());
     EntityReference domain = repository.validateDomain(request.getDomain());
     entity.setId(UUID.randomUUID());

@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.GET;
@@ -137,8 +136,7 @@ public class PermissionsResource {
           String user,
       @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
     ResourceContext resourceContext =
         ResourceContext.builder().resource(resource).id(id).entityRepository(entityRepository).build();
@@ -170,8 +168,8 @@ public class PermissionsResource {
           String user,
       @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name")
+          String name) {
     EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
     ResourceContext resourceContext =
         ResourceContext.builder().resource(resource).name(name).entityRepository(entityRepository).build();
@@ -195,8 +193,7 @@ public class PermissionsResource {
   public ResultList<ResourcePermission> getPermissionForPolicies(
       @Context SecurityContext securityContext,
       @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID")) @QueryParam("ids")
-          List<UUID> ids)
-      throws IOException {
+          List<UUID> ids) {
     // User must have read access to policies
     OperationContext operationContext = new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
     EntityRepository<? extends EntityInterface> dao = Entity.getEntityRepository(Entity.POLICY);
