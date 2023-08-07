@@ -10,35 +10,16 @@
 #  limitations under the License.
 
 """
-Module to define Datalake Exceptions
+DF Reader common methods
 """
-from typing import Any, Dict
-
 from metadata.utils.constants import CHUNKSIZE
 
-AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
 
-
-def return_azure_storage_options(config_source: Any) -> Dict:
-    """
-    Build the Azure Storage options to pass to the readers.
-    We are not adding the `account_name` since it is added in the path.
-    If we pass it here as well we'll get an error reading the data:
-      "got multiple values for argument 'account_name'"
-    """
-    connection_args = config_source.securityConfig
-    return {
-        "tenant_id": connection_args.tenantId,
-        "client_id": connection_args.clientId,
-        "client_secret": connection_args.clientSecret.get_secret_value(),
-    }
-
-
-def dataframe_to_chunks(df):
+def dataframe_to_chunks(df: "DataFrame"):
     """
     Reads the Dataframe and returns list of dataframes broken down in chunks
     """
     return [
-        df[range_iter: range_iter + CHUNKSIZE]
+        df[range_iter : range_iter + CHUNKSIZE]
         for range_iter in range(0, len(df), CHUNKSIZE)
     ]

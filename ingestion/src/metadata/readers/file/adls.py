@@ -13,21 +13,43 @@
 Read files as string from S3
 """
 import traceback
-from typing import List
+from typing import Dict, List
 
+from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
+    AzureConfig,
+)
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class S3Reader(Reader):
+AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
+
+
+def return_azure_storage_options(config_source: AzureConfig) -> Dict[str, str]:
+    """
+    Build the Azure Storage options to pass to the readers.
+    We are not adding the `account_name` since it is added in the path.
+    If we pass it here as well we'll get an error reading the data:
+      "got multiple values for argument 'account_name'"
+    """
+    connection_args = config_source.securityConfig
+    return {
+        "tenant_id": connection_args.tenantId,
+        "client_id": connection_args.clientId,
+        "client_secret": connection_args.clientSecret.get_secret_value(),
+    }
+
+
+class ADLSReader(Reader):
     def __init__(self, client):
         self.client = client
 
     def read(self, path: str, *, bucket_name: str = None) -> bytes:
         try:
-            return self.client.get_object(Bucket=bucket_name, Key=path)["Body"].read()
+            container_client = self.client.get_container_client(bucket_name)
+            return container_client.get_blob_client(path).download_blob().readall()
         except Exception as err:
             logger.debug(traceback.format_exc())
             raise ReadException(f"Error fetching file [{path}] from repo: {err}")

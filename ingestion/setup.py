@@ -273,7 +273,7 @@ setup(
     description="Ingestion Framework for OpenMetadata",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     options={"build_exe": build_options},
     package_dir={"": "src"},
     package_data={"metadata.examples": ["workflows/*.yaml"]},

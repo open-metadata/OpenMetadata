@@ -21,13 +21,15 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class S3Reader(Reader):
+class GCSReader(Reader):
     def __init__(self, client):
         self.client = client
 
     def read(self, path: str, *, bucket_name: str = None) -> bytes:
         try:
-            return self.client.get_object(Bucket=bucket_name, Key=path)["Body"].read()
+            return (
+                self.client.get_bucket(bucket_name).get_blob(path).download_as_string()
+            )
         except Exception as err:
             logger.debug(traceback.format_exc())
             raise ReadException(f"Error fetching file [{path}] from repo: {err}")

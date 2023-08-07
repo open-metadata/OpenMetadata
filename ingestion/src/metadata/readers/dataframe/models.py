@@ -28,7 +28,7 @@ class DatalakeColumnWrapper(BaseModel):
     """
 
     columns: Optional[List[Column]]
-    dataframes: Optional[Any]  # pandas.Dataframe does not have any validators
+    dataframes: Optional[List[Any]]  # pandas.Dataframe does not have any validators
 
 
 class DatalakeTableSchemaWrapper(BaseModel):
