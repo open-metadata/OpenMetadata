@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MessagingServiceMetadataPipeline",
   "description": "MessagingService Metadata Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "messagingMetadataConfigType": {
       "description": "Messaging Source Config Metadata Pipeline type",
