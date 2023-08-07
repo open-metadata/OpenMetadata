@@ -21,6 +21,13 @@ body {
   font-feature-settings: normal !important;
 }
 
+ol,
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 p {
   margin-bottom: 0px;
 }

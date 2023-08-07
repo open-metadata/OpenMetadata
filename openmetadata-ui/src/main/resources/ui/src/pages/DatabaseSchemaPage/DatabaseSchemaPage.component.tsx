@@ -569,12 +569,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   if (!viewDatabaseSchemaPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (

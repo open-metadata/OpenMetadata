@@ -73,7 +73,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 data-testid="breadcrumb-link"
                 key={index}>
                 {link.imgSrc ? (
-                  <img alt="" className="inline " src={link.imgSrc} />
+                  <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}
                 {index < titleLinks.length - 1 && !noLink ? (
                   <>

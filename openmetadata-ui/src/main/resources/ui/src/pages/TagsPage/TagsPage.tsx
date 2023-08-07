@@ -28,6 +28,7 @@ import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
 import { ReactComponent as IconDisableTag } from 'assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -80,11 +81,7 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Paging } from '../../generated/type/paging';
-import {
-  getActiveCatClass,
-  getCountBadge,
-  getEntityDeleteMessage,
-} from '../../utils/CommonUtils';
+import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -654,47 +651,51 @@ const TagsPage = () => {
     return (
       <LeftPanelCard id="tags">
         <TagsLeftPanelSkeleton loading={isLoading}>
-          <div data-testid="data-summary-container">
-            <div>
-              <h6 className="text-sm font-semibold">
+          <div className="p-y-xs" data-testid="data-summary-container">
+            <Space
+              className="w-full p-x-sm m-b-sm"
+              direction="vertical"
+              size={12}>
+              <Typography.Text className="text-sm font-semibold">
                 {t('label.classification-plural')}
-              </h6>
-              <div>
-                <Tooltip
-                  title={
-                    !createClassificationPermission &&
-                    t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    block
-                    className=" text-primary"
-                    data-testid="add-classification"
-                    disabled={!createClassificationPermission}
-                    icon={<PlusIcon className="anticon" />}
-                    onClick={() => {
-                      setIsAddingClassification((prevState) => !prevState);
-                    }}>
-                    <span>
-                      {t('label.add-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </span>
-                  </Button>
-                </Tooltip>
-              </div>
-            </div>
+              </Typography.Text>
+              <Tooltip
+                title={
+                  !createClassificationPermission &&
+                  t('message.no-permission-for-action')
+                }>
+                <Button
+                  block
+                  className=" text-primary"
+                  data-testid="add-classification"
+                  disabled={!createClassificationPermission}
+                  icon={<PlusIcon className="anticon" />}
+                  onClick={() => {
+                    setIsAddingClassification((prevState) => !prevState);
+                  }}>
+                  <span>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </span>
+                </Button>
+              </Tooltip>
+            </Space>
 
             {classifications.map((category: Classification) => (
               <div
-                className={`align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
-                  category.name,
-                  currentClassification?.name
-                )}`}
+                className={classNames(
+                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  {
+                    activeCategory:
+                      currentClassification?.name === category.name,
+                  }
+                )}
                 data-testid="side-panel-classification"
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
                 <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom tag-category label-category self-center"
+                  className="ant-typography-ellipsis-custom self-center"
                   data-testid="tag-name"
                   ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category)}
@@ -809,7 +810,7 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div data-testid="usage">
+              <Space align="center" data-testid="usage" size={4}>
                 <span className="text-grey-muted">
                   {`${t('label.usage')}:`}
                 </span>
@@ -823,7 +824,7 @@ const TagsPage = () => {
                 ) : (
                   <span className="text-grey-muted">{t('label.not-used')}</span>
                 )}
-              </div>
+              </Space>
             </>
           ),
         },

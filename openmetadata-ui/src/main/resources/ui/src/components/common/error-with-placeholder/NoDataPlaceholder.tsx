@@ -39,10 +39,7 @@ const NoDataPlaceholder = ({
 
   return (
     <div
-      className={classNames(
-        className,
-        'flex-center flex-col w-full h-full mt-24'
-      )}
+      className={classNames(className, 'flex-center flex-col w-full h-full')}
       data-testid="no-data-placeholder">
       <NoDataFoundPlaceHolderIcon
         data-testid="no-data-image"

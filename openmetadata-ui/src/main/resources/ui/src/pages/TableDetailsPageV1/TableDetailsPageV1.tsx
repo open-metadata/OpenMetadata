@@ -876,12 +876,7 @@ const TableDetailsPageV1 = () => {
     !(isTourOpen || isTourPage) &&
     !(tablePermissions.ViewAll || tablePermissions.ViewBasic)
   ) {
-    return (
-      <ErrorPlaceHolder
-        className="m-0"
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   if (!tableDetails) {
