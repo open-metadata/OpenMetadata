@@ -43,7 +43,7 @@ describe('Test Kill Ingestion Modal component', () => {
 
     const container = await screen.findByTestId('kill-modal');
     const body = await screen.findByTestId('kill-modal-body');
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
     const confirmButton = await screen.findByText('label.confirm');
 
     expect(container).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('Test Kill Ingestion Modal component', () => {
   it('Should close modal on click of cancel button', async () => {
     render(<KillIngestionModal {...mockProps} />);
 
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
 
     expect(cancelButton).toBeInTheDocument();
 
