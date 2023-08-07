@@ -190,7 +190,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           placement="topRight"
           trigger="hover"
           onOpenChange={handleVisibleChange}>
-          <Space align="start" className="w-full">
+          <Space align="start" className="w-full" size={16}>
             {showUserAvatar && (
               <UserPopOverCard userName={feedDetail.from}>
                 <span className="cursor-pointer" data-testid="authorAvatar">

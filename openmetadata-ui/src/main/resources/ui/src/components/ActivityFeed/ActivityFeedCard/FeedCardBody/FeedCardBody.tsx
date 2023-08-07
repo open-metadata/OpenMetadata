@@ -47,14 +47,14 @@ const FeedCardBody: FC<FeedBodyProp> = ({
     onPostUpdate(postMessage);
   };
 
+  const getDefaultValue = (defaultMessage: string) => {
+    return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
+  };
+
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onCancelPostUpdate();
     setPostMessage(getDefaultValue(message));
-  };
-
-  const getDefaultValue = (defaultMessage: string) => {
-    return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
   const FEED_BODY = useMemo(
@@ -101,8 +101,8 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   }, [message]);
 
   return (
-    <div className={classNames('', isEditPost ? '' : className)}>
-      <div className="feed-meesage">
+    <>
+      <div className={classNames('feed-meesage', isEditPost ? '' : className)}>
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
             <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
@@ -111,7 +111,9 @@ const FeedCardBody: FC<FeedBodyProp> = ({
               {t('label.to-lowercase')}{' '}
               {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
             </Typography.Text>
-            <Typography.Text>{postMessage}</Typography.Text>
+            <Typography.Text className="font-medium">
+              {postMessage}
+            </Typography.Text>
             <RichTextEditorPreviewer
               className="activity-feed-card-text"
               markdown={announcementDetails.description || ''}
@@ -127,7 +129,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           onReactionSelect={onReactionSelect}
         />
       )}
-    </div>
+    </>
   );
 };
 

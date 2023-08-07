@@ -914,10 +914,6 @@ code {
   padding: 14px;
 }
 
-.ant-card-feed > .ant-card-body {
-  padding-bottom: 0px;
-}
-
 .ant-card-head-title {
   padding: 8px 0px;
 }

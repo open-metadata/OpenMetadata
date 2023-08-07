@@ -259,9 +259,14 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Space>
         )}
 
+        {/* When user selects a thread will show that particular thread from here */}
         {!isUndefined(selectedThread) ? (
           <Fragment>
-            <Button size="small" type="link" onClick={onBack}>
+            <Button
+              className="m-b-sm p-0"
+              size="small"
+              type="link"
+              onClick={onBack}>
               {t('label.back')}
             </Button>
             <ActivityThread
@@ -274,17 +279,19 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         ) : (
           <Fragment>
             {showNewConversation || isEqual(threads.length, 0) ? (
-              <Fragment>
+              <>
                 {isConversationType && (
-                  <Fragment>
-                    <p>{t('message.new-conversation')}</p>
+                  <Space className="w-full" direction="vertical">
+                    <Typography.Paragraph>
+                      {t('message.new-conversation')}
+                    </Typography.Paragraph>
                     <ActivityFeedEditor
                       placeHolder={t('message.enter-a-field', {
                         field: t('label.message-lowercase'),
                       })}
                       onSave={onPostThread}
                     />
-                  </Fragment>
+                  </Space>
                 )}
                 <ErrorPlaceHolder
                   className="mt-24"
@@ -301,7 +308,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     </Typography.Paragraph>
                   ) : null}
                 </ErrorPlaceHolder>
-              </Fragment>
+              </>
             ) : null}
             {isAnnouncementType ? (
               <AnnouncementThreads

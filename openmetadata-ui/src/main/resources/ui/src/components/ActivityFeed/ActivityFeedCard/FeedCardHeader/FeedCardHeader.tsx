@@ -56,9 +56,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   const getFeedLinkElement = entityCheck && (
     <span data-testid="headerText">
-      <span>{t('label.posted-on-lowercase')}</span>
+      <span className="m-x-xss">{t('label.posted-on-lowercase')}</span>
       {isEntityFeed ? (
-        <span data-testid="headerText-entityField">
+        <span className="font-medium" data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
         </span>
       ) : (

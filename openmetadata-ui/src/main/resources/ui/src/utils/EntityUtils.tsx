@@ -436,7 +436,7 @@ export const getEntityOverview = (
           name: i18next.t('label.server'),
           value: server || NO_DATA,
           url: server,
-          isLink: server,
+          isLink: Boolean(server),
           isExternal: true,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,

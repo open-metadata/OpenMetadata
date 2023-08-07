@@ -13,7 +13,7 @@
 
 import { Divider } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, Fragment, useEffect, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeedById } from 'rest/feedsAPI';
 import {
@@ -61,7 +61,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   }, [selectedThread]);
 
   return (
-    <Fragment>
+    <>
       <div className={className}>
         {threadData ? (
           <div data-testid="main-message">
@@ -79,7 +79,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
           </div>
         ) : null}
         {repliesLength > 0 ? (
-          <div data-testid="replies">
+          <div className="m-l-sm" data-testid="replies">
             <Divider
               plain
               className="m-y-sm"
@@ -95,6 +95,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
             {threadData?.posts?.map((reply, key) => (
               <ActivityFeedCard
                 isEntityFeed
+                className="m-b-sm"
                 feed={reply}
                 feedType={threadData.type || ThreadType.Conversation}
                 key={key}
@@ -108,7 +109,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
         ) : null}
       </div>
       <ActivityFeedEditor onSave={postFeed} />
-    </Fragment>
+    </>
   );
 };
 

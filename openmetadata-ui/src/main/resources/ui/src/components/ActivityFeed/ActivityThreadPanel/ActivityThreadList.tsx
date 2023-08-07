@@ -134,25 +134,21 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       {postLength > 0 ? (
                         <div data-testid="replies-container">
                           {postLength > 1 ? (
-                            <div>
-                              {Boolean(lastPost) && <div />}
-                              <div className="d-flex">
-                                <FeedCardFooter
-                                  isFooterVisible
-                                  lastReplyTimeStamp={lastPost?.postTs}
-                                  repliedUsers={repliedUniqueUsersList}
-                                  replies={replies}
-                                  threadId={thread.id}
-                                  onThreadSelect={() =>
-                                    onThreadSelect(thread.id)
-                                  }
-                                />
-                              </div>
+                            <div className="m-l-lg">
+                              <FeedCardFooter
+                                isFooterVisible
+                                lastReplyTimeStamp={lastPost?.postTs}
+                                repliedUsers={repliedUniqueUsersList}
+                                replies={replies}
+                                threadId={thread.id}
+                                onThreadSelect={() => onThreadSelect(thread.id)}
+                              />
                             </div>
                           ) : null}
                           <div data-testid="latest-reply">
                             <ActivityFeedCard
                               isEntityFeed
+                              className="m-l-lg"
                               feed={lastPost as Post}
                               feedType={thread.type || ThreadType.Conversation}
                               task={thread}
