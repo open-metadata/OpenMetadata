@@ -84,7 +84,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         Returns:
             List[DataFrame]
         """
-        connection_args = self.service_connection_config.configSource.securityConfig
         data = fetch_dataframe(
             config_source=self.service_connection_config.configSource,
             client=self.client,
@@ -92,6 +91,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 key=self.table_entity.name.__root__,
                 bucket_name=self.table_entity.databaseSchema.name,
             ),
+            is_profiler=True,
         )
 
         if not data:

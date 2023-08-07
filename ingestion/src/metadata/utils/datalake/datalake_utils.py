@@ -30,6 +30,7 @@ def fetch_dataframe(
     config_source,
     client,
     file_fqn: DatalakeTableSchemaWrapper,
+    **kwargs,
 ) -> Optional[List["DataFrame"]]:
     """
     Method to get dataframe for profiling
@@ -49,7 +50,7 @@ def fetch_dataframe(
                 )
 
                 df_wrapper: DatalakeColumnWrapper = df_reader.read(
-                    key=key, bucket_name=bucket_name
+                    key=key, bucket_name=bucket_name, **kwargs
                 )
                 return df_wrapper.dataframes
 

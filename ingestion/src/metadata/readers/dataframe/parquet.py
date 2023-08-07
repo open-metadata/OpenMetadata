@@ -119,7 +119,7 @@ class ParquetDataFrameReader(DataFrameReader):
         dataframe = pd.read_parquet(key)
         return dataframe_to_chunks(dataframe)
 
-    def _read(self, *, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
         return DatalakeColumnWrapper(
             dataframes=self._read_parquet_dispatch(
                 self.config_source, key=key, bucket_name=bucket_name

@@ -87,13 +87,13 @@ class PandasInterfaceMixin:
         """
         returns sampled ometa dataframes
         """
-        connection_args = service_connection_config.configSource.securityConfig
         data = fetch_dataframe(
             config_source=service_connection_config.configSource,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
                 key=table.name.__root__, bucket_name=table.databaseSchema.name
             ),
+            is_profiler=True,
         )
         if data:
             random.shuffle(data)

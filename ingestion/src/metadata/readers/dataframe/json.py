@@ -45,7 +45,11 @@ class JSONDataFrameReader(DataFrameReader):
 
     @staticmethod
     def read_from_json(
-        key: str, json_text: bytes, decode: bool = False
+        key: str,
+        json_text: bytes,
+        decode: bool = False,
+        is_profiler: bool = False,
+        **__
     ) -> DatalakeColumnWrapper:
         # pylint: disable=import-outside-toplevel
         from pandas import json_normalize
@@ -57,10 +61,14 @@ class JSONDataFrameReader(DataFrameReader):
             logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
             data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
 
+        if is_profiler:
+            return dataframe_to_chunks(json_normalize(data))
         return dataframe_to_chunks(json_normalize(data, sep=COMPLEX_COLUMN_SEPARATOR))
 
-    def _read(self, *, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _read(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
         text = self.reader.read(key, bucket_name=bucket_name)
         return DatalakeColumnWrapper(
-            dataframes=self.read_from_json(key=key, json_text=text, decode=True)
+            dataframes=self.read_from_json(
+                key=key, json_text=text, decode=True, **kwargs
+            )
         )

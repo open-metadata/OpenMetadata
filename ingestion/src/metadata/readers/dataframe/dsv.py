@@ -109,7 +109,7 @@ class DSVDataFrameReader(DataFrameReader):
     ) -> DatalakeColumnWrapper:
         return self.read_from_pandas(path=key)
 
-    def _read(self, *, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
         return self._read_dsv_dispatch(
             self.config_source, key=key, bucket_name=bucket_name
         )

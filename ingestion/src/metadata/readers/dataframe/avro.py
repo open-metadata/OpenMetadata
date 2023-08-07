@@ -77,6 +77,6 @@ class AvroDataFrameReader(DataFrameReader):
                 columns=columns, dataframes=dataframe_to_chunks(DataFrame(field_map))
             )
 
-    def _read(self, *, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
         text = self.reader.read(key, bucket_name=bucket_name)
         return self.read_from_avro(text)
