@@ -145,8 +145,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
               description = "Filter tests definition by supported data type",
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
-          String supportedDataTypeParam)
-      throws IOException {
+          String supportedDataTypeParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
@@ -175,8 +174,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -207,8 +205,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -241,8 +238,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -270,8 +266,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
               description = "Test Definition version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -289,8 +284,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestDefinition create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestDefinition create) {
     TestDefinition testDefinition = getTestDefinition(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, testDefinition);
   }
@@ -315,8 +309,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -332,8 +325,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestDefinition.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestDefinition create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestDefinition create) {
     TestDefinition testDefinition = getTestDefinition(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, testDefinition);
   }
@@ -355,8 +347,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -378,8 +369,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the test definition", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -396,12 +386,11 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestDefinition.class)))
       })
   public Response restoreTestDefinition(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) throws IOException {
+  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
     return copy(new TestDefinition(), create, user)
         .withDescription(create.getDescription())
         .withEntityType(create.getEntityType())

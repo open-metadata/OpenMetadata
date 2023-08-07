@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_CONNECTION_DEFINITION;
 
-import java.io.IOException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.type.EntityReference;
@@ -40,8 +39,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public TestConnectionDefinition setFields(TestConnectionDefinition entity, EntityUtil.Fields fields)
-      throws IOException {
+  public TestConnectionDefinition setFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
     return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
   }
 
@@ -54,7 +52,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void storeEntity(TestConnectionDefinition entity, boolean update) throws IOException {
+  public void storeEntity(TestConnectionDefinition entity, boolean update) {
     EntityReference owner = entity.getOwner();
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     entity.withOwner(null).withHref(null);
@@ -82,7 +80,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("steps", original.getSteps(), updated.getSteps(), true);
     }
   }

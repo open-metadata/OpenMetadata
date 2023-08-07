@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
-import java.io.IOException;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
@@ -20,7 +19,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public Workflow setFields(Workflow entity, EntityUtil.Fields fields) throws IOException {
+  public Workflow setFields(Workflow entity, EntityUtil.Fields fields) {
     return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
   }
 
@@ -33,7 +32,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void storeEntity(Workflow entity, boolean update) throws IOException {
+  public void storeEntity(Workflow entity, boolean update) {
     EntityReference owner = entity.getOwner();
     OpenMetadataConnection openmetadataConnection = entity.getOpenMetadataServerConnection();
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
@@ -72,7 +71,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("response", original.getResponse(), updated.getResponse(), true);
     }

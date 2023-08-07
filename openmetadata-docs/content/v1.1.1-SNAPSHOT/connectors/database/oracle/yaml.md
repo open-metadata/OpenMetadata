@@ -52,7 +52,6 @@ To deploy OpenMetadata, check the Deployment guides.
 To ingest metadata from oracle user must have `CREATE SESSION` privilege for the user.
 
 ```sql
-
 -- CREATE USER
 CREATE USER user_name IDENTIFIED BY admin_password;
 
@@ -64,9 +63,17 @@ GRANT new_role TO user_name;
 
 -- GRANT CREATE SESSION PRIVILEGE TO USER
 GRANT CREATE SESSION TO new_role;
-
 ```
 
+With just these permissions, your user should be able to ingest the schemas, but not the tables inside them. To get
+the tables, you should grant `SELECT` permissions to the tables you are interested in. E.g.,
+
+```sql
+SELECT ON ADMIN.EXAMPLE_TABLE TO new_role;
+```
+
+You can find further information [here](https://docs.oracle.com/javadb/10.8.3.0/ref/rrefsqljgrant.html). Note that
+there is no routine out of the box in Oracle to grant SELECT to a full schema.
 
 ### Python Requirements
 
@@ -252,7 +259,7 @@ sink:
   config: {}
 ```
 
-{% partial file="workflow-config-yaml.md" /%}
+{% partial file="/v1.1.1/connectors/workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 

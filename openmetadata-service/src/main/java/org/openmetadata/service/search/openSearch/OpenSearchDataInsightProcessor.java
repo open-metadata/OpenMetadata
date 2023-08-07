@@ -64,7 +64,7 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
     return bulkRequests;
   }
 
-  private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) throws JsonProcessingException {
+  private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);

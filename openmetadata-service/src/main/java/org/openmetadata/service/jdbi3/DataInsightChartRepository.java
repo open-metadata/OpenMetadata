@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -73,7 +72,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
-  public void storeEntity(DataInsightChart entity, boolean update) throws IOException {
+  public void storeEntity(DataInsightChart entity, boolean update) {
     store(entity, update);
   }
 
