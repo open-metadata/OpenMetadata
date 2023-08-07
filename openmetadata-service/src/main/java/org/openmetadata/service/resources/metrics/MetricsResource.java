@@ -109,8 +109,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           String before,
       @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     ListFilter filter = new ListFilter();
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -147,6 +146,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Override
   @POST
   @Operation(
       operationId = "createMetric",
@@ -159,12 +159,12 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.create(uriInfo, securityContext, metrics);
   }
 
+  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateMetric",
@@ -178,7 +178,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.createOrUpdate(uriInfo, securityContext, metrics);
   }

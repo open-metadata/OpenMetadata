@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 
-import java.io.IOException;
 import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -37,19 +36,19 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
+  public Metrics setFields(Metrics metrics, Fields fields) {
     metrics.setService(getContainer(metrics.getId())); // service is a default field
     return metrics.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
   }
 
   @Override
-  public void prepare(Metrics metrics) throws IOException {
+  public void prepare(Metrics metrics) {
     metrics.setService(getService(metrics.getService()));
   }
 
   @Override
-  public void storeEntity(Metrics metrics, boolean update) throws IOException {
+  public void storeEntity(Metrics metrics, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = metrics.getService();
     metrics.withService(null);
@@ -63,7 +62,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
   }
 
-  private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID
+  private EntityReference getService(EntityReference service) { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
     }

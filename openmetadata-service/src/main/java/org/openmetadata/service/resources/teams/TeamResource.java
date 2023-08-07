@@ -151,8 +151,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               description = "Filter the results by whether the team can be joined by any user or not",
               schema = @Schema(type = "boolean"))
           @QueryParam("isJoinable")
-          Boolean isJoinable)
-      throws IOException {
+          Boolean isJoinable) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     return new ResultList<>(repository.listHierarchy(filter, limitParam, isJoinable));
   }
@@ -205,8 +204,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("parentTeam", parentTeam);
     if (isJoinable != null) {
       filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
@@ -229,8 +227,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -262,8 +259,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -295,8 +291,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -323,8 +318,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               description = "Team version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -340,8 +334,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, team);
   }
@@ -359,7 +352,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, team);
   }
@@ -384,8 +377,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -410,8 +402,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -432,8 +423,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the team", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the team", schema = @Schema(type = "string")) @PathParam("name") String name) {
     return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
   }
 
@@ -450,8 +440,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class)))
       })
   public Response restoreTeam(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -459,8 +448,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for team import/export")
-  public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
-      throws IOException {
+  public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name) {
     return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);
   }
 
@@ -510,7 +498,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
-  private Team getTeam(CreateTeam ct, String user) throws IOException {
+  private Team getTeam(CreateTeam ct, String user) {
     if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
       throw new IllegalArgumentException(CREATE_ORGANIZATION);
     }
@@ -531,8 +519,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @Override
   public Team getByNameInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
-      throws IOException {
+      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include) {
     return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 }

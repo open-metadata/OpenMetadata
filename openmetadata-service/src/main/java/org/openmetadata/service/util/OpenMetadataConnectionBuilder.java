@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -156,7 +155,7 @@ public class OpenMetadataConnectionBuilder {
         user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }
       return user;
-    } catch (IOException | EntityNotFoundException ex) {
+    } catch (EntityNotFoundException ex) {
       LOG.debug((bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
       return null;
     }

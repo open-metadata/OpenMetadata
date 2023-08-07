@@ -162,7 +162,7 @@ import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 public class OpenSearchClientImpl implements SearchClient {
   private final RestHighLevelClient client;
   private final CollectionDAO dao;
-  private EnumMap<ElasticSearchIndexDefinition.ElasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus>
+  private final EnumMap<ElasticSearchIndexDefinition.ElasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus>
       elasticSearchIndexes = new EnumMap<>(ElasticSearchIndexDefinition.ElasticSearchIndexType.class);
 
   public OpenSearchClientImpl(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
