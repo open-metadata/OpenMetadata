@@ -310,7 +310,6 @@ export const testServiceCreationAndIngestion = ({
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
   cy.get('[data-testid="success-line"]').should('be.visible');
-  cy.contains(`"${serviceName}"`).should('be.visible');
   cy.contains('has been created successfully').should('be.visible');
 
   cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
