@@ -18,6 +18,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
@@ -102,7 +103,8 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
     Type type = dao.findEntityById(id, Include.NON_DELETED);
-    property.setPropertyType(dao.findEntityReferenceById(property.getPropertyType().getId(), Include.NON_DELETED));
+    property.setPropertyType(
+        Entity.getEntityReferenceById(Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException("Only entity types can be extended and field types can't be extended");
     }
@@ -139,7 +141,7 @@ public class TypeRepository extends EntityRepository<Type> {
                 getCustomPropertyFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
-      property.setPropertyType(dao.findEntityReferenceByName(result.getMiddle()));
+      property.setPropertyType(this.getReferenceByName(result.getMiddle(), NON_DELETED));
       customProperties.add(property);
     }
     customProperties.sort(EntityUtil.compareCustomProperty);

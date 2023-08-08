@@ -74,7 +74,7 @@ public class UserRepository extends EntityRepository<User> {
 
   public UserRepository(CollectionDAO dao) {
     super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
-    organization = dao.teamDAO().findEntityReferenceByName(Entity.ORGANIZATION_NAME, Include.ALL);
+    organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
@@ -216,7 +216,8 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> teams = user.getTeams();
     if (teams != null) {
       for (EntityReference entityReference : teams) {
-        EntityReference ref = daoCollection.teamDAO().findEntityReferenceById(entityReference.getId());
+        EntityReference ref = Entity.getEntityReferenceById(Entity.TEAM, entityReference.getId(), ALL);
+
         EntityUtil.copy(ref, entityReference);
       }
       teams.sort(EntityUtil.compareEntityReference);

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 
 import org.openmetadata.schema.entity.data.Metrics;
@@ -76,7 +77,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   private EntityReference getService(EntityReference service) { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
+      return Entity.getEntityReferenceById(Entity.DATABASE_SERVICE, service.getId(), NON_DELETED);
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));

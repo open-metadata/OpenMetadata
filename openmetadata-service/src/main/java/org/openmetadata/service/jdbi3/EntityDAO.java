@@ -27,7 +27,6 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -322,26 +321,6 @@ public interface EntityDAO<T extends EntityInterface> {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));
     }
     return entity;
-  }
-
-  default EntityReference findEntityReferenceById(UUID id) {
-    return findEntityById(id).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceByName(String fqn) {
-    return findEntityByName(fqn).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceById(UUID id, Include include) {
-    return findEntityById(id, include).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceByName(String fqn, Include include) {
-    return findEntityByName(fqn, include).getEntityReference();
-  }
-
-  default String findJsonById(UUID id, Include include) {
-    return findById(getTableName(), id.toString(), getCondition(include));
   }
 
   default String findJsonByFqn(String fqn, Include include) {

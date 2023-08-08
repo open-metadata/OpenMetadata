@@ -32,6 +32,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
@@ -1270,10 +1271,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
       VoteRequest.VoteType type;
       type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteRequest.VoteType.class);
+      EntityReference user = Entity.getEntityReferenceById(Entity.USER, entityRelationshipRecord.getId(), ALL);
       if (type == VoteRequest.VoteType.VOTED_UP) {
-        upVoters.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
+        upVoters.add(user);
       } else if (type == VoteRequest.VoteType.VOTED_DOWN) {
-        downVoters.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
+        downVoters.add(user);
       }
     }
     return new Votes()
@@ -1453,8 +1455,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref =
             entityReference.getId() != null
-                ? daoCollection.userDAO().findEntityReferenceById(entityReference.getId(), ALL)
-                : daoCollection.userDAO().findEntityReferenceByName(entityReference.getFullyQualifiedName(), ALL);
+                ? Entity.getEntityReferenceById(USER, entityReference.getId(), ALL)
+                : Entity.getEntityReferenceByName(USER, entityReference.getFullyQualifiedName(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
@@ -1464,7 +1466,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void validateRoles(List<EntityReference> roles) {
     if (roles != null) {
       for (EntityReference entityReference : roles) {
-        EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId(), ALL);
+        EntityReference ref = Entity.getEntityReferenceById(Entity.ROLE, entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       roles.sort(EntityUtil.compareEntityReference);
@@ -1474,7 +1476,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   void validatePolicies(List<EntityReference> policies) {
     if (policies != null) {
       for (EntityReference entityReference : policies) {
-        EntityReference ref = daoCollection.policyDAO().findEntityReferenceById(entityReference.getId(), ALL);
+        EntityReference ref = Entity.getEntityReferenceById(Entity.POLICY, entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       policies.sort(EntityUtil.compareEntityReference);
@@ -1597,7 +1599,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> ingestionPipelines = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : pipelines) {
       ingestionPipelines.add(
-          daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
+          Entity.getEntityReferenceById(Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
     }
     return ingestionPipelines;
   }

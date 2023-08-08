@@ -236,7 +236,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public EntityReference getGlossary(String id) {
-    return daoCollection.glossaryDAO().findEntityReferenceById(UUID.fromString(id), ALL);
+    return Entity.getEntityReferenceById(GLOSSARY, UUID.fromString(id), ALL);
   }
 
   @Override
