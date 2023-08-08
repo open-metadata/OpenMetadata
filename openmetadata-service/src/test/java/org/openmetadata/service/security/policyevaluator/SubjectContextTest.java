@@ -137,7 +137,6 @@ public class SubjectContextTest {
   @AfterAll
   public static void tearDown() {
     PolicyCache.cleanUp();
-    RoleCache.cleanUp();
   }
 
   @Test

@@ -78,11 +78,6 @@ class RuleEvaluatorTest {
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
   }
 
-  @AfterAll
-  public static void cleanup() {
-    RoleCache.cleanUp();
-  }
-
   @Test
   void test_noOwner() {
     // Set no owner to the entity and test noOwner method

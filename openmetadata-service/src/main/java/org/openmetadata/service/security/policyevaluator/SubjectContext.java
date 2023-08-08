@@ -26,6 +26,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -252,9 +253,8 @@ public class SubjectContext {
       this.entityType = entityType;
       this.entityName = entityName;
       for (EntityReference role : listOrEmpty(roles)) {
-        policyIterators.add(
-            new PolicyIterator(
-                entityType, entityName, role.getName(), RoleCache.getRoleById(role.getId()).getPolicies()));
+        Role roleEntity = Entity.getEntity(Entity.ROLE, role.getId(), "policies", Include.NON_DELETED);
+        policyIterators.add(new PolicyIterator(entityType, entityName, role.getName(), roleEntity.getPolicies()));
       }
     }
 

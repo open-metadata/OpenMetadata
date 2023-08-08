@@ -26,14 +26,6 @@ public class RoleCache {
     // Private constructor for singleton
   }
 
-  public static Role getRole(String roleName) {
-    return Entity.getEntityByName(Entity.ROLE, roleName, "policies", Include.NON_DELETED);
-  }
-
-  public static Role getRoleById(UUID roleId) {
-    return Entity.getEntity(Entity.ROLE, roleId, "policies", Include.NON_DELETED);
-  }
-
   public static void cleanUp() {
     /* TODO remove */
   }

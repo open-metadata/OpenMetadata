@@ -163,7 +163,6 @@ public abstract class OpenMetadataApplicationTest {
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
     PolicyCache.cleanUp();
-    RoleCache.cleanUp();
     TagLabelCache.cleanUp();
     ELASTIC_SEARCH_CONTAINER.stop();
   }
