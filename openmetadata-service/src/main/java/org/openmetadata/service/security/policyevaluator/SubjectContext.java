@@ -124,7 +124,7 @@ public class SubjectContext {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
       try {
-        Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), "roles", NON_DELETED);
+        Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), TEAM_FIELDS, NON_DELETED);
         roles.addAll(team.getDefaultRoles());
         roles.addAll(getRolesForTeams(team.getParents()));
       } catch (Exception ex) {

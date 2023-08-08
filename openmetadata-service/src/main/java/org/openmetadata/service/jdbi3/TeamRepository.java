@@ -239,7 +239,6 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getInheritedRoles(Team team) {
-    // TODO
     return SubjectContext.getRolesForTeams(getParentsForInheritedRoles(team));
   }
 

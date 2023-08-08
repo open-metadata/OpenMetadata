@@ -169,11 +169,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       CacheBuilder.newBuilder()
           .maximumSize(5000)
           .expireAfterWrite(30, TimeUnit.SECONDS)
+          .recordStats()
           .build(new EntityLoaderWithName());
   public static final LoadingCache<Pair<String, UUID>, EntityInterface> CACHE_WITH_ID =
       CacheBuilder.newBuilder()
           .maximumSize(5000)
           .expireAfterWrite(30, TimeUnit.SECONDS)
+          .recordStats()
           .build(new EntityLoaderWithId());
   private final String collectionPath;
   private final Class<T> entityClass;

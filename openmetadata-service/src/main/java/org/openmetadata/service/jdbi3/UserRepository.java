@@ -121,7 +121,7 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(user.getIsBot())) {
       return null; // No inherited roles for bots
     }
-    if (user.getInheritedRoles() != null) {
+    if (!nullOrEmpty(user.getInheritedRoles())) {
       return user.getInheritedRoles();
     }
     getTeams(user);
@@ -312,7 +312,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Get all the teams that user belongs to User entity */
   public List<EntityReference> getTeams(User user) {
-    if (user.getTeams() != null) {
+    if (!nullOrEmpty(user.getTeams())) {
       return user.getTeams();
     }
     List<EntityReference> teams = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
