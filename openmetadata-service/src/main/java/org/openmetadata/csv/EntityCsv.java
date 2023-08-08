@@ -360,6 +360,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else {
       repository.setFullyQualifiedName(entity);
+      String violations = ValidatorUtil.validate(entity);
+      if (violations != null) {
+        // JSON schema based validation failed for the entity
+        importFailure(resultsPrinter, violations, csvRecord);
+        return;
+      }
       responseStatus =
           repository.findByNameOrNull(entity.getFullyQualifiedName(), "", Include.NON_DELETED) == null
               ? Response.Status.CREATED
