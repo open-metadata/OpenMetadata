@@ -45,10 +45,7 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 
-import {
-  DBTConfigurationSource,
-  DbtPipeline,
-} from 'generated/metadataIngestion/dbtPipeline';
+import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
 import {
   getCurrentUserId,
   getFilterTypes,
@@ -150,8 +147,7 @@ const AddIngestion = ({
   }, [isDatabaseService, pipelineType]);
 
   const sourceTypeData = useMemo(
-    () =>
-      getSourceTypeFromConfig(configData as DBTConfigurationSource | undefined),
+    () => getSourceTypeFromConfig(configData),
     [configData]
   );
   const { database, ingestAllDatabases } = serviceData.connection
