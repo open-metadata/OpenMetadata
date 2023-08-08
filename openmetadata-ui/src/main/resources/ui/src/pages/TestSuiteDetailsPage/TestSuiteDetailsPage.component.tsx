@@ -319,25 +319,26 @@ const TestSuiteDetailsPage = () => {
             </Space>
           </Space>
 
-          <OwnerLabel
-            hasPermission={hasAccess}
-            owner={testOwner}
-            onUpdate={onUpdateOwner}
-          />
-
-          <Space>
-            <Description
-              className="test-suite-description"
-              description={testSuiteDescription || ''}
-              entityName={testSuite?.displayName ?? testSuite?.name}
-              hasEditAccess={hasAccess}
-              isEdit={isDescriptionEditable}
-              onCancel={() => descriptionHandler(false)}
-              onDescriptionEdit={() => descriptionHandler(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
+          <div className="w-full m-t-xxs m-b-xs">
+            <OwnerLabel
+              hasPermission={hasAccess}
+              owner={testOwner}
+              onUpdate={onUpdateOwner}
             />
-          </Space>
+          </div>
+
+          <Description
+            className="test-suite-description"
+            description={testSuiteDescription || ''}
+            entityName={testSuite?.displayName ?? testSuite?.name}
+            hasEditAccess={hasAccess}
+            isEdit={isDescriptionEditable}
+            onCancel={() => descriptionHandler(false)}
+            onDescriptionEdit={() => descriptionHandler(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
         </Col>
+
         <Col span={24}>
           <DataQualityTab
             afterDeleteAction={fetchTestCases}

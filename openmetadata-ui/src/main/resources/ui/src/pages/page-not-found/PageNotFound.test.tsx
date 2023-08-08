@@ -14,7 +14,7 @@
 import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import PageNotFound from './index';
+import PageNotFound from './PageNotFound';
 
 describe('Test PageNotFound Component', () => {
   it('Component should render', () => {

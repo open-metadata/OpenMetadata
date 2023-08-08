@@ -236,7 +236,7 @@ const AddQueryPage = withSuspenseFallback(
 );
 
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('pages/page-not-found'))
+  React.lazy(() => import('pages/page-not-found/PageNotFound'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {

@@ -49,7 +49,7 @@ export const TagsTabs = ({
         data-testid="current-tab"
         key={TaskTabs.CURRENT}
         tab="Current">
-        <div className="d-flex flex-wrap" data-testid="tags">
+        <div className="d-flex flex-wrap m-y-xs" data-testid="tags">
           {tags.map((tag) => (
             <Tag key={uniqueId()}>{tag.tagFQN}</Tag>
           ))}

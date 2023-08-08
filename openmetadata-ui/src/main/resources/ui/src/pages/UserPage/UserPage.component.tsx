@@ -160,10 +160,10 @@ const UserPage = () => {
 
   const ErrorPlaceholder = () => {
     return (
-      <div className="d-flex flex-col items-center" data-testid="error">
-        <Typography.Paragraph
-          className="tw-text-base"
-          data-testid="error-message">
+      <div
+        className="d-flex items-center justify-center h-full"
+        data-testid="error">
+        <Typography.Paragraph className="text-base" data-testid="error-message">
           <Transi18next
             i18nKey="message.no-username-available"
             renderElement={<strong data-testid="username" />}
@@ -212,7 +212,7 @@ const UserPage = () => {
     return <Loader />;
   }
 
-  if (isError && isEmpty(userData)) {
+  if (!(isError && isEmpty(userData))) {
     return <ErrorPlaceholder />;
   }
 
