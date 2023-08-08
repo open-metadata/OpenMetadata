@@ -59,6 +59,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
     OracleDatabaseSchema,
     OracleScheme,
     OracleServiceName,
+    OracleTNSConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -1006,13 +1007,13 @@ class SourceConnectionTest(TestCase):
         )
 
         # Passing @ in username and password
-        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433"
+        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433/master"
         mssql_conn_obj = MssqlConnection(
             username="sa@123",
             password="password@444",
             hostPort="localhost:1433",
             scheme=MssqlScheme.mssql_pytds,
-            database=None,
+            database="master",
         )
 
         assert expected_url == get_connection_url(mssql_conn_obj)
@@ -1141,3 +1142,19 @@ class SourceConnectionTest(TestCase):
             ),
         )
         assert get_connection_url(oracle_conn_obj) in expected_url
+
+        tns_connection = (
+            "(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)"
+            "(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))"
+        )
+        expected_url = f"oracle+cx_oracle://admin:password@{tns_connection}"
+
+        oracle_conn_obj = OracleConnection(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",  # We will ignore it here
+            oracleConnectionType=OracleTNSConnection(
+                oracleTNSConnection=tns_connection
+            ),
+        )
+        assert get_connection_url(oracle_conn_obj) == expected_url

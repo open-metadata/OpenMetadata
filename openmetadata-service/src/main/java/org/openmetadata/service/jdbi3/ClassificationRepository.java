@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
@@ -30,7 +29,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -62,7 +60,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void storeEntity(Classification category, boolean update) throws IOException {
+  public void storeEntity(Classification category, boolean update) {
     store(category, update);
   }
 
@@ -72,18 +70,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private int getTermCount(Classification category) {
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getName());
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getFullyQualifiedName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(classification.getName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
   }
 
   @Transaction
-  public Classification delete(UriInfo uriInfo, UUID id) throws IOException {
+  public Classification delete(UriInfo uriInfo, UUID id) {
     Classification classification = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
     checkSystemEntityDeletion(classification);
     dao.delete(id.toString());
@@ -109,7 +105,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
@@ -117,7 +113,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       updateName(original, updated);
     }
 
-    public void updateName(Classification original, Classification updated) throws IOException {
+    public void updateName(Classification original, Classification updated) {
       if (!original.getName().equals(updated.getName())) {
         if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(

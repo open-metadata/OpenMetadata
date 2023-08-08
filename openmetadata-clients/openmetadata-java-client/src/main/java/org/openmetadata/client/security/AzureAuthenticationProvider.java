@@ -25,6 +25,7 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.security.client.AzureSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
@@ -34,7 +35,7 @@ public class AzureAuthenticationProvider implements AuthenticationProvider {
   private Long expirationTimeMillis;
 
   public AzureAuthenticationProvider(OpenMetadataConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.AZURE)) {
+    if (!iConfig.getAuthProvider().equals(AuthProvider.AZURE)) {
       LOG.error("Required type to invoke is Azure for AzureAuthentication Provider");
       throw new RuntimeException("Required type to invoke is Azure for AzureAuthentication Provider");
     }

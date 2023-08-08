@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Popover, Space, Table, Typography } from 'antd';
+import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
@@ -63,6 +64,7 @@ const SchemaTable = ({
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
@@ -227,19 +229,11 @@ const SchemaTable = ({
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
             toLower(dataTypeDisplay)
           ) : (
-            <Popover
-              destroyTooltipOnHide
-              content={toLower(dataTypeDisplay)}
-              overlayInnerStyle={{
-                maxWidth: '420px',
-                overflowWrap: 'break-word',
-                textAlign: 'center',
-              }}
-              trigger="hover">
+            <Tooltip title={toLower(dataTypeDisplay)}>
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay || record.dataType}
               </Typography.Text>
-            </Popover>
+            </Tooltip>
           )
         ) : (
           '--'
@@ -373,6 +367,21 @@ const SchemaTable = ({
       onThreadLinkSelect,
     ]
   );
+  const expandableConfig: ExpandableConfig<Column> = useMemo(
+    () => ({
+      ...getTableExpandableConfig<Column>(),
+      rowExpandable: (record) => !isEmpty(record.children),
+      expandedRowKeys,
+      onExpand: (expanded, record) => {
+        setExpandedRowKeys(
+          expanded
+            ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
+            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+        );
+      },
+    }),
+    [expandedRowKeys]
+  );
 
   useEffect(() => {
     if (!searchText) {
@@ -391,15 +400,12 @@ const SchemaTable = ({
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
-        expandable={{
-          ...getTableExpandableConfig<Column>(),
-          rowExpandable: (record) => !isEmpty(record.children),
-        }}
+        expandable={expandableConfig}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
-        rowKey="id"
+        rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
         size="middle"
       />

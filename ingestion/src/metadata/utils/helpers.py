@@ -440,7 +440,7 @@ def is_safe_sql_query(sql_query: str) -> bool:
 
 
 def get_database_name_for_lineage(
-    db_service_entity: DatabaseService, default_db_name: str
+    db_service_entity: DatabaseService, default_db_name: Optional[str]
 ) -> Optional[str]:
     # If the database service supports multiple db or
     # database service connection details are not available

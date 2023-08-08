@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -122,8 +121,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           String before,
       @Parameter(description = "Returns list of Domain after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     return listInternal(uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
   }
 
@@ -148,8 +146,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
@@ -174,8 +171,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
+          String fieldsParam) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
   }
 
@@ -194,8 +190,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -222,8 +217,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Domain version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -239,8 +233,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDomain create)
-      throws IOException {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDomain create) {
     Domain domain = getDomain(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, domain);
   }
@@ -258,8 +252,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDomain create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDomain create) {
     Domain domain = getDomain(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, domain);
   }
@@ -284,8 +277,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -302,8 +294,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, true, true);
   }
 
@@ -320,12 +311,12 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the domain", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the domain", schema = @Schema(type = "string")) @PathParam("name")
+          String name) {
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
 
-  private Domain getDomain(CreateDomain create, String user) throws IOException {
+  private Domain getDomain(CreateDomain create, String user) {
     List<String> experts =
         create.getExperts() == null
             ? create.getExperts()

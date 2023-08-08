@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Collapse, Divider, Popover, Space, Typography } from 'antd';
+import { Collapse, Divider, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as AttentionIcon } from 'assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
@@ -67,14 +67,12 @@ const ConnectionStepCard = ({
                 ? requiredField(testConnectionStep.name, true)
                 : testConnectionStep.name}
             </Typography.Text>
-            <Popover
-              content={testConnectionStep.description}
-              overlayStyle={{ maxWidth: '350px' }}
+            <Tooltip
               placement="bottom"
               showArrow={false}
-              trigger="hover">
+              title={testConnectionStep.description}>
               <InfoCircleOutlined />
-            </Popover>
+            </Tooltip>
           </Space>
           {isTestingConnection && (
             <Typography.Text className="awaiting-status">

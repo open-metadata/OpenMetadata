@@ -20,6 +20,7 @@ import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generateFormFields } from 'utils/formUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
+import { DBTAzureConfig } from './DBTAzureConfig.component';
 import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
 import { DBTSources } from './DBTFormConstants';
@@ -68,6 +69,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtClassificationName: data.dbtClassificationName,
         dbtUpdateDescriptions: data.dbtUpdateDescriptions,
         includeTags: data.includeTags,
+        parsingTimeoutLimit: data.parsingTimeoutLimit,
       },
       databaseFilterPattern: data.databaseFilterPattern,
       schemaFilterPattern: data.schemaFilterPattern,
@@ -106,6 +108,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -119,6 +122,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -132,6 +136,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -144,6 +149,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -157,9 +163,24 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             enableDebugLog={data.enableDebugLog}
             gcsType={gcsConfigType}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
+      case DBT_SOURCES.azure: {
+        return (
+          <DBTAzureConfig
+            dbtClassificationName={dbtConfigSource?.dbtClassificationName}
+            dbtPrefixConfig={dbtConfigSource?.dbtPrefixConfig}
+            dbtSecurityConfig={dbtConfigSource?.dbtSecurityConfig}
+            dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
+            enableDebugLog={data.enableDebugLog}
+            includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
+          />
+        );
+      }
+
       default: {
         return (
           <span data-testid="dbt-source-none">
@@ -281,6 +302,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -301,6 +323,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -322,6 +345,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -342,6 +366,33 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
                 assumeRoleArn: value?.assumeRoleArn,
                 assumeRoleSessionName: value?.assumeRoleSessionName,
                 assumeRoleSourceIdentity: value?.assumeRoleSourceIdentity,
+              },
+              dbtPrefixConfig: {
+                dbtBucketName: value?.dbtBucketName,
+                dbtObjectPrefix: value?.dbtObjectPrefix,
+              },
+              dbtUpdateDescriptions: value?.dbtUpdateDescriptions,
+              dbtClassificationName: value?.dbtClassificationName,
+              includeTags: value?.includeTags,
+            },
+            ingestionName: value?.name,
+            enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
+          });
+          onSubmit();
+        }
+
+        break;
+      case DBT_SOURCES.azure:
+        {
+          onChange({
+            dbtConfigSourceType: currentDbtConfigSourceType,
+            dbtConfigSource: {
+              dbtSecurityConfig: {
+                clientId: value?.clientId,
+                clientSecret: value?.clientSecret,
+                tenantId: value?.tenantId,
+                accountName: value?.accountName,
               },
               dbtPrefixConfig: {
                 dbtBucketName: value?.dbtBucketName,
@@ -390,6 +441,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }

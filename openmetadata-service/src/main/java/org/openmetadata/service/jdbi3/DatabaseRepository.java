@@ -17,7 +17,6 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 
-import java.io.IOException;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -25,7 +24,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -42,17 +40,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(Database entity) {
-    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-  }
-
-  @Override
-  public void prepare(Database database) throws IOException {
+  public void prepare(Database database) {
     populateService(database);
   }
 
   @Override
-  public void storeEntity(Database database, boolean update) throws IOException {
+  public void storeEntity(Database database, boolean update) {
     // Relationships and fields such as service are not stored as part of json
     EntityReference service = database.getService();
     database.withService(null);
@@ -67,7 +60,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public Database setInheritedFields(Database database, Fields fields) throws IOException {
+  public Database setInheritedFields(Database database, Fields fields) {
     // If database does not have domain, then inherit it from parent database service
     if (fields.contains(FIELD_DOMAIN) && database.getDomain() == null) {
       DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
@@ -76,16 +69,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return database;
   }
 
-  private List<EntityReference> getSchemas(Database database) throws IOException {
+  private List<EntityReference> getSchemas(Database database) {
     if (database == null) {
       return null;
     }
-    List<EntityRelationshipRecord> schemaIds =
-        findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
-    return EntityUtil.populateEntityReferences(schemaIds, Entity.DATABASE_SCHEMA);
+    return findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
-  public Database setFields(Database database, Fields fields) throws IOException {
+  public Database setFields(Database database, Fields fields) {
     database.setService(getContainer(database.getId()));
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
@@ -108,7 +99,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return new DatabaseUpdater(original, updated, operation);
   }
 
-  private void populateService(Database database) throws IOException {
+  private void populateService(Database database) {
     DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
@@ -120,7 +111,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
     }
   }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { ReactComponent as EditIconComponent } from 'assets/svg/edit-new.svg';
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
@@ -124,7 +125,11 @@ export const PropertyValue: FC<Props> = ({
       case 'string':
       case 'integer':
       default:
-        return <span data-testid="value">{value}</span>;
+        return (
+          <Typography.Text className="break-all" data-testid="value">
+            {value}
+          </Typography.Text>
+        );
     }
   };
 

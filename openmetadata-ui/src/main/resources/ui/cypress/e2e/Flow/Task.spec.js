@@ -14,12 +14,16 @@
 /// <reference types="cypress" />
 
 import {
-  descriptionBox,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import {
+  createAndUpdateDescriptionTask,
+  editAssignee,
+  verifyTaskDetails,
+} from '../../common/TaskUtils';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 describe('Task flow should work', () => {
@@ -36,99 +40,17 @@ describe('Task flow should work', () => {
     );
   });
 
-  const assignee = 'admin';
-  const secondAssignee = 'aaron_johnson0';
+  const assignee = 'adam_rodriguez9';
   const tag = 'Personal';
-
-  const editAssignee = () => {
-    interceptURL('PATCH', 'api/v1/feed/*', 'editAssignee');
-
-    cy.get('[data-testid="edit-assignees"]').click();
-
-    cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
-      secondAssignee
-    );
-    // select value from dropdown
-    verifyResponseStatusCode('@suggestApi', 200);
-
-    cy.get(`[data-testid="assignee-option-${secondAssignee}"]`)
-      .should('be.visible')
-      .trigger('mouseover')
-      .trigger('click');
-
-    cy.clickOutside();
-
-    cy.get('[data-testid="inline-save-btn"]').click();
-
-    verifyResponseStatusCode('@editAssignee', 200);
-
-    cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
-  };
-
-  const verifyTaskDetails = (regexPattern) => {
-    cy.get('#task-panel').should('be.visible');
-    cy.get('[data-testid="task-title"]')
-      .invoke('text')
-      .then((textContent) => {
-        const matches = textContent.match(regexPattern);
-
-        expect(matches).to.not.be.null;
-      });
-
-    cy.get('[data-testid="owner-link"]').contains(assignee);
-
-    cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
-  };
-
-  const createDescriptionTask = (value) => {
-    interceptURL('POST', 'api/v1/feed', 'createTask');
-
-    cy.get('#title').should(
-      'have.value',
-      `Update description for table ${value.term}`
-    );
-
-    cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
-      assignee
-    );
-    // select value from dropdown
-    verifyResponseStatusCode('@suggestApi', 200);
-
-    cy.get(`[data-testid="assignee-option-${assignee}"]`)
-      .should('be.visible')
-      .trigger('mouseover')
-      .trigger('click');
-
-    cy.clickOutside();
-
-    cy.get(descriptionBox).scrollIntoView().clear().type('Updated description');
-
-    cy.get('button[type="submit"]').click();
-    verifyResponseStatusCode('@createTask', 201);
-    toastNotification('Task created successfully.');
-
-    // verify the task details
-    verifyTaskDetails(/#(\d+) UpdateDescriptionfordescription/);
-
-    // edit task assignees
-    editAssignee();
-
-    // Accept the description suggestion which is created
-    cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
-
-    verifyResponseStatusCode('@taskResolve', 200);
-
-    toastNotification('Task resolved successfully');
-
-    verifyResponseStatusCode('@entityFeed', 200);
-  };
 
   const createTagTask = (value) => {
     interceptURL('POST', 'api/v1/feed', 'createTask');
 
     cy.get('#title').should(
       'have.value',
-      `Request tags for table ${value.term}`
+      value.tagCount > 0
+        ? `Update tags for table ${value.term}`
+        : `Request tags for table ${value.term}`
     );
 
     cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
@@ -138,12 +60,17 @@ describe('Task flow should work', () => {
     verifyResponseStatusCode('@suggestApi', 200);
 
     cy.get(`[data-testid="assignee-option-${assignee}"]`)
-      .should('be.visible')
       .trigger('mouseover')
       .trigger('click');
 
     cy.clickOutside();
-
+    if (value.tagCount > 0) {
+      cy.get('[data-testid="tag-selector"]')
+        .find('[data-testid="remove-tags"]')
+        .each(($btn) => {
+          cy.wrap($btn).click();
+        });
+    }
     cy.get('[data-testid="tag-selector"]').click().type(tag);
 
     verifyResponseStatusCode('@suggestTag', 200);
@@ -156,7 +83,11 @@ describe('Task flow should work', () => {
     toastNotification('Task created successfully.');
 
     // verify the task details
-    verifyTaskDetails(/#(\d+) RequestTagfortags/);
+    verifyTaskDetails(
+      value.tagCount > 0
+        ? /#(\d+) UpdateTagfortags/
+        : /#(\d+) RequestTagfortags/
+    );
 
     // edit task assignees
     editAssignee();
@@ -169,10 +100,6 @@ describe('Task flow should work', () => {
     toastNotification('Task resolved successfully');
 
     verifyResponseStatusCode('@entityFeed', 200);
-
-    cy.get('.toastui-editor-contents > p').contains(
-      'Resolved the Task with Tag(s) - PersonalData.Personal'
-    );
   };
 
   it('Task flow for table description', () => {
@@ -183,10 +110,16 @@ describe('Task flow should work', () => {
 
     cy.get('[data-testid="request-description"]').click();
 
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.wait('@getEntityDetails').then((res) => {
+      const entity = res.response.body;
 
-    // create description task
-    createDescriptionTask(value);
+      // create description task
+
+      createAndUpdateDescriptionTask({
+        ...value,
+        term: entity.displayName ?? entity.name,
+      });
+    });
   });
 
   it('Task flow for table tags', () => {
@@ -197,9 +130,28 @@ describe('Task flow should work', () => {
 
     cy.get('[data-testid="request-entity-tags"]').click();
 
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.wait('@getEntityDetails').then((res) => {
+      const entity = res.response.body;
 
-    // create tag task
-    createTagTask(value);
+      // create tag task
+      createTagTask({
+        ...value,
+        term: entity.displayName ?? entity.name,
+        tagCount: entity.tags.length ?? 0,
+      });
+    });
+  });
+
+  it('Cleanup', () => {
+    const value = SEARCH_ENTITY_TABLE.table_1;
+    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
+
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="edit-button"]'
+    ).click();
+    cy.get('[data-testid="remove-tags"]').click();
+    cy.get('[data-testid="saveAssociatedTag"]').click();
   });
 });

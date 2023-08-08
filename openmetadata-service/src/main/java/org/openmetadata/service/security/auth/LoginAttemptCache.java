@@ -14,7 +14,6 @@ public class LoginAttemptCache {
   private final LoadingCache<String, Integer> attemptsCache;
 
   public LoginAttemptCache(OpenMetadataApplicationConfig config) {
-    super();
     LoginConfiguration loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
     long accessBlockTime = 600;
     if (loginConfiguration != null) {

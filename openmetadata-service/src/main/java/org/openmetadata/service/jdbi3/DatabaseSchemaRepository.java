@@ -17,7 +17,6 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -27,7 +26,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -52,17 +50,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(DatabaseSchema schema) {
-    return FullyQualifiedName.buildHash(schema.getFullyQualifiedName());
-  }
-
-  @Override
-  public void prepare(DatabaseSchema schema) throws IOException {
+  public void prepare(DatabaseSchema schema) {
     populateDatabase(schema);
   }
 
   @Override
-  public void storeEntity(DatabaseSchema schema, boolean update) throws IOException {
+  public void storeEntity(DatabaseSchema schema, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = schema.getService();
     schema.withService(null);
@@ -79,16 +72,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
   }
 
-  private List<EntityReference> getTables(DatabaseSchema schema) throws IOException {
+  private List<EntityReference> getTables(DatabaseSchema schema) {
     if (schema == null) {
       return Collections.emptyList();
     }
-    List<EntityRelationshipRecord> tableIds =
-        findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
-    return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
+    return findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
   }
 
-  public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) throws IOException {
+  public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
     schema.setOwner(fields.contains(FIELD_OWNER) ? getOwner(schema) : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
@@ -96,14 +87,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
   }
 
-  private void setDefaultFields(DatabaseSchema schema) throws IOException {
+  private void setDefaultFields(DatabaseSchema schema) {
     EntityReference databaseRef = getContainer(schema.getId());
     Database database = Entity.getEntity(databaseRef, "", Include.ALL);
     schema.withDatabase(databaseRef).withService(database.getService());
   }
 
   @Override
-  public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) throws IOException {
+  public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) {
     Database database = null;
     UUID databaseId = schema.getDatabase().getId();
     // If schema does not have owner, then inherit parent database owner
@@ -144,7 +135,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     return new DatabaseSchemaUpdater(original, updated, operation);
   }
 
-  private void populateDatabase(DatabaseSchema schema) throws IOException {
+  private void populateDatabase(DatabaseSchema schema) {
     Database database = Entity.getEntity(schema.getDatabase(), "", ALL);
     schema
         .withDatabase(database.getEntityReference())
@@ -158,7 +149,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
     }
   }

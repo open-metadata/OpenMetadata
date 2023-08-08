@@ -108,7 +108,7 @@ public class DataInsightsReportJob implements Job {
         if (!CommonUtil.nullOrEmpty(email)) {
           emails.add(email);
         } else {
-          team.getUsers().forEach(user -> emails.add(SubjectCache.getInstance().getUserById(user.getId()).getEmail()));
+          team.getUsers().forEach(user -> emails.add(SubjectCache.getUserById(user.getId()).getEmail()));
         }
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
@@ -119,15 +119,14 @@ public class DataInsightsReportJob implements Job {
               createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
               createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          EmailUtil.getInstance()
-              .sendDataInsightEmailNotificationToUser(
-                  emails,
-                  totalAssetTemplate,
-                  descriptionTemplate,
-                  ownershipTemplate,
-                  tierTemplate,
-                  EmailUtil.getInstance().getDataInsightReportSubject(),
-                  EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+          EmailUtil.sendDataInsightEmailNotificationToUser(
+              emails,
+              totalAssetTemplate,
+              descriptionTemplate,
+              ownershipTemplate,
+              tierTemplate,
+              EmailUtil.getDataInsightReportSubject(),
+              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
         } catch (Exception ex) {
           LOG.error("[DataInsightReport] Failed for Team: {}, Reason : {}", team.getName(), ex.getMessage());
         }
@@ -149,26 +148,25 @@ public class DataInsightsReportJob implements Job {
           createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate tierTemplate =
           createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      EmailUtil.getInstance()
-          .sendDataInsightEmailNotificationToUser(
-              emailList,
-              totalAssetTemplate,
-              descriptionTemplate,
-              ownershipTemplate,
-              tierTemplate,
-              EmailUtil.getInstance().getDataInsightReportSubject(),
-              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+      EmailUtil.sendDataInsightEmailNotificationToUser(
+          emailList,
+          totalAssetTemplate,
+          descriptionTemplate,
+          ownershipTemplate,
+          tierTemplate,
+          EmailUtil.getDataInsightReportSubject(),
+          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
     }
   }
 
-  private List<Kpi> getAvailableKpi() throws IOException {
+  private List<Kpi> getAvailableKpi() {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
     return repository.listAll(repository.getFields("dataInsightChart"), new ListFilter(Include.NON_DELETED));
   }
 
-  private KpiResult getKpiResult(String fqn) throws IOException {
+  private KpiResult getKpiResult(String fqn) {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
     return repository.getKpiResult(fqn);
   }
@@ -386,8 +384,7 @@ public class DataInsightsReportJob implements Job {
       DataInsightChartResult.DataInsightChartType chartType,
       Double percentCompleted,
       Double percentChange,
-      int numberOfDaysChange)
-      throws IOException {
+      int numberOfDaysChange) {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;

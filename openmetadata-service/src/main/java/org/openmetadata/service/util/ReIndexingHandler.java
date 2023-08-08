@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -55,7 +54,7 @@ public class ReIndexingHandler {
   private static CollectionDAO dao;
   private static SearchClient searchClient;
   private static ExecutorService threadScheduler;
-  private final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
+  private static final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
   private static BlockingQueue<Runnable> taskQueue;
 
   private ReIndexingHandler() {}
@@ -113,7 +112,7 @@ public class ReIndexingHandler {
         // Create Entry in the DB
         dao.entityExtensionTimeSeriesDao()
             .insert(
-                EntityUtil.hash(jobData.getId().toString()),
+                jobData.getId().toString(),
                 REINDEXING_JOB_EXTENSION,
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
@@ -169,18 +168,17 @@ public class ReIndexingHandler {
     REINDEXING_JOB_MAP.remove(jobId);
   }
 
-  public EventPublisherJob getJob(UUID jobId) throws IOException {
+  public EventPublisherJob getJob(UUID jobId) {
     SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
       String recordString =
-          dao.entityExtensionTimeSeriesDao()
-              .getLatestExtension(EntityUtil.hash(jobId.toString()), REINDEXING_JOB_EXTENSION);
+          dao.entityExtensionTimeSeriesDao().getLatestExtension(jobId.toString(), REINDEXING_JOB_EXTENSION);
       return JsonUtils.readValue(recordString, EventPublisherJob.class);
     }
     return REINDEXING_JOB_MAP.get(jobId).getJobData();
   }
 
-  public EventPublisherJob getLatestJob() throws IOException {
+  public EventPublisherJob getLatestJob() {
     List<SearchIndexWorkflow> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
     if (!activeJobs.isEmpty()) {
       return activeJobs.get(activeJobs.size() - 1).getJobData();
@@ -190,7 +188,7 @@ public class ReIndexingHandler {
     }
   }
 
-  public List<EventPublisherJob> getAllJobs() throws IOException {
+  public List<EventPublisherJob> getAllJobs() {
     List<EventPublisherJob> result = new ArrayList<>();
     List<SearchIndexWorkflow> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
     List<EventPublisherJob> activeEventPubJob =

@@ -253,6 +253,7 @@ export const UserTeamSelectableList = ({
                 <SelectableList
                   customTagRenderer={TeamListItemRenderer}
                   fetchOptions={fetchTeamOptions}
+                  searchBarDataTestId="owner-select-teams-search-bar"
                   searchPlaceholder={t('label.search-for-type', {
                     type: t('label.team'),
                   })}
@@ -273,6 +274,7 @@ export const UserTeamSelectableList = ({
               children: (
                 <SelectableList
                   fetchOptions={fetchUserOptions}
+                  searchBarDataTestId="owner-select-users-search-bar"
                   searchPlaceholder={t('label.search-for-type', {
                     type: t('label.user'),
                   })}

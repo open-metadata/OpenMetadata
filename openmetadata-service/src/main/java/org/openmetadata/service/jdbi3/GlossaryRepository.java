@@ -25,7 +25,6 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addOwner;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -52,9 +51,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -75,19 +72,19 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public Glossary setFields(Glossary glossary, Fields fields) throws IOException {
+  public Glossary setFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? getTermCount(glossary) : null);
     glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
     return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : null);
   }
 
   @Override
-  public void prepare(Glossary glossary) throws IOException {
+  public void prepare(Glossary glossary) {
     validateUsers(glossary.getReviewers());
   }
 
   @Override
-  public void storeEntity(Glossary glossary, boolean update) throws IOException {
+  public void storeEntity(Glossary glossary, boolean update) {
     // Relationships and fields such as reviewers are derived and not stored as part of json
     List<EntityReference> reviewers = glossary.getReviewers();
     glossary.withReviewers(null);
@@ -103,9 +100,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(glossary.getName()));
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
   }
 
   private Integer getTermCount(Glossary glossary) {
@@ -138,9 +133,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     return glossaryCsv.importCsv(csv, dryRun);
   }
 
-  private List<EntityReference> getReviewers(Glossary entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+  private List<EntityReference> getReviewers(Glossary entity) {
+    return findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {
@@ -271,12 +265,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateReviewers(original, updated);
       updateName(original, updated);
     }
 
-    private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) throws JsonProcessingException {
+    private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) {
       List<EntityReference> origUsers = listOrEmpty(origGlossary.getReviewers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedGlossary.getReviewers());
       updateFromRelationships(
@@ -289,7 +283,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           origGlossary.getId());
     }
 
-    public void updateName(Glossary original, Glossary updated) throws IOException {
+    public void updateName(Glossary original, Glossary updated) {
       if (!original.getName().equals(updated.getName())) {
         if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(

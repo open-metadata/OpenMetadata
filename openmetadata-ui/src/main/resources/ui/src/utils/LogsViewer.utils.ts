@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import { getTableTabPath } from 'constants/constants';
 import { OPEN_METADATA } from 'constants/service-guide.constant';
+import { EntityTabs } from 'enums/entity.enum';
+import { ConfigClass } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { isUndefined, startCase } from 'lodash';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getNameFromFQN } from './CommonUtils';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
-import { getLogEntityPath } from './RouterUtils';
+import { getDataQualityPagePath, getLogEntityPath } from './RouterUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 /**
  * It takes in a service type, an ingestion name, and an ingestion details object, and returns an array
@@ -53,13 +60,39 @@ export const getLogBreadCrumbs = (
     return [];
   }
 
+  if (serviceType === 'testSuite') {
+    return [
+      {
+        name: startCase(serviceType),
+        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+      },
+      {
+        name: ingestionDetails.name,
+        url:
+          getTableTabPath(
+            getEncodedFqn(
+              (ingestionDetails.sourceConfig.config as ConfigClass)
+                ?.entityFullyQualifiedName ?? ''
+            ),
+            EntityTabs.PROFILER
+          ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
+      },
+      {
+        name: i18n.t('label.log-plural'),
+        url: '',
+      },
+    ];
+  }
+
   const urlPath = [serviceType, ...updateIngestionName];
 
   return urlPath.map((path, index) => {
     return {
       name: index === 0 ? startCase(path) : path,
       url:
-        index !== urlPath.length - 1 ? getLogEntityPath(path, serviceType) : '',
+        index !== urlPath.length - 1
+          ? getLogEntityPath(getEncodedFqn(path), serviceType)
+          : '',
     };
   });
 };

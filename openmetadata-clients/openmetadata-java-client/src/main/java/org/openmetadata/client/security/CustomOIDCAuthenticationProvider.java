@@ -24,6 +24,7 @@ import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.client.security.interfaces.CustomOIDCAccessTokenApi;
 import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
@@ -34,7 +35,7 @@ public class CustomOIDCAuthenticationProvider implements AuthenticationProvider 
   private final CustomOIDCAccessTokenApi customSSOClient;
 
   public CustomOIDCAuthenticationProvider(OpenMetadataConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.CUSTOM_OIDC)) {
+    if (!iConfig.getAuthProvider().equals(AuthProvider.CUSTOM_OIDC)) {
       LOG.error("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
       throw new RuntimeException("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
     }

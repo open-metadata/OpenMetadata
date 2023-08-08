@@ -284,16 +284,23 @@ export const addOwner = (ownerName) => {
     'waitForTeams'
   );
 
-  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+  cy.get('[data-testid="edit-owner"]').click();
 
   verifyResponseStatusCode('@waitForTeams', 200);
-  // Clicking on users tab
-  cy.get('.user-team-select-popover')
-    .contains('Users')
-    .should('exist')
-    .should('be.visible')
-    .click();
-  cy.wait(3000);
+  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+
+  cy.get('.ant-tabs [id*=tab-users]').click();
+  verifyResponseStatusCode('@getUsers', 200);
+
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI(ownerName)}*`,
+    'searchOwner'
+  );
+
+  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
+
+  verifyResponseStatusCode('@searchOwner', 200);
 
   interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
 

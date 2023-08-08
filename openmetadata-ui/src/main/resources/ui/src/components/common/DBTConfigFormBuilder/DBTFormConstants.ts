@@ -44,6 +44,10 @@ export const DBTSources: Array<DropDownListItem> = [
     label: i18n.t('label.gcs-config-source'),
     value: DBT_SOURCES.gcs,
   },
+  {
+    label: i18n.t('label.azure-config-source'),
+    value: DBT_SOURCES.azure,
+  },
 ];
 
 export const GCSCreds: Array<DropDownListItem> = [
@@ -91,3 +95,5 @@ export const rulesDBTGCSCredsFields: Record<
   email: ['clientEmail'],
   url: ['authUri', 'tokenUri', 'authProviderX509CertUrl', 'clientX509CertUrl'],
 };
+
+export const dbtParsingTimeoutLimit = 300;

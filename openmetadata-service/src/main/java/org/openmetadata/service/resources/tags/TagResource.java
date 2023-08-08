@@ -247,8 +247,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter =
         new ListFilter(include).addQueryParam("parent", parent).addQueryParam("classification.disabled", disabled);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -281,8 +280,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -314,8 +312,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -334,8 +331,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -362,8 +358,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               description = "tag version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -379,8 +374,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
     Tag tag = getTag(securityContext, create);
     return create(uriInfo, securityContext, tag);
   }
@@ -405,8 +399,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -423,7 +416,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
     Tag tag = getTag(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, tag);
   }
@@ -449,8 +442,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -472,8 +464,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -490,8 +481,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class)))
       })
   public Response restore(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -503,11 +493,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return tag;
   }
 
-  private Tag getTag(SecurityContext securityContext, CreateTag create) throws IOException {
+  private Tag getTag(SecurityContext securityContext, CreateTag create) {
     return getTag(create, securityContext.getUserPrincipal().getName());
   }
 
-  private Tag getTag(CreateTag create, String updateBy) throws IOException {
+  private Tag getTag(CreateTag create, String updateBy) {
     String parentFQN = create.getParent() != null ? create.getParent() : create.getClassification();
     EntityReference classification = getEntityReference(CLASSIFICATION, create.getClassification());
     EntityReference parent = create.getParent() == null ? null : getEntityReference(TAG, create.getParent());

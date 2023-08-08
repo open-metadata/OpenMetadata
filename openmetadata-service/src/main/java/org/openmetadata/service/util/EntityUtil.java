@@ -31,9 +31,9 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
@@ -135,7 +135,7 @@ public final class EntityUtil {
   private EntityUtil() {}
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException, IOException {
+  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -147,7 +147,7 @@ public final class EntityUtil {
   }
 
   // TODO delete
-  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
+  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReference(ref, ALL);
@@ -159,8 +159,8 @@ public final class EntityUtil {
   }
 
   // TODO delete
-  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
-    if (list == null) {
+  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) {
+    if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
     List<EntityReference> refs = new ArrayList<>();
@@ -171,21 +171,7 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferences(
-      List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
-    //    if (nullOrEmpty(records)) {
-    //      return null;
-    //    }
-    List<EntityReference> refs = new ArrayList<>(records.size());
-    for (EntityRelationshipRecord id : records) {
-      refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
-    }
-    refs.sort(compareEntityReference);
-    return refs;
-  }
-
-  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType)
-      throws IOException {
+  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType) {
     List<EntityReference> refs = toEntityReferences(list, entityType);
     return populateEntityReferences(refs);
   }
@@ -215,8 +201,7 @@ public final class EntityUtil {
   public static TestSummary getTestCaseExecutionSummary(
       CollectionDAO.EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDAO,
       List<String> testCaseFQNs,
-      String extensionName)
-      throws IOException {
+      String extensionName) {
     List<String> testCaseFQNHashes =
         testCaseFQNs.stream().map(FullyQualifiedName::buildHash).collect(Collectors.toList());
 
@@ -266,32 +251,32 @@ public final class EntityUtil {
     return entityReferences;
   }
 
-  public static List<UUID> toIDs(List<String> list) {
-    List<UUID> ids = new ArrayList<>(list.size());
-    list.forEach(entry -> ids.add(UUID.fromString(entry)));
-    return ids;
+  public static List<UUID> strToIds(List<String> list) {
+    return list.stream().map(UUID::fromString).collect(Collectors.toList());
   }
 
   public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
     if (ids == null) {
       return null;
     }
-    List<EntityReference> entityReferences = new ArrayList<>();
-    for (UUID id : ids) {
-      entityReferences.add(new EntityReference().withId(id).withType(entityType));
-    }
-    return entityReferences;
+    return ids.stream().map(id -> new EntityReference().withId(id).withType(entityType)).collect(Collectors.toList());
   }
 
-  public static List<UUID> toIds(List<EntityReference> refs) {
+  public static List<UUID> refToIds(List<EntityReference> refs) {
     if (refs == null) {
       return null;
     }
-    List<UUID> ids = new ArrayList<>();
-    for (EntityReference ref : refs) {
-      ids.add(ref.getId());
+    return refs.stream().map(EntityReference::getId).collect(Collectors.toList());
+  }
+
+  public static <T> boolean isDescriptionRequired(Class<T> clz) {
+    // Returns true if description field in entity is required
+    try {
+      java.lang.reflect.Field description = clz.getDeclaredField(Entity.FIELD_DESCRIPTION);
+      return description.getAnnotation(NotNull.class) != null;
+    } catch (NoSuchFieldException e) {
+      return false;
     }
-    return ids;
   }
 
   public static class Fields {
@@ -335,13 +320,6 @@ public final class EntityUtil {
       fieldList.add(field);
     }
 
-    public void addField(List<String> allowedFields, String field) {
-      if (!allowedFields.contains(field)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
-      }
-      fieldList.add(field);
-    }
-
     @Override
     public String toString() {
       return fieldList.toString();
@@ -379,9 +357,7 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static <T extends EntityInterface> String getColumnField(
-      T entityWithColumns, Column column, String columnField) {
-
+  public static <T extends EntityInterface> String getColumnField(Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = column.getName();
     return columnField == null
@@ -482,7 +458,7 @@ public final class EntityUtil {
     change.getFieldsUpdated().add(fieldChange);
   }
 
-  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) throws IOException {
+  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {
     return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
   }
 
@@ -543,8 +519,7 @@ public final class EntityUtil {
    * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
    * fully populated object such that ElasticSearch index has all the details.
    */
-  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include)
-      throws IOException {
+  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include) {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
@@ -557,10 +532,8 @@ public final class EntityUtil {
   }
 
   public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
-    if (profileSampleType.equals("PERCENTAGE")) {
-      if (profileSampleValue < 0 || profileSampleValue > 100.0) {
-        throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
-      }
+    if (profileSampleType.equals("PERCENTAGE") && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
+      throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
     }
   }
 

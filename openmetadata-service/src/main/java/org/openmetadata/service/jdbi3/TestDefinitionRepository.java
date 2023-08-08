@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
-import java.io.IOException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.service.Entity;
@@ -22,7 +21,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) throws IOException {
+  public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) {
     return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
   }
 
@@ -35,7 +34,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public void storeEntity(TestDefinition entity, boolean update) throws IOException {
+  public void storeEntity(TestDefinition entity, boolean update) {
     store(entity, update);
   }
 
@@ -55,7 +54,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
       recordChange("supportedDataTypes", original.getSupportedDataTypes(), updated.getSupportedDataTypes());
       recordChange("parameterDefinition", original.getParameterDefinition(), updated.getParameterDefinition());
