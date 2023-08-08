@@ -20,57 +20,11 @@ import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { getUserPath } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
-import { EntityReference } from '../../generated/type/entityReference';
 import { LIST_CAP } from '../../utils/PermissionsUtils';
 import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-
-export const userPageFilterList = [
-  {
-    name: t('label.my-data'),
-    value: 'OWNER',
-    icon: <SVGIcons alt="My Data" icon={Icons.FOLDER} width="16px" />,
-  },
-  {
-    name: t('label.mention-plural'),
-    value: 'MENTIONS',
-    icon: <SVGIcons alt="Mentions" icon={Icons.MENTIONS} width="16px" />,
-  },
-  {
-    name: t('label.following'),
-    value: 'FOLLOWS',
-    icon: <SVGIcons alt="Following" icon={Icons.STAR} width="16px" />,
-  },
-];
-
-export const getEntityReferenceFromUser = (user: User): EntityReference => {
-  return {
-    deleted: user.deleted,
-    href: user.href,
-    fullyQualifiedName: user.fullyQualifiedName,
-    id: user.id,
-    type: 'user',
-    description: user.description,
-    displayName: user.displayName,
-    name: user.name,
-  };
-};
-
-export const getUserFromEntityReference = (entity: EntityReference): User => {
-  return {
-    deleted: entity.deleted,
-    href: entity.href ?? '',
-    fullyQualifiedName: entity.fullyQualifiedName,
-    id: entity.id,
-    description: entity.description,
-    displayName: entity.displayName,
-    name: entity.name ?? '',
-    email: '',
-  };
-};
 
 export const commonUserDetailColumns = (): ColumnsType<User> => [
   {
@@ -122,9 +76,9 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
                     ))}
                   </Space>
                 }
-                overlayClassName="text-center"
+                overlayClassName="w-40"
                 trigger="click">
-                <Tag data-testid="plus-more-count">{`+${
+                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>
               </Popover>
@@ -170,9 +124,9 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
                     ))}
                   </Space>
                 }
-                overlayClassName="text-center"
+                overlayClassName="w-40"
                 trigger="click">
-                <Tag data-testid="plus-more-count">{`+${
+                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>
               </Popover>
