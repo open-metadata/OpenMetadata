@@ -13,6 +13,7 @@
 
 import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
@@ -23,7 +24,6 @@ import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import NextPrevious from '../common/next-previous/NextPrevious';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -72,7 +72,7 @@ function IngestionListTable({
         }>
         <Typography.Link
           className="tw-mr-2 overflow-wrap-anywhere"
-          data-testid="airflow-tree-view"
+          data-testid="ingestion-dag-link"
           disabled={!(permissions.ViewAll || permissions.ViewBasic)}
           href={`${airflowEndpoint}/tree?dag_id=${text}`}
           rel="noopener noreferrer"
@@ -185,7 +185,7 @@ function IngestionListTable({
       <Table
         bordered
         columns={tableColumn}
-        data-testid="schema-table"
+        data-testid="ingestion-list-table"
         dataSource={ingestionData}
         loading={{
           spinning: isLoading,
