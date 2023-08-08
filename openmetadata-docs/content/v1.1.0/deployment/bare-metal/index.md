@@ -226,6 +226,10 @@ The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual m
 
 Restart the OpenMetadata Application using `./bin/openmetadata.sh start` which will start the service using a linux process.
 
+# PostgreSQL Issue permission denied to create extension "pgcrypto"
+
+{% partial file="/v1.1.0/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
+
 ## Enable Security
 
 Please follow our [Enable Security Guide](/deployment/bare-metal/security) to configure security for your OpenMetadata

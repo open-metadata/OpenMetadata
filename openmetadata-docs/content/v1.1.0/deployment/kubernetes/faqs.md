@@ -27,6 +27,10 @@ The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual m
 
 Upgrade the helm charts with the above changes using the following command `helm upgrade --install openmetadata open-metadata/openmetadata --values <values.yml> --namespace <namespaceName>`. Update this command your `values.yml` filename and `namespaceName` where you have deployed OpenMetadata in Kubernetes.
 
+# PostgreSQL Issue permission denied to create extension "pgcrypto"
+
+{% partial file="/v1.1.0/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
+
 # How to extend and use custom docker images with OpenMetadata Helm Charts ?
 
 ## Extending OpenMetadata Server Docker Image
