@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
+import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
 import { LoadingState, ServicesUpdateRequest } from 'Models';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
-  ConfigClass,
   CreateIngestionPipeline,
-  DbtConfig,
+  DBTConfigurationSource,
+  Pipeline,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { ProfileSampleType } from '../../generated/entity/data/table';
 import {
@@ -26,7 +27,6 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { DbtPipelineClass } from '../../generated/metadataIngestion/dbtPipeline';
 import {
   DBT_SOURCES,
   GCS_CONFIG,
@@ -88,9 +88,9 @@ export type ScheduleIntervalProps = {
 };
 
 // Todo: Need to refactor below type, as per schema change #9575
-export type ModifiedDbtConfig = DbtConfig &
+export type ModifiedDBTConfigurationSource = DBTConfigurationSource &
   Pick<
-    DbtPipelineClass,
+    DbtPipeline,
     | 'dbtUpdateDescriptions'
     | 'dbtClassificationName'
     | 'includeTags'
@@ -110,7 +110,7 @@ export interface AddIngestionState {
   databaseServiceNames: string[];
   dbtClassificationName: string;
   dbtUpdateDescriptions: boolean;
-  dbtConfigSource: ModifiedDbtConfig;
+  dbtConfigSource: ModifiedDBTConfigurationSource;
   dbtConfigSourceType: DBT_SOURCES;
   description: string;
   enableDebugLog: boolean;
@@ -128,7 +128,7 @@ export interface AddIngestionState {
   markDeletedTopics?: boolean;
   markDeletedMlModels?: boolean;
   markDeletedPipelines?: boolean;
-  metadataToESConfig: ConfigClass | undefined;
+  metadataToESConfig: Pipeline | undefined;
   mlModelFilterPattern: FilterPattern;
   pipelineFilterPattern: FilterPattern;
   profileSample: number | undefined;
