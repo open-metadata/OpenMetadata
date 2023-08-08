@@ -134,11 +134,6 @@ public class SubjectContextTest {
     EntityRepository.CACHE_WITH_NAME.put(new ImmutablePair<>(Entity.USER, "user"), user);
   }
 
-  @AfterAll
-  public static void tearDown() {
-    PolicyCache.cleanUp();
-  }
-
   @Test
   void testPolicyIterator() {
     // Check iteration order of the policies without resourceOwner

@@ -25,19 +25,6 @@ import org.openmetadata.service.Entity;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class PolicyCache {
-  public static List<CompiledRule> getPolicyRules(UUID policyId) {
-    Policy policy = Entity.getEntity(Entity.POLICY, policyId, "rules", Include.NON_DELETED);
-    return getRules(policy);
-  }
-
-  protected static List<CompiledRule> getRules(Policy policy) {
-    List<CompiledRule> rules = new ArrayList<>();
-    for (Rule r : policy.getRules()) {
-      rules.add(new CompiledRule(r));
-    }
-    return rules;
-  }
-
   public static void cleanUp() {
     // TODO cleanup
   }
