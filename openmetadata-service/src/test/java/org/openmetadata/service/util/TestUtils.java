@@ -70,6 +70,7 @@ import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityReference;
@@ -113,7 +114,10 @@ public final class TestUtils {
 
   public static final MlModelConnection MLFLOW_CONNECTION;
   public static final StorageConnection S3_STORAGE_CONNECTION;
-  public static final SearchConnection ELASITC_SEARCH_CONNECTION;
+
+  public static final SearchConnection ELASTIC_SEARCH_CONNECTION;
+  public static final SearchConnection OPEN_SEARCH_CONNECTION;
+
   public static MetadataConnection AMUNDSEN_CONNECTION;
   public static MetadataConnection ATLAS_CONNECTION;
 
@@ -222,8 +226,10 @@ public final class TestUtils {
   }
 
   static {
-    ELASITC_SEARCH_CONNECTION =
+    ELASTIC_SEARCH_CONNECTION =
         new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9200"));
+    OPEN_SEARCH_CONNECTION =
+        new SearchConnection().withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
   }
 
   static {

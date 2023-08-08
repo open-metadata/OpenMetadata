@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS data_product_entity (
     UNIQUE (fqnHash)
     );
 
-CREATE TABLE IF NOT EXISTS storage_service_entity (
+-- create search service entity
+CREATE TABLE IF NOT EXISTS search_service_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     nameHash VARCHAR(256)  NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
@@ -37,4 +38,17 @@ CREATE TABLE IF NOT EXISTS storage_service_entity (
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     PRIMARY KEY (id),
     UNIQUE (nameHash)
+    );
+
+-- create search index entity
+CREATE TABLE IF NOT EXISTS search_index_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
     );

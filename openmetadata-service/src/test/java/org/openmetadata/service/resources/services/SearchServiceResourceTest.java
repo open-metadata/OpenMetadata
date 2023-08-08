@@ -43,16 +43,25 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
   }
 
   public void setupSearchService(TestInfo test) throws HttpResponseException {
-    SearchServiceResourceTest storageServiceResourceTest = new SearchServiceResourceTest();
+    SearchServiceResourceTest esSearchServiceResourceTest = new SearchServiceResourceTest();
     CreateSearchService createSearchService =
-        storageServiceResourceTest
+        esSearchServiceResourceTest
             .createRequest(test, 1)
             .withName("elasticSearch")
             .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
-            .withConnection(TestUtils.ELASITC_SEARCH_CONNECTION);
+            .withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION);
 
-    SearchService searchService = new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
-    ELASTICSEARCH_SEARCH_SERVICE_REFERENCE = searchService.getEntityReference();
+    SearchService esSearchService = new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
+    ELASTICSEARCH_SEARCH_SERVICE_REFERENCE = esSearchService.getEntityReference();
+    SearchServiceResourceTest osSearchServiceResourceTest = new SearchServiceResourceTest();
+     createSearchService =
+        osSearchServiceResourceTest
+            .createRequest(test, 1)
+            .withName("opensearch")
+            .withServiceType(CreateSearchService.SearchServiceType.OpenSearch)
+            .withConnection(TestUtils.OPEN_SEARCH_CONNECTION);
+    SearchService osSearchService = new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
+    OPENSEARCH_SEARCH_SERVICE_REFERENCE = osSearchService.getEntityReference();
   }
 
   @Test
@@ -76,8 +85,7 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-
-    createAndCheckEntity(createRequest(test, 3).withConnection(TestUtils.ELASITC_SEARCH_CONNECTION), authHeaders);
+    createAndCheckEntity(createRequest(test, 3).withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION), authHeaders);
   }
 
   @Test

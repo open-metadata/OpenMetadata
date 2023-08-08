@@ -42,6 +42,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -126,6 +127,10 @@ public final class EntityUtil {
   public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   public static final BiPredicate<Field, Field> schemaFieldMatch =
+      (field1, field2) ->
+          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+
+  public static final BiPredicate<SearchIndexField, SearchIndexField> searchIndexFieldMatch =
       (field1, field2) ->
           field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
 
@@ -370,6 +375,15 @@ public final class EntityUtil {
     return fieldName == null
         ? FullyQualifiedName.build("schemaFields", localFieldName)
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+  }
+  /** Return searchIndex field name of format "fields".fieldName.fieldName */
+  public static String getSearchIndexField(SearchIndex searchIndex, SearchIndexField field, String fieldName) {
+    // Remove topic FQN from schemaField FQN to get the local name
+    String localFieldName =
+        EntityUtil.getLocalColumnName(searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("fields", localFieldName)
+        : FullyQualifiedName.build("fields", localFieldName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */

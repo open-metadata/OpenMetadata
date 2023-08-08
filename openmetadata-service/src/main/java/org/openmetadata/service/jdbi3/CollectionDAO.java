@@ -79,6 +79,7 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -188,6 +189,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   MlModelDAO mlModelDAO();
+
+  @CreateSqlObject
+  SearchIndexDAO searchIndexDAO();
 
   @CreateSqlObject
   GlossaryDAO glossaryDAO();
@@ -421,23 +425,6 @@ public interface CollectionDAO {
     }
   }
 
-  interface SearchServiceDAO extends EntityDAO<SearchService> {
-    @Override
-    default String getTableName() {
-      return "search_service_entity";
-    }
-
-    @Override
-    default Class<SearchService> getEntityClass() {
-      return SearchService.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
-  }
-
   interface ContainerDAO extends EntityDAO<Container> {
     @Override
     default String getTableName() {
@@ -552,7 +539,41 @@ public interface CollectionDAO {
         @Define("sqlCondition") String mysqlCond);
   }
 
-  interface EntityExtensionDAO {
+  interface SearchServiceDAO extends EntityDAO<SearchService> {
+    @Override
+    default String getTableName() {
+      return "search_service_entity";
+    }
+
+    @Override
+    default Class<SearchService> getEntityClass() {
+      return SearchService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface SearchIndexDAO extends EntityDAO<SearchIndex> {
+    @Override
+    default String getTableName() {
+      return "search_index_entity";
+    }
+
+    @Override
+    default Class<SearchIndex> getEntityClass() {
+      return SearchIndex.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "
@@ -3418,6 +3439,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT COUNT(*) FROM storage_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM search_index_entity <cond>) as searchIndexCount, "
                 + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
                 + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
@@ -3426,6 +3448,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM search_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM storage_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
@@ -3439,6 +3462,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT COUNT(*) FROM storage_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM search_index_entity <cond>) as searchIndexCount, "
                 + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
                 + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
@@ -3447,6 +3471,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM search_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM storage_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
@@ -3461,7 +3486,8 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
             + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
             + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
-            + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount")
+            + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount"
+            + "(SELECT COUNT(*) FROM search_service_entity <cond>) as searchServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
 
