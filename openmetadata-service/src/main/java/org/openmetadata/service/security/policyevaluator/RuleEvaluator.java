@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
 /**
@@ -76,7 +75,7 @@ public class RuleEvaluator {
   public boolean matchAllTags(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        TagLabelCache.getTag(tagFqn);
+        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED); // Validate tag exists
       }
       return false;
     }
@@ -103,7 +102,7 @@ public class RuleEvaluator {
   public boolean matchAnyTag(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        TagLabelCache.getTag(tagFqn);
+        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED); // Validate tag exists
       }
       return false;
     }

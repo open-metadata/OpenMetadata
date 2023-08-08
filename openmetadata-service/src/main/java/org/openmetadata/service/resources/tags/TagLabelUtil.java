@@ -25,16 +25,11 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-/**
- * Both GlossaryTerm and Tags are used for labeling entity. This class caches GlossaryTerm and Tags for quick look up.
- */
 @Slf4j
-public class TagLabelCache {
-  private TagLabelCache() {
+public class TagLabelUtil {
+  private TagLabelUtil() {
     // Private constructor for utility class
   }
-
-  public static void cleanUp() {}
 
   public static Classification getClassification(String classificationName) {
     return Entity.getEntityByName(Entity.CLASSIFICATION, classificationName, "", NON_DELETED);

@@ -43,9 +43,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
-import org.openmetadata.service.resources.tags.TagLabelCache;
-import org.openmetadata.service.security.policyevaluator.PolicyCache;
-import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
@@ -162,7 +159,6 @@ public abstract class OpenMetadataApplicationTest {
       APP.after();
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
-    TagLabelCache.cleanUp();
     ELASTIC_SEARCH_CONTAINER.stop();
   }
 
