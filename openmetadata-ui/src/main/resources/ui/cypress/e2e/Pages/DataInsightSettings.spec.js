@@ -171,7 +171,7 @@ describe('Data Insight settings page should work properly', () => {
     );
     cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="kill"]`).click();
 
-    cy.get('[data-testid="confirm"]').click();
+    cy.get('[data-testid="kill-modal"]').contains('Confirm').click();
 
     verifyResponseStatusCode('@killPipelineDag', 200);
   });
