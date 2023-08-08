@@ -567,7 +567,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     return <Loader />;
   }
 
-  if (!isPermissionsLoading && !viewDatabaseSchemaPermission) {
+  if (!viewDatabaseSchemaPermission) {
     return (
       <ErrorPlaceHolder
         className="mt-24"
