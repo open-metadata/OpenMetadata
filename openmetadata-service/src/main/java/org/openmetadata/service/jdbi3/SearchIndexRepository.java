@@ -13,6 +13,27 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.SEARCH_SERVICE;
+import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.json.JsonPatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.SearchIndex;
@@ -33,41 +54,19 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
-import javax.json.JsonPatch;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
-import static org.openmetadata.service.Entity.SEARCH_SERVICE;
-import static org.openmetadata.service.util.EntityUtil.getSchemaField;
-import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
-
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public void setFullyQualifiedName(SearchIndex searchIndex) {
-    searchIndex.setFullyQualifiedName(FullyQualifiedName.add(searchIndex.getService().getFullyQualifiedName(), searchIndex.getName()));
+    searchIndex.setFullyQualifiedName(
+        FullyQualifiedName.add(searchIndex.getService().getFullyQualifiedName(), searchIndex.getName()));
     if (searchIndex.getFields() != null) {
       setFieldFQN(searchIndex.getFullyQualifiedName(), searchIndex.getFields());
     }
   }
 
   public SearchIndexRepository(CollectionDAO dao) {
-    super(SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
+    super(
+        SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
   }
 
   @Override
@@ -137,7 +136,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   public void setService(SearchIndex searchIndex, EntityReference service) {
     if (service != null && searchIndex != null) {
-      addRelationship(service.getId(), searchIndex.getId(), service.getType(), Entity.SEARCH_INDEX, Relationship.CONTAINS);
+      addRelationship(
+          service.getId(), searchIndex.getId(), service.getType(), Entity.SEARCH_INDEX, Relationship.CONTAINS);
       searchIndex.setService(service);
     }
   }
@@ -170,7 +170,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
     daoCollection
         .entityExtensionDAO()
-        .insert(searchIndexId.toString(), "searchIndex.sampleData", "searchIndexSampleData", JsonUtils.pojoToJson(sampleData));
+        .insert(
+            searchIndexId.toString(),
+            "searchIndex.sampleData",
+            "searchIndexSampleData",
+            JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
     return searchIndex.withSampleData(sampleData);
   }
@@ -362,7 +366,10 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     }
 
     private void updateSearchIndexFields(
-        String fieldName, List<SearchIndexField> origFields, List<SearchIndexField> updatedFields, BiPredicate<SearchIndexField, SearchIndexField> fieldMatch) {
+        String fieldName,
+        List<SearchIndexField> origFields,
+        List<SearchIndexField> updatedFields,
+        BiPredicate<SearchIndexField, SearchIndexField> fieldMatch) {
       List<SearchIndexField> deletedFields = new ArrayList<>();
       List<SearchIndexField> addedFields = new ArrayList<>();
       recordListChange(fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);

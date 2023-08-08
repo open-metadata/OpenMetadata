@@ -573,7 +573,7 @@ public interface CollectionDAO {
     }
   }
 
-   interface EntityExtensionDAO {
+  interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "

@@ -51,16 +51,18 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
             .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
             .withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION);
 
-    SearchService esSearchService = new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
+    SearchService esSearchService =
+        new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
     ELASTICSEARCH_SEARCH_SERVICE_REFERENCE = esSearchService.getEntityReference();
     SearchServiceResourceTest osSearchServiceResourceTest = new SearchServiceResourceTest();
-     createSearchService =
+    createSearchService =
         osSearchServiceResourceTest
             .createRequest(test, 1)
             .withName("opensearch")
             .withServiceType(CreateSearchService.SearchServiceType.OpenSearch)
             .withConnection(TestUtils.OPEN_SEARCH_CONNECTION);
-    SearchService osSearchService = new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
+    SearchService osSearchService =
+        new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
     OPENSEARCH_SEARCH_SERVICE_REFERENCE = osSearchService.getEntityReference();
   }
 
