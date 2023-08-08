@@ -10,25 +10,58 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType as WorkflowType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
+import dashboardMetadataPipeline from 'jsons/ingestionSchemas/dashboardServiceMetadataPipeline.json';
 import databaseMetadataPipeline from 'jsons/ingestionSchemas/databaseServiceMetadataPipeline.json';
 import databaseProfilerPipeline from 'jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import databaseLineagePipeline from 'jsons/ingestionSchemas/databaseServiceQueryLineagePipeline.json';
 import databaseUsagePipeline from 'jsons/ingestionSchemas/databaseServiceQueryUsagePipeline.json';
+import dataInsightPipeline from 'jsons/ingestionSchemas/dataInsightPipeline.json';
 import dbtPipeline from 'jsons/ingestionSchemas/dbtPipeline.json';
+import messagingMetadataPipeline from 'jsons/ingestionSchemas/messagingServiceMetadataPipeline.json';
+import metadataToElasticSearchPipeline from 'jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
+import mlModelMetadataPipeline from 'jsons/ingestionSchemas/mlmodelServiceMetadataPipeline.json';
+import pipelineMetadataPipeline from 'jsons/ingestionSchemas/pipelineServiceMetadataPipeline.json';
+import storageMetadataPipeline from 'jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
+import testSuitePipeline from 'jsons/ingestionSchemas/testSuitePipeline.json';
+
+export const getMetadataSchemaByServiceCategory = (
+  serviceCategory: ServiceCategory
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return databaseMetadataPipeline;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return dashboardMetadataPipeline;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return messagingMetadataPipeline;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return mlModelMetadataPipeline;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return pipelineMetadataPipeline;
+    case ServiceCategory.STORAGE_SERVICES:
+      return storageMetadataPipeline;
+
+    default:
+      return {};
+  }
+};
 
 /**
- * @todo add logic to return schema for metadata type for different service
  * @param workflowType ingestion workflow type
  * @returns schema
  */
-export const getSchemaByWorkflowType = (workflowType: WorkflowType) => {
+export const getSchemaByWorkflowType = (
+  workflowType: WorkflowType,
+  serviceCategory: ServiceCategory
+) => {
   let schema = {};
 
   switch (workflowType) {
     case WorkflowType.Metadata:
       schema = {
-        ...databaseMetadataPipeline,
+        ...getMetadataSchemaByServiceCategory(serviceCategory),
       };
 
       break;
@@ -53,6 +86,24 @@ export const getSchemaByWorkflowType = (workflowType: WorkflowType) => {
     case WorkflowType.Dbt:
       schema = {
         ...dbtPipeline,
+      };
+
+      break;
+    case WorkflowType.DataInsight:
+      schema = {
+        ...dataInsightPipeline,
+      };
+
+      break;
+    case WorkflowType.TestSuite:
+      schema = {
+        ...testSuitePipeline,
+      };
+
+      break;
+    case WorkflowType.ElasticSearchReindex:
+      schema = {
+        ...metadataToElasticSearchPipeline,
       };
 
       break;

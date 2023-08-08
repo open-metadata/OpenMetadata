@@ -19,6 +19,7 @@ import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemp
 import IngestionArrayFieldTemplate from 'components/JSONSchemaTemplate/IngestionArrayFieldTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
+import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { t } from 'i18next';
 import { IngestionWorkflowData } from 'interface/service.interface';
@@ -31,6 +32,7 @@ interface IngestionWorkflowFormProps extends FormProps {
   workflowName: string;
   okText: string;
   cancelText: string;
+  serviceCategory: ServiceCategory;
   onCancel: () => void;
 }
 
@@ -43,13 +45,14 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   okText,
   cancelText,
   onFocus,
+  serviceCategory,
 }) => {
   const [internalData] = useState<IngestionWorkflowData>();
 
   const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType),
+    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
 
-    [pipeLineType]
+    [pipeLineType, serviceCategory]
   );
 
   return (

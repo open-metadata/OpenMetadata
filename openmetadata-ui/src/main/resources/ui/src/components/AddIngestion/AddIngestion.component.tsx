@@ -770,6 +770,7 @@ const AddIngestion = ({
             okText="Submit"
             pipeLineType={pipelineType}
             schema={{}}
+            serviceCategory={serviceCategory}
             validator={validator}
             workflowName={state.ingestionName}
             onCancel={noop}
