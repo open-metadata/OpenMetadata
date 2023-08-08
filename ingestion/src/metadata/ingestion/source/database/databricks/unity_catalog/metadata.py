@@ -49,7 +49,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
@@ -268,6 +267,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         table_constraints = None
         try:
             columns = self.get_columns(table.columns)
+            (
+                primary_constraints,
+                foreign_constraints,
+            ) = self.get_table_constraints(table.table_constraints)
+
+            table_constraints = self.update_table_constraints(
+                primary_constraints, foreign_constraints
+            )
 
             table_request = CreateTableRequest(
                 name=table_name,
@@ -292,7 +299,6 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                     )
                 )
 
-            self.add_table_constraint_to_context(table.table_constraints)
             self.register_record(table_request=table_request)
         except Exception as exc:
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
@@ -300,13 +306,16 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             logger.warning(error)
             self.status.failed(table_name, error, traceback.format_exc())
 
-    def add_table_constraint_to_context(self, constraints: TableConstraintList) -> None:
+    def get_table_constraints(
+        self, constraints: TableConstraintList
+    ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:
         """
         Function to handle table constraint for the current table and add it to context
         """
+
+        primary_constraints = []
+        foreign_constraints = []
         if constraints and constraints.table_constraints:
-            primary_constraints = []
-            foreign_constraints = []
             for constraint in constraints.table_constraints:
                 if constraint.primary_key_constraint:
                     primary_constraints.append(
@@ -323,13 +332,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                             parent_table=constraint.foreign_key_constraint.parent_table,
                         )
                     )
-            self.table_constraints.append(
-                OMetaTableConstraints(
-                    table=self.context.table,
-                    foreign_constraints=foreign_constraints,
-                    constraints=primary_constraints,
-                )
-            )
+        return primary_constraints, foreign_constraints
 
     def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
         """
@@ -340,7 +343,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         table_constraints = []
         for column in foreign_columns:
             referred_column_fqns = []
-            ref_table_fqn = column["parent_table"]
+            ref_table_fqn = column.parent_table
             table_fqn_list = fqn.split(ref_table_fqn)
 
             referred_table = fqn.search_table_from_es(
@@ -351,7 +354,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 service_name=self.context.database_service.name.__root__,
             )
             if referred_table:
-                for parent_column in column["parent_columns"]:
+                for parent_column in column.parent_columns:
                     col_fqn = get_column_fqn(
                         table_entity=referred_table, column=parent_column
                     )
@@ -363,7 +366,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             table_constraints.append(
                 TableConstraint(
                     constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=column["child_columns"],
+                    columns=column.child_columns,
                     referredColumns=referred_column_fqns,
                 )
             )
