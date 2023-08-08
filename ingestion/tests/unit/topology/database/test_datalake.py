@@ -31,8 +31,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.utils.datalake.avro_dispatch import read_from_avro
-from metadata.utils.datalake.json_dispatch import read_from_json
+from metadata.readers.dataframe.avro import AvroDataFrameReader
+from metadata.readers.dataframe.json import JSONDataFrameReader
 
 mock_datalake_config = {
     "source": {
@@ -114,16 +114,16 @@ MOCK_DATABASE = Database(
     ),
 )
 
-EXAMPLE_JSON_TEST_1 = """
+EXAMPLE_JSON_TEST_1 = b"""
 {"name":"John","age":16,"sex":"M"}
 {"name":"Milan","age":19,"sex":"M"}
 """
 
-EXAMPLE_JSON_TEST_2 = """
+EXAMPLE_JSON_TEST_2 = b"""
 {"name":"John","age":16,"sex":"M"}
 """
 
-EXAMPLE_JSON_TEST_3 = """
+EXAMPLE_JSON_TEST_3 = b"""
 {
     "name":"John",
     "age":16,
@@ -140,7 +140,7 @@ EXAMPLE_JSON_TEST_3 = """
 }
 """
 
-EXAMPLE_JSON_TEST_4 = """
+EXAMPLE_JSON_TEST_4 = b"""
 [
     {"name":"John","age":16,"sex":"M","address":null},
     {
@@ -433,25 +433,33 @@ class DatalakeUnitTest(TestCase):
         )
         exp_df_obj = pd.json_normalize(sample_dict)
 
-        actual_df_1 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_1)[0]
-        actual_df_2 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_2)[0]
+        actual_df_1 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_1
+        ).dataframes[0]
+        actual_df_2 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_2
+        ).dataframes[0]
 
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
 
-        actual_df_3 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_3)[0]
+        actual_df_3 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_3
+        ).dataframes[0]
         actual_cols_3 = DatalakeSource.get_columns(actual_df_3)
         self.assertEqual(actual_cols_3, EXAMPLE_JSON_COL_3)
 
-        actual_df_4 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_4)[0]
+        actual_df_4 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_4
+        ).dataframes[0]
         actual_cols_4 = DatalakeSource.get_columns(actual_df_4)
         self.assertEqual(actual_cols_4, EXAMPLE_JSON_COL_4)
 
     def test_avro_file_parse(self):
-        columns = read_from_avro(AVRO_SCHEMA_FILE)
+        columns = AvroDataFrameReader.read_from_avro(AVRO_SCHEMA_FILE)
         Column.__eq__ = custom_column_compare
 
         assert EXPECTED_AVRO_COL_1 == columns.columns  # pylint: disable=no-member
 
-        columns = read_from_avro(AVRO_DATA_FILE)
+        columns = AvroDataFrameReader.read_from_avro(AVRO_DATA_FILE)
         assert EXPECTED_AVRO_COL_2 == columns.columns  # pylint: disable=no-member
