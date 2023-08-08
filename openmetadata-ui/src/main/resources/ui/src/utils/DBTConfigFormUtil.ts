@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
+import { ModifiedDBTConfigurationSource } from 'components/AddIngestion/addIngestion.interface';
 import {
   DbtConfigCloud,
   DbtConfigHttp,
@@ -30,7 +30,7 @@ import {
 import { isEmpty, isNil, isString } from 'lodash';
 
 export const getSourceTypeFromConfig = (
-  data?: ModifiedDbtConfig,
+  data?: ModifiedDBTConfigurationSource,
   defaultSource = DBT_SOURCES.local
 ): DbtSourceTypes => {
   let sourceType = defaultSource;

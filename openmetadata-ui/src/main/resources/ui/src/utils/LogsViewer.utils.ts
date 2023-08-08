@@ -15,7 +15,7 @@ import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard
 import { getTableTabPath } from 'constants/constants';
 import { OPEN_METADATA } from 'constants/service-guide.constant';
 import { EntityTabs } from 'enums/entity.enum';
-import { ConfigClass } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { Pipeline } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { isUndefined, startCase } from 'lodash';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -71,7 +71,7 @@ export const getLogBreadCrumbs = (
         url:
           getTableTabPath(
             getEncodedFqn(
-              (ingestionDetails.sourceConfig.config as ConfigClass)
+              (ingestionDetails.sourceConfig.config as Pipeline)
                 ?.entityFullyQualifiedName ?? ''
             ),
             EntityTabs.PROFILER
