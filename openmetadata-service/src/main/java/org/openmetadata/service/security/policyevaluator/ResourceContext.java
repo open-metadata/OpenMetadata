@@ -87,12 +87,12 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
       }
       try {
-      if (id != null) {
-        entity = (T) entityRepository.find(id, Include.NON_DELETED);
-      } else if (name != null) {
-        entity = (T) entityRepository.findByName(name, Include.NON_DELETED);
-      }
-      } catch(EntityNotFoundException e) {
+        if (id != null) {
+          entity = (T) entityRepository.find(id, Include.NON_DELETED);
+        } else if (name != null) {
+          entity = (T) entityRepository.findByName(name, Include.NON_DELETED);
+        }
+      } catch (EntityNotFoundException e) {
         entity = null;
       }
       if (entity != null) {

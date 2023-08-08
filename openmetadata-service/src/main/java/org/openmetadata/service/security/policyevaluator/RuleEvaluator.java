@@ -1,5 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+
 import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -150,7 +152,7 @@ public class RuleEvaluator {
   public boolean inAnyTeam(String... teams) {
     if (expressionValidation) {
       for (String team : teams) {
-        SubjectCache.getTeamByName(team);
+        Entity.getEntityByName(Entity.TEAM, team, "", NON_DELETED);
       }
       return false;
     }
@@ -178,7 +180,7 @@ public class RuleEvaluator {
   public boolean hasAnyRole(String... roles) {
     if (expressionValidation) {
       for (String role : roles) {
-        RoleCache.getRole(role);
+        Entity.getEntityReferenceByName(Entity.ROLE, role, NON_DELETED); // Validate role exists
       }
       return false;
     }

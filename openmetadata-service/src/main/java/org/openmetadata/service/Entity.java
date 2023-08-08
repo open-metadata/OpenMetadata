@@ -224,10 +224,7 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include) {
-    EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReference(id, include);
   }
@@ -236,10 +233,7 @@ public final class Entity {
     if (fqn == null) {
       return null;
     }
-    EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     return repository.getReferenceByName(fqn, include);
   }
 

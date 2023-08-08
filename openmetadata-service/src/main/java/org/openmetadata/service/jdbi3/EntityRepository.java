@@ -433,8 +433,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Find method is used for getting an entity only with core fields stored as JSON without
-   * any relational fields set
+   * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
   @Transaction
   public T find(UUID id, Include include) throws EntityNotFoundException {
@@ -481,8 +480,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Find method is used for getting an entity only with core fields stored as JSON without
-   * any relational fields set
+   * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
   @Transaction
   public T findByName(String fqn, Include include) {
@@ -490,7 +488,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
-              || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       return entity;

@@ -10,7 +10,7 @@ import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
-import static org.openmetadata.service.security.policyevaluator.SubjectCache.TEAM_FIELDS;
+import static org.openmetadata.service.security.policyevaluator.SubjectContext.TEAM_FIELDS;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -80,7 +80,6 @@ class RuleEvaluatorTest {
 
   @AfterAll
   public static void cleanup() {
-    SubjectCache.cleanUp();
     RoleCache.cleanUp();
   }
 

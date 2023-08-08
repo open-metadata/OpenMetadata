@@ -58,7 +58,7 @@ import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
@@ -124,7 +124,7 @@ public class UserRepository extends EntityRepository<User> {
       return user.getInheritedRoles();
     }
     getTeams(user);
-    return SubjectCache.getRolesForTeams(getTeams(user));
+    return SubjectContext.getRolesForTeams(getTeams(user));
   }
 
   @Override
@@ -439,7 +439,7 @@ public class UserRepository extends EntityRepository<User> {
           continue; // Team is same as the team to which CSV is being imported, then it is in the same hierarchy
         }
         // Else the parent should already exist
-        if (!SubjectCache.isInTeam(team.getName(), teamRef)) {
+        if (!SubjectContext.isInTeam(team.getName(), teamRef)) {
           importFailure(printer, invalidTeam(6, team.getName(), user, teamRef.getName()), csvRecord);
           processRecord = false;
         }

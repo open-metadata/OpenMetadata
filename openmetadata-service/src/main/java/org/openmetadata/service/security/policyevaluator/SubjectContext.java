@@ -14,28 +14,39 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.security.policyevaluator.SubjectCache.TEAM_FIELDS;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectContext {
+  private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
+  public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
   @Getter protected final User user;
 
   protected SubjectContext(User user) {
     this.user = user;
+  }
+
+  public static SubjectContext getSubjectContext(String userName) {
+    User user = Entity.getEntityByName(Entity.USER, EntityInterfaceUtil.quoteName(userName), USER_FIELDS, NON_DELETED);
+    return new SubjectContext(user);
   }
 
   public boolean isAdmin() {
@@ -76,7 +87,7 @@ public class SubjectContext {
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, EntityReference owner) {
     if (owner.getType().equals(Entity.USER)) {
-      SubjectContext subjectContext = SubjectCache.getSubjectContext(owner.getName());
+      SubjectContext subjectContext = getSubjectContext(owner.getName());
       return subjectContext.isUserUnderTeam(parentTeam);
     } else if (owner.getType().equals(Entity.TEAM)) {
       try {
@@ -90,8 +101,35 @@ public class SubjectContext {
   }
 
   /** Return true if the team is part of the hierarchy of parentTeam */
-  private boolean isInTeam(String parentTeam, EntityReference team) {
-    return SubjectCache.isInTeam(parentTeam, team);
+  public static boolean isInTeam(String parentTeam, EntityReference team) {
+    Deque<EntityReference> stack = new ArrayDeque<>();
+    stack.push(team); // Start with team and see if the parent matches
+    while (!stack.isEmpty()) {
+      try {
+        Team parent = Entity.getEntity(Entity.TEAM, stack.pop().getId(), "parents", NON_DELETED);
+        if (parent.getName().equals(parentTeam)) {
+          return true;
+        }
+        listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
+      } catch (Exception ex) {
+        // Ignore and return false
+      }
+    }
+    return false;
+  }
+
+  public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
+    List<EntityReference> roles = new ArrayList<>();
+    for (EntityReference teamRef : listOrEmpty(teams)) {
+      try {
+        Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), "roles", NON_DELETED);
+        roles.addAll(team.getDefaultRoles());
+        roles.addAll(getRolesForTeams(team.getParents()));
+      } catch (Exception ex) {
+        // Ignore and continue
+      }
+    }
+    return roles.stream().distinct().collect(Collectors.toList());
   }
 
   // Iterate over all the policies of the team hierarchy the user belongs to
@@ -105,7 +143,33 @@ public class SubjectContext {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return SubjectCache.hasRole(getUser(), roles);
+    return hasRole(getUser(), roles);
+  }
+
+  /** Return true if the given user has any roles the list of roles */
+  public static boolean hasRole(User user, String role) {
+    Deque<EntityReference> stack = new ArrayDeque<>();
+    // If user has one of the roles directly assigned then return true
+    if (hasRole(user.getRoles(), role)) {
+      return true;
+    }
+    listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
+    while (!stack.isEmpty()) {
+      try {
+        Team parent = Entity.getEntity(Entity.TEAM, stack.pop().getId(), TEAM_FIELDS, NON_DELETED);
+        if (hasRole(parent.getDefaultRoles(), role)) {
+          return true;
+        }
+        listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
+      } catch (Exception ex) {
+        // Ignore the exception and return false
+      }
+    }
+    return false;
+  }
+
+  private static boolean hasRole(List<EntityReference> userRoles, String expectedRole) {
+    return listOrEmpty(userRoles).stream().anyMatch(userRole -> userRole.getName().equals(expectedRole));
   }
 
   @Getter
