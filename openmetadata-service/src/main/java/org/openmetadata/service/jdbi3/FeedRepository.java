@@ -228,7 +228,7 @@ public class FeedRepository {
 
   public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user, CloseTask closeTask) {
     // Update the attributes
-    closeTask(thread, EntityInterfaceUtil.quoteName(user), closeTask.getComment());
+    closeTask(thread, user, closeTask.getComment());
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }

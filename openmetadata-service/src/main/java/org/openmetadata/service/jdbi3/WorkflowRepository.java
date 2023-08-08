@@ -14,6 +14,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
 
   public WorkflowRepository(CollectionDAO dao) {
     super(WorkflowResource.COLLECTION_PATH, WORKFLOW, Workflow.class, dao.workflowDAO(), dao, PATCH_FIELDS, "");
+    quoteFqn = true;
   }
 
   @Override

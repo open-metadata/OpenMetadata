@@ -30,6 +30,7 @@ public class BotRepository extends EntityRepository<Bot> {
 
   public BotRepository(CollectionDAO dao) {
     super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+    quoteFqn = true;
   }
 
   @Override

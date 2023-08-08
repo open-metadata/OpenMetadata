@@ -844,7 +844,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private void unmask(IngestionPipeline ingestionPipeline) {
     repository.setFullyQualifiedName(ingestionPipeline);
     IngestionPipeline originalIngestionPipeline =
-        repository.findByName(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
+        repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
     EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
   }
 

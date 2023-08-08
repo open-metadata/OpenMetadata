@@ -33,7 +33,6 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
@@ -48,7 +47,7 @@ public class SubjectContext {
   }
 
   public static SubjectContext getSubjectContext(String userName) {
-    User user = Entity.getEntityByName(Entity.USER, EntityInterfaceUtil.quoteName(userName), USER_FIELDS, NON_DELETED);
+    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
     return new SubjectContext(user);
   }
 

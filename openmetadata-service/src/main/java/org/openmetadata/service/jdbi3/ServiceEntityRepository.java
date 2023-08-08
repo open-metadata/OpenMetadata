@@ -40,6 +40,7 @@ public abstract class ServiceEntityRepository<
       Class<S> serviceConnectionClass,
       ServiceType serviceType) {
     this(collectionPath, service, dao, entityDAO, serviceConnectionClass, "", serviceType);
+    quoteFqn = true;
   }
 
   protected ServiceEntityRepository(

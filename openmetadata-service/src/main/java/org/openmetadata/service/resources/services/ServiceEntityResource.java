@@ -89,7 +89,7 @@ public abstract class ServiceEntityResource<
   protected T unmask(T service) {
     // TODO move this functionality to repository
     serviceEntityRepository.setFullyQualifiedName(service);
-    T originalService = serviceEntityRepository.findByName(service.getFullyQualifiedName(), Include.NON_DELETED);
+    T originalService = serviceEntityRepository.findByNameOrNull(service.getFullyQualifiedName(), Include.ALL);
     String connectionType = extractServiceType(service);
     try {
       if (originalService != null && originalService.getConnection() != null) {

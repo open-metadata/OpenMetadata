@@ -33,7 +33,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -67,8 +66,7 @@ public final class UserUtil {
       fieldList.add("authenticationMechanism");
 
       // Fetch Original User, is available
-      User originalUser =
-          userRepository.getByName(null, EntityInterfaceUtil.quoteName(username), new Fields(fieldList));
+      User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
       if (Boolean.FALSE.equals(originalUser.getIsBot()) && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
         updatedUser = originalUser;
 
@@ -95,7 +93,6 @@ public final class UserUtil {
                 originalUser.getName()));
       }
     } catch (EntityNotFoundException e) {
-      System.out.println("XXX Entity not found ");
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
       if (authProvider.equals(AuthProvider.BASIC)) {

@@ -35,6 +35,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    quoteFqn = true;
   }
 
   @Override

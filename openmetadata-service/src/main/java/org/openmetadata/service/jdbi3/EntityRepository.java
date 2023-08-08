@@ -110,6 +110,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -188,6 +189,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
+  protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -209,7 +211,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.dao = entityDAO;
     this.daoCollection = collectionDAO;
     this.entityType = entityType;
-
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);
 
@@ -459,6 +460,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
+    fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     if (!fromCache) {
       // Clear the cache and always get the entity from the database to ensure read-after-write consistency
       CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
@@ -478,7 +480,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final EntityReference getReferenceByName(String fqn, Include include) {
+    fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     return findByName(fqn, include).getEntityReference();
+  }
+
+  @Transaction
+  public T findByNameOrNull(String fqn, Include include) {
+    try {
+      return findByName(fqn, include);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
   }
 
   /**
@@ -486,6 +498,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public T findByName(String fqn, Include include) {
+    fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     try {
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
@@ -837,6 +850,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final DeleteResponse<T> deleteByName(String updatedBy, String name, boolean recursive, boolean hardDelete) {
+    name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
     postDelete(response.getEntity());
     return response;
@@ -1692,7 +1706,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : getEntityByName(Entity.USER, quoteName(updated.getUpdatedBy()), "", NON_DELETED);
+              : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */

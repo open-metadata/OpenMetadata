@@ -75,6 +75,7 @@ public class UserRepository extends EntityRepository<User> {
   public UserRepository(CollectionDAO dao) {
     super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
     organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
+    this.quoteFqn = true;
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
@@ -245,12 +246,10 @@ public class UserRepository extends EntityRepository<User> {
     AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
     // Create Admins
     Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
-    LOG.info("XXX Checking user entries for admin users {}", adminUsers);
     String domain = SecurityUtil.getDomain(config);
     UserUtil.addUsers(authProvider, adminUsers, domain, true);
 
     // Create Test Users
-    LOG.info("XXX Checking user entries for test users");
     Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
     UserUtil.addUsers(authProvider, testUsers, domain, null);
   }
