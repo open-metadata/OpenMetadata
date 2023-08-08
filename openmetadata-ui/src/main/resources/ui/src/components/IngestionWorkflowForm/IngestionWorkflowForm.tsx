@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import Form, { FormProps } from '@rjsf/core';
-import { RJSFSchema } from '@rjsf/utils';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import BooleanFieldTemplate from 'components/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -67,7 +66,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       formContext={{ onUpdate: handleUpdateData }}
       formData={internalData}
       idSeparator="/"
-      schema={schema as RJSFSchema}
+      schema={schema}
       showErrorList={false}
       templates={{
         ArrayFieldTemplate: IngestionArrayFieldTemplate,
