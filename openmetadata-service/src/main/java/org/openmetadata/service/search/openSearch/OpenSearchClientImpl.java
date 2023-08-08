@@ -3,6 +3,7 @@ package org.openmetadata.service.search.openSearch;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -73,6 +74,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -1083,6 +1085,44 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public void updateDatabaseSchema(ChangeEvent event) throws IOException {
+    boolean checkIfRestored = checkIfRestored(event);
+    if (event.getEventType() == ENTITY_SOFT_DELETED || checkIfRestored) {
+      BulkRequest request = new BulkRequest();
+      int batchSize = 50;
+      int totalHits;
+      int currentHits = 0;
+      SearchRequest searchRequest;
+      SearchResponse response;
+      UpdateRequest updateRequest;
+      do {
+        searchRequest =
+            new SearchRequest(ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.from(currentHits);
+        searchSourceBuilder.size(batchSize);
+        searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+        searchRequest.source(searchSourceBuilder);
+        response = client.search(searchRequest, RequestOptions.DEFAULT);
+        totalHits = (int) response.getHits().getTotalHits().value;
+        for (SearchHit hit : response.getHits()) {
+          Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+          updateRequest =
+              new UpdateRequest(
+                  ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
+                  sourceAsMap.get("id").toString());
+          if (checkIfRestored) {
+            restoreDeleteEntity(updateRequest);
+          } else {
+            softDeleteEntity(updateRequest);
+          }
+          request.add(updateRequest);
+        }
+        currentHits += response.getHits().getHits().length;
+      } while (currentHits < totalHits);
+      if (request.numberOfActions() > 0) {
+        client.bulk(request, RequestOptions.DEFAULT);
+      }
+    }
     if (event.getEventType() == ENTITY_DELETED) {
       DatabaseSchema databaseSchema = (DatabaseSchema) event.getEntity();
       DeleteByQueryRequest request =
@@ -1332,6 +1372,21 @@ public class OpenSearchClientImpl implements SearchClient {
     String scriptTxt = "ctx._source.deleted=true";
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
     updateRequest.script(script);
+  }
+
+  private void restoreDeleteEntity(UpdateRequest updateRequest) {
+    String scriptTxt = "ctx._source.deleted=false";
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+    updateRequest.script(script);
+  }
+
+  private boolean checkIfRestored(ChangeEvent event) {
+    for (FieldChange changeDescription : event.getChangeDescription().getFieldsUpdated()) {
+      if (changeDescription.getName().equals("deleted") && event.getEventType() == ENTITY_UPDATED) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
