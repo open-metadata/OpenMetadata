@@ -199,9 +199,11 @@ const Services = ({
                           </div>
                           {getOptionalFields(service, serviceName)}
                         </div>
-                        <div className="" data-testid="service-type">
-                          <label>{`${t('label.type')}:`}</label>
-                          <span className="font-normal text-grey-body">
+                        <div className="m-b-xss" data-testid="service-type">
+                          <label className="m-b-0">{`${t(
+                            'label.type'
+                          )}:`}</label>
+                          <span className="font-normal m-l-xss text-grey-body">
                             {service.serviceType}
                           </span>
                         </div>
