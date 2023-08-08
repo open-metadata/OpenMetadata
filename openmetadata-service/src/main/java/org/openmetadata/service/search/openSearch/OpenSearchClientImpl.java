@@ -1383,9 +1383,11 @@ public class OpenSearchClientImpl implements SearchClient {
   }
 
   private boolean checkIfRestored(ChangeEvent event) {
-    for (FieldChange changeDescription : event.getChangeDescription().getFieldsUpdated()) {
-      if (changeDescription.getName().equals("deleted") && event.getEventType() == ENTITY_UPDATED) {
-        return true;
+    if (event.getChangeDescription() != null) {
+      for (FieldChange changeDescription : event.getChangeDescription().getFieldsUpdated()) {
+        if (changeDescription.getName().equals("deleted") && event.getEventType() == ENTITY_UPDATED) {
+          return true;
+        }
       }
     }
     return false;
