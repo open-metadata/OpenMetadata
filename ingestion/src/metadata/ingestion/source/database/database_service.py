@@ -29,7 +29,8 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
     Table,
-    TableType, TableConstraint,
+    TableConstraint,
+    TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -233,7 +234,9 @@ class DatabaseServiceSource(
         Parses view definition to get lineage information
         """
 
-    def update_table_constraints(self, table_constraints: List[TableConstraint], foreign_columns: []) -> List[TableConstraint]:
+    def update_table_constraints(
+        self, table_constraints: List[TableConstraint], foreign_columns: []
+    ) -> List[TableConstraint]:
         """
         process the table constraints of all tables
         transform SQLAlchemy returned foreign_columns into list of TableConstraint.

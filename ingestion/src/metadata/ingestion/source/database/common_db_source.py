@@ -80,9 +80,9 @@ class CommonDbSourceService(
     """
 
     def __init__(
-            self,
-            config: WorkflowSource,
-            metadata_config: OpenMetadataConnection,
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
     ):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
@@ -179,7 +179,7 @@ class CommonDbSourceService(
         yield from self._get_filtered_schema_names()
 
     def yield_database_schema(
-            self, schema_name: str
+        self, schema_name: str
     ) -> Iterable[CreateDatabaseSchemaRequest]:
         """
         From topology.
@@ -194,7 +194,7 @@ class CommonDbSourceService(
 
     @staticmethod
     def get_table_description(
-            schema_name: str, table_name: str, inspector: Inspector
+        schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
         try:
@@ -210,7 +210,7 @@ class CommonDbSourceService(
         return description
 
     def query_table_names_and_types(
-            self, schema_name: str
+        self, schema_name: str
     ) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
@@ -252,10 +252,10 @@ class CommonDbSourceService(
                         skip_es_search=True,
                     )
                     if filter_by_table(
-                            self.source_config.tableFilterPattern,
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name,
+                        self.source_config.tableFilterPattern,
+                        table_fqn
+                        if self.source_config.useFqnForFiltering
+                        else table_name,
                     ):
                         self.status.filter(
                             table_fqn,
@@ -277,10 +277,10 @@ class CommonDbSourceService(
                     )
 
                     if filter_by_table(
-                            self.source_config.tableFilterPattern,
-                            view_fqn
-                            if self.source_config.useFqnForFiltering
-                            else view_name,
+                        self.source_config.tableFilterPattern,
+                        view_fqn
+                        if self.source_config.useFqnForFiltering
+                        else view_name,
                     ):
                         self.status.filter(
                             view_fqn,
@@ -295,7 +295,7 @@ class CommonDbSourceService(
             logger.debug(traceback.format_exc())
 
     def get_view_definition(
-            self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
+        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         if table_type == TableType.View:
             try:
@@ -317,18 +317,18 @@ class CommonDbSourceService(
         return None
 
     def is_partition(  # pylint: disable=unused-argument
-            self,
-            table_name: str,
-            schema_name: str,
-            inspector: Inspector,
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
     ) -> bool:
         return False
 
     def get_table_partition_details(  # pylint: disable=unused-argument
-            self,
-            table_name: str,
-            schema_name: str,
-            inspector: Inspector,
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
     ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
@@ -340,7 +340,7 @@ class CommonDbSourceService(
 
     @calculate_execution_time_generator
     def yield_table(
-            self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Optional[CreateTableRequest]]:
         """
         From topology.
@@ -366,7 +366,9 @@ class CommonDbSourceService(
                 schema_name=schema_name,
                 inspector=self.inspector,
             )
-            table_constraints = self.update_table_constraints(table_constraints, foreign_columns)
+            table_constraints = self.update_table_constraints(
+                table_constraints, foreign_columns
+            )
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
@@ -430,9 +432,7 @@ class CommonDbSourceService(
                 timeout_seconds=self.source_config.viewParsingTimeoutLimit,
             )
 
-    def _get_foreign_constraints(
-            self, foreign_columns
-    ) -> List[TableConstraint]:
+    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -450,7 +450,9 @@ class CommonDbSourceService(
             )
             if referred_table:
                 for referred_column in column.get("referred_columns"):
-                    col_fqn = get_column_fqn(table_entity=referred_table, column=referred_column)
+                    col_fqn = get_column_fqn(
+                        table_entity=referred_table, column=referred_column
+                    )
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
             else:
@@ -466,7 +468,9 @@ class CommonDbSourceService(
 
         return foreign_constraints
 
-    def update_table_constraints(self, table_constraints, foreign_columns) -> List[TableConstraint]:
+    def update_table_constraints(
+        self, table_constraints, foreign_columns
+    ) -> List[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
@@ -495,10 +499,10 @@ class CommonDbSourceService(
         self.engine.dispose()
 
     def fetch_table_tags(
-            self,
-            table_name: str,
-            schema_name: str,
-            inspector: Inspector,
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
     ) -> None:
         """
         Method to fetch tags associated with table
@@ -518,11 +522,11 @@ class CommonDbSourceService(
         pass
 
     def get_source_url(
-            self,
-            database_name: str,
-            schema_name: str,
-            table_name: str,
-            table_type: TableType,
+        self,
+        database_name: str,
+        schema_name: str,
+        table_name: str,
+        table_type: TableType,
     ) -> Optional[str]:
         """
         By default the source url is not supported for
