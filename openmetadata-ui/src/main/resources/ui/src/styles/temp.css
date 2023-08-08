@@ -72,6 +72,10 @@
   display: flex;
 }
 
+.svg-icon:not(.hidden) {
+  display: inline-block;
+}
+
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -267,6 +271,10 @@
 }
 
 /* Editor CSS */
+
+.editor-wrapper:not(.max-h-none) {
+  max-height: calc(100vh - 10rem);
+}
 
 .editor-wrapper code,
 .editor-code {

@@ -102,7 +102,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
 
   return (
     <>
-      <div className={classNames('feed-meesage', isEditPost ? '' : className)}>
+      <div className={classNames('feed-message', isEditPost ? '' : className)}>
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
             <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
