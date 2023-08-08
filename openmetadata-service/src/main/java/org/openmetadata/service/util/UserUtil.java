@@ -95,6 +95,7 @@ public final class UserUtil {
                 originalUser.getName()));
       }
     } catch (EntityNotFoundException e) {
+      System.out.println("XXX Entity not found ");
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
       if (authProvider.equals(AuthProvider.BASIC)) {

@@ -53,6 +53,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
@@ -445,7 +446,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
       return entity;
-    } catch (ExecutionException e) {
+    } catch (ExecutionException | UncheckedExecutionException e) {
       throw new EntityNotFoundException(entityNotFound(entityType, id));
     }
   }
@@ -492,7 +493,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       return entity;
-    } catch (ExecutionException e) {
+    } catch (ExecutionException | UncheckedExecutionException e) {
       throw new EntityNotFoundException(entityNotFound(entityType, fqn));
     }
   }
