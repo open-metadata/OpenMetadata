@@ -15,7 +15,16 @@ import {
   StorageConnection,
   StorageService,
 } from 'generated/entity/services/storageService';
-import { DatabaseServiceMetadataPipelineClass } from 'generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DashboardServiceMetadataPipeline } from 'generated/metadataIngestion/dashboardServiceMetadataPipeline';
+import { DatabaseServiceMetadataPipeline } from 'generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DatabaseServiceProfilerPipeline } from 'generated/metadataIngestion/databaseServiceProfilerPipeline';
+import { DatabaseServiceQueryLineagePipeline } from 'generated/metadataIngestion/databaseServiceQueryLineagePipeline';
+import { DatabaseServiceQueryUsagePipeline } from 'generated/metadataIngestion/databaseServiceQueryUsagePipeline';
+import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
+import { MessagingServiceMetadataPipeline } from 'generated/metadataIngestion/messagingServiceMetadataPipeline';
+import { MlmodelServiceMetadataPipeline } from 'generated/metadataIngestion/mlmodelServiceMetadataPipeline';
+import { PipelineServiceMetadataPipeline } from 'generated/metadataIngestion/pipelineServiceMetadataPipeline';
+import { StorageServiceMetadataPipeline } from 'generated/metadataIngestion/storageServiceMetadataPipeline';
 import {
   DashboardConnection,
   DashboardService,
@@ -101,6 +110,14 @@ export type ConfigData =
   | MetadataConnection
   | StorageConnection;
 
-export type IngestionWorkflowData = DatabaseServiceMetadataPipelineClass & {
-  name: string;
-};
+export type IngestionWorkflowData =
+  | DatabaseServiceMetadataPipeline
+  | DashboardServiceMetadataPipeline
+  | PipelineServiceMetadataPipeline
+  | MessagingServiceMetadataPipeline
+  | MlmodelServiceMetadataPipeline
+  | StorageServiceMetadataPipeline
+  | DatabaseServiceProfilerPipeline
+  | DatabaseServiceQueryLineagePipeline
+  | DatabaseServiceQueryUsagePipeline
+  | DbtPipeline;

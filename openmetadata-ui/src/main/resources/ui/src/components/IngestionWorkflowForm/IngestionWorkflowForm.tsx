@@ -21,10 +21,11 @@ import IngestionArrayFieldTemplate from 'components/JSONSchemaTemplate/Ingestion
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { t } from 'i18next';
 import { IngestionWorkflowData } from 'interface/service.interface';
-import databaseMetadataPipeline from 'jsons/ingestionSchemas/databaseServiceMetadataPipeline.json';
 import React, { FC, useMemo, useState } from 'react';
 import { customValidate } from 'utils/formUtils';
+import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
 
 interface IngestionWorkflowFormProps extends FormProps {
   pipeLineType: PipelineType;
@@ -33,13 +34,6 @@ interface IngestionWorkflowFormProps extends FormProps {
   cancelText: string;
   onCancel: () => void;
 }
-
-const CUSTOM_PROPERTY = {
-  name: {
-    description: 'Name of the workflow',
-    type: 'string',
-  },
-};
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
@@ -50,31 +44,17 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   okText,
   cancelText,
 }) => {
-  const [internalData, setInternalData] = useState<IngestionWorkflowData>({
-    name: workflowName,
-  });
+  const [internalData, setInternalData] = useState<IngestionWorkflowData>();
 
   const handleUpdateData = (partialData: Partial<IngestionWorkflowData>) => {
     setInternalData(partialData);
   };
 
-  const schema = useMemo(() => {
-    switch (pipeLineType) {
-      case PipelineType.Metadata:
-      default:
-        return {
-          ...databaseMetadataPipeline,
-          properties: {
-            ...databaseMetadataPipeline.properties,
-            ...CUSTOM_PROPERTY,
-          },
-          required: [
-            ...((databaseMetadataPipeline as RJSFSchema).required ?? []),
-            'name',
-          ],
-        };
-    }
-  }, [pipeLineType]);
+  const schema = useMemo(
+    () => getSchemaByWorkflowType(pipeLineType),
+
+    [pipeLineType]
+  );
 
   return (
     <Form
@@ -97,6 +77,22 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       }}
       uiSchema={INGESTION_WORKFLOW_UI_SCHEMA}
       validator={validator}>
+      <div className="property-wrapper">
+        <div className="form-group field field-string">
+          <label className="control-label" htmlFor="root/name">
+            {t('label.name')}
+          </label>
+          <input
+            required
+            aria-describedby="root/name__error root/name__description root/name__help"
+            className="form-control"
+            id="root/name"
+            name="root/name"
+            type="text"
+            value={workflowName}
+          />
+        </div>
+      </div>
       <Space className="w-full justify-end">
         <Space>
           <Button type="link" onClick={onCancel}>
