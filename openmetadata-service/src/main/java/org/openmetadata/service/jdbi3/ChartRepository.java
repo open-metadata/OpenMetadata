@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -62,9 +64,25 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
+  public Chart setInheritedFields(Chart chart, Fields fields) {
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(chart.getDomain())) {
+      DashboardService dashboardService = Entity.getEntity(chart.getService(), "domain", ALL);
+      chart.setDomain(dashboardService.getDomain());
+    }
+    return chart;
+  }
+
+  @Override
   public Chart setFields(Chart chart, Fields fields) {
-    chart.setService(getContainer(chart.getId()));
-    return chart.withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(chart) : null);
+    if (chart.getService() == null) {
+      chart.setService(getContainer(chart.getId()));
+    }
+    return chart;
+  }
+
+  @Override
+  public Chart clearFields(Chart chart, Fields fields) {
+    return chart; // Nothing to do
   }
 
   @Override

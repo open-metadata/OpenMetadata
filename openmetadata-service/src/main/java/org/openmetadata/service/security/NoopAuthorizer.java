@@ -29,7 +29,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
@@ -37,7 +36,6 @@ import org.openmetadata.service.util.RestUtil;
 public class NoopAuthorizer implements Authorizer {
   @Override
   public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
-    SubjectCache.initialize();
     addAnonymousUser();
   }
 

@@ -14,8 +14,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
@@ -27,7 +29,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
@@ -37,7 +38,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
-
   private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository(CollectionDAO dao) {
@@ -60,7 +60,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("charts")) {
-      Dashboard dashboard = getByName(null, entityLink.getEntityFQN(), getFields("charts,tags"), Include.ALL);
+      Dashboard dashboard = getByName(null, entityLink.getEntityFQN(), getFields("charts,tags"), Include.ALL, false);
       EntityReference chart =
           dashboard.getCharts().stream()
               .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
@@ -83,15 +83,30 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public Dashboard setFields(Dashboard dashboard, Fields fields) {
-    dashboard.setService(getContainer(dashboard.getId()));
-    dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
-    dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
-    dashboard.setDataModels(
-        fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
-    return dashboard.withUsageSummary(
-        fields.contains("usageSummary")
-            ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
-            : null);
+    if (dashboard.getService() == null) {
+      dashboard.setService(getContainer(dashboard.getId()));
+    }
+    if (dashboard.getCharts() == null) {
+      dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
+    }
+    if (dashboard.getDataModels() == null) {
+      dashboard.setDataModels(
+          fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
+    }
+    if (dashboard.getUsageSummary() == null) {
+      dashboard.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
+              : null);
+    }
+    return dashboard;
+  }
+
+  @Override
+  public Dashboard clearFields(Dashboard dashboard, Fields fields) {
+    dashboard.setCharts(fields.contains("charts") ? dashboard.getCharts() : null);
+    dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
+    return dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
   @Override
@@ -158,6 +173,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
+  public Dashboard setInheritedFields(Dashboard dashboard, Fields fields) {
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(dashboard.getDomain())) {
+      DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
+      dashboard.setDomain(dashboardService.getDomain());
+    }
+    return dashboard;
+  }
+
+  @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
     return new DashboardUpdater(original, updated, operation);
   }
@@ -166,7 +190,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard == null) {
       return Collections.emptyList();
     }
-    List<EntityRelationshipRecord> ids = findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
+    List<CollectionDAO.EntityRelationshipRecord> ids =
+        findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
     return EntityUtil.populateEntityReferences(ids, entityType);
   }
 

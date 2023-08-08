@@ -30,11 +30,17 @@ public class BotRepository extends EntityRepository<Bot> {
 
   public BotRepository(CollectionDAO dao) {
     super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+    quoteFqn = true;
   }
 
   @Override
   public Bot setFields(Bot entity, Fields fields) {
     return entity.withBotUser(getBotUser(entity));
+  }
+
+  @Override
+  public Bot clearFields(Bot entity, Fields fields) {
+    return entity; // Nothing to do
   }
 
   @Override
@@ -68,7 +74,9 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   public EntityReference getBotUser(Bot bot) {
-    return getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
+    return bot.getBotUser() != null
+        ? bot.getBotUser()
+        : getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
   }
 
   public class BotUpdater extends EntityUpdater {

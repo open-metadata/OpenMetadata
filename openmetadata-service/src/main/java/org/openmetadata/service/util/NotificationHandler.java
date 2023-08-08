@@ -37,7 +37,6 @@ import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -139,10 +138,10 @@ public class NotificationHandler {
         entityLink -> {
           String fqn = entityLink.getEntityFQN();
           if (USER.equals(entityLink.getEntityType())) {
-            User user = dao.userDAO().findEntityByName(EntityInterfaceUtil.quoteName(fqn));
+            User user = dao.userDAO().findEntityByName(fqn);
             WebSocketManager.getInstance().sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
           } else if (TEAM.equals(entityLink.getEntityType())) {
-            Team team = dao.teamDAO().findEntityByName(EntityInterfaceUtil.quoteName(fqn));
+            Team team = dao.teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
             List<CollectionDAO.EntityRelationshipRecord> records =
                 dao.relationshipDAO().findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);

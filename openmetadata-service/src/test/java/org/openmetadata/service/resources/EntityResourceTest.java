@@ -69,7 +69,6 @@ import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -1041,7 +1040,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K request = createRequest(getEntityName(test), "", null, USER1_REF);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    // Update the entity as USER_OWNER1
+    // Update the entity as USER1
     request.withDescription("newDescription");
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "newDescription");
@@ -1440,7 +1439,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void patch_deleted_attribute_disallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_deleted_attribute_disallowed_400(TestInfo test) throws HttpResponseException {
     if (!supportsPatch || !supportsSoftDelete) {
       return;
     }
@@ -1763,7 +1762,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
-      throws HttpResponseException, JsonProcessingException, InterruptedException {
+      throws HttpResponseException, InterruptedException {
     if (supportsTags && supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -1960,7 +1959,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     updated.setOwner(reduceEntityReference(updated.getOwner()));
     String updatedEntityJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
@@ -2735,7 +2734,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public void assertOwnershipInheritanceOverride(T entity, K updateRequest, EntityReference newOwner)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     // When an entity has ownership set, it does not inherit owner from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwner(newOwner);
@@ -2760,7 +2759,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public void assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     // When an entity has domain set, it does not inherit domain from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setDomain(newDomain);

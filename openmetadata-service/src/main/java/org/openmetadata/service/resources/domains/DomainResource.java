@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -50,7 +49,6 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DomainRepository;
@@ -317,10 +315,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   }
 
   private Domain getDomain(CreateDomain create, String user) {
-    List<String> experts =
-        create.getExperts() == null
-            ? create.getExperts()
-            : create.getExperts().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList());
+    List<String> experts = create.getExperts();
     return copy(new Domain(), create, user)
         .withDomainType(create.getDomainType())
         .withFullyQualifiedName(create.getName())

@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -53,16 +52,13 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -87,11 +83,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     Entity.withHref(uriInfo, term.getReviewers());
     Entity.withHref(uriInfo, term.getOwner());
     return term;
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
-    TagLabelCache.initialize();
   }
 
   public GlossaryTermResource(CollectionDAO dao, Authorizer authorizer) {
@@ -171,12 +162,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
       glossary = repository.getGlossary(glossaryIdParam);
-      fqn = EntityInterfaceUtil.quoteName(glossary.getName());
+      fqn = glossary.getName();
     }
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = repository.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
+      GlossaryTerm parentTerm = repository.find(parentTermParam, Include.NON_DELETED);
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary
@@ -437,12 +428,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(
-            getEntityReferences(
-                Entity.USER,
-                create.getReviewers() == null
-                    ? create.getReviewers()
-                    : create.getReviewers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
+        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());

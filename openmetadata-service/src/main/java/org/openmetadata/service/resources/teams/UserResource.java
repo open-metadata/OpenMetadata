@@ -107,7 +107,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -132,7 +131,6 @@ import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -194,7 +192,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     // Keep this before initializeUsers, else getUpdater() will fail
-    SubjectCache.initialize();
     this.repository.initializeUsers(config);
   }
 
@@ -362,7 +359,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    User user = getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    User user = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
   }
@@ -789,7 +786,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -1056,7 +1053,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1093,7 +1090,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
       tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     } else {
@@ -1123,7 +1120,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createAccessToken(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersonalToken tokenRequest) {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED, false);
     if (Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
@@ -1392,11 +1389,5 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
-  }
-
-  @Override
-  public User getByNameInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include) {
-    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 }

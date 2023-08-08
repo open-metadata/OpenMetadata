@@ -44,7 +44,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
@@ -1437,7 +1436,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   public final Thread patchThread(UUID id, String originalJson, Thread updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     String updatedThreadJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedThreadJson);
     return TestUtils.patch(getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
@@ -1458,7 +1457,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   public final Post patchPost(
       UUID threadId, UUID id, String originalJson, Post updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     String updatedPostJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedPostJson);
     return TestUtils.patch(

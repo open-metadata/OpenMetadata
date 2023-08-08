@@ -45,13 +45,22 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public Domain setFields(Domain entity, Fields fields) {
-    entity.withParent(fields.contains("parent") ? getParent(entity) : null);
-    entity.withChildren(fields.contains("children") ? getChildren(entity) : null);
-    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
+    entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
+    entity.withChildren(fields.contains("children") ? getChildren(entity) : entity.getChildren());
+    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : entity.getExperts());
+  }
+
+  @Override
+  public Domain clearFields(Domain entity, Fields fields) {
+    entity.withParent(fields.contains("parent") ? entity.getParent() : null);
+    entity.withChildren(fields.contains("children") ? entity.getChildren() : null);
+    return entity.withExperts(fields.contains("experts") ? entity.getExperts() : null);
   }
 
   private EntityReference getParent(Domain entity) {
-    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, DOMAIN, false);
+    return entity.getParent() != null
+        ? entity.getParent()
+        : getFromEntityRef(entity.getId(), Relationship.CONTAINS, DOMAIN, false);
   }
 
   private List<EntityReference> getChildren(Domain entity) {

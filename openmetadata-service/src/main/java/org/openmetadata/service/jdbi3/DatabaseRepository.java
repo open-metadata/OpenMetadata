@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DATABASE_SERVICE;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+
 import java.util.List;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -55,6 +59,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
     addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
   }
 
+  @Override
+  public Database setInheritedFields(Database database, Fields fields) {
+    // If database does not have domain, then inherit it from parent database service
+    if (fields.contains(FIELD_DOMAIN) && database.getDomain() == null) {
+      DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
+      database.withDomain(service.getDomain());
+    }
+    return database;
+  }
+
   private List<EntityReference> getSchemas(Database database) {
     if (database == null) {
       return null;
@@ -65,11 +79,23 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public Database setFields(Database database, Fields fields) {
-    database.setService(getContainer(database.getId()));
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
-    database.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
+    if (database.getService() == null) {
+      database.setService(getContainer(database.getId()));
+    }
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
+    if (database.getUsageSummary() == null) {
+      database.setUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
+              : null);
+    }
     return database;
+  }
+
+  public Database clearFields(Database database, Fields fields) {
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    return database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
   @Override

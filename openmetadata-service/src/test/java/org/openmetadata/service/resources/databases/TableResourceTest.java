@@ -65,7 +65,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -1031,10 +1030,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void putProfileConfig(Table table, Map<String, String> authHeaders) throws IOException {
+    // Add table profile config with columns c1, c3 and column c2 excluded
     List<ColumnProfilerConfig> columnProfilerConfigs = new ArrayList<>();
     columnProfilerConfigs.add(
         getColumnProfilerConfig(C1, "valuesCount", "valuePercentage", "validCount", "duplicateCount"));
     columnProfilerConfigs.add(getColumnProfilerConfig(C3, "duplicateCount", "nullCount", "missingCount"));
+
     TableProfilerConfig tableProfilerConfig =
         new TableProfilerConfig()
             .withProfileQuery("SELECT * FROM dual")
@@ -1045,6 +1046,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table storedTable = getEntity(table.getId(), "tableProfilerConfig", authHeaders);
     assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
 
+    // Change table profile config with columns c2, c3 and column c1 excluded
+    // Also change the profileQuery from dual to dual1
     columnProfilerConfigs.remove(0);
     columnProfilerConfigs.add(
         getColumnProfilerConfig(C2, "valuesCount", "valuePercentage", "validCount", "duplicateCount"));
@@ -1704,7 +1707,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     DatabaseResourceTest dbTest = new DatabaseResourceTest();
@@ -1712,39 +1715,47 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Ensure databaseSchema owner is inherited from database
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema =
-        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
-    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
+    CreateDatabaseSchema createSchema = schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.assertOwnerInheritance(createSchema, USER1_REF);
 
     // Ensure table owner is inherited from databaseSchema
-    CreateTable createTable = createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, table.getOwner()); // Inherited owner
-    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, table.getOwner()); // Inherited owner
+    CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = assertOwnerInheritance(createTable, USER1_REF);
 
     // Change the ownership of table and ensure further ingestion updates don't overwrite the ownership
-    String json = JsonUtils.pojoToJson(table);
-    table.setOwner(USER2_REF);
-    table = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, table.getOwner());
-    table = updateEntity(createTable.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
-    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
-    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
+    assertOwnershipInheritanceOverride(table, createTable.withOwner(null), USER2_REF);
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
-    json = JsonUtils.pojoToJson(schema);
-    schema.setOwner(USER2_REF);
-    schema = schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, schema.getOwner());
-    schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
-    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
-    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
+    schemaTest.assertOwnershipInheritanceOverride(schema, createSchema.withOwner(null), USER2_REF);
+  }
+
+  @Test
+  void test_domainInheritance(TestInfo test) throws HttpResponseException {
+    // Domain is inherited from databaseService > database > databaseSchema > table
+    DatabaseServiceResourceTest dbServiceTest = new DatabaseServiceResourceTest();
+    DatabaseService dbService =
+        dbServiceTest.createEntity(
+            dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+
+    // Ensure database domain is inherited from database service
+    DatabaseResourceTest dbTest = new DatabaseResourceTest();
+    CreateDatabase createDb = dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
+    Database db = dbTest.assertDomainInheritance(createDb, DOMAIN.getEntityReference());
+
+    // Ensure databaseSchema domain is inherited from database
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema = schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.assertDomainInheritance(createSchema, DOMAIN.getEntityReference());
+
+    // Ensure table domain is inherited from databaseSchema
+    CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
+
+    // Change the domain of table and ensure further ingestion updates don't overwrite the domain
+    assertDomainInheritanceOverride(table, createTable.withDomain(null), SUB_DOMAIN.getEntityReference());
+
+    // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
+    schemaTest.assertDomainInheritanceOverride(schema, createSchema.withDomain(null), SUB_DOMAIN.getEntityReference());
   }
 
   @Test
@@ -1869,9 +1880,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void assertFields(Table table, String fieldsParam) {
-    // TODO cleanup
     Fields fields = new Fields(Entity.getEntityFields(Table.class), fieldsParam);
-
     if (fields.contains("usageSummary")) {
       assertNotNull(table.getUsageSummary());
     } else {

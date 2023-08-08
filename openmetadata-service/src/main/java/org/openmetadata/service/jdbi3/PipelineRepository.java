@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
@@ -75,7 +74,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals(TASKS_FIELD)) {
-      Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL);
+      Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL, false);
       String oldJson = JsonUtils.pojoToJson(pipeline);
       Task pipelineTask =
           pipeline.getTasks().stream()
@@ -101,16 +100,24 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) {
-    pipeline.setService(getContainer(pipeline.getId()));
-    pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
-    getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-    if (!fields.contains(TASKS_FIELD)) {
-      pipeline.withTasks(null);
+    if (pipeline.getService() == null) {
+      pipeline.setService(getContainer(pipeline.getId()));
     }
-    return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
+    getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
+    return pipeline.withPipelineStatus(
+        fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : pipeline.getPipelineStatus());
+  }
+
+  @Override
+  public Pipeline clearFields(Pipeline pipeline, Fields fields) {
+    pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
+    return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
+    if (pipeline.getPipelineStatus() != null) {
+      return pipeline.getPipelineStatus();
+    }
     return JsonUtils.readValue(
         getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
@@ -236,7 +243,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private void getTaskTags(boolean setTags, List<Task> tasks) {
     for (Task t : listOrEmpty(tasks)) {
-      t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : null);
+      if (t.getTags() == null) {
+        t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : t.getTags());
+      }
     }
   }
 
