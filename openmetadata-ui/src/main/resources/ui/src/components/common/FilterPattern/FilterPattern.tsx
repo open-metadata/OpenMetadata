@@ -50,45 +50,49 @@ const FilterPattern = ({
         </Col>
       </Row>
       {checked && (
-        <div data-testid="field-container">
-          <Space size={2}>
-            <label className="d-flex flex-col">{t('label.include')}:</label>
-          </Space>
+        <Row className="m-t-xs" data-testid="field-container" gutter={[0, 16]}>
+          <Col span={24}>
+            <Space size={2}>
+              <label className="d-flex flex-col">{t('label.include')}:</label>
+            </Space>
 
-          <Select
-            className="m-t-xss"
-            data-testid={`filter-pattern-includes-${type}`}
-            disabled={isDisabled}
-            mode="tags"
-            open={false}
-            placeholder={t('message.filter-pattern-placeholder')}
-            value={includePattern ?? []}
-            onChange={(value) => getIncludeValue(value, type)}
-          />
+            <Select
+              className="m-t-xss"
+              data-testid={`filter-pattern-includes-${type}`}
+              disabled={isDisabled}
+              mode="tags"
+              open={false}
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={includePattern ?? []}
+              onChange={(value) => getIncludeValue(value, type)}
+            />
 
-          {includePatternExtraInfo && (
-            <Typography.Text
-              className="text-grey-muted m-t-xss m-b-xss"
-              data-testid="filter-pattern-include-info">
-              {includePatternExtraInfo}
-            </Typography.Text>
-          )}
-          <Space size={2}>
-            <label className="d-flex flex-col">{t('label.exclude')}:</label>
-          </Space>
-          <Select
-            className="m-t-xss"
-            data-testid={`filter-pattern-excludes-${type}`}
-            disabled={isDisabled}
-            mode="tags"
-            open={false}
-            placeholder={t('message.filter-pattern-placeholder')}
-            value={excludePattern ?? []}
-            onChange={(value) => getExcludeValue(value, type)}
-          />
+            {includePatternExtraInfo && (
+              <Typography.Text
+                className="text-grey-muted m-t-xss m-b-xss"
+                data-testid="filter-pattern-include-info">
+                {includePatternExtraInfo}
+              </Typography.Text>
+            )}
+          </Col>
+          <Col span={24}>
+            <Space size={2}>
+              <label className="d-flex flex-col">{t('label.exclude')}:</label>
+            </Space>
+            <Select
+              className="m-t-xss"
+              data-testid={`filter-pattern-excludes-${type}`}
+              disabled={isDisabled}
+              mode="tags"
+              open={false}
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={excludePattern ?? []}
+              onChange={(value) => getExcludeValue(value, type)}
+            />
 
-          {showSeparator && <Divider />}
-        </div>
+            {showSeparator && <Divider />}
+          </Col>
+        </Row>
       )}
     </div>
   );

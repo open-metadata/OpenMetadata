@@ -138,7 +138,7 @@ const EntitySummaryDetails = ({
                     <span data-testid="owner-link">
                       {userDetails.ownerName}
                     </span>
-                    <span className="d-inline-block">
+                    <span className="m-r-xss d-inline-block text-grey-muted">
                       {t('label.pipe-symbol')}
                     </span>
                   </>
@@ -244,7 +244,12 @@ const EntitySummaryDetails = ({
           {data.isLink ? (
             <>
               <a
-                className={classNames('d-inline-block link-text align-middle')}
+                className={classNames(
+                  'd-inline-block truncate link-text align-middle',
+                  {
+                    'w-52': (displayVal as string).length > 32,
+                  }
+                )}
                 data-testid={`${lowerCase(data.key)}-link`}
                 href={data.value as string}
                 rel="noopener noreferrer"
@@ -284,7 +289,12 @@ const EntitySummaryDetails = ({
           ) : isOwner ? (
             <>
               <span
-                className={classNames('dinline-block align-middle')}
+                className={classNames(
+                  'd-inline-block truncate link-text align-middle',
+                  {
+                    'w-52': (displayVal as string).length > 32,
+                  }
+                )}
                 data-testid="owner-link"
                 title={displayVal as string}>
                 <Button data-testid="owner-dropdown" type="link">
@@ -296,7 +306,12 @@ const EntitySummaryDetails = ({
             </>
           ) : isTier ? (
             <Space
-              className={classNames('align-middle')}
+              className={classNames(
+                'd-inline-block truncate link-text align-middle',
+                {
+                  'w-52': (displayVal as string).length > 32,
+                }
+              )}
               data-testid="tier-name"
               direction="horizontal"
               title={displayVal as string}>

@@ -141,7 +141,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       )}
       {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
-          className="d-flex justify-between bg-white "
+          className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
           data-testid="ip-address">
           <div className="self-center">
             {t('message.airflow-host-ip-address', { hostIp })}
@@ -160,7 +160,7 @@ const FormBuilder: FunctionComponent<Props> = ({
             onValidateFormRequiredFields={handleRequiredFieldsValidation}
           />
         )}
-      <div className="d-flex justify-between">
+      <div className="m-t-lg d-flex justify-between">
         <div />
         <div className="text-right" data-testid="buttons">
           <Button type="link" onClick={handleCancel}>

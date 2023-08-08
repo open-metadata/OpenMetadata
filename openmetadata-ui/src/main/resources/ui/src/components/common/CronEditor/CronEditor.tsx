@@ -293,7 +293,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
               {getHourSelect(selectedDayOption, (value: number) =>
                 onDayOptionSelect(value, 'hour')
               )}
-              <span className="self-center">:</span>
+              <span className="m-x-sm self-center">:</span>
               {getMinuteSelect(selectedDayOption, (value: number) =>
                 onDayOptionSelect(value, 'min')
               )}
