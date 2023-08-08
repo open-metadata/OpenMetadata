@@ -16,7 +16,7 @@ import gzip
 import io
 import json
 import zipfile
-from typing import Union
+from typing import List, Union
 
 from metadata.readers.dataframe.base import DataFrameReader
 from metadata.readers.dataframe.common import dataframe_to_chunks
@@ -50,7 +50,7 @@ class JSONDataFrameReader(DataFrameReader):
         decode: bool = False,
         is_profiler: bool = False,
         **__
-    ) -> DatalakeColumnWrapper:
+    ) -> List["DataFrame"]:
         """
         Decompress a JSON file (if needed) and read its contents
         as a dataframe.

@@ -516,7 +516,7 @@ class DatalakeSource(DatabaseServiceSource):
         return data_type
 
     @staticmethod
-    def get_columns(data_frame: list):
+    def get_columns(data_frame: "DataFrame"):
         """
         method to process column details
         """
@@ -551,7 +551,6 @@ class DatalakeSource(DatabaseServiceSource):
                             "name": truncate_column_name(column),
                             "displayName": column,
                         }
-                        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                         cols.append(Column(**parsed_string))
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
