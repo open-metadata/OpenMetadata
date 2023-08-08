@@ -46,7 +46,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
@@ -81,9 +80,9 @@ class CommonDbSourceService(
     """
 
     def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+            self,
+            config: WorkflowSource,
+            metadata_config: OpenMetadataConnection,
     ):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
@@ -180,7 +179,7 @@ class CommonDbSourceService(
         yield from self._get_filtered_schema_names()
 
     def yield_database_schema(
-        self, schema_name: str
+            self, schema_name: str
     ) -> Iterable[CreateDatabaseSchemaRequest]:
         """
         From topology.
@@ -195,7 +194,7 @@ class CommonDbSourceService(
 
     @staticmethod
     def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
+            schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
         try:
@@ -211,7 +210,7 @@ class CommonDbSourceService(
         return description
 
     def query_table_names_and_types(
-        self, schema_name: str
+            self, schema_name: str
     ) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
@@ -253,10 +252,10 @@ class CommonDbSourceService(
                         skip_es_search=True,
                     )
                     if filter_by_table(
-                        self.source_config.tableFilterPattern,
-                        table_fqn
-                        if self.source_config.useFqnForFiltering
-                        else table_name,
+                            self.source_config.tableFilterPattern,
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name,
                     ):
                         self.status.filter(
                             table_fqn,
@@ -278,10 +277,10 @@ class CommonDbSourceService(
                     )
 
                     if filter_by_table(
-                        self.source_config.tableFilterPattern,
-                        view_fqn
-                        if self.source_config.useFqnForFiltering
-                        else view_name,
+                            self.source_config.tableFilterPattern,
+                            view_fqn
+                            if self.source_config.useFqnForFiltering
+                            else view_name,
                     ):
                         self.status.filter(
                             view_fqn,
@@ -296,7 +295,7 @@ class CommonDbSourceService(
             logger.debug(traceback.format_exc())
 
     def get_view_definition(
-        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
+            self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         if table_type == TableType.View:
             try:
@@ -318,18 +317,18 @@ class CommonDbSourceService(
         return None
 
     def is_partition(  # pylint: disable=unused-argument
-        self,
-        table_name: str,
-        schema_name: str,
-        inspector: Inspector,
+            self,
+            table_name: str,
+            schema_name: str,
+            inspector: Inspector,
     ) -> bool:
         return False
 
     def get_table_partition_details(  # pylint: disable=unused-argument
-        self,
-        table_name: str,
-        schema_name: str,
-        inspector: Inspector,
+            self,
+            table_name: str,
+            schema_name: str,
+            inspector: Inspector,
     ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
@@ -341,7 +340,7 @@ class CommonDbSourceService(
 
     @calculate_execution_time_generator
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+            self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Optional[CreateTableRequest]]:
         """
         From topology.
@@ -367,7 +366,7 @@ class CommonDbSourceService(
                 schema_name=schema_name,
                 inspector=self.inspector,
             )
-
+            table_constraints = self.update_table_constraints(table_constraints, foreign_columns)
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
@@ -377,6 +376,7 @@ class CommonDbSourceService(
                     inspector=self.inspector,
                 ),
                 columns=columns,
+                tableConstraints=table_constraints,
                 viewDefinition=view_definition,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
                 tags=self.get_tag_labels(
@@ -411,15 +411,6 @@ class CommonDbSourceService(
                 )
                 self.context.table_views.append(table_view)
 
-            if table_constraints or foreign_columns:
-                self.context.table_constrains.append(
-                    OMetaTableConstraints(
-                        foreign_constraints=foreign_columns,
-                        constraints=table_constraints,
-                        table=self.context.table,
-                    )
-                )
-
         except Exception as exc:
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
@@ -440,7 +431,7 @@ class CommonDbSourceService(
             )
 
     def _get_foreign_constraints(
-        self, table_constraints: OMetaTableConstraints
+            self, foreign_columns
     ) -> List[TableConstraint]:
         """
         Search the referred table for foreign constraints
@@ -448,43 +439,45 @@ class CommonDbSourceService(
         """
 
         foreign_constraints = []
-        for constraint in table_constraints.foreign_constraints:
+        for column in foreign_columns:
             referred_column_fqns = []
             referred_table = fqn.search_table_from_es(
                 metadata=self.metadata,
-                table_name=constraint.get("referred_table"),
-                schema_name=constraint.get("referred_schema"),
+                table_name=column.get("referred_table"),
+                schema_name=column.get("referred_schema"),
                 database_name=None,
                 service_name=self.context.database_service.name.__root__,
             )
             if referred_table:
-                for column in constraint.get("referred_columns"):
-                    col_fqn = get_column_fqn(table_entity=referred_table, column=column)
+                for referred_column in column.get("referred_columns"):
+                    col_fqn = get_column_fqn(table_entity=referred_table, column=referred_column)
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
+            else:
+                # do not build partial foreign constraint. It will updated in next run.
+                continue
             foreign_constraints.append(
                 TableConstraint(
                     constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=constraint.get("constrained_columns"),
+                    columns=column.get("constrained_columns"),
                     referredColumns=referred_column_fqns,
                 )
             )
 
         return foreign_constraints
 
-    def yield_table_constraints(self) -> Optional[Iterable[OMetaTableConstraints]]:
+    def update_table_constraints(self, table_constraints, foreign_columns) -> List[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
         """
-        for table_constraints in self.context.table_constrains:
-            foreign_constraints = self._get_foreign_constraints(table_constraints)
-            if foreign_constraints:
-                if table_constraints.constraints:
-                    table_constraints.constraints.extend(foreign_constraints)
-                else:
-                    table_constraints.constraints = foreign_constraints
-            yield table_constraints
+        foreign_table_constraints = self._get_foreign_constraints(foreign_columns)
+        if foreign_table_constraints:
+            if table_constraints:
+                table_constraints.extend(foreign_table_constraints)
+            else:
+                table_constraints = foreign_table_constraints
+        return table_constraints
 
     @property
     def connection(self) -> Connection:
@@ -502,10 +495,10 @@ class CommonDbSourceService(
         self.engine.dispose()
 
     def fetch_table_tags(
-        self,
-        table_name: str,
-        schema_name: str,
-        inspector: Inspector,
+            self,
+            table_name: str,
+            schema_name: str,
+            inspector: Inspector,
     ) -> None:
         """
         Method to fetch tags associated with table
@@ -525,11 +518,11 @@ class CommonDbSourceService(
         pass
 
     def get_source_url(
-        self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+            self,
+            database_name: str,
+            schema_name: str,
+            table_name: str,
+            table_type: TableType,
     ) -> Optional[str]:
         """
         By default the source url is not supported for

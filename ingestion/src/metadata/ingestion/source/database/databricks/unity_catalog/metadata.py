@@ -68,6 +68,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+
 # pylint: disable=invalid-name,not-callable
 @classmethod
 def from_dict(cls, d: Dict[str, any]) -> "TableConstraintList":
@@ -136,10 +137,10 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                         database_name=catalog.name,
                     )
                     if filter_by_database(
-                        self.config.sourceConfig.config.databaseFilterPattern,
-                        database_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else catalog.name,
+                            self.config.sourceConfig.config.databaseFilterPattern,
+                            database_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else catalog.name,
                     ):
                         self.status.filter(
                             database_fqn,
@@ -178,10 +179,10 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                     schema_name=schema.name,
                 )
                 if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else schema.name,
+                        self.config.sourceConfig.config.schemaFilterPattern,
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema.name,
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
@@ -193,7 +194,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 self.status.failed(schema.name, error, traceback.format_exc())
 
     def yield_database_schema(
-        self, schema_name: str
+            self, schema_name: str
     ) -> Iterable[CreateDatabaseSchemaRequest]:
         """
         From topology.
@@ -216,8 +217,8 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         schema_name = self.context.database_schema.name.__root__
         catalog_name = self.context.database.name.__root__
         for table in self.client.tables.list(
-            catalog_name=catalog_name,
-            schema_name=schema_name,
+                catalog_name=catalog_name,
+                schema_name=schema_name,
         ):
             try:
                 table_name = table.name
@@ -230,10 +231,10 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                     table_name=table_name,
                 )
                 if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table_name,
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
                 ):
                     self.status.filter(
                         table_fqn,
@@ -254,7 +255,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 self.status.failed(table.Name, error, traceback.format_exc())
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+            self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Optional[CreateTableRequest]]:
         """
         From topology.
@@ -331,17 +332,17 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             )
 
     def _get_foreign_constraints(
-        self, table_constraints: OMetaTableConstraints
+            self, foreign_columns
     ) -> List[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
         """
 
-        foreign_constraints = []
-        for constraint in table_constraints.foreign_constraints:
+        table_constraints = []
+        for column in foreign_columns:
             referred_column_fqns = []
-            ref_table_fqn = constraint["parent_table"]
+            ref_table_fqn = column["parent_table"]
             table_fqn_list = fqn.split(ref_table_fqn)
 
             referred_table = fqn.search_table_from_es(
@@ -352,39 +353,41 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 service_name=self.context.database_service.name.__root__,
             )
             if referred_table:
-                for column in constraint["parent_columns"]:
-                    col_fqn = get_column_fqn(table_entity=referred_table, column=column)
+                for parent_column in column["parent_columns"]:
+                    col_fqn = get_column_fqn(table_entity=referred_table, column=parent_column)
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
-            foreign_constraints.append(
+            else:
+                continue
+                
+            table_constraints.append(
                 TableConstraint(
                     constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=constraint["child_columns"],
+                    columns=column["child_columns"],
                     referredColumns=referred_column_fqns,
                 )
             )
 
-        return foreign_constraints
+        return table_constraints
 
-    def yield_table_constraints(self) -> Optional[Iterable[OMetaTableConstraints]]:
+    def update_table_constraints(self, table_constraints, foreign_columns) -> List[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
         """
-        for table_constraints in self.table_constraints:
-            foreign_constraints = self._get_foreign_constraints(table_constraints)
-            if foreign_constraints:
-                if table_constraints.constraints:
-                    table_constraints.constraints.extend(foreign_constraints)
-                else:
-                    table_constraints.constraints = foreign_constraints
-            yield table_constraints
+        foreign_table_constraints = self._get_foreign_constraints(foreign_columns)
+        if foreign_table_constraints:
+            if table_constraints:
+                table_constraints.extend(foreign_table_constraints)
+            else:
+                table_constraints = foreign_table_constraints
+        return table_constraints
 
     def prepare(self):
         pass
 
     def add_complex_datatype_descriptions(
-        self, column: Column, column_json: ColumnJson
+            self, column: Column, column_json: ColumnJson
     ):
         """
         Method to add descriptions to complex datatypes
@@ -398,18 +401,18 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                     if column_json.metadata:
                         column.description = column_json.metadata.comment
                     if (
-                        column_json.type
-                        and isinstance(column_json.type, Type)
-                        and column_json.type.fields
+                            column_json.type
+                            and isinstance(column_json.type, Type)
+                            and column_json.type.fields
                     ):
                         self.add_complex_datatype_descriptions(
                             child, column_json.type.fields[i]
                         )
                     if (
-                        column_json.type
-                        and isinstance(column_json.type, Type)
-                        and column_json.type.type.lower() == "array"
-                        and isinstance(column_json.type.elementType, ElementType)
+                            column_json.type
+                            and isinstance(column_json.type, Type)
+                            and column_json.type.type.lower() == "array"
+                            and isinstance(column_json.type.elementType, ElementType)
                     ):
                         self.add_complex_datatype_descriptions(
                             child,
