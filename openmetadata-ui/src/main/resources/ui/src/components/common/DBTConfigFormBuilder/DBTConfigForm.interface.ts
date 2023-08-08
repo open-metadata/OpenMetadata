@@ -15,12 +15,12 @@ import { FilterPatternEnum } from 'enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import {
   Credentials,
-  DbtConfig,
+  DBTConfigurationSource,
   GCPCredentialsValues,
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
   AddIngestionState,
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
 } from '../../AddIngestion/addIngestion.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
@@ -28,7 +28,7 @@ export interface DBTFormCommonProps {
   okText: string;
   cancelText: string;
   onCancel: () => void;
-  onSubmit: (data?: DbtConfig) => void;
+  onSubmit: (data?: DBTConfigurationSource) => void;
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
@@ -42,7 +42,7 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
 }
 
 export type DbtConfigCloud = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtCloudAccountId'
   | 'dbtCloudAuthToken'
   | 'dbtUpdateDescriptions'
@@ -54,7 +54,7 @@ export type DbtConfigCloud = Pick<
 >;
 
 export type DbtConfigLocal = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtCatalogFilePath'
   | 'dbtManifestFilePath'
   | 'dbtRunResultsFilePath'
@@ -64,7 +64,7 @@ export type DbtConfigLocal = Pick<
 >;
 
 export type DbtConfigHttp = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtCatalogHttpPath'
   | 'dbtManifestHttpPath'
   | 'dbtRunResultsHttpPath'
@@ -74,7 +74,7 @@ export type DbtConfigHttp = Pick<
 >;
 
 export type DbtConfigS3GCS = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtSecurityConfig'
   | 'dbtPrefixConfig'
   | 'dbtUpdateDescriptions'
@@ -83,7 +83,7 @@ export type DbtConfigS3GCS = Pick<
 >;
 
 export type DbtConfigAzure = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtSecurityConfig'
   | 'dbtPrefixConfig'
   | 'dbtUpdateDescriptions'

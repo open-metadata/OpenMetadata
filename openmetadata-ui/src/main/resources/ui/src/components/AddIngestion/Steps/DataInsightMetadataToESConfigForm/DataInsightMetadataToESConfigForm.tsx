@@ -15,12 +15,12 @@ import { Button, Col, Divider, Form, Input, Row, Switch } from 'antd';
 import { AddIngestionState } from 'components/AddIngestion/addIngestion.interface';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Pipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import '../MetadataToESConfigForm/MetadataToESConfigForm.less';
 
 interface Props {
   data: AddIngestionState;
-  handleMetadataToESConfig: (data: ConfigClass) => void;
+  handleMetadataToESConfig: (data: Pipeline) => void;
   handlePrev: () => void;
   handleNext: () => void;
   onFocus: (fieldId: string) => void;
@@ -38,7 +38,7 @@ const DataInsightMetadataToESConfigForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
-  const handleSubmit = (values: ConfigClass) => {
+  const handleSubmit = (values: Pipeline) => {
     handleMetadataToESConfig({
       ...values,
     });
