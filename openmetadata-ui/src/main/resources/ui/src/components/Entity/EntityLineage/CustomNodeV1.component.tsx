@@ -20,12 +20,13 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NodeProps, useUpdateNodeInternals } from 'reactflow';
-import { getNodeRemoveButton } from 'utils/EntityLineageUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import SVGIcons from 'utils/SvgUtils';
 import { getConstraintIcon } from 'utils/TableUtils';
 import './custom-node.less';
 import { getColumnHandle, getHandle } from './CustomNode.utils';
 import { ModifiedColumn } from './EntityLineage.interface';
+import './entityLineage.style.less';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 const CustomNodeV1 = (props: NodeProps) => {
@@ -89,11 +90,20 @@ const CustomNodeV1 = (props: NodeProps) => {
       return (
         <>
           <LineageNodeLabelV1 node={node} />
-          {selected && isEditMode
-            ? getNodeRemoveButton(() => {
-                removeNodeHandler?.(props);
-              })
-            : null}
+          {selected && isEditMode ? (
+            <Button
+              className="lineage-node-remove-btn bg-body-hover"
+              icon={
+                <SVGIcons
+                  alt="times-circle"
+                  icon="icon-times-circle"
+                  width="16px"
+                />
+              }
+              type="link"
+              onClick={() => removeNodeHandler?.(props)}
+            />
+          ) : null}
         </>
       );
     }

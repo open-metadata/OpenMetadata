@@ -99,7 +99,6 @@ import {
   prepareLabel,
 } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
-import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -396,7 +395,7 @@ export const getLineageData = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="d-flex justify-center font-medium items-center">
+    <div className="m-t-md m-l-md global-border rounded-4 flex-center p-8 font-medium">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>
@@ -501,21 +500,6 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
   });
 
   return uniqueElements;
-};
-
-/**
- *
- * @param onClick - callback
- * @returns - Button element with attach callback
- */
-export const getNodeRemoveButton = (onClick: () => void) => {
-  return (
-    <Button
-      className="absolute cursor-pointer bg-body-hover"
-      onClick={() => onClick()}>
-      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-    </Button>
-  );
 };
 
 export const getSelectedEdgeArr = (

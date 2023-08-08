@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Modal, Space } from 'antd';
+import { Button, Card, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
@@ -98,7 +98,6 @@ import {
   getModalBodyText,
   getNewLineageConnectionDetails,
   getNewNodes,
-  getNodeRemoveButton,
   getPaginatedChildMap,
   getParamByEntityType,
   getRemovedNodeData,
@@ -124,6 +123,7 @@ import {
   getEntityName,
 } from 'utils/EntityUtils';
 import { getEntityReferenceFromPipeline } from 'utils/PipelineServiceUtils';
+import SVGIcons from 'utils/SvgUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
@@ -1268,9 +1268,18 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         data: {
           label: (
             <div className="relative">
-              {getNodeRemoveButton(() => {
-                removeNodeHandler(newNode as Node);
-              })}
+              <Button
+                className="lineage-node-remove-btn bg-body-hover"
+                icon={
+                  <SVGIcons
+                    alt="times-circle"
+                    icon="icon-times-circle"
+                    width="16px"
+                  />
+                }
+                type="link"
+                onClick={() => removeNodeHandler(newNode as Node)}
+              />
               <Space align="center" size={2}>
                 <Icon
                   className="m-r-xs"
