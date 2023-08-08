@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Row, Select, Space, Typography } from 'antd';
+import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { capitalize } from 'lodash';
 import React from 'react';
-import { getSeparator } from '../../../utils/CommonUtils';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
@@ -88,7 +87,7 @@ const FilterPattern = ({
             onChange={(value) => getExcludeValue(value, type)}
           />
 
-          {showSeparator && getSeparator('')}
+          {showSeparator && <Divider />}
         </div>
       )}
     </div>

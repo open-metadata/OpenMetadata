@@ -228,7 +228,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'p-x-xss m-x-xss   text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
         clsBG,
         className
       )}>
@@ -341,7 +341,9 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
 export const errorMsg = (value: string) => {
   return (
     <div>
-      <strong className="text-xs" data-testid="error-message">
+      <strong
+        className="text-xs font-italic text-failure"
+        data-testid="error-message">
         {value}
       </strong>
     </div>
@@ -350,19 +352,10 @@ export const errorMsg = (value: string) => {
 
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
-    {label} <span>{!excludeSpace && <>&nbsp;</>}*</span>
+    {label}{' '}
+    <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
-
-export const getSeparator = (title: string | JSX.Element, hrMarginTop = '') => {
-  return (
-    <span className="d-flex text-grey-muted">
-      <hr className={classNames('w-full', hrMarginTop)} />
-      {title && <span>{title}</span>}
-      <hr className={classNames('w-full', hrMarginTop)} />
-    </span>
-  );
-};
 
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
