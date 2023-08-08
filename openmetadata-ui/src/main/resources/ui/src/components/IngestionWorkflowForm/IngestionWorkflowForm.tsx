@@ -12,10 +12,11 @@
  */
 import Form, { FormProps } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
 import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import IngestionArrayFieldTemplate from 'components/JSONSchemaTemplate/IngestionArrayFieldTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -27,23 +28,10 @@ import { customValidate } from 'utils/formUtils';
 interface IngestionWorkflowFormProps extends FormProps {
   pipeLineType: PipelineType;
   workflowName: string;
+  okText: string;
+  cancelText: string;
+  onCancel: () => void;
 }
-
-const INITIAL_DATA: IngestionWorkflowData = {
-  schemaFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  tableFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  databaseFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  name: '',
-};
 
 const CUSTOM_PROPERTY = {
   name: {
@@ -57,11 +45,17 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   validator,
   className,
   workflowName,
+  onCancel,
+  okText,
+  cancelText,
 }) => {
-  const [initialData] = useState<IngestionWorkflowData>({
-    ...INITIAL_DATA,
+  const [internalData, setInternalData] = useState<IngestionWorkflowData>({
     name: workflowName,
   });
+
+  const handleUpdateData = (partialData: Partial<IngestionWorkflowData>) => {
+    setInternalData(partialData);
+  };
 
   const schema = useMemo(() => {
     switch (pipeLineType) {
@@ -88,19 +82,31 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       omitExtraData
       className={classNames('rjsf no-header', className)}
       customValidate={customValidate}
-      formData={initialData}
+      formContext={{ onUpdate: handleUpdateData }}
+      formData={internalData}
       idSeparator="/"
       schema={schema as RJSFSchema}
       showErrorList={false}
       templates={{
-        ArrayFieldTemplate: ArrayFieldTemplate,
+        ArrayFieldTemplate: IngestionArrayFieldTemplate,
         DescriptionFieldTemplate: DescriptionFieldTemplate,
         FieldErrorTemplate: FieldErrorTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
       }}
       uiSchema={INGESTION_WORKFLOW_UI_SCHEMA}
-      validator={validator}
-    />
+      validator={validator}>
+      <Space className="w-full justify-end">
+        <Space>
+          <Button type="link" onClick={onCancel}>
+            {cancelText}
+          </Button>
+
+          <Button data-testid="submit-btn" htmlType="submit" type="primary">
+            {okText}
+          </Button>
+        </Space>
+      </Space>
+    </Form>
   );
 };
 
