@@ -3,13 +3,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceProfilerPipeline",
   "description": "DatabaseService Profiler Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "profilerConfigType": {
       "description": "Profiler Source Config Pipeline type",
       "type": "string",
-      "enum": [
-        "Profiler"
-      ],
+      "enum": ["Profiler"],
       "default": "Profiler"
     }
   },
@@ -37,9 +36,9 @@
       "default": false
     },
     "confidence": {
-        "description": "Set the Confidence value for which you want the column to be marked",
-        "type": "number",
-        "default": 80
+      "description": "Set the Confidence value for which you want the column to be marked",
+      "type": "number",
+      "default": 80
     },
     "generateSampleData": {
       "description": "Option to turn on/off generating sample data.",

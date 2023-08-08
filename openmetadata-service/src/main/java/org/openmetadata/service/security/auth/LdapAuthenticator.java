@@ -121,7 +121,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
-  private User checkAndCreateUser(String email) throws IOException {
+  private User checkAndCreateUser(String email) {
     // Check if the user exists in OM Database
     try {
       return userRepository.getByName(null, email.split("@")[0], userRepository.getFields("id,name,email"));
@@ -143,13 +143,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
-      EmailUtil.getInstance()
-          .sendAccountStatus(
-              storedUser,
-              "Multiple Failed Login Attempts.",
-              String.format(
-                  "Someone is tried accessing your account. Login is Blocked for %s seconds.",
-                  loginConfiguration.getAccessBlockTime()));
+      EmailUtil.sendAccountStatus(
+          storedUser,
+          "Multiple Failed Login Attempts.",
+          String.format(
+              "Someone is tried accessing your account. Login is Blocked for %s seconds.",
+              loginConfiguration.getAccessBlockTime()));
     }
   }
 

@@ -31,6 +31,10 @@ const ADMIN = 'admin';
 
 const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
 
+export const replaceAllSpacialCharWith_ = (text) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+};
+
 const isDatabaseService = (type) => type === 'database';
 
 export const checkServiceFieldSectionHighlighting = (field) => {
@@ -220,7 +224,7 @@ export const testServiceCreationAndIngestion = ({
   // validation should work
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  cy.get('#name_help').should('be.visible').contains('name is required');
+  cy.get('#name_help').should('be.visible').contains('Name is required');
 
   // invalid name validation should work
   cy.get('[data-testid="service-name"]').should('exist').type('!@#$%^&*()');
@@ -335,7 +339,9 @@ export const testServiceCreationAndIngestion = ({
 
   scheduleIngestion();
 
-  cy.contains(`${serviceName}_metadata`).should('be.visible');
+  cy.contains(`${replaceAllSpacialCharWith_(serviceName)}_metadata`).should(
+    'be.visible'
+  );
 
   // wait for ingestion to run
   cy.clock();
@@ -480,7 +486,8 @@ export const visitEntityDetailsPage = (
   term,
   serviceName,
   entity,
-  dataTestId
+  dataTestId,
+  entityType
 ) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
@@ -491,6 +498,12 @@ export const visitEntityDetailsPage = (
   interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
   const id = dataTestId ?? `${serviceName}-${term}`;
+
+  if (entityType) {
+    cy.get('[data-testid="global-search-selector"]').click();
+    cy.get(`[data-testid="global-search-select-option-${entityType}"]`).click();
+  }
+
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
@@ -706,10 +719,12 @@ export const deleteSoftDeletedUser = (username) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
-export const toastNotification = (msg) => {
+export const toastNotification = (msg, closeToast = true) => {
   cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
   cy.wait(200);
-  cy.get('.Toastify__close-button').should('be.visible').click();
+  if (closeToast) {
+    cy.get('.Toastify__close-button').should('be.visible').click();
+  }
 };
 
 export const addCustomPropertiesForEntity = (
@@ -725,10 +740,10 @@ export const addCustomPropertiesForEntity = (
   // validation should work
   cy.get('[data-testid="create-button"]').scrollIntoView().click();
 
-  cy.get('#name_help').should('contain', 'name is required');
-  cy.get('#propertyType_help').should('contain', 'propertyType is required');
+  cy.get('#name_help').should('contain', 'Name is required');
+  cy.get('#propertyType_help').should('contain', 'Property Type is required');
 
-  cy.get('#description_help').should('contain', 'description is required');
+  cy.get('#description_help').should('contain', 'Description is required');
 
   // capital case validation
   cy.get('[data-testid="name"]')
@@ -873,7 +888,7 @@ export const deleteCreatedProperty = (propertyName) => {
 };
 
 export const updateOwner = () => {
-  cy.get('[data-testid="avatar"]').should('be.visible').click();
+  cy.get('[data-testid="avatar"]').click();
   cy.get('[data-testid="user-name"]')
     .should('exist')
     .invoke('text')
@@ -881,10 +896,10 @@ export const updateOwner = () => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+      cy.get('[data-testid="edit-owner"]').click();
 
       cy.get('.user-team-select-popover').contains('Users').click();
-
+      cy.get('[data-testid="owner-select-users-search-bar"]').type(text);
       cy.get('[data-testid="selectable-list"]')
         .eq(1)
         .find(`[title="${text.trim()}"]`)
@@ -917,11 +932,9 @@ export const addTeam = (TEAM_DETAILS, index) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   // Fetching the add button and clicking on it
   if (index > 0) {
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="add-placeholder-button"]').click();
   } else {
-    cy.get('[data-testid="add-team"]').should('be.visible').click();
+    cy.get('[data-testid="add-team"]').click();
   }
 
   verifyResponseStatusCode('@addTeam', 200);
@@ -1028,14 +1041,10 @@ export const updateDescriptionForIngestedTables = (
 ) => {
   interceptURL(
     'GET',
-    `/api/v1/services/ingestionPipelines?fields=*&service=${serviceName}`,
+    `/api/v1/services/ingestionPipelines?fields=*&service=*`,
     'ingestionPipelines'
   );
-  interceptURL(
-    'GET',
-    `/api/v1/*?service=${serviceName}&fields=*`,
-    'serviceDetails'
-  );
+  interceptURL('GET', `/api/v1/*?service=*&fields=*`, 'serviceDetails');
   interceptURL(
     'GET',
     `/api/v1/system/config/pipeline-service-client`,
@@ -1081,7 +1090,11 @@ export const updateDescriptionForIngestedTables = (
     '/api/v1/services/ingestionPipelines/trigger/*',
     'checkRun'
   );
-  cy.get(`[data-row-key*="${serviceName}_metadata"] [data-testid="run"]`)
+  cy.get(
+    `[data-row-key*="${replaceAllSpacialCharWith_(
+      serviceName
+    )}_metadata"] [data-testid="run"]`
+  )
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@checkRun', 200);

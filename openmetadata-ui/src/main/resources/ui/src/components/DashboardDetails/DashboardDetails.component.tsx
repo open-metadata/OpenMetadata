@@ -14,9 +14,7 @@
 import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -66,8 +64,11 @@ import {
   DashboardDetailsProps,
 } from './DashboardDetails.interface';
 
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 
 const DashboardDetails = ({
   charts,
@@ -219,7 +220,9 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDashboardDetailsPath(dashboardFQN, activeKey));
+      history.push(
+        getDashboardDetailsPath(getDecodedFqn(dashboardFQN), activeKey)
+      );
     }
   };
 
@@ -650,14 +653,12 @@ const DashboardDetails = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.DASHBOARD}
-              fqn={dashboardDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchDashboard}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.DASHBOARD}
+            fqn={dashboardDetails?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchDashboard}
+          />
         ),
       },
       {
@@ -726,6 +727,7 @@ const DashboardDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             permissions={dashboardPermissions}
@@ -778,4 +780,4 @@ const DashboardDetails = ({
   );
 };
 
-export default DashboardDetails;
+export default withActivityFeed<DashboardDetailsProps>(DashboardDetails);

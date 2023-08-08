@@ -23,7 +23,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -342,6 +342,7 @@ def get_lineage_by_query(
     schema_name: Optional[str],
     query: str,
     dialect: Dialect,
+    timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -351,7 +352,7 @@ def get_lineage_by_query(
 
     try:
         logger.debug(f"Running lineage with query: {query}")
-        lineage_parser = LineageParser(query, dialect)
+        lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -405,6 +406,7 @@ def get_lineage_via_table_entity(
     service_name: str,
     query: str,
     dialect: Dialect,
+    timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """Get lineage from table entity
 
@@ -427,7 +429,7 @@ def get_lineage_via_table_entity(
 
     try:
         logger.debug(f"Getting lineage via table entity using query: {query}")
-        lineage_parser = LineageParser(query, dialect)
+        lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
         to_table_name = table_entity.name.__root__
 
         for from_table_name in lineage_parser.source_tables:

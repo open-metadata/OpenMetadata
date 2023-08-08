@@ -45,7 +45,7 @@ public class GChatPublisher extends SubscriptionPublisher {
   private final CollectionDAO daoCollection;
 
   public GChatPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub, dao);
+    super(eventSub);
     if (eventSub.getSubscriptionType() == G_CHAT_WEBHOOK) {
       this.daoCollection = dao;
       this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);

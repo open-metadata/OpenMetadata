@@ -130,6 +130,13 @@ This is a sample config for MSSQL:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+**ingestAllDatabases**: Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+
+{% /codeInfo %}
+
+
 
 #### Source Configuration - Source Config
 
@@ -214,7 +221,7 @@ source:
       password: <password>
       hostPort: <hostPort>
       # database: <database>
-
+```
 ```yaml {% srNumber=7 %}
       # connectionOptions:
       #   key: value
@@ -262,7 +269,7 @@ sink:
   config: {}
 ```
 
-{% partial file="workflow-config-yaml.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 

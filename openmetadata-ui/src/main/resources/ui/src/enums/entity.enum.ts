@@ -46,6 +46,7 @@ export enum EntityType {
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   SUBSCRIPTION = 'subscription',
   USER_NAME = 'username',
+  CHART = 'chart',
 }
 
 export enum AssetsType {

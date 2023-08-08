@@ -89,14 +89,6 @@ public interface SearchClient {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void updateESSearch(UpdateRequest updateRequest) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default void updateOSElasticSearch(org.elasticsearch.action.update.UpdateRequest updateRequest) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
-
   void updateEntity(ChangeEvent event) throws IOException;
 
   void updateUser(ChangeEvent event) throws IOException;
@@ -129,7 +121,7 @@ public interface SearchClient {
 
   default void updateTestCase(ChangeEvent event) throws IOException {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_CASE);
+        IndexUtil.getIndexMappingByEntityType(Entity.TEST_CASE);
     // creating a new test case will return a TestCase entity while bulk adding test cases will return
     // the logical test suite entity with the newly added test cases
     EntityInterface entityInterface = (EntityInterface) event.getEntity();

@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -367,6 +370,8 @@ class TableauSource(DashboardServiceSource):
                 if table.database and table.database.name
                 else database_schema_table.get("database")
             )
+            if isinstance(db_service_entity.connection.config, BigQueryConnection):
+                database_name = None
             database_name = get_database_name_for_lineage(
                 db_service_entity, database_name
             )

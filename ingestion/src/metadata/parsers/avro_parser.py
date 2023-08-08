@@ -26,6 +26,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+RECORD_DATATYPE_NAME = "RECORD"
+
 
 def _parse_array_children(
     arr_item: Schema, cls: ModelMetaclass = FieldModel
@@ -132,6 +134,26 @@ def _parse_union_children(
     return sub_type, None
 
 
+def parse_record_fields(field: RecordSchema, cls: ModelMetaclass = FieldModel):
+    """
+    Parse the nested record fields for avro
+    """
+    children = cls(
+        name=field.name,
+        dataType=RECORD_DATATYPE_NAME,
+        children=[
+            cls(
+                name=field.type.name,
+                dataType=RECORD_DATATYPE_NAME,
+                children=get_avro_fields(field.type, cls),
+                description=field.type.doc,
+            )
+        ],
+        description=field.doc,
+    )
+    return children
+
+
 def parse_union_fields(
     union_field: Schema, cls: ModelMetaclass = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
@@ -231,6 +253,8 @@ def get_avro_fields(
                 field_models.append(parse_array_fields(field, cls=cls))
             elif isinstance(field.type, UnionSchema):
                 field_models.append(parse_union_fields(field, cls=cls))
+            elif isinstance(field.type, RecordSchema):
+                field_models.append(parse_record_fields(field, cls=cls))
             else:
                 field_models.append(parse_single_field(field, cls=cls))
         except Exception as exc:  # pylint: disable=broad-except

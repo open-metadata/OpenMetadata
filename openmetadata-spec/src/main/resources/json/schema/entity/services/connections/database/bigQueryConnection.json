@@ -93,6 +93,10 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"

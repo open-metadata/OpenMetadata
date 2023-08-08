@@ -54,6 +54,7 @@ const followEntity = ({ term, serviceName, entity }, isUnfollow) => {
 describe('Following data assets', () => {
   beforeEach(() => {
     cy.login();
+    cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
 
   it('following section should be present', () => {

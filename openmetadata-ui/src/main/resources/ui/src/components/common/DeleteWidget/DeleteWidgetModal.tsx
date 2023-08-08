@@ -22,15 +22,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import { deleteEntity } from 'rest/miscAPI';
-import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import {
-  getEntityDeleteMessage,
-  Transi18next,
-} from '../../../utils/CommonUtils';
-import { getTitleCase } from '../../../utils/EntityUtils';
+  getDeleteMessage,
+  prepareEntityType,
+} from 'utils/DeleteWidgetModalUtils';
+import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
@@ -49,7 +47,6 @@ const DeleteWidgetModal = ({
   afterDeleteAction,
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
   const [name, setName] = useState<string>('');
@@ -58,123 +55,95 @@ const DeleteWidgetModal = ({
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  const prepareDeleteMessage = (softDelete = false) => {
-    const softDeleteText = t('message.soft-delete-message-for-entity', {
-      entity: entityName,
-    });
-    const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
+  const DELETE_OPTION = useMemo(
+    () => [
+      {
+        title: `${t('label.delete')} ${entityType} “${entityName}”`,
+        description: `${getDeleteMessage(
+          entityName,
+          entityType,
+          true
+        )} ${softDeleteMessagePostFix}`,
+        type: DeleteType.SOFT_DELETE,
+        isAllowed: allowSoftDelete,
+      },
+      {
+        title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
+        description: `${
+          deleteMessage || getDeleteMessage(entityName, entityType)
+        } ${hardDeleteMessagePostFix}`,
+        type: DeleteType.HARD_DELETE,
+        isAllowed: true,
+      },
+    ],
+    [
+      entityType,
+      entityName,
+      softDeleteMessagePostFix,
+      allowSoftDelete,
+      deleteMessage,
+      hardDeleteMessagePostFix,
+    ]
+  );
 
-    return softDelete ? softDeleteText : hardDeleteText;
-  };
-
-  const DELETE_OPTION = [
-    {
-      title: `${t('label.delete')} ${entityType} “${entityName}”`,
-      description: `${prepareDeleteMessage(true)} ${softDeleteMessagePostFix}`,
-      type: DeleteType.SOFT_DELETE,
-      isAllowd: allowSoftDelete,
-    },
-    {
-      title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
-      description: `${
-        deleteMessage || prepareDeleteMessage()
-      } ${hardDeleteMessagePostFix}`,
-      type: DeleteType.HARD_DELETE,
-      isAllowd: true,
-    },
-  ];
-
-  const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleOnChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
-  };
+  }, []);
 
-  const handleOnEntityDelete = (softDelete = true) => {
+  const handleOnEntityDelete = useCallback((softDelete = true) => {
     setEntityDeleteState((prev) => ({ ...prev, state: true, softDelete }));
-  };
+  }, []);
 
-  const handleOnEntityDeleteCancel = () => {
+  const handleOnEntityDeleteCancel = useCallback(() => {
     setEntityDeleteState(ENTITY_DELETE_STATE);
     setName('');
     setValue(DeleteType.SOFT_DELETE);
     onCancel();
-  };
+  }, [onCancel]);
 
-  const prepareEntityType = () => {
-    const services = [
-      EntityType.DASHBOARD_SERVICE,
-      EntityType.DATABASE_SERVICE,
-      EntityType.MESSAGING_SERVICE,
-      EntityType.PIPELINE_SERVICE,
-      EntityType.METADATA_SERVICE,
-      EntityType.STORAGE_SERVICE,
-      EntityType.MLMODEL_SERVICE,
-    ];
+  const handleOnEntityDeleteConfirm = useCallback(async () => {
+    try {
+      setIsLoading(false);
+      setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
+      const response = await deleteEntity(
+        prepareType ? prepareEntityType(entityType) : entityType,
+        entityId ?? '',
+        Boolean(isRecursiveDelete),
+        !entityDeleteState.softDelete
+      );
 
-    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
-
-    if (services.includes((entityType || '') as EntityType)) {
-      return `services/${entityType}s`;
-    } else if (entityType === EntityType.GLOSSARY) {
-      return `glossaries`;
-    } else if (entityType === EntityType.POLICY) {
-      return 'policies';
-    } else if (entityType === EntityType.KPI) {
-      return entityType;
-    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
-      return `dashboard/datamodels`;
-    } else if (dataQuality.includes(entityType as EntityType)) {
-      return `dataQuality/${entityType}s`;
-    } else if (entityType === EntityType.SUBSCRIPTION) {
-      return `events/${entityType}s`;
-    } else {
-      return `${entityType}s`;
-    }
-  };
-
-  const handleOnEntityDeleteConfirm = () => {
-    setIsLoading(false);
-    setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
-    deleteEntity(
-      prepareType ? prepareEntityType() : entityType,
-      entityId ?? '',
-      Boolean(isRecursiveDelete),
-      !entityDeleteState.softDelete
-    )
-      .then((res) => {
-        if (res.status === 200) {
-          setTimeout(() => {
-            handleOnEntityDeleteCancel();
-            showSuccessToast(
-              t('server.entity-deleted-successfully', {
-                entity: startCase(entityType),
-              })
-            );
-
-            if (afterDeleteAction) {
-              afterDeleteAction();
-            } else {
-              setTimeout(() => {
-                history.push('/');
-              }, 500);
-            }
-          }, 1000);
-        } else {
-          showErrorToast(t('server.unexpected-response'));
-        }
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          t('server.delete-entity-error', {
-            entity: entityName,
+      if (response.status === 200) {
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: startCase(entityType),
           })
         );
-      })
-      .finally(() => {
-        handleOnEntityDeleteCancel();
-        setIsLoading(false);
-      });
-  };
+        if (afterDeleteAction) {
+          afterDeleteAction(entityDeleteState.softDelete);
+        }
+      } else {
+        showErrorToast(t('server.unexpected-response'));
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', {
+          entity: entityName,
+        })
+      );
+    } finally {
+      handleOnEntityDeleteCancel();
+      setIsLoading(false);
+    }
+  }, [
+    entityType,
+    entityId,
+    isRecursiveDelete,
+    entityDeleteState,
+    afterDeleteAction,
+    entityName,
+    handleOnEntityDeleteCancel,
+  ]);
 
   const isNameMatching = useCallback(() => {
     return (
@@ -183,11 +152,14 @@ const DeleteWidgetModal = ({
     );
   }, [name]);
 
-  const onChange = (e: RadioChangeEvent) => {
-    const value = e.target.value;
-    setValue(value);
-    handleOnEntityDelete(value === DeleteType.SOFT_DELETE);
-  };
+  const onChange = useCallback(
+    (e: RadioChangeEvent) => {
+      const value = e.target.value;
+      setValue(value);
+      handleOnEntityDelete(value === DeleteType.SOFT_DELETE);
+    },
+    [handleOnEntityDelete]
+  );
 
   useEffect(() => {
     setValue(allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE);
@@ -217,7 +189,12 @@ const DeleteWidgetModal = ({
         </Button>
       </Space>
     );
-  }, [entityDeleteState, isNameMatching]);
+  }, [
+    entityDeleteState,
+    handleOnEntityDeleteCancel,
+    handleOnEntityDeleteConfirm,
+    isNameMatching,
+  ]);
 
   return (
     <Modal
@@ -233,7 +210,7 @@ const DeleteWidgetModal = ({
       <Radio.Group value={value} onChange={onChange}>
         {DELETE_OPTION.map(
           (option) =>
-            option.isAllowd && (
+            option.isAllowed && (
               <Radio
                 data-testid={option.type}
                 key={option.type}

@@ -51,7 +51,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.service-type'),
-    key: 'serviceType.keyword',
+    key: 'serviceType',
   },
 ];
 

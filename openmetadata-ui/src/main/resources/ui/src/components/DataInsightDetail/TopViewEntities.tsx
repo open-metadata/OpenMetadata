@@ -15,6 +15,7 @@ import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
+import Loader from 'components/Loader/Loader';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +28,6 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
@@ -130,14 +130,15 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isEmpty(mostViewedEntities) ? (
+      {isLoading ? (
+        <Loader />
+      ) : isEmpty(mostViewedEntities) ? (
         <EmptyGraphPlaceholder />
       ) : (
         <Table
           className="data-insight-table-wrapper"
           columns={columns}
           dataSource={mostViewedEntities}
-          loading={{ spinning: isLoading, indicator: <Loader /> }}
           pagination={false}
           size="small"
         />

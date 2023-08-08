@@ -23,6 +23,7 @@ from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.cli.insight import run_insight
+from metadata.cli.lineage import run_lineage
 from metadata.cli.openmetadata_dag_config_migration import (
     run_openmetadata_dag_config_migration,
 )
@@ -46,6 +47,7 @@ class MetadataCommands(Enum):
     RESTORE = "restore"
     WEBHOOK = "webhook"
     INSIGHT = "insight"
+    LINEAGE = "lineage"
     OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
     OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
 
@@ -337,6 +339,9 @@ def get_parser(args=None):
         sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
     )
     create_common_config_parser_args(
+        sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
+    )
+    create_common_config_parser_args(
         sub_parser.add_parser(
             MetadataCommands.PROFILE.value,
             help="Workflow for profiling Table sources into Metadata",
@@ -407,6 +412,8 @@ def metadata(args=None):  # pylint: disable=too-many-branches
 
     if metadata_workflow == MetadataCommands.INGEST.value:
         run_ingest(config_path=config_file)
+    if metadata_workflow == MetadataCommands.LINEAGE.value:
+        run_lineage(config_path=config_file)
     if metadata_workflow == MetadataCommands.INSIGHT.value:
         run_insight(config_path=config_file)
     if metadata_workflow == MetadataCommands.PROFILE.value:

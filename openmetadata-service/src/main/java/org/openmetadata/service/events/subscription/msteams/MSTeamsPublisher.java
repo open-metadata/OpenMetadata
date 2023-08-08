@@ -45,7 +45,7 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
   private final CollectionDAO daoCollection;
 
   public MSTeamsPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub, dao);
+    super(eventSub);
     if (eventSub.getSubscriptionType() == MS_TEAMS_WEBHOOK) {
       this.daoCollection = dao;
       this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);

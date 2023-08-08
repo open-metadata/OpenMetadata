@@ -5,6 +5,17 @@ slug: /connectors/pipeline/domo-pipeline
 
 # Domo Pipeline
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions          | --                           |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Domo-Pipeline connector.
 
 Configure and schedule Domo-Pipeline metadata and profiler workflows from the OpenMetadata UI:

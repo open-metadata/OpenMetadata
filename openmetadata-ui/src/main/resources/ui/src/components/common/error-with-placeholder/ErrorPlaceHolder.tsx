@@ -33,6 +33,7 @@ const ErrorPlaceHolder = ({
   button,
   permission,
   buttonId,
+  icon,
 }: ErrorPlaceholderProps) => {
   const getErrorPlaceHolder = () => {
     switch (type) {
@@ -71,7 +72,10 @@ const ErrorPlaceHolder = ({
 
       case ERROR_PLACEHOLDER_TYPE.CUSTOM:
         return (
-          <CustomNoDataPlaceHolder className={className} size={size}>
+          <CustomNoDataPlaceHolder
+            className={className}
+            icon={icon}
+            size={size}>
             {children}
           </CustomNoDataPlaceHolder>
         );

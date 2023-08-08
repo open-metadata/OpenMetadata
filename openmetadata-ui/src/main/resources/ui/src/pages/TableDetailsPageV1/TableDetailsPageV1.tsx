@@ -13,9 +13,7 @@
 import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
@@ -33,6 +31,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
@@ -73,6 +72,7 @@ import {
   removeFollower,
   restoreTable,
 } from 'rest/tableAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -125,6 +125,17 @@ const TableDetailsPageV1 = () => {
     () => tablePermissions.ViewAll || tablePermissions.ViewTests,
     [tablePermissions]
   );
+  const tableFqn = useMemo(
+    () =>
+      encodeURI(
+        getPartialNameFromTableFQN(
+          decodeURI(datasetFQN),
+          [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+          FQN_SEPARATOR_CHAR
+        )
+      ),
+    [datasetFQN]
+  );
 
   const fetchTableDetails = async () => {
     setLoading(true);
@@ -136,7 +147,7 @@ const TableDetailsPageV1 = () => {
       if (viewTestSuitePermission) {
         fields += `,${TabSpecificField.TESTSUITE}`;
       }
-      const details = await getTableDetailsByFQN(datasetFQN, fields);
+      const details = await getTableDetailsByFQN(tableFqn, fields);
 
       setTableDetails(details);
       addToRecentViewed({
@@ -248,11 +259,11 @@ const TableDetailsPageV1 = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(
-    async (datasetFQN) => {
+    async (tableFqn) => {
       try {
         const tablePermission = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
-          datasetFQN
+          tableFqn
         );
 
         setTablePermissions(tablePermission);
@@ -270,15 +281,15 @@ const TableDetailsPageV1 = () => {
   );
 
   useEffect(() => {
-    if (datasetFQN) {
-      fetchResourcePermission(datasetFQN);
+    if (tableFqn) {
+      fetchResourcePermission(tableFqn);
     }
-  }, [datasetFQN]);
+  }, [tableFqn]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.TABLE,
-      datasetFQN,
+      tableFqn,
       setEntityFieldThreadCount,
       setFeedCount
     );
@@ -287,7 +298,7 @@ const TableDetailsPageV1 = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(getTableTabPath(datasetFQN, activeKey));
+        history.push(getTableTabPath(tableFqn, activeKey));
       }
     }
   };
@@ -437,7 +448,7 @@ const TableDetailsPageV1 = () => {
                 EntityField.DESCRIPTION,
                 entityFieldThreadCount
               )}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={
@@ -453,7 +464,7 @@ const TableDetailsPageV1 = () => {
             />
             <SchemaTab
               columnName={getPartialNameFromTableFQN(
-                datasetFQN,
+                tableFqn,
                 [FqnPart['Column']],
                 FQN_SEPARATOR_CHAR
               )}
@@ -462,7 +473,7 @@ const TableDetailsPageV1 = () => {
                 EntityField.COLUMNS,
                 entityFieldThreadCount
               )}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               hasDescriptionEditAccess={
                 tablePermissions.EditAll || tablePermissions.EditDescription
               }
@@ -490,7 +501,7 @@ const TableDetailsPageV1 = () => {
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
               permission={
@@ -505,7 +516,7 @@ const TableDetailsPageV1 = () => {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={datasetFQN}
+              entityFqn={tableFqn}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
               permission={
@@ -549,16 +560,14 @@ const TableDetailsPageV1 = () => {
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              columns={tableDetails?.columns}
-              entityType={EntityType.TABLE}
-              fqn={tableDetails?.fullyQualifiedName ?? ''}
-              owner={tableDetails?.owner}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchTableDetails}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            columns={tableDetails?.columns}
+            entityType={EntityType.TABLE}
+            fqn={tableDetails?.fullyQualifiedName ?? ''}
+            owner={tableDetails?.owner}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchTableDetails}
+          />
         ),
       },
       {
@@ -823,7 +832,7 @@ const TableDetailsPageV1 = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(getVersionPath(EntityType.TABLE, datasetFQN, version + ''));
+      history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version]);
 
   useEffect(() => {
@@ -835,7 +844,7 @@ const TableDetailsPageV1 = () => {
         getEntityFeedCount();
       }
     }
-  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
+  }, [tableFqn, isTourOpen, isTourPage, tablePermissions]);
 
   useEffect(() => {
     if (tableDetails) {
@@ -890,6 +899,7 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}
@@ -935,4 +945,4 @@ const TableDetailsPageV1 = () => {
   );
 };
 
-export default TableDetailsPageV1;
+export default withActivityFeed(TableDetailsPageV1);

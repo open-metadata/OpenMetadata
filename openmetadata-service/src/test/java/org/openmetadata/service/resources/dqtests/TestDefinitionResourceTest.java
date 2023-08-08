@@ -28,7 +28,6 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
         TestDefinitionResource.TestDefinitionList.class,
         "dataQuality/testDefinitions",
         TestDefinitionResource.FIELDS);
-    supportsEmptyDescription = false;
   }
 
   public void setupTestDefinitions() throws IOException {
