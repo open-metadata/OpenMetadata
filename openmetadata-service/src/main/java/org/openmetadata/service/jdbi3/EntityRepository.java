@@ -67,6 +67,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.json.Json;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -1863,6 +1864,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throws JsonProcessingException {
       origList = listOrEmpty(origList);
       updatedList = listOrEmpty(updatedList);
+      List<K> updatedItems = new ArrayList<>();
       for (K stored : origList) {
         // If an entry in the original list is not in updated list, then it is deleted during update
         K u = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
@@ -1876,10 +1878,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
         K stored = origList.stream().filter(c -> typeMatch.test(c, U)).findAny().orElse(null);
         if (stored == null) { // New entry added
           addedItems.add(U);
+        } else if (!typeMatch.test(stored, U)) {
+          updatedItems.add(U);
         }
       }
+
       if (!addedItems.isEmpty()) {
         fieldAdded(changeDescription, field, JsonUtils.pojoToJson(addedItems));
+      }
+      if (!updatedItems.isEmpty()) {
+        fieldUpdated(changeDescription, field, JsonUtils.pojoToJson(origList), JsonUtils.pojoToJson(updatedItems));
       }
       if (!deletedItems.isEmpty()) {
         fieldDeleted(changeDescription, field, JsonUtils.pojoToJson(deletedItems));

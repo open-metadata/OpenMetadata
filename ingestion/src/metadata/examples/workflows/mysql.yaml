@@ -1,6 +1,6 @@
 source:
   type: mysql
-  serviceName: local_mysql
+  serviceName: local_mysql_2
   serviceConnection:
     config:
       type: Mysql
@@ -8,12 +8,17 @@ source:
       authType:
         password: openmetadata_password
       hostPort: localhost:3306
-      databaseSchema: openmetadata_db
       connectionOptions: {}
       connectionArguments: {}
   sourceConfig:
     config:
       type: DatabaseMetadata
+      markDeletedTables: false
+      includeTables: true
+      includeViews: false
+      schemaFilterPattern:
+        includes:
+          - constraints_test
 sink:
   type: metadata-rest
   config: {}
