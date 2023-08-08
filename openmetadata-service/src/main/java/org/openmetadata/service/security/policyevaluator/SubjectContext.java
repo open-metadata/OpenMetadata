@@ -235,8 +235,7 @@ public class SubjectContext {
         throw new NoSuchElementException();
       }
       EntityReference policy = policies.get(policyIndex++);
-      return new PolicyContext(
-          entityType, entityName, roleName, policy.getName(), getPolicyRules(policy.getId()));
+      return new PolicyContext(entityType, entityName, roleName, policy.getName(), getPolicyRules(policy.getId()));
     }
 
     private static List<CompiledRule> getPolicyRules(UUID policyId) {
