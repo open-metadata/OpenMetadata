@@ -773,6 +773,7 @@ const AddIngestion = ({
             validator={validator}
             workflowName={state.ingestionName}
             onCancel={noop}
+            onFocus={onFocus}
           />
         )}
 

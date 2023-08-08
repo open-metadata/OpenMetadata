@@ -42,12 +42,9 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   onCancel,
   okText,
   cancelText,
+  onFocus,
 }) => {
-  const [internalData, setInternalData] = useState<IngestionWorkflowData>();
-
-  const handleUpdateData = (partialData: Partial<IngestionWorkflowData>) => {
-    setInternalData(partialData);
-  };
+  const [internalData] = useState<IngestionWorkflowData>();
 
   const schema = useMemo(
     () => getSchemaByWorkflowType(pipeLineType),
@@ -63,7 +60,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       className={classNames('rjsf no-header', className)}
       customValidate={customValidate}
       fields={{ BooleanField: BooleanFieldTemplate }}
-      formContext={{ onUpdate: handleUpdateData }}
+      formContext={{ handleFocus: onFocus }}
       formData={internalData}
       idSeparator="/"
       schema={schema}
@@ -75,7 +72,8 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
         ObjectFieldTemplate: ObjectFieldTemplate,
       }}
       uiSchema={INGESTION_WORKFLOW_UI_SCHEMA}
-      validator={validator}>
+      validator={validator}
+      onFocus={onFocus}>
       <div className="property-wrapper">
         <div className="form-group field field-string">
           <label className="control-label" htmlFor="root/name">
