@@ -19,7 +19,6 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
@@ -47,6 +46,7 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -120,11 +120,17 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public Topic setFields(Topic topic, Fields fields) {
-    topic.setService(getContainer(topic.getId()));
-    topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
+    if (topic.getService() == null) {
+      topic.setService(getContainer(topic.getId()));
+    }
     if (topic.getMessageSchema() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), topic.getMessageSchema().getSchemaFields());
     }
+    return topic;
+  }
+
+  @Override
+  public Topic clearFields(Topic topic, Fields fields) {
     return topic;
   }
 
@@ -154,7 +160,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Set the fields tags. Will be used to mask the sample data
     if (!authorizePII) {
       getFieldTags(true, topic.getMessageSchema().getSchemaFields());
-      topic.setTags(getTags(topic.getFullyQualifiedName()));
+      topic.setTags(getTags(topic));
       return PIIMasker.getSampleData(topic);
     }
 
@@ -186,8 +192,10 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   private void getFieldTags(boolean setTags, List<Field> fields) {
     for (Field f : listOrEmpty(fields)) {
-      f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
-      getFieldTags(setTags, f.getChildren());
+      if (f.getTags() == null) {
+        f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
+        getFieldTags(setTags, f.getChildren());
+      }
     }
   }
 
@@ -277,7 +285,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
         childrenSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
       }
-      Topic topic = getByName(null, entityLink.getEntityFQN(), getFields("tags"), ALL);
+      Topic topic = getByName(null, entityLink.getEntityFQN(), getFields("tags"), ALL, false);
       Field schemaField = null;
       for (Field field : topic.getMessageSchema().getSchemaFields()) {
         if (field.getName().equals(schemaName)) {

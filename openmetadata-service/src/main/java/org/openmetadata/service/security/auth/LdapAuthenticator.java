@@ -9,7 +9,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
@@ -224,7 +223,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
+  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
     tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());

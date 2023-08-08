@@ -471,7 +471,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       // in case of test connection type, we get the original connection values from the service name
       originalWorkflow = buildFromOriginalServiceConnection(workflow);
     } else {
-      originalWorkflow = repository.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+      originalWorkflow = repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
   }
@@ -504,8 +504,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
-    Workflow originalWorkflow =
-        repository.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    Workflow originalWorkflow = repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     if (originalWorkflow == null) {
       originalWorkflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     }
@@ -515,7 +514,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
       ServiceEntityInterface originalService =
           (ServiceEntityInterface)
-              serviceRepository.findByNameOrNull(testServiceConnection.getServiceName(), "", Include.NON_DELETED);
+              serviceRepository.findByNameOrNull(testServiceConnection.getServiceName(), Include.NON_DELETED);
       if (originalService != null && originalService.getConnection() != null) {
         testServiceConnection.setConnection(originalService.getConnection());
         originalWorkflow.setRequest(testServiceConnection);

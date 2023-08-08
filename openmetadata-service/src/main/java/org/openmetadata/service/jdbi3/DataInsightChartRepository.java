@@ -67,6 +67,11 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
+  public DataInsightChart clearFields(DataInsightChart entity, EntityUtil.Fields fields) {
+    return entity;
+  }
+
+  @Override
   public void prepare(DataInsightChart entity) {
     /* Nothing to do */
   }

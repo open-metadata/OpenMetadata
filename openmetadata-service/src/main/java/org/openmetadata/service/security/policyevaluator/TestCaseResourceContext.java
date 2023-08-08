@@ -90,14 +90,14 @@ public class TestCaseResourceContext implements ResourceContextInterface {
 
   private static EntityInterface resolveEntityById(UUID id) {
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    TestCase testCase = dao.get(null, id, dao.getFields("entityLink"), Include.ALL);
+    TestCase testCase = dao.get(null, id, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 
   private static EntityInterface resolveEntityByName(String fqn) {
     if (fqn == null) return null;
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL);
+    TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 }

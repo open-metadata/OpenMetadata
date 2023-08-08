@@ -3,7 +3,6 @@ package org.openmetadata.service.search.openSearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +44,7 @@ public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, Resul
           input.getData().size(),
           0);
       updateStats(input.getData().size(), 0);
-    } catch (JsonProcessingException e) {
+    } catch (Exception e) {
       LOG.debug(
           "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           input.getData().size(),
@@ -57,8 +56,7 @@ public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, Resul
     return requests;
   }
 
-  private BulkRequest buildBulkRequests(String entityType, List<? extends EntityInterface> entities)
-      throws JsonProcessingException {
+  private BulkRequest buildBulkRequests(String entityType, List<? extends EntityInterface> entities) {
     BulkRequest bulkRequests = new BulkRequest();
     for (EntityInterface entity : entities) {
       UpdateRequest request = getUpdateRequest(entityType, entity);
@@ -67,8 +65,7 @@ public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, Resul
     return bulkRequests;
   }
 
-  public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity)
-      throws JsonProcessingException {
+  public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
     updateRequest.doc(

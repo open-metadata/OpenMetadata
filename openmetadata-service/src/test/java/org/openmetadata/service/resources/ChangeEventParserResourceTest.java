@@ -20,7 +20,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -66,7 +65,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testFormattedMessages() throws JsonProcessingException {
+  void testFormattedMessages() {
     ChangeDescription changeDescription = new ChangeDescription();
     // Simulate updating tags of an entity from tag1 -> tag2
     FieldChange addTag = new FieldChange();
@@ -95,7 +94,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testEntityReferenceFormat() throws JsonProcessingException {
+  void testEntityReferenceFormat() {
     ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.0);
     // Simulate adding owner to a table
     EntityReference entityReference = new EntityReference();

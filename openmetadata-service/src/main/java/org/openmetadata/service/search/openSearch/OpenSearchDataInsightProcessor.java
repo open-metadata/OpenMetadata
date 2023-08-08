@@ -3,7 +3,6 @@ package org.openmetadata.service.search.openSearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +42,7 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
           input.getData().size(),
           0);
       updateStats(input.getData().size(), 0);
-    } catch (JsonProcessingException e) {
+    } catch (Exception e) {
       LOG.debug(
           "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           input.getData().size(),
@@ -55,7 +54,7 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
     return requests;
   }
 
-  private BulkRequest buildBulkRequests(String entityType, List<ReportData> entities) throws JsonProcessingException {
+  private BulkRequest buildBulkRequests(String entityType, List<ReportData> entities) {
     BulkRequest bulkRequests = new BulkRequest();
     for (ReportData reportData : entities) {
       UpdateRequest request = getUpdateRequest(entityType, reportData);
