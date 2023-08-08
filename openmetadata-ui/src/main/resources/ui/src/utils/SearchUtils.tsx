@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { FqnPart } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
@@ -78,7 +78,7 @@ export const getSearchAPIQueryParams = (
 export const getQueryWithSlash = (query: string): string =>
   query.replace(/["']/g, '\\$&');
 
-export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
+export const getGroupLabel = (index: string) => {
   let label = '';
   let icon = '';
   switch (index) {
@@ -127,15 +127,11 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
   }
 
   const groupLabel = (
-    <div className="d-flex items-center">
-      <SVGIcons alt="icon" icon={icon} />
+    <div className="d-flex items-center p-y-xs">
+      <SVGIcons alt="icon" className="m-r-sm" icon={icon} />
       <p className="text-grey-muted text-xs">{label}</p>
     </div>
   );
-
-  if (wrapInSelectOption) {
-    return <Select.Option disabled>{groupLabel}</Select.Option>;
-  }
 
   return groupLabel;
 };
@@ -143,7 +139,6 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
 export const getSuggestionElement = (
   suggestion: SearchSuggestions[number],
   index: string,
-  wrapInSelectOption: boolean,
   onClickHandler?: () => void
 ) => {
   const { fullyQualifiedName: fqdn = '', name, serviceType = '' } = suggestion;
@@ -159,33 +154,39 @@ export const getSuggestionElement = (
     FqnPart.Service,
   ])}-${name}`.replaceAll(`"`, '');
 
-  const retn = (
-    <div className="d-flex items-center" data-testid={dataTestId} key={fqdn}>
-      <img
-        alt={serviceType}
-        className="inline"
-        src={serviceTypeLogo(serviceType)}
-      />
-      <Link
-        className={`text-sm ${!wrapInSelectOption ? 'd-block' : ''}`}
-        data-testid="data-name"
-        id={fqdn.replace(/\./g, '')}
-        to={entityLink}
-        onClick={onClickHandler}>
-        {database && schema
-          ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-          : name}
-      </Link>
-    </div>
-  );
+  const displayText =
+    database && schema
+      ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
+      : name;
 
-  if (wrapInSelectOption) {
-    return (
-      <Select.Option key={entityLink} value={entityLink}>
-        {retn}
-      </Select.Option>
-    );
-  }
+  const retn = (
+    <Tooltip title={displayText}>
+      <Button
+        block
+        className="text-left truncate p-0"
+        data-testid={dataTestId}
+        icon={
+          <img
+            alt={serviceType}
+            className="m-r-sm"
+            height="16px"
+            src={serviceTypeLogo(serviceType)}
+            width="16px"
+          />
+        }
+        key={fqdn}
+        type="text">
+        <Link
+          className="text-sm"
+          data-testid="data-name"
+          id={fqdn.replace(/\./g, '')}
+          to={entityLink}
+          onClick={onClickHandler}>
+          {displayText}
+        </Link>
+      </Button>
+    </Tooltip>
+  );
 
   return retn;
 };

@@ -27,7 +27,6 @@ type SearchOptionsProp = {
 
 const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
   searchText,
-  isOpen,
   options = [],
   setIsOpen,
   selectOption,
@@ -47,39 +46,29 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
 
   return (
     <>
-      {isOpen ? (
-        <>
-          <button onClick={() => setIsOpen(false)} />
-          <div
-            aria-labelledby="menu-button"
-            aria-orientation="vertical"
-            role="menu">
-            <div className="py-1" role="none">
-              <Link
-                className="link-text d-flex justify-between text-sm"
-                data-testid="InOpenMetadata"
-                to={getExplorePath({ search: searchText })}
-                onClick={() => setIsOpen(false)}>
-                {searchText}
-                <Typography.Text>{t('label.in-open-metadata')}</Typography.Text>
-              </Link>
-              {options.map((option, index) => (
-                <span
-                  className="link-text d-flex justify-between"
-                  data-testid="InPage"
-                  key={index}
-                  onClick={() => {
-                    selectOption(searchText);
-                    setIsOpen(false);
-                  }}>
-                  {searchText}
-                  <Typography.Text>{option}</Typography.Text>
-                </span>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : null}
+      <div className="p-y-sm" role="none">
+        <Link
+          className="link-text d-flex justify-between text-sm"
+          data-testid="InOpenMetadata"
+          to={getExplorePath({ search: searchText })}
+          onClick={() => setIsOpen(false)}>
+          {searchText}
+          <Typography.Text>{t('label.in-open-metadata')}</Typography.Text>
+        </Link>
+        {options.map((option, index) => (
+          <span
+            className="link-text d-flex justify-between text-sm"
+            data-testid="InPage"
+            key={index}
+            onClick={() => {
+              selectOption(searchText);
+              setIsOpen(false);
+            }}>
+            {searchText}
+            <Typography.Text>{option}</Typography.Text>
+          </span>
+        ))}
+      </div>
     </>
   );
 };

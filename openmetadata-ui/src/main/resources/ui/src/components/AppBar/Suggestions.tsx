@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
 import { ContainerSearchSource } from 'interface/search.interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +45,6 @@ type SuggestionProp = {
 
 const Suggestions = ({
   searchText,
-  isOpen,
   setIsOpen,
   searchCriteria,
 }: SuggestionProp) => {
@@ -98,7 +98,7 @@ const Suggestions = ({
       <>
         {getGroupLabel(searchIndex)}
         {suggestions.map((suggestion: SearchSuggestions[number]) => {
-          return getSuggestionElement(suggestion, searchIndex, false, () =>
+          return getSuggestionElement(suggestion, searchIndex, () =>
             setIsOpen(false)
           );
         })}
@@ -108,7 +108,7 @@ const Suggestions = ({
 
   const getEntitiesSuggestions = () => {
     return (
-      <div className="py-1" role="none">
+      <div role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
@@ -170,25 +170,7 @@ const Suggestions = ({
     isMounting.current = false;
   }, []);
 
-  return (
-    <>
-      {options.length > 0 && isOpen ? (
-        <>
-          <button
-            data-testid="suggestion-overlay"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            aria-labelledby="menu-button"
-            aria-orientation="vertical"
-            className="suggestions-menu bg-white"
-            role="menu">
-            {getEntitiesSuggestions()}
-          </div>
-        </>
-      ) : null}
-    </>
-  );
+  return options.length > 0 ? getEntitiesSuggestions() : <Loader />;
 };
 
 export default Suggestions;
