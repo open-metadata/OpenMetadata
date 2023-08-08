@@ -16,27 +16,6 @@
   height: 100vh;
 }
 
-.profile-image {
-  display: inline-block;
-  height: 24px;
-  width: 24px;
-}
-
-.profile-image svg,
-.profile-image img {
-  display: inline-block;
-}
-
-.profile-image.circle svg,
-.profile-image.circle img {
-  border-radius: 50%;
-}
-
-.profile-image.square svg,
-.profile-image.square img {
-  border-radius: 4px;
-}
-
 .teams-dropdown {
   height: 36px;
   background-color: transparent !important;

@@ -83,9 +83,11 @@ const ProfilePicture = ({
           width: `${width}px`,
         }}>
         {getAvatarByName()}
-        <div className="absolute" data-testid="loader-cntnr">
+        <div
+          className="absolute inset-0 opacity-60 bg-grey-4 rounded-full"
+          data-testid="loader-cntnr">
           <Loader
-            className="absolute"
+            className="absolute inset-0"
             size="small"
             style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
             type="white"
