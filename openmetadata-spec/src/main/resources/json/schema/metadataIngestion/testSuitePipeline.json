@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestSuitePipeline",
   "description": "TestSuite Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "testSuiteConfigType": {
       "description": "Pipeline Source Config Metadata Pipeline type",
