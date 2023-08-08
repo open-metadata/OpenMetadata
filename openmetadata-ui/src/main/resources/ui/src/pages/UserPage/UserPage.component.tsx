@@ -212,7 +212,7 @@ const UserPage = () => {
     return <Loader />;
   }
 
-  if (!(isError && isEmpty(userData))) {
+  if (isError && isEmpty(userData)) {
     return <ErrorPlaceholder />;
   }
 

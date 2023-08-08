@@ -13,13 +13,13 @@
 
 import {
   Badge,
+  Button,
   Dropdown,
-  Image,
   Input,
   InputRef,
+  Popover,
   Select,
   Space,
-  Tooltip,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
@@ -74,6 +74,7 @@ import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
+import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
 
 const cookieStorage = new CookieStorage();
@@ -95,7 +96,7 @@ const NavBar = ({
   handleClear,
 }: NavBarProps) => {
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
-
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -340,80 +341,95 @@ const NavBar = ({
             width={30}
           />
         </Link>
-        <div className="m-auto">
-          <Input
-            addonBefore={entitiesSelect}
-            autoComplete="off"
-            className="rounded-4  appbar-search"
-            data-testid="searchBox"
-            id="searchBox"
-            placeholder={t('message.search-for-entity-types')}
-            ref={searchRef}
-            style={{
-              height: '37px',
-            }}
-            suffix={
-              <span className="d-flex items-center">
-                <CmdKIcon />
-                <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
-                  {searchValue ? (
-                    <SVGIcons
-                      alt="icon-cancel"
-                      icon={cancelIcon}
-                      onClick={handleClear}
-                    />
-                  ) : (
-                    <SVGIcons
-                      alt="icon-search"
-                      icon={searchIcon}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleOnClick();
-                      }}
-                    />
-                  )}
-                </span>
-              </span>
+        <div className="m-auto relative" ref={searchContainerRef}>
+          <Popover
+            content={
+              !isTourRoute &&
+              searchValue &&
+              (isInPageSearchAllowed(pathname) ? (
+                <SearchOptions
+                  isOpen={isSearchBoxOpen}
+                  options={inPageSearchOptions(pathname)}
+                  searchText={searchValue}
+                  selectOption={handleSelectOption}
+                  setIsOpen={handleSearchBoxOpen}
+                />
+              ) : (
+                <Suggestions
+                  isOpen={isSearchBoxOpen}
+                  searchCriteria={
+                    searchCriteria === '' ? undefined : searchCriteria
+                  }
+                  searchText={suggestionSearch}
+                  setIsOpen={handleSearchBoxOpen}
+                />
+              ))
             }
-            type="text"
-            value={searchValue}
-            onBlur={() => {
-              setSearchIcon('icon-searchv1');
-              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
-            }}
-            onChange={(e) => {
-              const { value } = e.target;
-              debounceOnSearch(value);
-              handleSearchChange(value);
-            }}
-            onFocus={() => {
-              setSearchIcon('icon-searchv1color');
-              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
-            }}
-            onKeyDown={handleKeyDown}
-          />
-          {!isTourRoute &&
-            searchValue &&
-            (isInPageSearchAllowed(pathname) ? (
-              <SearchOptions
-                isOpen={isSearchBoxOpen}
-                options={inPageSearchOptions(pathname)}
-                searchText={searchValue}
-                selectOption={handleSelectOption}
-                setIsOpen={handleSearchBoxOpen}
-              />
-            ) : (
-              <Suggestions
-                isOpen={isSearchBoxOpen}
-                searchCriteria={
-                  searchCriteria === '' ? undefined : searchCriteria
-                }
-                searchText={suggestionSearch}
-                setIsOpen={handleSearchBoxOpen}
-              />
-            ))}
+            getPopupContainer={() =>
+              searchContainerRef.current || document.body
+            }
+            open={isSearchBoxOpen}
+            overlayClassName="global-search-overlay"
+            overlayStyle={{ width: '100%', paddingTop: 0 }}
+            placement="bottomRight"
+            showArrow={false}
+            trigger={['click']}
+            onOpenChange={handleSearchBoxOpen}>
+            <Input
+              addonBefore={entitiesSelect}
+              autoComplete="off"
+              className="rounded-4  appbar-search"
+              data-testid="searchBox"
+              id="searchBox"
+              placeholder={t('message.search-for-entity-types')}
+              ref={searchRef}
+              style={{
+                height: '37px',
+              }}
+              suffix={
+                <span className="d-flex items-center">
+                  <CmdKIcon />
+                  <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
+                    {searchValue ? (
+                      <SVGIcons
+                        alt="icon-cancel"
+                        icon={cancelIcon}
+                        onClick={handleClear}
+                      />
+                    ) : (
+                      <SVGIcons
+                        alt="icon-search"
+                        icon={searchIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOnClick();
+                        }}
+                      />
+                    )}
+                  </span>
+                </span>
+              }
+              type="text"
+              value={searchValue}
+              onBlur={() => {
+                setSearchIcon('icon-searchv1');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+              }}
+              onChange={(e) => {
+                const { value } = e.target;
+                debounceOnSearch(value);
+                handleSearchChange(value);
+              }}
+              onFocus={() => {
+                setSearchIcon('icon-searchv1color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+              }}
+              onKeyDown={handleKeyDown}
+            />
+          </Popover>
         </div>
+
         <Space size={24}>
           <Dropdown
             destroyPopupOnHide
@@ -472,22 +488,23 @@ const NavBar = ({
                 items: profileDropdown,
               }}
               trigger={['click']}>
-              <Tooltip placement="bottom" title="Profile" trigger="hover">
-                {isImgUrlValid ? (
-                  <div className="profile-image circle">
-                    <Image
+              <Button
+                icon={
+                  isImgUrlValid ? (
+                    <img
                       alt="user"
-                      preview={false}
+                      className="profile-image circle"
                       referrerPolicy="no-referrer"
                       src={profilePicture || ''}
                       width={24}
                       onError={handleOnImageError}
                     />
-                  </div>
-                ) : (
-                  <Avatar name={username} type="circle" width="24" />
-                )}
-              </Tooltip>
+                  ) : (
+                    <Avatar name={username} type="circle" width="24" />
+                  )
+                }
+                type="text"
+              />
             </Dropdown>
           </div>
         </Space>
