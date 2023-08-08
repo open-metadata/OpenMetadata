@@ -143,21 +143,23 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 <Form.Item
                   key={data.name}
                   label={
-                    <span>
-                      <span>{data.displayName}:</span>
+                    <>
+                      <span>{data.displayName}</span>
                       <Button
+                        className="m-x-sm"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
                         onClick={() => add()}
                       />
-                    </span>
+                    </>
                   }
                   name={data.name}
                   tooltip={data.description}>
                   {fields.map(({ key, name, ...restField }) => (
                     <div className="d-flex w-full" key={key}>
                       <Form.Item
+                        className="w-full"
                         {...restField}
                         name={[name, 'value']}
                         rules={[

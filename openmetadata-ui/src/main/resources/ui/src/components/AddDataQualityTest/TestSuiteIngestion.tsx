@@ -222,9 +222,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Typography.Paragraph data-testid="header">
+        <Typography.Text className="font-medium" data-testid="header">
           {t('label.schedule-for-ingestion')}
-        </Typography.Paragraph>
+        </Typography.Text>
       </Col>
 
       <Col span={24}>
