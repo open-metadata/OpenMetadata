@@ -26,7 +26,7 @@ import {
 } from '../../constants/constants';
 
 const serviceType = 'Mysql';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const serviceName = `${serviceType}.ct%test-${uuid()}`;
 const tableName = TEAM_ENTITY;
 const description = `This is ${tableName} description`;
 
