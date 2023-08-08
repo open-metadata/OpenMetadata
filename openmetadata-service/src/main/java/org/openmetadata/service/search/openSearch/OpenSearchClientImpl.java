@@ -1087,6 +1087,8 @@ public class OpenSearchClientImpl implements SearchClient {
   public void updateDatabaseSchema(ChangeEvent event) throws IOException {
     boolean checkIfRestored = checkIfRestored(event);
     if (event.getEventType() == ENTITY_SOFT_DELETED || checkIfRestored) {
+      String[] indexes =
+          new String[] {ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName};
       BulkRequest request = new BulkRequest();
       int batchSize = 50;
       int totalHits;
@@ -1096,12 +1098,12 @@ public class OpenSearchClientImpl implements SearchClient {
       UpdateRequest updateRequest;
       do {
         searchRequest =
-            new SearchRequest(ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.from(currentHits);
-        searchSourceBuilder.size(batchSize);
-        searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
-        searchRequest.source(searchSourceBuilder);
+            searchRequest(
+                indexes,
+                "databaseSchema.fullyQualifiedName",
+                event.getEntityFullyQualifiedName(),
+                batchSize,
+                currentHits);
         response = client.search(searchRequest, RequestOptions.DEFAULT);
         totalHits = (int) response.getHits().getTotalHits().value;
         for (SearchHit hit : response.getHits()) {
