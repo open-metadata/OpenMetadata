@@ -14,6 +14,7 @@ import Form, { FormProps } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
+import BooleanFieldTemplate from 'components/JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import IngestionArrayFieldTemplate from 'components/JSONSchemaTemplate/IngestionArrayFieldTemplate';
@@ -82,6 +83,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       omitExtraData
       className={classNames('rjsf no-header', className)}
       customValidate={customValidate}
+      fields={{ BooleanField: BooleanFieldTemplate }}
       formContext={{ onUpdate: handleUpdateData }}
       formData={internalData}
       idSeparator="/"
