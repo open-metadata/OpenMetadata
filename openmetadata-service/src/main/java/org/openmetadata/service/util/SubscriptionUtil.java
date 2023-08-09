@@ -50,7 +50,6 @@ import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.Trigger;
 
@@ -113,19 +112,19 @@ public class SubscriptionUtil {
             if (type == CreateEventSubscription.SubscriptionType.EMAIL
                 || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
               if (USER.equals(owner.getType())) {
-                User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
+                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
                 data.add(user.getEmail());
               } else {
-                Team team = SubjectCache.getTeam(owner.getId());
+                Team team = Entity.getEntity(TEAM, owner.getId(), "", Include.NON_DELETED);
                 data.add(team.getEmail());
               }
             } else {
               Profile profile = null;
               if (USER.equals(owner.getType())) {
-                User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
+                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
                 profile = user.getProfile();
               } else if (TEAM.equals(owner.getType())) {
-                Team team = SubjectCache.getTeam(owner.getId());
+                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
                 profile = team.getProfile();
               }
               data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));

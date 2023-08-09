@@ -81,16 +81,22 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
-    schema.setOwner(fields.contains(FIELD_OWNER) ? getOwner(schema) : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     return schema.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
   }
 
+  public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
+    schema.setTables(fields.contains("tables") ? schema.getTables() : null);
+    return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
+  }
+
   private void setDefaultFields(DatabaseSchema schema) {
-    EntityReference databaseRef = getContainer(schema.getId());
-    Database database = Entity.getEntity(databaseRef, "", Include.ALL);
-    schema.withDatabase(databaseRef).withService(database.getService());
+    EntityReference databaseRef = schema.getDatabase() != null ? schema.getDatabase() : getContainer(schema.getId());
+    if (schema.getService() == null) {
+      Database database = Entity.getEntity(databaseRef, "", Include.ALL);
+      schema.withDatabase(databaseRef).withService(database.getService());
+    }
   }
 
   @Override

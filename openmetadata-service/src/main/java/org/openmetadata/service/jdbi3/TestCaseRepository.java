@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -54,14 +55,24 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public TestCaseRepository(CollectionDAO dao) {
     super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+    quoteFqn = true;
   }
 
   @Override
   public TestCase setFields(TestCase test, Fields fields) {
-    test.setTestSuites(fields.contains("testSuites") ? getTestSuites(test) : null);
-    test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
-    test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
-    return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
+    test.setTestSuites(fields.contains("testSuites") ? getTestSuites(test) : test.getTestSuites());
+    test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : test.getTestSuite());
+    test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : test.getTestDefinition());
+    return test.withTestCaseResult(
+        fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : test.getTestCaseResult());
+  }
+
+  @Override
+  public TestCase clearFields(TestCase test, Fields fields) {
+    test.setTestSuites(fields.contains("testSuites") ? test.getTestSuites() : null);
+    test.setTestSuite(fields.contains("testSuite") ? test.getTestSuite() : null);
+    test.setTestDefinition(fields.contains("testDefinition") ? test.getTestDefinition() : null);
+    return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? test.getTestCaseResult() : null);
   }
 
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
@@ -112,6 +123,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestSuite(TestCase test) {
+    if (test.getTestSuite() != null) {
+      return test.getTestSuite();
+    }
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
@@ -126,6 +140,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private List<TestSuite> getTestSuites(TestCase test) {
+    if (!nullOrEmpty(test.getTestSuites())) {
+      return test.getTestSuites();
+    }
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
@@ -136,7 +153,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestDefinition(TestCase test) {
-    return getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
+    return test.getTestDefinition() != null
+        ? test.getTestDefinition()
+        : getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
   }
 
   private void validateTestParameters(
@@ -261,6 +280,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private TestCaseResult getTestCaseResult(TestCase testCase) {
+    if (testCase.getTestCaseResult() != null) {
+      return testCase.getTestCaseResult();
+    }
     return JsonUtils.readValue(
         getLatestExtensionFromTimeseries(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
         TestCaseResult.class);

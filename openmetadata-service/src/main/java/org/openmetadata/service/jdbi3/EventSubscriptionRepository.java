@@ -55,8 +55,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public EventSubscription setFields(EventSubscription entity, Fields fields) {
-    entity.setStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
-    return entity; // No fields to set
+    if (entity.getStatusDetails() == null) {
+      entity.withStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
+    }
+    return entity;
+  }
+
+  @Override
+  public EventSubscription clearFields(EventSubscription entity, Fields fields) {
+    return entity.withStatusDetails(fields.contains("statusDetails") ? entity.getStatusDetails() : null);
   }
 
   @Override

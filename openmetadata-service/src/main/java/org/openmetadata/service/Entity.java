@@ -224,23 +224,17 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include) {
-    EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
-    return repository.getDao().findEntityReferenceById(id, include);
+    return repository.getReference(id, include);
   }
 
   public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
     if (fqn == null) {
       return null;
     }
-    EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
-    return repository.getDao().findEntityReferenceByName(fqn, include);
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    return repository.getReferenceByName(fqn, include);
   }
 
   public static EntityReference getOwner(@NonNull EntityReference reference) {
@@ -285,24 +279,17 @@ public final class Entity {
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id, fieldList, include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
+    T entity = (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, true);
     return entity;
   }
 
+  // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.getByName(null, fqn, fieldList, include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
-    }
+    T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, true);
     return entity;
   }
 

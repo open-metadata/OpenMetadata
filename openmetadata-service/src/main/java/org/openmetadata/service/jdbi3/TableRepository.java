@@ -20,7 +20,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -119,16 +118,30 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public Table setFields(Table table, Fields fields) {
     setDefaultFields(table);
-    table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(table) : null);
-    table.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
+    // TODO fix this
+    if (table.getUsageSummary() == null) {
+      table.setUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
+              : table.getUsageSummary());
+    }
     getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
-    table.setJoins(fields.contains("joins") ? getJoins(table) : null);
-    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-    table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
-    table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : null);
+    table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
+    table.setTableProfilerConfig(
+        fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
+    table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
     getCustomMetrics(fields.contains("customMetrics"), table);
+    return table;
+  }
+
+  @Override
+  public Table clearFields(Table table, Fields fields) {
+    table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
+    table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
+    table.setJoins(fields.contains("joins") ? table.getJoins() : null);
+    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+    table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? table.getTableProfilerConfig() : null);
+    table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
     return table;
   }
 
@@ -159,7 +172,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) {
-    EntityReference schemaRef = getContainer(table.getId());
+    EntityReference schemaRef =
+        table.getDatabaseSchema() != null ? table.getDatabaseSchema() : getContainer(table.getId());
+    // TODO optimize
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
@@ -254,7 +269,7 @@ public class TableRepository extends EntityRepository<Table> {
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
       getColumnTags(true, table.getColumns());
-      table.setTags(getTags(table.getFullyQualifiedName()));
+      table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
 
@@ -280,6 +295,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public TestSuite getTestSuite(Table table) {
+    if (table.getTestSuite() != null) {
+      return table.getTestSuite();
+    }
     List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
         daoCollection.relationshipDAO().findTo(table.getId().toString(), TABLE, Relationship.CONTAINS.ordinal());
     Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
@@ -320,7 +338,7 @@ public class TableRepository extends EntityRepository<Table> {
             TABLE_PROFILER_CONFIG_EXTENSION,
             "tableProfilerConfig",
             JsonUtils.pojoToJson(tableProfilerConfig));
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    clearFields(table, Fields.EMPTY_FIELDS);
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
@@ -328,7 +346,6 @@ public class TableRepository extends EntityRepository<Table> {
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-
     daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_PROFILER_CONFIG_EXTENSION);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
@@ -707,7 +724,7 @@ public class TableRepository extends EntityRepository<Table> {
         columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
         childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
       }
-      Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
+      Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL, false);
       Column column = null;
       for (Column c : table.getColumns()) {
         if (c.getName().equals(columnName)) {
@@ -758,10 +775,13 @@ public class TableRepository extends EntityRepository<Table> {
     return childrenColumn;
   }
 
+  // TODO duplicated code
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
-      getColumnTags(setTags, c.getChildren());
+      if (c.getTags() == null) {
+        c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
+        getColumnTags(setTags, c.getChildren());
+      }
     }
   }
 
@@ -884,6 +904,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private TableJoins getJoins(Table table) {
+    if (table.getJoins() != null) {
+      return table.getJoins();
+    }
     String today = RestUtil.DATE_FORMAT.format(new Date());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     return new TableJoins()
@@ -971,7 +994,9 @@ public class TableRepository extends EntityRepository<Table> {
     // Add custom metrics info to columns if requested
     List<Column> columns = table.getColumns();
     for (Column c : listOrEmpty(columns)) {
-      c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : null);
+      if (nullOrEmpty(c.getCustomMetrics())) {
+        c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : c.getCustomMetrics());
+      }
     }
   }
 

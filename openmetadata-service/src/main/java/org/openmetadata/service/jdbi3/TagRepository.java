@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -113,24 +115,40 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public Tag setFields(Tag tag, Fields fields) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
-    tag.setChildren(fields.contains("children") ? getChildren(tag) : null);
-    return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
+    tag.setChildren(fields.contains("children") ? getChildren(tag) : tag.getChildren());
+    if (fields.contains("usageCount")) {
+      tag.withUsageCount(getUsageCount(tag));
+    }
+    return tag;
+  }
+
+  @Override
+  public Tag clearFields(Tag tag, Fields fields) {
+    tag.setChildren(fields.contains("children") ? tag.getChildren() : null);
+    return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
   }
 
   private Integer getUsageCount(Tag tag) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
+    return tag.getUsageCount() != null
+        ? tag.getUsageCount()
+        : daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
   }
 
   private List<EntityReference> getChildren(Tag entity) {
-    return findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
+    // Don't use cache to handle tag name changes
+    return !nullOrEmpty(entity.getChildren())
+        ? entity.getChildren()
+        : findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
   }
 
   private EntityReference getParent(Tag tag) {
-    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
+    return tag.getParent() != null ? tag.getParent() : getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
   }
 
   private EntityReference getClassification(Tag tag) {
-    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
+    return tag.getClassification() != null
+        ? tag.getClassification()
+        : getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
   }
 
   private void addClassificationRelationship(Tag term) {
@@ -173,6 +191,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       // Populate response fields
+      invalidateTags(original.getId());
       getChildren(updated);
     }
 
@@ -195,10 +214,12 @@ public class TagRepository extends EntityRepository<Tag> {
         updateClassificationRelationship(original, updated);
         recordChange(
             "Classification", original.getClassification(), updated.getClassification(), true, entityReferenceMatch);
+        invalidateTags(original.getId());
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+        invalidateTags(original.getId());
       }
     }
 
@@ -220,6 +241,15 @@ public class TagRepository extends EntityRepository<Tag> {
     private void deleteParentRelationship(Tag term) {
       if (term.getParent() != null) {
         deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
+      }
+    }
+
+    private void invalidateTags(UUID tagId) {
+      // The name of the tag changed. Invalidate that tag and all the children from the cache
+      List<EntityRelationshipRecord> tagRecords = findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+      for (EntityRelationshipRecord tagRecord : tagRecords) {
+        invalidateTags(tagRecord.getId());
       }
     }
   }
