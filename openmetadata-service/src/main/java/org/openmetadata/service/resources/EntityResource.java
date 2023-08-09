@@ -35,7 +35,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext.ResourceContextBuilder;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -153,7 +152,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, include));
+    return addHref(uriInfo, repository.get(uriInfo, id, fields, include, false));
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -202,7 +201,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include));
+    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -291,20 +290,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected ResourceContext getResourceContext() {
-    return getResourceContext(entityType, repository).build();
+    return new ResourceContext(entityType);
   }
 
   protected ResourceContext getResourceContextById(UUID id) {
-    return getResourceContext(entityType, repository).id(id).build();
+    return new ResourceContext(entityType, id, null);
   }
 
   protected ResourceContext getResourceContextByName(String name) {
-    return getResourceContext(entityType, repository).name(name).build();
-  }
-
-  public static ResourceContextBuilder getResourceContext(
-      String entityType, EntityRepository<? extends EntityInterface> dao) {
-    return ResourceContext.builder().resource(entityType).entityRepository(dao);
+    return new ResourceContext(entityType, null, name);
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};

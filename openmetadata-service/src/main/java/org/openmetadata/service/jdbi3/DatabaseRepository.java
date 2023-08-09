@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
@@ -73,15 +74,29 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (database == null) {
       return null;
     }
-    return findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+    return !nullOrEmpty(database.getDatabaseSchemas())
+        ? database.getDatabaseSchemas()
+        : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
   public Database setFields(Database database, Fields fields) {
-    database.setService(getContainer(database.getId()));
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
-    database.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
+    if (database.getService() == null) {
+      database.setService(getContainer(database.getId()));
+    }
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
+    if (database.getUsageSummary() == null) {
+      database.setUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
+              : null);
+    }
     return database;
+  }
+
+  public Database clearFields(Database database, Fields fields) {
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    return database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
   @Override

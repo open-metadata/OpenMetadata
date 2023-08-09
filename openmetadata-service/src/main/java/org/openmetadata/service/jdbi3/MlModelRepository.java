@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -42,6 +41,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -76,11 +76,23 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) {
-    mlModel.setService(getContainer(mlModel.getId()));
-    mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
-    mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
-    return mlModel.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
+    if (mlModel.getService() == null) {
+      mlModel.setService(getContainer(mlModel.getId()));
+    }
+    mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
+    if (mlModel.getUsageSummary() == null) {
+      mlModel.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
+              : mlModel.getUsageSummary());
+    }
+    return mlModel;
+  }
+
+  @Override
+  public MlModel clearFields(MlModel mlModel, Fields fields) {
+    mlModel.setDashboard(fields.contains("dashboard") ? mlModel.getDashboard() : null);
+    return mlModel.withUsageSummary(fields.contains("usageSummary") ? mlModel.getUsageSummary() : null);
   }
 
   @Override
@@ -235,7 +247,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("mlFeatures")) {
-      MlModel mlModel = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+      MlModel mlModel = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL, false);
       MlFeature mlFeature =
           mlModel.getMlFeatures().stream()
               .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
@@ -267,7 +279,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private EntityReference getDashboard(MlModel mlModel) {
-    return mlModel == null ? null : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
+    if (mlModel == null) {
+      return null;
+    }
+    return mlModel.getDashboard() != null
+        ? mlModel.getDashboard()
+        : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
   }
 
   public void setDashboard(MlModel mlModel, EntityReference dashboard) {

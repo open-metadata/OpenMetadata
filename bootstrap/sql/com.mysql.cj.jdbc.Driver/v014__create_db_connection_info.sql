@@ -36,7 +36,8 @@ WHERE serviceType in ('Snowflake') AND JSON_EXTRACT(json, '$.connection.config.i
 
 UPDATE dbservice_entity
 SET json = JSON_REPLACE(json, '$.connection.config.scheme', 'hive')
-WHERE JSON_EXTRACT(json, '$.connection.config.scheme') IN ('impala', 'impala4');
+WHERE JSON_EXTRACT(json, '$.connection.config.scheme') IN ('impala', 'impala4')
+AND serviceType = 'Hive';
 
 -- remove the dataModel references from Data Models
 UPDATE dashboard_data_model_entity

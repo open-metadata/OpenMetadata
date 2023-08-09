@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 
@@ -49,14 +48,18 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public Container setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
-    container.setChildren(fields.contains("children") ? getChildrenContainers(container) : null);
-    container.setParent(fields.contains("parent") ? getParentContainer(container) : null);
-    container.setDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
+    container.setChildren(fields.contains("children") ? getChildrenContainers(container) : container.getChildren());
+    container.setParent(fields.contains("parent") ? getParentContainer(container) : container.getParent());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
     }
-    container.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(container) : null);
     return container;
+  }
+
+  @Override
+  public Container clearFields(Container container, EntityUtil.Fields fields) {
+    container.setParent(fields.contains("parent") ? container.getParent() : null);
+    return container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
   private void populateDataModelColumnTags(boolean setTags, List<Column> columns) {
@@ -68,10 +71,17 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   private EntityReference getParentContainer(Container container) {
     if (container == null) return null;
-    return getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
+    return container.getParent() != null
+        ? container.getParent()
+        : getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
   }
 
   private void setDefaultFields(Container container) {
+    if (container.getService() != null) {
+      {
+        return;
+      }
+    }
     EntityReference parentServiceRef =
         getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
     container.withService(parentServiceRef);
@@ -81,7 +91,9 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container == null) {
       return Collections.emptyList();
     }
-    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
+    return !nullOrEmpty(container.getChildren())
+        ? container.getChildren()
+        : findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }
 
   @Override
@@ -132,10 +144,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     EntityReference storageService = container.getService();
     EntityReference parent = container.getParent();
     List<EntityReference> children = container.getChildren();
-    EntityReference owner = container.getOwner();
-    List<TagLabel> tags = container.getTags();
 
-    container.withService(null).withParent(null).withChildren(null).withOwner(null).withHref(null).withTags(null);
+    container.withService(null).withParent(null).withChildren(null);
 
     // Don't store datamodel column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = Lists.newArrayList();
@@ -148,7 +158,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     store(container, update);
 
     // Restore the relationships
-    container.withService(storageService).withParent(parent).withChildren(children).withOwner(owner).withTags(tags);
+    container.withService(storageService).withParent(parent).withChildren(children);
     if (container.getDataModel() != null) {
       container.getDataModel().setColumns(columnWithTags);
     }
@@ -219,7 +229,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
     // TODO move this as the first check
     if (entityLink.getFieldName().equals("dataModel")) {
-      Container container = getByName(null, entityLink.getEntityFQN(), getFields("dataModel,tags"), Include.ALL);
+      Container container = getByName(null, entityLink.getEntityFQN(), getFields("dataModel,tags"), Include.ALL, false);
       Column column =
           container.getDataModel().getColumns().stream()
               .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))

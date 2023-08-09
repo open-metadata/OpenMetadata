@@ -20,8 +20,8 @@ import requests
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (
     BitBucketCredentials,
 )
-from metadata.readers.api_reader import ApiReader
-from metadata.readers.base import ReadException
+from metadata.readers.file.api_reader import ApiReader
+from metadata.readers.file.base import ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -43,7 +43,7 @@ class BitBucketReader(ApiReader):
 
     credentials: BitBucketCredentials
 
-    def read(self, path: str) -> str:
+    def read(self, path: str, **__) -> str:
         """
         Read a file from a GitHub Repo and return its
         contents as a string
