@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { TreeSelect } from 'antd';
+import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getTeamsHierarchy } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
-import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
@@ -105,12 +104,14 @@ const TeamsSelectable = ({
         onChange={onChange}
       />
       {noTeam && (
-        <div className="justify-start w-full" data-testid="toast">
-          <div className="font-semibold d-flex-shrink-0">
-            <SVGIcons alt="info" icon="info" title="Info" width="16px" />
-          </div>
-          <div className="font-semibold">{t('message.no-data-available')}</div>
-        </div>
+        <Alert
+          showIcon
+          className="m-t-md"
+          message={t('message.no-entity-data-available', {
+            entity: t('label.team-plural'),
+          })}
+          type="info"
+        />
       )}
     </>
   );

@@ -15,6 +15,7 @@ import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
+  Divider,
   Form,
   FormProps,
   Input,
@@ -780,8 +781,9 @@ const TeamDetailsV1 = ({
     return (
       <div className="text-link-color text-base">
         {isHeadingEditing ? (
-          <div className="d-flex items-center">
+          <Space size="middle">
             <Input
+              className="w-64"
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
@@ -792,143 +794,147 @@ const TeamDetailsV1 = ({
               value={heading}
               onChange={(e) => setHeading(e.target.value)}
             />
-            <div className="d-flex justify-end" data-testid="buttons">
+            <Space data-testid="buttons">
               <Button
+                className="rounded-4 text-sm p-xss"
                 data-testid="cancelAssociatedTag"
                 type="primary"
                 onMouseDown={() => setIsHeadingEditing(false)}>
                 <CloseOutlined />
               </Button>
               <Button
+                className="rounded-4 text-sm p-xss"
                 data-testid="saveAssociatedTag"
                 type="primary"
                 onMouseDown={handleHeadingSave}>
                 <CheckOutlined />
               </Button>
-            </div>
-          </div>
+            </Space>
+          </Space>
         ) : (
-          <div className="d-flex" data-testid="team-heading">
-            <Typography.Title ellipsis={{ rows: 1, tooltip: true }} level={5}>
+          <Space align="start" data-testid="team-heading">
+            <Typography.Title
+              className="m-b-0"
+              ellipsis={{ rows: 1, tooltip: true }}
+              level={5}>
               {heading}
             </Typography.Title>
             {isActionAllowed() && (
-              <div>
-                <Tooltip
-                  placement="bottomLeft"
-                  title={
-                    entityPermissions.EditAll ||
-                    entityPermissions.EditDisplayName
-                      ? t('label.edit-entity', {
-                          entity: t('label.display-name'),
-                        })
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    className="m-l-xss p-0"
-                    data-testid="edit-synonyms"
-                    disabled={
-                      !(
-                        entityPermissions.EditDisplayName ||
-                        entityPermissions.EditAll
-                      )
-                    }
-                    icon={<IconEdit height={16} width={16} />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsHeadingEditing(true)}
-                  />
-                </Tooltip>
-              </div>
+              <Tooltip
+                placement="right"
+                title={
+                  entityPermissions.EditAll || entityPermissions.EditDisplayName
+                    ? t('label.edit-entity', {
+                        entity: t('label.display-name'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <Button
+                  className="p-0"
+                  data-testid="edit-synonyms"
+                  disabled={
+                    !(
+                      entityPermissions.EditDisplayName ||
+                      entityPermissions.EditAll
+                    )
+                  }
+                  icon={<IconEdit height={16} width={16} />}
+                  size="small"
+                  type="text"
+                  onClick={() => setIsHeadingEditing(true)}
+                />
+              </Tooltip>
             )}
-          </div>
+          </Space>
         )}
       </div>
     );
   };
 
-  const emailElement = (
-    <Space className="m-b-xs">
-      {isEmailEdit ? (
-        <Form
-          initialValues={{ email: currentTeam.email }}
-          onFinish={handleUpdateEmail}>
-          <Space align="baseline">
-            <Form.Item
-              className="m-b-0"
-              name="email"
-              rules={[
-                {
-                  pattern: EMAIL_REG_EX,
-                  type: 'email',
-                  message: t('message.field-text-is-invalid', {
-                    fieldText: t('label.email'),
-                  }),
-                },
-              ]}>
-              <Input
-                className="w-64"
-                data-testid="email-input"
-                placeholder={t('label.enter-entity', {
-                  entity: t('label.email-lowercase'),
-                })}
+  const emailElement = useMemo(
+    () => (
+      <Space align="start" className="m-y-xs">
+        {isEmailEdit ? (
+          <Form
+            initialValues={{ email: currentTeam.email }}
+            onFinish={handleUpdateEmail}>
+            <Space align="baseline" size="middle">
+              <Form.Item
+                className="m-b-0"
+                name="email"
+                rules={[
+                  {
+                    pattern: EMAIL_REG_EX,
+                    type: 'email',
+                    message: t('message.field-text-is-invalid', {
+                      fieldText: t('label.email'),
+                    }),
+                  },
+                ]}>
+                <Input
+                  className="w-64"
+                  data-testid="email-input"
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.email-lowercase'),
+                  })}
+                />
+              </Form.Item>
+              <Space>
+                <Button
+                  className="h-8 p-x-xss"
+                  data-testid="cancel-edit-email"
+                  size="small"
+                  type="primary"
+                  onClick={() => setIsEmailEdit(false)}>
+                  <CloseOutlined />
+                </Button>
+                <Button
+                  className="h-8 p-x-xss"
+                  data-testid="save-edit-email"
+                  htmlType="submit"
+                  size="small"
+                  type="primary">
+                  <CheckOutlined />
+                </Button>
+              </Space>
+            </Space>
+          </Form>
+        ) : (
+          <>
+            <Typography.Text data-testid="email-value">
+              {currentTeam.email ||
+                t('label.no-entity', { entity: t('label.email') })}
+            </Typography.Text>
+            <Tooltip
+              placement="right"
+              title={
+                entityPermissions.EditAll
+                  ? t('label.edit-entity', {
+                      entity: t('label.email'),
+                    })
+                  : t('message.no-permission-for-action')
+              }>
+              <Button
+                data-testid="edit-email"
+                disabled={!entityPermissions.EditAll}
+                icon={<IconEdit height={16} width={16} />}
+                size="small"
+                type="text"
+                onClick={() => setIsEmailEdit(true)}
               />
-            </Form.Item>
-            <Button
-              className="h-8 p-x-xss"
-              data-testid="cancel-edit-email"
-              size="small"
-              type="primary"
-              onClick={() => setIsEmailEdit(false)}>
-              <CloseOutlined />
-            </Button>
-            <Button
-              className="h-8 p-x-xss"
-              data-testid="save-edit-email"
-              htmlType="submit"
-              size="small"
-              type="primary">
-              <CheckOutlined />
-            </Button>
-          </Space>
-        </Form>
-      ) : (
-        <>
-          <Typography.Text data-testid="email-value">
-            {currentTeam.email ||
-              t('label.no-entity', { entity: t('label.email') })}
-          </Typography.Text>
-          <Tooltip
-            placement="bottomLeft"
-            title={
-              entityPermissions.EditAll
-                ? t('label.edit-entity', {
-                    entity: t('label.email'),
-                  })
-                : t('message.no-permission-for-action')
-            }>
-            <Button
-              data-testid="edit-email"
-              disabled={!entityPermissions.EditAll}
-              icon={<IconEdit height={16} width={16} />}
-              size="small"
-              type="text"
-              onClick={() => setIsEmailEdit(true)}
-            />
-          </Tooltip>
-        </>
-      )}
-    </Space>
+            </Tooltip>
+          </>
+        )}
+      </Space>
+    ),
+    [isEmailEdit, currentTeam, entityPermissions]
   );
-
-  const viewPermission =
-    entityPermissions.ViewAll || entityPermissions.ViewBasic;
 
   if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
 
-  return viewPermission ? (
+  return (
     <div
       className="h-full d-flex flex-col flex-grow"
       data-testid="team-details-container">
@@ -980,13 +986,13 @@ const TeamDetailsV1 = ({
             )}
           </div>
           {emailElement}
-          <Space size={0}>
+          <Space size={4}>
             <OwnerLabel
               hasPermission={hasAccess}
               owner={currentTeam?.owner}
               onUpdate={updateOwner}
             />
-            {!isOrganization && <span>{t('label.pipe-symbol')}</span>}
+            {!isOrganization && <Divider type="vertical" />}
 
             {extraInfo.map((info) => (
               <Fragment key={uniqueId()}>
@@ -1295,12 +1301,6 @@ const TeamDetailsV1 = ({
         </Modal>
       )}
     </div>
-  ) : (
-    <Row align="middle" className="h-full">
-      <Col span={24}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-      </Col>
-    </Row>
   );
 };
 

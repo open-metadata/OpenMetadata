@@ -330,7 +330,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 href={`${airFlowEndPoint}`}
                 rel="noopener noreferrer"
                 target="_blank">
-                <Space>
+                <Space align="center">
                   {name}
                   <ExternalLinkIcon className="align-middle" width={16} />
                 </Space>
