@@ -27,7 +27,8 @@
     },
     "scheme": {
       "description": "Http/Https connection scheme",
-      "type": "string"
+      "type": "string",
+      "default": "http"
     },
     "username": {
       "description": "Elastic Search Username for Login",

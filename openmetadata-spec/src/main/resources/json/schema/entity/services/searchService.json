@@ -11,7 +11,7 @@
   ],
   "definitions": {
     "searchServiceType": {
-      "description": "Type of search service such as ElasticSerach or OpenSearch...",
+      "description": "Type of search service such as ElasticSearch or OpenSearch.",
       "javaInterfaces": [
         "org.openmetadata.schema.EnumInterface"
       ],

@@ -54,6 +54,8 @@ def get_entity_type(
         return class_name.replace("testsuite", "testSuite")
     if "databaseschema" in class_name:
         return class_name.replace("databaseschema", "databaseSchema")
+    if "searchindex" in class_name:
+        return class_name.replace("searchindex", "searchIndex")
 
     return class_name
 
