@@ -14,6 +14,8 @@
 import { SettingOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Select, Space } from 'antd';
 import Input from 'antd/lib/input/Input';
+import { ReactComponent as EditIconColor } from 'assets/svg/ic-edit-lineage-colored.svg';
+import { ReactComponent as EditIcon } from 'assets/svg/ic-edit-lineage.svg';
 import classNames from 'classnames';
 import { PRIMERY_COLOR } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
@@ -25,7 +27,6 @@ import {
   ZOOM_TRANSITION_DURATION,
 } from 'constants/Lineage.constants';
 import React, {
-  ButtonHTMLAttributes,
   FC,
   memo,
   useCallback,
@@ -42,20 +43,6 @@ import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
-
-export const ControlButton: FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
-  children,
-  className,
-  ...rest
-}) => (
-  <button
-    className={classNames('control-button', className)}
-    draggable={false}
-    type="button"
-    {...rest}>
-    {children}
-  </button>
-);
 
 const CustomControls: FC<ControlProps> = ({
   style,
@@ -146,12 +133,13 @@ const CustomControls: FC<ControlProps> = ({
 
   const editIcon = useMemo(() => {
     return (
-      <SVGIcons
-        alt="icon-edit-lineag"
-        className="m--t-xss"
-        icon={isEditMode ? 'icon-edit-lineage' : 'icon-edit-lineage-color'}
-        width="14"
-      />
+      <span className="anticon">
+        {isEditMode ? (
+          <EditIcon height="16px" width="16px" />
+        ) : (
+          <EditIconColor height="16px" width="16px" />
+        )}
+      </span>
     );
   }, [isEditMode]);
 
@@ -199,19 +187,23 @@ const CustomControls: FC<ControlProps> = ({
             </Button>
 
             {showZoom && (
-              <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide">
-                <ControlButton
-                  className="custom-control-basic-button"
+              <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide items-center">
+                <Button
+                  className={classNames('control-button', 'p-y-0')}
                   data-testid="zoom-in-button"
-                  onClick={onZoomOutHandler}>
-                  <SVGIcons
-                    alt="minus-icon"
-                    icon="icon-control-minus"
-                    width="12"
-                  />
-                </ControlButton>
+                  icon={
+                    <SVGIcons
+                      alt="minus-icon"
+                      icon="icon-control-minus"
+                      width="12"
+                    />
+                  }
+                  type="text"
+                  onClick={onZoomOutHandler}
+                />
 
                 <Input
+                  className="border-none bg-transparent p-0"
                   data-testid="lineage-zoom-slider"
                   max={MAX_ZOOM_VALUE}
                   min={MIN_ZOOM_VALUE}
@@ -220,75 +212,97 @@ const CustomControls: FC<ControlProps> = ({
                   value={zoom}
                   onChange={onRangeChange}
                 />
-                <ControlButton
-                  className="custom-control-basic-button"
+
+                <Button
+                  className={classNames('control-button', 'p-y-0')}
                   data-testid="zoom-out-button"
-                  onClick={onZoomInHandler}>
-                  <SVGIcons
-                    alt="plus-icon"
-                    icon="icon-control-plus"
-                    width="12"
-                  />
-                </ControlButton>
+                  icon={
+                    <SVGIcons
+                      alt="plus-icon"
+                      icon="icon-control-plus"
+                      width="12"
+                    />
+                  }
+                  type="text"
+                  onClick={onZoomInHandler}
+                />
               </div>
             )}
             {showFitView && (
-              <ControlButton
-                className="custom-control-basic-button custom-control-fit-screen-button"
+              <Button
+                className=" custom-control-fit-screen-button"
                 data-testid="fit-to-screen"
+                icon={
+                  <span className="anticon">
+                    <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
+                  </span>
+                }
                 title={t('label.fit-to-screen')}
-                onClick={onFitViewHandler}>
-                <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
-              </ControlButton>
+                onClick={onFitViewHandler}
+              />
             )}
             {handleFullScreenViewClick && (
-              <ControlButton
-                className="custom-control-basic-button custom-control-fit-screen-button"
+              <Button
+                className="custom-control-fit-screen-button"
                 data-testid="full-screen"
+                icon={
+                  <span className="anticon">
+                    <FullScreen color={PRIMERY_COLOR} height={16} width={16} />
+                  </span>
+                }
                 title={t('label.full-screen')}
-                onClick={handleFullScreenViewClick}>
-                <FullScreen color={PRIMERY_COLOR} height={16} width={16} />
-              </ControlButton>
+                onClick={handleFullScreenViewClick}
+              />
             )}
             {onExitFullScreenViewClick && (
-              <ControlButton
-                className="custom-control-basic-button custom-control-fit-screen-button"
+              <Button
+                className=" custom-control-fit-screen-button"
                 data-testid="exit-full-screen"
+                icon={
+                  <span className="anticon">
+                    <ExitFullScreen
+                      color={PRIMERY_COLOR}
+                      height={16}
+                      width={16}
+                    />
+                  </span>
+                }
                 title={t('label.exit-fit-to-screen')}
-                onClick={onExitFullScreenViewClick}>
-                <ExitFullScreen color={PRIMERY_COLOR} height={16} width={16} />
-              </ControlButton>
+                onClick={onExitFullScreenViewClick}
+              />
             )}
 
-            <ControlButton
-              className="custom-control-basic-button custom-control-fit-screen-button"
+            <Button
+              className=" custom-control-fit-screen-button"
               data-testid="lineage-config"
               disabled={isEditMode}
+              icon={
+                <SettingOutlined
+                  style={{ fontSize: '16px', color: PRIMERY_COLOR }}
+                />
+              }
               title={t('label.setting-plural')}
-              onClick={() => setDialogVisible(true)}>
-              <SettingOutlined
-                style={{ fontSize: '16px', color: PRIMERY_COLOR }}
-              />
-            </ControlButton>
+              onClick={() => setDialogVisible(true)}
+            />
 
             {!deleted && (
-              <ControlButton
+              <Button
                 className={classNames(
-                  'custom-control-edit-button h-8 w-8 rounded-full p-x-xss',
+                  'custom-control-edit-button rounded-full',
                   {
                     active: isEditMode,
                   }
                 )}
                 data-testid="edit-lineage"
                 disabled={!hasEditAccess}
+                icon={getLoadingStatusValue(editIcon, loading, status)}
                 title={
                   hasEditAccess
                     ? t('label.edit-entity', { entity: t('label.lineage') })
                     : NO_PERMISSION_FOR_ACTION
                 }
-                onClick={onEditLinageClick}>
-                {getLoadingStatusValue(editIcon, loading, status)}
-              </ControlButton>
+                onClick={onEditLinageClick}
+              />
             )}
           </Space>
         </Col>
