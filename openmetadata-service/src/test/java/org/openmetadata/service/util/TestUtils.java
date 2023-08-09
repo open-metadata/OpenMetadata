@@ -409,6 +409,7 @@ public final class TestUtils {
   }
 
   public static void validateEntityReference(EntityReference ref) {
+    assertNotNull(ref);
     assertNotNull(ref.getId(), invalidEntityReference(ref, "null Id"));
     assertNotNull(ref.getHref(), invalidEntityReference(ref, "null href"));
     assertNotNull(ref.getName(), invalidEntityReference(ref, "null name"));

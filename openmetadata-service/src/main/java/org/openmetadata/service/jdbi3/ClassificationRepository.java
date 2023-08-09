@@ -13,20 +13,25 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.Entity.CLASSIFICATION;
+import static org.openmetadata.service.Entity.TAG;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.UUID;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.core.mapper.RowMapper;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -49,9 +54,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public Classification setFields(Classification category, Fields fields) {
-    category.withTermCount(fields.contains("termCount") ? getTermCount(category) : null);
-    return category.withUsageCount(fields.contains("usageCount") ? getUsageCount(category) : null);
+  public Classification setFields(Classification classification, Fields fields) {
+    if (fields.contains("termCount")) {
+      classification.withTermCount(getTermCount(classification));
+    }
+    if (fields.contains("usageCount")) {
+      classification.withUsageCount(getUsageCount(classification));
+    }
+    return classification;
+  }
+
+  @Override
+  public Classification clearFields(Classification classification, Fields fields) {
+    classification.withTermCount(fields.contains("termCount") ? classification.getTermCount() : null);
+    return classification.withUsageCount(fields.contains("usageCount") ? classification.getUsageCount() : null);
   }
 
   @Override
@@ -60,8 +76,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void storeEntity(Classification category, boolean update) {
-    store(category, update);
+  public void storeEntity(Classification classification, boolean update) {
+    store(classification, update);
   }
 
   @Override
@@ -69,24 +85,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     // No relationships to store beyond what is stored in the super class
   }
 
-  private int getTermCount(Classification category) {
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getFullyQualifiedName());
+  private int getTermCount(Classification classification) {
+    if (classification.getTermCount() != null) {
+      return classification.getTermCount();
+    }
+    ListFilter filter =
+        new ListFilter(Include.NON_DELETED).addQueryParam("parent", classification.getFullyQualifiedName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
+    if (classification.getUsageCount() != null) {
+      return classification.getUsageCount();
+    }
     return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
-  }
-
-  @Transaction
-  public Classification delete(UriInfo uriInfo, UUID id) {
-    Classification classification = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
-    checkSystemEntityDeletion(classification);
-    dao.delete(id.toString());
-    daoCollection.tagDAO().deleteTagsByPrefix(classification.getName());
-    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), classification.getName());
-    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(TagSource.CLASSIFICATION.ordinal(), classification.getName());
-    return classification;
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
@@ -119,13 +131,33 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Category name changed - update tag names starting from classification and all the children tags
+        // Classification name changed - update tag names starting from classification and all the children tags
         LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
             .tagUsageDAO()
             .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
+        invalidateClassification(original.getId());
+      }
+    }
+
+    private void invalidateClassification(UUID classificationId) {
+      // Name of the classification changed. Invalidate the classification and all the children tags
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(CLASSIFICATION, classificationId));
+      List<EntityRelationshipRecord> tagRecords =
+          findToRecords(classificationId, CLASSIFICATION, Relationship.CONTAINS, TAG);
+      for (EntityRelationshipRecord tagRecord : tagRecords) {
+        invalidateTags(tagRecord.getId());
+      }
+    }
+
+    private void invalidateTags(UUID tagId) {
+      // The name of the tag changed. Invalidate that tag and all the children from the cache
+      List<EntityRelationshipRecord> tagRecords = findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+      for (EntityRelationshipRecord tagRecord : tagRecords) {
+        invalidateTags(tagRecord.getId());
       }
     }
   }

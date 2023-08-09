@@ -85,6 +85,7 @@ import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
@@ -487,6 +488,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     @Override
     public void stop() throws InterruptedException, SchedulerException {
+      LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
+      LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
       ReportsHandler.shutDown();
       LOG.info("Stopping the application");

@@ -132,6 +132,10 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
+  default void setFollowers(List<EntityReference> followers) {
+    /* no-op implementation to be overridden */
+  }
+
   <T extends EntityInterface> T withHref(URI href);
 
   @JsonIgnore

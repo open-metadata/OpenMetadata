@@ -43,7 +43,6 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -668,12 +667,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.getTestSummary(testSuiteId);
-  }
-
-  @Override
-  public TestCase getByNameInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String fqn, String fieldsParam, Include include) {
-    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), fieldsParam, include);
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {

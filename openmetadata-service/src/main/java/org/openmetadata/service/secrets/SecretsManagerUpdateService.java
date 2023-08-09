@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.secrets;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -130,7 +129,7 @@ public class SecretsManagerUpdateService {
                   service.getName(),
                   repository.getServiceType()));
       repository.getDao().update(service);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -218,7 +217,7 @@ public class SecretsManagerUpdateService {
       oldSecretManager.decryptAuthenticationMechanism(botUser.getName(), user.getAuthenticationMechanism());
       secretManager.encryptAuthenticationMechanism(botUser.getName(), user.getAuthenticationMechanism());
       userRepository.getDao().update(user);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -260,7 +259,7 @@ public class SecretsManagerUpdateService {
       oldSecretManager.decryptIngestionPipeline(ingestionPipeline);
       secretManager.encryptIngestionPipeline(ingestionPipeline);
       ingestionPipelineRepository.getDao().update(ingestion);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -272,7 +271,7 @@ public class SecretsManagerUpdateService {
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
       workflowObject = secretManager.encryptWorkflow(workflowObject);
       ingestionPipelineRepository.getDao().update(workflowObject);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
