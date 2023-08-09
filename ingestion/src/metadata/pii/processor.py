@@ -14,8 +14,6 @@ Processor util to fetch pii sensitive columns
 """
 from typing import Optional
 
-from metadata.pii.constants import PII
-
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.type.tagLabel import (
@@ -26,6 +24,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.column_name_scanner import ColumnNameScanner
+from metadata.pii.constants import PII
 from metadata.pii.ner_scanner import NERScanner
 from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
