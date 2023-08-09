@@ -19,7 +19,6 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -67,7 +66,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(EventList events) throws EventPublisherException, JsonProcessingException {
+  public void publish(EventList events) throws EventPublisherException {
     for (ChangeEvent event : events.getData()) {
       String entityType = event.getEntityType();
       String contextInfo =

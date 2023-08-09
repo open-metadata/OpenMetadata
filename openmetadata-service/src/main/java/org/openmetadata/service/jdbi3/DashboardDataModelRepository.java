@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.List;
@@ -66,7 +65,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("columns")) {
       DashboardDataModel dashboardDataModel =
-          getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
+          getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL, false);
       String origJson = JsonUtils.pojoToJson(dashboardDataModel);
       Column column =
           dashboardDataModel.getColumns().stream()
@@ -103,17 +102,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
     // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = dashboardDataModel.getOwner();
-    List<TagLabel> tags = dashboardDataModel.getTags();
     EntityReference service = dashboardDataModel.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    dashboardDataModel.withOwner(null).withService(null).withHref(null).withTags(null);
+    dashboardDataModel.withService(null);
 
     store(dashboardDataModel, update);
 
     // Restore the relationships
-    dashboardDataModel.withOwner(owner).withService(service).withTags(tags);
+    dashboardDataModel.withService(service);
   }
 
   @Override
@@ -140,10 +137,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
     getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
-    return dashboardDataModel
-        .withService(getContainer(dashboardDataModel.getId()))
-        .withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboardDataModel) : null)
-        .withTags(fields.contains(FIELD_TAGS) ? getTags(dashboardDataModel.getFullyQualifiedName()) : null);
+    if (dashboardDataModel.getService() == null) {
+      dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
+    }
+    return dashboardDataModel;
+  }
+
+  @Override
+  public DashboardDataModel clearFields(DashboardDataModel dashboardDataModel, Fields fields) {
+    return dashboardDataModel; // Nothing to do
   }
 
   @Override
@@ -156,10 +158,13 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         .withId(original.getId());
   }
 
+  // TODO move this to base class?
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
-      getColumnTags(setTags, c.getChildren());
+      if (c.getTags() == null) {
+        c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
+        getColumnTags(setTags, c.getChildren());
+      }
     }
   }
 

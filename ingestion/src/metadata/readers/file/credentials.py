@@ -13,7 +13,7 @@
 Helper to manage readers' credentials functionalities
 """
 from metadata.generated.schema.security.credentials.gitCredentials import RepositoryName
-from metadata.readers.api_reader import ReadersCredentials
+from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

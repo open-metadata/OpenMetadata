@@ -19,7 +19,7 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 )
 from metadata.ingestion.source.dashboard.looker.models import Includes, ViewName
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
-from metadata.readers.bitbucket import BitBucketReader
+from metadata.readers.file.bitbucket import BitBucketReader
 
 
 class TestLookMLBitBucketReader(TestCase):

@@ -81,7 +81,7 @@ setup(
             f"{PLUGIN_NAME} = {PLUGIN_NAME}.{PLUGIN_ROOT_FILE}:{PLUGIN_ENTRY_POINT}"
         ]
     },
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     zip_safe=False,
     dependency_links=[],
     project_urls={

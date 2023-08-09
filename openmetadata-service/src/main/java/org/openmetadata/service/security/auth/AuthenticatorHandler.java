@@ -2,7 +2,6 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.util.UUID;
@@ -67,7 +66,7 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
+  default RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -81,7 +80,7 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default JwtResponse getJwtResponse(User storedUser, long expireInSeconds) throws JsonProcessingException {
+  default JwtResponse getJwtResponse(User storedUser, long expireInSeconds) {
     RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()

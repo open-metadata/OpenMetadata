@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 
 import org.openmetadata.schema.entity.data.Metrics;
@@ -37,9 +38,21 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) {
-    metrics.setService(getContainer(metrics.getId())); // service is a default field
-    return metrics.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
+    if (metrics.getService() == null) {
+      metrics.setService(getContainer(metrics.getId())); // service is a default field
+    }
+    if (metrics.getUsageSummary() == null) {
+      metrics.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId())
+              : metrics.getUsageSummary());
+    }
+    return metrics;
+  }
+
+  @Override
+  public Metrics clearFields(Metrics metrics, Fields fields) {
+    return metrics.withUsageSummary(fields.contains("usageSummary") ? metrics.getUsageSummary() : null);
   }
 
   @Override
@@ -64,7 +77,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   private EntityReference getService(EntityReference service) { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
+      return Entity.getEntityReferenceById(Entity.DATABASE_SERVICE, service.getId(), NON_DELETED);
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));

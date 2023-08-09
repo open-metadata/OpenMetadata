@@ -30,15 +30,12 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 import lombok.NonNull;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -137,9 +134,7 @@ public class PermissionsResource {
       @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
       @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
-    ResourceContext resourceContext =
-        ResourceContext.builder().resource(resource).id(id).entityRepository(entityRepository).build();
+    ResourceContext resourceContext = new ResourceContext(resource, id, null);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -170,9 +165,7 @@ public class PermissionsResource {
           String resource,
       @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name")
           String name) {
-    EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
-    ResourceContext resourceContext =
-        ResourceContext.builder().resource(resource).name(name).entityRepository(entityRepository).build();
+    ResourceContext resourceContext = new ResourceContext(resource, null, name);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -196,9 +189,8 @@ public class PermissionsResource {
           List<UUID> ids) {
     // User must have read access to policies
     OperationContext operationContext = new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
-    EntityRepository<? extends EntityInterface> dao = Entity.getEntityRepository(Entity.POLICY);
     for (UUID id : ids) {
-      ResourceContext resourceContext = EntityResource.getResourceContext(Entity.POLICY, dao).id(id).build();
+      ResourceContext resourceContext = new ResourceContext(Entity.POLICY, id, null);
       authorizer.authorize(securityContext, operationContext, resourceContext);
     }
     List<EntityReference> policies = EntityUtil.populateEntityReferencesById(ids, Entity.POLICY);

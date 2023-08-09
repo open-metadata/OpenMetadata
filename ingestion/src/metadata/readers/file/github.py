@@ -21,8 +21,8 @@ import requests
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
-from metadata.readers.api_reader import ApiReader
-from metadata.readers.base import ReadException
+from metadata.readers.file.api_reader import ApiReader
+from metadata.readers.file.base import ReadException
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
@@ -53,7 +53,7 @@ class GitHubReader(ApiReader):
         """
         return base64.b64decode(json_response["content"]).decode(UTF_8)
 
-    def read(self, path: str) -> str:
+    def read(self, path: str, **__) -> str:
         """
         Read a file from a GitHub Repo and return its
         contents as a string

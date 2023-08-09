@@ -20,12 +20,12 @@ import {
 } from 'constants/elasticsearch.constant';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Pipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import './MetadataToESConfigForm.less';
 
 interface Props {
   data: AddIngestionState;
-  handleMetadataToESConfig: (data: ConfigClass) => void;
+  handleMetadataToESConfig: (data: Pipeline) => void;
   handlePrev: () => void;
   handleNext: () => void;
   onFocus: (fieldId: string) => void;
@@ -43,7 +43,7 @@ const MetadataToESConfigForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
-  const handleSubmit = (values: ConfigClass) => {
+  const handleSubmit = (values: Pipeline) => {
     handleMetadataToESConfig({
       ...values,
     });
