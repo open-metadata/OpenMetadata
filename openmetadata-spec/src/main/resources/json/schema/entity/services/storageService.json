@@ -18,6 +18,7 @@
       "type": "string",
       "enum": [
         "S3",
+        "ADLS",
         "CustomStorage"
       ],
       "javaEnums": [
