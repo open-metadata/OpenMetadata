@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Modal, Row, Typography } from 'antd';
+import { Button, Col, Modal, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { t } from 'i18next';
@@ -34,15 +34,9 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   visible,
 }: WhatsNewModalProps) => {
   const [activeData, setActiveData] = useState(WHATS_NEW[LATEST_VERSION_ID]);
-  const [checkedValue, setCheckedValue] = useState<ToggleType>('features');
-
-  // Let's replace it with AntD ButtonGroup instead using custom classes and styles
-  const getToggleButtonClasses = (type: string): string => {
-    return (
-      'flex-1 font-medium' +
-      (type === checkedValue ? 'bg-primary text-white' : 'text-primary ')
-    );
-  };
+  const [checkedValue, setCheckedValue] = useState<ToggleType>(
+    ToggleType.FEATURES
+  );
 
   const handleToggleChange = (type: ToggleType) => {
     setCheckedValue(type);
@@ -58,9 +52,9 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   useEffect(() => {
     const hasFeatures = activeData.features.length > 0;
     if (hasFeatures) {
-      setCheckedValue('features');
+      setCheckedValue(ToggleType.FEATURES);
     } else {
-      setCheckedValue('change-log');
+      setCheckedValue(ToggleType.CHANGE_LOG);
     }
   }, [activeData]);
 
@@ -68,6 +62,7 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
     <Modal
       centered
       destroyOnClose
+      open
       className="whats-new-modal"
       closeIcon={
         <CloseIcon dataTestId="closeWhatsNew" handleCancel={handleCancel} />
@@ -75,7 +70,6 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
       data-testid="whats-new-dialog"
       footer={null}
       maskClosable={false}
-      open={visible}
       title={
         <Typography.Text strong data-testid="whats-new-header">
           {header}
@@ -92,14 +86,16 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                     activeData.id === d.id ? PRIMERY_COLOR : DE_ACTIVE_COLOR
                   }
                 />
-                <button
+                <Button
                   className={classNames(
-                    'm-l-xss',
+                    'm-l-xss p-0',
                     activeData.id === d.id ? 'text-primary' : null
                   )}
+                  size="small"
+                  type="text"
                   onClick={() => setActiveData(d)}>
                   {d.version}
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -119,33 +115,37 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                     className={classNames('whats-new-modal-button-container', {
                       'w-60': activeData.features.length > 0,
                     })}>
-                    <button
-                      className={getToggleButtonClasses('features')}
-                      data-testid="WhatsNewModalFeatures"
-                      onClick={() => handleToggleChange('features')}>
-                      {t('label.feature-plural')}
-                    </button>
+                    <Button.Group>
+                      <Button
+                        data-testid="WhatsNewModalFeatures"
+                        ghost={checkedValue !== ToggleType.FEATURES}
+                        type="primary"
+                        onClick={() => handleToggleChange(ToggleType.FEATURES)}>
+                        {t('label.feature-plural')}
+                      </Button>
 
-                    <button
-                      className={getToggleButtonClasses('change-log')}
-                      data-testid="WhatsNewModalChangeLogs"
-                      onClick={() => {
-                        handleToggleChange('change-log');
-                      }}>
-                      {t('label.change-entity', {
-                        entity: t('label.log-plural'),
-                      })}
-                    </button>
+                      <Button
+                        data-testid="WhatsNewModalChangeLogs"
+                        ghost={checkedValue !== ToggleType.CHANGE_LOG}
+                        type="primary"
+                        onClick={() => {
+                          handleToggleChange(ToggleType.CHANGE_LOG);
+                        }}>
+                        {t('label.change-entity', {
+                          entity: t('label.log-plural'),
+                        })}
+                      </Button>
+                    </Button.Group>
                   </div>
                 )}
               </div>
             </div>
             <div>
-              {checkedValue === 'features' &&
+              {checkedValue === ToggleType.FEATURES &&
                 activeData.features.length > 0 && (
                   <FeaturesCarousel data={activeData.features} />
                 )}
-              {checkedValue === 'change-log' && (
+              {checkedValue === ToggleType.CHANGE_LOG && (
                 <ChangeLogs
                   data={
                     activeData.changeLogs as unknown as {

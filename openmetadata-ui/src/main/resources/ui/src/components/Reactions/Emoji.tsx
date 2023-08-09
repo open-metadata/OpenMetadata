@@ -82,7 +82,7 @@ const Emoji: FC<EmojiProps> = ({
     const moreList = reactedUserList.slice(8);
 
     return (
-      <p data-testid="popover-content">
+      <p className="w-44 m-0 p-0" data-testid="popover-content">
         {`${visibleList.join(', ')}`}
         {hasMore
           ? `, +${moreList.length} ${t('label.more-lowercase')}`
@@ -128,7 +128,6 @@ const Emoji: FC<EmojiProps> = ({
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         {element}
-
         <span className="text-xs m-l-xss self-center" data-testid="emoji-count">
           {reactionList.length}
         </span>

@@ -168,6 +168,7 @@ const NotificationBox = ({
         </div>
       ) : (
         <List
+          className="h-min-64"
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">
@@ -180,7 +181,9 @@ const NotificationBox = ({
           }
           itemLayout="vertical"
           renderItem={(item) => (
-            <List.Item className="cursor-pointer">{item}</List.Item>
+            <List.Item className="notification-dropdown-list-btn cursor-pointer">
+              {item}
+            </List.Item>
           )}
           size="small"
         />
@@ -189,8 +192,11 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="bg-white d-flex flex-col justify-between notification-box">
-      <Typography.Title data-testid="notification-heading" level={5}>
+    <div className="notification-box">
+      <Typography.Title
+        className="p-x-md p-t-sm p-b-xss"
+        data-testid="notification-heading"
+        level={5}>
         {t('label.notification-plural')}
       </Typography.Title>
       <Tabs

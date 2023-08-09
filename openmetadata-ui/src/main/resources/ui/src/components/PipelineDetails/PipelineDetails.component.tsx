@@ -588,11 +588,9 @@ const PipelineDetails = ({
                       </div>
                     </Card>
                   ) : (
-                    <div
-                      className="d-flex justify-center font-medium items-center"
-                      data-testid="no-tasks-data">
+                    <Card className="text-center" data-testid="no-tasks-data">
                       <span>{t('server.no-task-available')}</span>
-                    </div>
+                    </Card>
                   )}
                 </Col>
               </Row>
