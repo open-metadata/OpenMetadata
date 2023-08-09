@@ -55,7 +55,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public TestCaseRepository(CollectionDAO dao) {
     super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
-    quoteFqn = true;
   }
 
   @Override
