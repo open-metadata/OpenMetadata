@@ -10,9 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles//antd-master.less');
+
 .sidebar-icon-container {
   svg {
     width: 20px;
     height: 20px;
   }
+
+  width: 46px;
+  box-sizing: content-box;
+  border: @global-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: @padding-xs;
+  background-color: @grey-1;
+  border-radius: @border-radius-base;
+  margin: auto;
 }

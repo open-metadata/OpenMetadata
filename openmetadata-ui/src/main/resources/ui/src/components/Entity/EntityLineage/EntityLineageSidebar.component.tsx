@@ -39,38 +39,34 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   };
 
   return (
-    <div className="d-flex flex-col  items-center">
+    <div className=" m-b-lg">
       <div
-        className={classNames(
-          'sidebar-icon-container flex-center  d-flex justify-between',
-          {
-            'cursor-not-allowed opacity-50': !draggable,
-          }
-        )}
+        className={classNames('sidebar-icon-container', {
+          'cursor-not-allowed opacity-50': !draggable,
+        })}
         draggable={draggable}
         style={{ ...(draggable && { cursor: 'grab' }) }}
         onDragStart={(event) => onDragStart(event, `${label}-default`)}>
         <span
+          className="d-flex"
           onDragStart={(e) => {
             e.preventDefault();
             e.stopPropagation();
           }}>
           {getEntityIcon(type || '')}
         </span>
-        <span className="d-flex">
+        <span className="d-flex m-l-xs">
           <Icon
-            className="drag-icon"
+            className="drag-icon "
             component={DragIconDotted}
             rotate={90}
             style={{
               color: PRIMERY_COLOR,
-              fontSize: '18px',
-              fontWeight: 'bold',
             }}
           />
         </span>
       </div>
-      <p className="text-grey-body text-center text-xs">
+      <p className="text-grey-body text-center text-xs p-t-xs">
         {capitalize(`${label}s`)}
       </p>
     </div>
@@ -79,17 +75,18 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
 
 const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
   return (
-    <div className={classNames('entity-lineage sidebar', { open: show })}>
-      <div className="d-flex flex-col">
-        {entityData.map((d) => (
-          <EntityNode
-            draggable={isEmpty(newAddedNode)}
-            key={uniqueId()}
-            label={d.label}
-            type={d.type}
-          />
-        ))}
-      </div>
+    <div
+      className={classNames('entity-lineage sidebar', {
+        open: show || true,
+      })}>
+      {entityData.map((d) => (
+        <EntityNode
+          draggable={isEmpty(newAddedNode)}
+          key={uniqueId()}
+          label={d.label}
+          type={d.type}
+        />
+      ))}
     </div>
   );
 };
