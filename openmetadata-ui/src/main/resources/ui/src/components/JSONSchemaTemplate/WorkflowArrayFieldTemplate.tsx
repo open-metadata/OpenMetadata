@@ -13,24 +13,26 @@
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
 import { t } from 'i18next';
+import { startCase } from 'lodash';
 import React from 'react';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   return (
     <Row>
       <Col span={24}>
-        <Typography>{props.name}</Typography>
+        <Typography>{startCase(props.name)}</Typography>
       </Col>
       <Col span={24}>
         <Select
           className="m-t-xss w-full"
           disabled={props.disabled}
-          id={props.id}
+          id={props.idSchema.$id}
           mode="tags"
           open={false}
           placeholder={t('message.filter-pattern-placeholder')}
           value={props.formData ?? []}
           onChange={(value) => props.onChange(value)}
+          onFocus={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
         />
       </Col>
     </Row>

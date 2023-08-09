@@ -12,19 +12,21 @@
  */
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Switch, Typography } from 'antd';
+import { startCase } from 'lodash';
 import React from 'react';
 
 const BooleanFieldTemplate = (props: FieldProps) => {
   return (
     <Row>
       <Col span={8}>
-        <Typography>{props.name}</Typography>
+        <Typography>{startCase(props.name)}</Typography>
       </Col>
       <Col span={16}>
         <Switch
           checked={props.formData}
-          id={props.id}
+          id={props.idSchema.$id}
           onChange={(value) => props.onChange(value)}
+          onClick={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
         />
       </Col>
     </Row>
