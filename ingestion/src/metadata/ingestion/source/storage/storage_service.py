@@ -103,7 +103,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.connection: S3ObjectStoreClient = get_connection(self.service_connection)
+        self.connection = get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
