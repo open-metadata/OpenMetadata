@@ -1,49 +1,5 @@
 package org.openmetadata.service.search.elasticSearch;
 
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
-import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
-
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -93,7 +49,6 @@ import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
-import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchModule;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -158,6 +113,51 @@ import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.util.JsonUtils;
+
+import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
+import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 @Slf4j
 public class ElasticSearchClientImpl implements SearchClient {
@@ -1040,34 +1040,18 @@ public class ElasticSearchClientImpl implements SearchClient {
               ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
               ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
               ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName,
+              ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName,
               ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName
             };
-        BulkRequest request = new BulkRequest();
-        SearchRequest searchRequest;
-        SearchResponse response;
-        int batchSize = 50;
-        int totalHits;
-        int currentHits = 0;
-
-        do {
-          searchRequest =
-              searchRequest(indexes, ES_TAG_FQN_FIELD, event.getEntityFullyQualifiedName(), batchSize, currentHits);
-          response = client.search(searchRequest, RequestOptions.DEFAULT);
-          totalHits = (int) response.getHits().getTotalHits().value;
-          for (SearchHit hit : response.getHits()) {
-            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-            List<TagLabel> listTags = (List<TagLabel>) sourceAsMap.get("tags");
-            Script script = generateTagScript(listTags);
-            if (!script.toString().isEmpty()) {
-              request.add(
-                  updateRequests(sourceAsMap.get("entityType").toString(), sourceAsMap.get("id").toString(), script));
-            }
-          }
-          currentHits += response.getHits().getHits().length;
-        } while (currentHits < totalHits);
-        if (request.numberOfActions() > 0) {
-          client.bulk(request, RequestOptions.DEFAULT);
-        }
+        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexes);
+        updateByQueryRequest.setQuery(new MatchQueryBuilder(ES_TAG_FQN_FIELD, event.getEntityFullyQualifiedName()));
+        String scriptTxt =
+            "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+        Script script =
+            new Script(
+                ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, String.format(scriptTxt, event.getEntityFullyQualifiedName()), new HashMap<>());
+        updateByQueryRequest.setScript(script);
+        updateElasticSearchByQuery(updateByQueryRequest);
     }
   }
 
