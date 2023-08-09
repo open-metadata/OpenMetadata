@@ -17,6 +17,15 @@ import { startCase } from 'lodash';
 import React from 'react';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
+  const handleFocus = () => {
+    let id = props.idSchema.$id;
+
+    if (/FilterPattern/.test(id)) {
+      id = id.split('/').slice(0, 2).join('/');
+    }
+    props.formContext?.handleFocus?.(id);
+  };
+
   return (
     <Row>
       <Col span={24}>
@@ -32,7 +41,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           placeholder={t('message.filter-pattern-placeholder')}
           value={props.formData ?? []}
           onChange={(value) => props.onChange(value)}
-          onFocus={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
+          onFocus={handleFocus}
         />
       </Col>
     </Row>

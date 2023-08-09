@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Form, { FormProps, IChangeEvent } from '@rjsf/core';
+import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType } from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import BooleanFieldTemplate from 'components/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -28,25 +29,28 @@ import React, { FC, useMemo, useState } from 'react';
 import { customValidate } from 'utils/formUtils';
 import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
 
-interface IngestionWorkflowFormProps extends FormProps {
+interface IngestionWorkflowFormProps {
   pipeLineType: PipelineType;
   workflowName: string;
   okText: string;
   cancelText: string;
   serviceCategory: ServiceCategory;
+  className?: string;
   onCancel: () => void;
+  onNext: () => void;
+  onFocus: (fieldId: string) => void;
 }
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
-  validator,
   className,
   workflowName,
-  onCancel,
   okText,
   cancelText,
-  onFocus,
   serviceCategory,
+  onCancel,
+  onFocus,
+  onNext,
 }) => {
   const [internalData, setInternalData] = useState<IngestionWorkflowData>({
     name: workflowName,
@@ -98,7 +102,11 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
             {cancelText}
           </Button>
 
-          <Button data-testid="submit-btn" htmlType="submit" type="primary">
+          <Button
+            data-testid="submit-btn"
+            htmlType="submit"
+            type="primary"
+            onClick={onNext}>
             {okText}
           </Button>
         </Space>

@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import validator from '@rjsf/validator-ajv8';
 import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { LOADING_STATE } from 'enums/common.enum';
 import { Connection } from 'generated/api/services/createDatabaseService';
-import { isEmpty, isUndefined, noop, omit, trim } from 'lodash';
+import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, {
   Reducer,
   useCallback,
@@ -766,15 +765,14 @@ const AddIngestion = ({
       <div className="tw-pt-7">
         {activeIngestionStep === 1 && (
           <IngestionWorkflowForm
-            cancelText="Cancel"
-            okText="Submit"
+            cancelText={t('label.cancel')}
+            okText={t('label.next')}
             pipeLineType={pipelineType}
-            schema={{}}
             serviceCategory={serviceCategory}
-            validator={validator}
             workflowName={state.ingestionName}
-            onCancel={noop}
+            onCancel={handleCancelClick}
             onFocus={onFocus}
+            onNext={handleNext}
           />
         )}
 
