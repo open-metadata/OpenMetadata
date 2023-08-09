@@ -13,7 +13,7 @@ Base local reader
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from metadata.utils.logger import ingestion_logger
 
@@ -32,7 +32,7 @@ class Reader(ABC):
     """
 
     @abstractmethod
-    def read(self, path: str) -> str:
+    def read(self, path: str, **kwargs) -> Union[str, bytes]:
         """
         Given a string, return a string
         """
