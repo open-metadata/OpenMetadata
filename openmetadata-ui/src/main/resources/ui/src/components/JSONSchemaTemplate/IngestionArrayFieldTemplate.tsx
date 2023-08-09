@@ -28,20 +28,6 @@ const IngestionArrayFieldTemplate: FC<ArrayFieldTemplateProps> = (
     <Fragment>
       <div className="d-flex tw-justify-between tw-items-center">
         <label className="control-label">{title}</label>
-        {/* <Select
-          className="m-t-xss"
-          data-testid={`filter-pattern-includes-${title}`}
-          disabled={!canAdd}
-          mode="tags"
-          open={false}
-          placeholder={t('message.filter-pattern-placeholder')}
-          value={formData ?? []}
-          onFocus={() => {
-            if (!isUndefined(formContext.handleFocus)) {
-              formContext.handleFocus(idSchema.$id);
-            }
-          }}
-        /> */}
         {canAdd && (
           <Button
             data-testid={`add-item-${title}`}
