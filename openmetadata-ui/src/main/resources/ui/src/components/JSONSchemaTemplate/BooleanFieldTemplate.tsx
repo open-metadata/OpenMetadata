@@ -17,7 +17,7 @@ import React from 'react';
 
 const BooleanFieldTemplate = (props: FieldProps) => {
   return (
-    <Row>
+    <Row className="m-t-md">
       <Col span={8}>
         <Typography>{startCase(props.name)}</Typography>
       </Col>
