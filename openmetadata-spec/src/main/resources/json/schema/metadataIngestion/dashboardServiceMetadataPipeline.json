@@ -33,7 +33,10 @@
     "dbServiceNames": {
       "title": "Database Service Names List",
       "description": "List of Database Service Names for creation of lineage",
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "includeOwners": {
       "title": "Include Current Owners",
