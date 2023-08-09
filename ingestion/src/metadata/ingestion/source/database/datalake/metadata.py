@@ -55,16 +55,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.models import (
-    DatalakeTableSchemaWrapper,
-)
+from metadata.ingestion.source.database.datalake.columns import clean_dataframe
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils import fqn
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import (
-    SupportedTypes,
-    clean_dataframe,
-    fetch_dataframe,
-)
+from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -375,7 +371,6 @@ class DatalakeSource(DatabaseServiceSource):
         schema_name = self.context.database_schema.name.__root__
         try:
             table_constraints = None
-            connection_args = self.service_connection.configSource.securityConfig
             data_frame = fetch_dataframe(
                 config_source=self.service_connection.configSource,
                 client=self.client,
@@ -383,7 +378,6 @@ class DatalakeSource(DatabaseServiceSource):
                     key=table_name,
                     bucket_name=schema_name,
                 ),
-                connection_kwargs=connection_args,
             )
             # If no data_frame (due to unsupported type), ignore
             columns = self.get_columns(data_frame[0]) if data_frame else None
@@ -522,7 +516,7 @@ class DatalakeSource(DatabaseServiceSource):
         return data_type
 
     @staticmethod
-    def get_columns(data_frame: list):
+    def get_columns(data_frame: "DataFrame"):
         """
         method to process column details
         """
@@ -557,7 +551,6 @@ class DatalakeSource(DatabaseServiceSource):
                             "name": truncate_column_name(column),
                             "displayName": column,
                         }
-                        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                         cols.append(Column(**parsed_string))
                     except Exception as exc:
                         logger.debug(traceback.format_exc())

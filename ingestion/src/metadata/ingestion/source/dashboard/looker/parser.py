@@ -25,7 +25,7 @@ from metadata.ingestion.source.dashboard.looker.models import (
     LookMlView,
     ViewName,
 )
-from metadata.readers.base import Reader, ReadException
+from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

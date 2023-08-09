@@ -13,9 +13,9 @@ Local Reader
 """
 import traceback
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from metadata.readers.base import Reader, ReadException
+from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
@@ -27,15 +27,25 @@ class LocalReader(Reader):
     Read files locally
     """
 
-    def __init__(self, base_path: Path):
-        self.base_path = base_path
+    def __init__(self, base_path: Optional[Path] = None):
+        self.base_path = base_path or Path(__file__)
 
-    def read(self, path: str) -> str:
+    def read(self, path: str, **kwargs) -> Union[str, bytes]:
         """
         simple local reader
+
+        If we cannot encode the file contents, we fallback and returns the bytes
+        to let the client use this data as needed.
         """
         try:
             with open(self.base_path / path, encoding=UTF_8) as file:
+                return file.read()
+
+        except UnicodeDecodeError:
+            logger.debug(
+                "Cannot read the file with UTF-8 encoding. Trying to read bytes..."
+            )
+            with open(self.base_path / path, "rb") as file:
                 return file.read()
 
         except Exception as err:
