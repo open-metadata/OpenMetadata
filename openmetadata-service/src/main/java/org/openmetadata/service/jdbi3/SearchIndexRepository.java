@@ -130,6 +130,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  public SearchIndex clearFields(SearchIndex searchIndex, Fields fields) {
+    return searchIndex;
+  }
+
+  @Override
   public SearchIndexUpdater getUpdater(SearchIndex original, SearchIndex updated, Operation operation) {
     return new SearchIndexUpdater(original, updated, operation);
   }
@@ -283,7 +288,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
         childrenSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
       }
-      SearchIndex searchIndex = getByName(null, entityLink.getEntityFQN(), getFields("tags"), ALL);
+      SearchIndex searchIndex = getByName(null, entityLink.getEntityFQN(), getFields("tags"), ALL, false);
       SearchIndexField schemaField = null;
       for (SearchIndexField field : searchIndex.getFields()) {
         if (field.getName().equals(schemaName)) {
