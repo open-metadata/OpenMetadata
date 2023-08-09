@@ -12,7 +12,7 @@
  */
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { isUndefined } from 'lodash';
@@ -31,8 +31,8 @@ const MessageCard = ({ message }: { message: string }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div
-      className="bg-white"
+    <Card
+      className="m-b-xlg"
       data-testid="message-card"
       onClick={() => setIsExpanded((pre) => !pre)}>
       <div className="d-flex">
@@ -45,13 +45,14 @@ const MessageCard = ({ message }: { message: string }) => {
         </div>
         {isExpanded ? (
           <div>
-            <button
+            <Button
               className="active"
               data-testid="value"
               id="sampleData-value">
               {t('label.value')}
-            </button>
+            </Button>
             <SchemaEditor
+              className="m-t-xs"
               editorClass="topic-sample-data"
               options={{
                 styleActiveLine: false,
@@ -62,14 +63,14 @@ const MessageCard = ({ message }: { message: string }) => {
         ) : (
           <div>
             <p
-              className="topic-sample-data-message"
+              className="m-y-xs topic-sample-data-message"
               style={{ color: '#450de2' }}>
               {message}
             </p>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -102,17 +103,9 @@ const SampleDataTopic: FC<{ topicId: string }> = ({ topicId }) => {
     return <Loader />;
   }
 
-  if (!isUndefined(data)) {
+  if (isUndefined(data)) {
     return (
-      <div className="d-flex flex-col">
-        {data.messages?.map((message, i) => (
-          <MessageCard key={i} message={message} />
-        ))}
-      </div>
-    );
-  } else {
-    return (
-      <div data-testid="no-data">
+      <div className="m-t-xlg" data-testid="no-data">
         <ErrorPlaceHolder>
           <Typography.Paragraph>
             <Transi18next
@@ -134,6 +127,14 @@ const SampleDataTopic: FC<{ topicId: string }> = ({ topicId }) => {
       </div>
     );
   }
+
+  return (
+    <div className="d-flex flex-col p-md">
+      {data.messages?.map((message, i) => (
+        <MessageCard key={i} message={message} />
+      ))}
+    </div>
+  );
 };
 
 export default SampleDataTopic;

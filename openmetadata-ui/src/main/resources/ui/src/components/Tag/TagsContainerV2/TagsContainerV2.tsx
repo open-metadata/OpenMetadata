@@ -156,7 +156,7 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col onClick={handleAddClick}>
+        <Col className="m-t-xss" onClick={handleAddClick}>
           <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
         </Col>
       ) : null,

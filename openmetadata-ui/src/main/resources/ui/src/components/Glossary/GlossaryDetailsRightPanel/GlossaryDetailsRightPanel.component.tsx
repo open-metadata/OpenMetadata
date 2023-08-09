@@ -197,7 +197,7 @@ const GlossaryDetailsRightPanel = ({
   return (
     <Row gutter={[0, 40]}>
       <Col data-testid="glossary-owner-name" span="24">
-        <div className="d-flex items-center m-b-xss">
+        <div className="d-flex items-center">
           <Typography.Text className="right-panel-label">
             {t('label.owner')}
           </Typography.Text>
@@ -217,11 +217,9 @@ const GlossaryDetailsRightPanel = ({
               </UserTeamSelectableList>
             )}
         </div>
-
         <Space className="m-r-xss" size={4}>
           {getUserNames(selectedData)}
         </Space>
-
         {!selectedData.owner && (permissions.EditOwner || permissions.EditAll) && (
           <UserTeamSelectableList
             hasPermission={permissions.EditOwner || permissions.EditAll}
@@ -272,7 +270,6 @@ const GlossaryDetailsRightPanel = ({
             glossaryData={selectedData}
             isVersionView={isVersionView}
           />
-
           {hasEditReviewerAccess && noReviewersSelected && (
             <UserSelectableList
               hasPermission={hasEditReviewerAccess}

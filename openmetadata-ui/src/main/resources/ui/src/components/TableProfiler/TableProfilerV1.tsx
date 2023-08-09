@@ -602,10 +602,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isUndefined(profile) && !isDataQuality && (
             <div
-              className="d-flex items-center"
+              className="border d-flex items-center border-warning rounded-4 p-xs m-b-md"
               data-testid="no-profiler-placeholder">
               <NoDataIcon />
-              <p>
+              <p className="m-l-xs">
                 {t('message.no-profiler-message')}
                 <Link
                   target="_blank"

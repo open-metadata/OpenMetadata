@@ -179,7 +179,10 @@ const ServiceConnectionDetails = ({
                     position="bottom"
                     title={description}
                     trigger="hover">
-                    <InfoCircleOutlined style={{ color: '#C4C4C4' }} />
+                    <InfoCircleOutlined
+                      className="m-x-xss"
+                      style={{ color: '#C4C4C4' }}
+                    />
                   </Tooltip>
                 </Space>
               </Col>

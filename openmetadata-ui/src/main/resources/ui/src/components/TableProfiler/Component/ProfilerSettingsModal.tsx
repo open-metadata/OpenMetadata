@@ -21,11 +21,13 @@ import {
   Space,
   Switch,
   TreeSelect,
+  Typography,
 } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { CSMode } from 'enums/codemirror.enum';
@@ -470,7 +472,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </Form>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
-          <p>
+          <p className="m-b-xs">
             {t('label.profile-sample-type', {
               type: t('label.query'),
             })}{' '}
@@ -488,8 +490,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <p>{t('message.enable-column-profile')}</p>
-          <p className="text-xs">{t('label.exclude')}:</p>
+          <Typography.Paragraph>
+            {t('message.enable-column-profile')}
+          </Typography.Paragraph>
+          <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
             allowClear
             className="w-full"
@@ -520,8 +524,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <List name="includeColumns">
               {(fields, { add, remove }) => (
                 <>
-                  <div className="d-flex items-center">
-                    <p className="w-form-label text-xs">
+                  <div className="d-flex items-center m-b-xss">
+                    <p className="w-form-label text-xs m-r-xs">
                       {`${t('label.include')}:`}
                     </p>
                     <Button
@@ -532,7 +536,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
-                  <div data-testid="include-column-container">
+                  <div
+                    className={classNames({
+                      'h-max-40 overflow-y-auto': state?.includeCol.length > 1,
+                    })}
+                    data-testid="include-column-container">
                     {fields.map(({ key, name, ...restField }) => (
                       <Row gutter={16} key={key}>
                         <Col span={12}>
@@ -793,7 +801,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   <List name="partitionValues">
                     {(fields, { add, remove }) => (
                       <>
-                        <div className="flex items-center">
+                        <div className="flex items-center m-b-xs">
                           <p className="w-form-label text-xs m-r-sm">
                             {`${t('label.value')}:`}
                           </p>

@@ -184,7 +184,7 @@ const Services = ({
                             </button>
                           </Link>
                           <div
-                            className="text-grey-body break-all description-text"
+                            className="text-grey-body break-all description-text p-b-xs"
                             data-testid="service-description">
                             {service.description ? (
                               <RichTextEditorPreviewer

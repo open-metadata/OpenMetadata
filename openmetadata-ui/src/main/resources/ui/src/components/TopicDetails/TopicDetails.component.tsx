@@ -380,7 +380,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         children: !(
           topicPermissions.ViewAll || topicPermissions.ViewSampleData
         ) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <div className="m-t-xlg">
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          </div>
         ) : (
           <SampleDataTopic topicId={topicDetails.id} />
         ),
