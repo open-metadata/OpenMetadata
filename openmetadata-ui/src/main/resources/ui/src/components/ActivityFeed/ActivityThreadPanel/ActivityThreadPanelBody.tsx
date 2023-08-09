@@ -293,21 +293,23 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     />
                   </Space>
                 )}
-                <ErrorPlaceHolder
-                  className="mt-24"
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  {isTaskType ? (
-                    <Typography.Paragraph>
-                      {isTaskClosed
-                        ? t('message.no-closed-task')
-                        : t('message.no-open-task')}
-                    </Typography.Paragraph>
-                  ) : isAnnouncementType ? (
-                    <Typography.Paragraph data-testid="announcement-error">
-                      {t('message.no-announcement-message')}
-                    </Typography.Paragraph>
-                  ) : null}
-                </ErrorPlaceHolder>
+                {!isThreadLoading && (
+                  <ErrorPlaceHolder
+                    className="mt-24"
+                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                    {isTaskType ? (
+                      <Typography.Paragraph>
+                        {isTaskClosed
+                          ? t('message.no-closed-task')
+                          : t('message.no-open-task')}
+                      </Typography.Paragraph>
+                    ) : isAnnouncementType ? (
+                      <Typography.Paragraph data-testid="announcement-error">
+                        {t('message.no-announcement-message')}
+                      </Typography.Paragraph>
+                    ) : null}
+                  </ErrorPlaceHolder>
+                )}
               </>
             ) : null}
             {isAnnouncementType ? (

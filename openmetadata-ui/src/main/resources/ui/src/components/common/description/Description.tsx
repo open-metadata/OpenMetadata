@@ -202,7 +202,7 @@ const Description: FC<DescriptionProps> = ({
       <Space align="end" className="description-inner-main-container" size={4}>
         <div className="relative">
           <div
-            className="description h-full relative "
+            className="description h-full relative overflow-y-scroll"
             data-testid="description"
             id="center">
             {description?.trim() ? (

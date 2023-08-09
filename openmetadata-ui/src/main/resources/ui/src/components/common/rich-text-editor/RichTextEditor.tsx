@@ -75,7 +75,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     return (
       <div className={classNames(className)} style={style}>
         {readonly ? (
-          <div data-testid="viewer">
+          <div className="border p-xs rounded-4" data-testid="viewer">
             <Viewer
               extendedAutolinks={extendedAutolinks}
               initialValue={editorValue}

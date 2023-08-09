@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { ROUTES } from 'constants/constants';
 import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
   ERROR_PLACEHOLDER_TYPE,
 } from 'enums/common.enum';
-import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
@@ -130,7 +129,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
 
     return (
       <div data-testid="es-error">
-        <div className="text-center">
+        <div className="m-b-lg text-center">
           <p>
             <span>{t('message.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">
@@ -140,39 +139,45 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
 
           <p>{t('message.elasticsearch-setup')}</p>
         </div>
-        <div>
+        <Row gutter={16}>
           {stepsData.map((data) => (
-            <Card className="d-flex flex-col justify-between " key={uniqueId()}>
-              <div>
-                <div className="d-flex ">
-                  <div className="d-flex justify-center items-center text-primary">
-                    {data.step}
+            <Col key={data.step} span={6}>
+              <Space
+                className="justify-between h-full border rounded-4 p-sm"
+                direction="vertical">
+                <div>
+                  <div className="d-flex m-b-xs">
+                    <div className="flex-center rounded-full h-10 w-10 border-2-primary text-primary text-lg font-bold">
+                      {data.step}
+                    </div>
                   </div>
+
+                  <h6
+                    className="text-base text-grey-body font-medium"
+                    data-testid="service-name">
+                    {data.title}
+                  </h6>
+
+                  <p className="text-grey-body text-sm m-b-lg">
+                    {data.description}
+                  </p>
                 </div>
 
-                <h6
-                  className="text-base text-grey-body font-medium"
-                  data-testid="service-name">
-                  {data.title}
-                </h6>
-
-                <p className="text-grey-body text-sm">{data.description}</p>
-              </div>
-
-              <p>
-                <a href={data.link} rel="noopener noreferrer" target="_blank">
-                  {`${t('label.click-here')} >>`}
-                </a>
-              </p>
-            </Card>
+                <p>
+                  <a href={data.link} rel="noopener noreferrer" target="_blank">
+                    {`${t('label.click-here')} >>`}
+                  </a>
+                </p>
+              </Space>
+            </Col>
           ))}
-        </div>
+        </Row>
       </div>
     );
   }, [errorMessage]);
 
   return (
-    <div className="text-base font-medium">
+    <div className="mt-12 text-base font-medium">
       {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
         ? noRecordForES
         : elasticSearchError}

@@ -28,8 +28,8 @@ const ErrorPlaceHolderIngestion = () => {
 
   const airflowSetupGuide = () => {
     return (
-      <div data-testid="error-steps">
-        <Card className="d-flex flex-col justify-between">
+      <div className="mb-5" data-testid="error-steps">
+        <Card className="d-flex flex-col justify-between w-4/5 mx-auto">
           <AirflowMessageBanner className="m-b-xs" />
           {isAirflowPlatform ? (
             <>
@@ -38,7 +38,7 @@ const ErrorPlaceHolderIngestion = () => {
                   {t('message.manage-airflow-api-failed')}
                 </h6>
 
-                <p className="text-grey-body text-sm ">
+                <p className="text-grey-body text-sm mb-5">
                   {t('message.airflow-guide-message')}
                 </p>
               </div>
@@ -68,7 +68,7 @@ const ErrorPlaceHolderIngestion = () => {
   };
 
   return (
-    <div className="m-t-md text-base font-medium">
+    <div className="m-t-lg text-base font-medium">
       {isFetchingStatus ? <Loader /> : airflowSetupGuide()}
     </div>
   );

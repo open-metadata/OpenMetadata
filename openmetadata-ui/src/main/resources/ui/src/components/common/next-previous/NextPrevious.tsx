@@ -83,9 +83,7 @@ const NextPrevious: FC<Prop> = ({
   }, [currentPage]);
 
   return (
-    <div
-      className="d-flex justify-center items-center"
-      data-testid="pagination">
+    <div className="flex-center gap-3" data-testid="pagination">
       <Button
         ghost
         className="hover-button text-sm flex-center"

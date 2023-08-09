@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Input, InputProps } from 'antd';
-import { ReactComponent as ClearIcon } from 'assets/svg/close-circle-outlined.svg';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
@@ -43,7 +41,7 @@ const Searchbar = ({
   label,
   removeMargin = false,
   showLoadingStatus = false,
-  showClearSearch = false,
+  showClearSearch = true,
   searchBarDataTestId,
   inputProps,
 }: Props) => {
@@ -84,9 +82,18 @@ const Searchbar = ({
       {label !== '' && <label>{label}</label>}
       <div className="flex relative">
         <Input
+          allowClear={showClearSearch}
           data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
           prefix={<SVGIcons alt="icon-search" icon={searchIcon} />}
+          suffix={
+            showLoadingStatus &&
+            loadingState === 'waiting' && (
+              <div className="absolute d-block text-center">
+                <Loader size="small" type="default" />
+              </div>
+            )
+          }
           type="text"
           value={userSearch}
           onBlur={() => setSearchIcon(Icons.SEARCHV1)}
@@ -98,16 +105,6 @@ const Searchbar = ({
           <div className="absolute d-block text-center">
             <Loader size="small" type="default" />
           </div>
-        )}
-        {showClearSearch && searchValue && (
-          <Icon
-            className="absolute d-block text-center cursor-pointer"
-            component={ClearIcon}
-            onClick={() => {
-              debouncedOnSearch('');
-              setUserSearch('');
-            }}
-          />
         )}
       </div>
     </div>

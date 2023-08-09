@@ -65,7 +65,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         <ol className="rounded-4 d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =
-              'link-title ' + (link.activeTitle ? ' font-medium' : '');
+              'link-title truncate' + (link.activeTitle ? ' font-medium' : '');
 
             return (
               <li
