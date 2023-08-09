@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RJSFSchema } from '@rjsf/utils';
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType as WorkflowType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import dashboardMetadataPipeline from 'jsons/ingestionSchemas/dashboardServiceMetadataPipeline.json';
@@ -56,6 +57,12 @@ export const getSchemaByWorkflowType = (
   workflowType: WorkflowType,
   serviceCategory: ServiceCategory
 ) => {
+  const customProperties = {
+    name: {
+      description: 'Name of the workflow',
+      type: 'string',
+    },
+  };
   let schema = {};
 
   switch (workflowType) {
@@ -114,5 +121,14 @@ export const getSchemaByWorkflowType = (
       break;
   }
 
-  return schema;
+  const rjsfSchema = schema as RJSFSchema;
+
+  return {
+    ...rjsfSchema,
+    properties: {
+      ...rjsfSchema.properties,
+      ...customProperties,
+    },
+    required: [...(rjsfSchema.required ?? []), 'name'],
+  } as RJSFSchema;
 };

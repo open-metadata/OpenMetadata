@@ -110,7 +110,7 @@ export type ConfigData =
   | MetadataConnection
   | StorageConnection;
 
-export type IngestionWorkflowData =
+export type IngestionWorkflowData = (
   | DatabaseServiceMetadataPipeline
   | DashboardServiceMetadataPipeline
   | PipelineServiceMetadataPipeline
@@ -120,4 +120,5 @@ export type IngestionWorkflowData =
   | DatabaseServiceProfilerPipeline
   | DatabaseServiceQueryLineagePipeline
   | DatabaseServiceQueryUsagePipeline
-  | DbtPipeline;
+  | DbtPipeline
+) & { name: string };

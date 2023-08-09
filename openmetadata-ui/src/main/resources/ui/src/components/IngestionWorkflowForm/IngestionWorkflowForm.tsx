@@ -21,7 +21,6 @@ import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTe
 import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { t } from 'i18next';
 import { IngestionWorkflowData } from 'interface/service.interface';
 import React, { FC, useMemo, useState } from 'react';
 import { customValidate } from 'utils/formUtils';
@@ -47,7 +46,9 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   onFocus,
   serviceCategory,
 }) => {
-  const [internalData, setInternalData] = useState<IngestionWorkflowData>();
+  const [internalData, setInternalData] = useState<IngestionWorkflowData>({
+    name: workflowName,
+  });
 
   const schema = useMemo(
     () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
@@ -56,7 +57,9 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   );
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
-    setInternalData(e.formData);
+    if (e.formData) {
+      setInternalData(e.formData);
+    }
   };
 
   return (
@@ -82,22 +85,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       validator={validator}
       onChange={handleOnChange}
       onFocus={onFocus}>
-      <div className="property-wrapper">
-        <div className="form-group field field-string">
-          <label className="control-label" htmlFor="root/name">
-            {t('label.name')}
-          </label>
-          <input
-            required
-            aria-describedby="root/name__error root/name__description root/name__help"
-            className="form-control"
-            id="root/name"
-            name="root/name"
-            type="text"
-            value={workflowName}
-          />
-        </div>
-      </div>
       <Space className="w-full justify-end">
         <Space>
           <Button type="link" onClick={onCancel}>
