@@ -78,7 +78,12 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       (currentVersionData as Container).dataModel?.columns
     );
 
-    return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
+    const newColList = getColumnsDataWithVersionChanges<Column>(
+      changeDescription,
+      colList
+    );
+
+    return newColList;
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {

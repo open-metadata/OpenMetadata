@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table } from 'antd';
+import { Col, Row, Space, Table, Tooltip } from 'antd';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
@@ -54,8 +54,7 @@ const VersionTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        ellipsis: true,
-        width: 180,
+        width: 200,
         render: (name: Column['name'], record: Column) => (
           <Space
             align="start"
@@ -80,12 +79,25 @@ const VersionTable = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
-        render: (dataTypeDisplay: Column['dataTypeDisplay']) =>
-          dataTypeDisplay ? (
-            <RichTextEditorPreviewer markdown={dataTypeDisplay.toLowerCase()} />
+        render: (dataTypeDisplay: Column['dataTypeDisplay']) => {
+          return dataTypeDisplay ? (
+            <Tooltip
+              title={
+                <RichTextEditorPreviewer
+                  markdown={dataTypeDisplay?.toLowerCase() ?? ''}
+                  textVariant="white"
+                />
+              }>
+              <div className="cursor-pointer">
+                <RichTextEditorPreviewer
+                  markdown={dataTypeDisplay?.toLowerCase() ?? ''}
+                />
+              </div>
+            </Tooltip>
           ) : (
             NO_DATA_PLACEHOLDER
-          ),
+          );
+        },
       },
       {
         title: t('label.description'),

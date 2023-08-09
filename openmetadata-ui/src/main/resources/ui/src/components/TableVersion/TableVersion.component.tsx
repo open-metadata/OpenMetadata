@@ -78,7 +78,12 @@ const TableVersion: React.FC<TableVersionProp> = ({
   const columns = useMemo(() => {
     const colList = cloneDeep((currentVersionData as Table).columns);
 
-    return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
+    const newColList = getColumnsDataWithVersionChanges<Column>(
+      changeDescription,
+      colList
+    );
+
+    return newColList;
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {

@@ -30,8 +30,6 @@ export interface TopicSchemaFieldsProps
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
-  defaultExpandAllRows?: boolean;
-  showSchemaDisplayTypeSwitch?: boolean;
   entityFieldThreads: EntityFieldThreads[];
   onUpdate?: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;

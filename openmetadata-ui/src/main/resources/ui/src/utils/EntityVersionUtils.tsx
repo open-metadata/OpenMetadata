@@ -29,14 +29,19 @@ import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Field, MessageSchemaObject, Topic } from 'generated/entity/data/topic';
 import { EntityReference } from 'generated/entity/type';
+import { DataTypeTopic } from 'generated/type/schema';
 import { t } from 'i18next';
-import { EntityDiffProps } from 'interface/EntityVersion.interface';
+import {
+  EntityDiffProps,
+  EntityDiffWithMultiChanges,
+} from 'interface/EntityVersion.interface';
 import {
   cloneDeep,
   isEmpty,
   isEqual,
   isUndefined,
   toString,
+  uniqBy,
   uniqueId,
 } from 'lodash';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
@@ -72,7 +77,9 @@ export const getChangedEntityNewValue = (diffObject?: EntityDiffProps) =>
   diffObject?.updated?.newValue;
 
 export const getChangeColumnNameFromDiffValue = (name?: string) => {
-  return name?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
+  const nameWithoutInternalQuotes = name?.replaceAll(/(?!^")(?!"$)"/g, '');
+
+  return nameWithoutInternalQuotes?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
 };
 
 export const getChangeSchemaFieldsName = (name: string) => {
@@ -435,14 +442,23 @@ export function getEntityTagDiff<
   return entityList ?? [];
 }
 
-function getNewSchemaFromSchemaDiff(newField: Array<Field>) {
-  return newField.map((field) => ({
-    ...field,
-    tags: field.tags?.map((tag) => ({ ...tag, removed: true })),
-    description: getTextDiff(field.description ?? '', ''),
-    dataTypeDisplay: getTextDiff(field.dataTypeDisplay ?? '', ''),
-    name: getTextDiff(field.name, ''),
-  }));
+function getNewSchemaFromSchemaDiff(newField: Array<Field>): Array<Field> {
+  return newField.map((field) => {
+    let children: Array<Field> | undefined;
+    if (!isEmpty(field.children)) {
+      children = getNewSchemaFromSchemaDiff(field.children as Array<Field>);
+    }
+
+    return {
+      ...field,
+      tags: field.tags?.map((tag) => ({ ...tag, removed: true })),
+      description: getTextDiff(field.description ?? '', ''),
+      dataType: getTextDiff(field.dataType ?? '', '') as DataTypeTopic,
+      dataTypeDisplay: getTextDiff(field.dataTypeDisplay ?? '', ''),
+      name: getTextDiff(field.name, ''),
+      children,
+    };
+  });
 }
 
 export function getSchemasDiff(
@@ -456,13 +472,20 @@ export function getSchemasDiff(
       schemaFieldsDiff.added?.newValue ?? '[]'
     );
     newField.forEach((field) => {
-      const formatSchemaFieldsData = (arr: Array<Field>) => {
+      const formatSchemaFieldsData = (
+        arr: Array<Field>,
+        updateAll?: boolean
+      ) => {
         arr?.forEach((i) => {
-          if (isEqual(i.name, field.name)) {
-            i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', field.description ?? '');
-            i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', field.name);
+          if (isEqual(i.name, field.name) || updateAll) {
+            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+            i.description = getTextDiff('', i.description ?? '');
+            i.dataType = getTextDiff('', i.dataType ?? '') as DataTypeTopic;
+            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', i.name);
+            if (!isEmpty(i.children)) {
+              formatSchemaFieldsData(i?.children as Array<Field>, true);
+            }
           } else {
             formatSchemaFieldsData(i?.children as Array<Field>);
           }
@@ -485,56 +508,6 @@ export function getSchemasDiff(
     schemaFields: [...newFields, ...(schemaFields ?? [])],
   };
 }
-
-export const getUpdatedMessageSchema = (
-  currentVersionData: VersionData,
-  changeDescription: ChangeDescription
-): Topic['messageSchema'] => {
-  const clonedMessageSchema = cloneDeep(
-    (currentVersionData as Topic).messageSchema
-  );
-  const schemaFields = clonedMessageSchema?.schemaFields;
-  const schemaFieldsDiff = getDiffByFieldName(
-    EntityField.SCHEMA_FIELDS,
-    changeDescription
-  );
-  const changedSchemaFieldName = getChangeSchemaFieldsName(
-    getChangedEntityName(schemaFieldsDiff) ?? ''
-  );
-
-  if (
-    isEndsWithField(
-      EntityField.DESCRIPTION,
-      getChangedEntityName(schemaFieldsDiff)
-    )
-  ) {
-    const formattedSchema = getEntityDescriptionDiff(
-      schemaFieldsDiff,
-      changedSchemaFieldName,
-      schemaFields
-    );
-
-    return { ...clonedMessageSchema, schemaFields: formattedSchema };
-  } else if (
-    isEndsWithField(EntityField.TAGS, getChangedEntityName(schemaFieldsDiff))
-  ) {
-    const formattedSchema = getEntityTagDiff(
-      schemaFieldsDiff,
-      changedSchemaFieldName,
-      schemaFields
-    );
-
-    return { ...clonedMessageSchema, schemaFields: formattedSchema };
-  } else {
-    const schemaFieldsDiff = getDiffByFieldName(
-      EntityField.SCHEMA_FIELDS,
-      changeDescription,
-      true
-    );
-
-    return getSchemasDiff(schemaFieldsDiff, schemaFields, clonedMessageSchema);
-  }
-};
 
 export const getOwnerInfo = (owner: EntityReference, ownerLabel: ReactNode) => {
   const isTeamType = owner.type === 'team';
@@ -620,31 +593,42 @@ export const getCommonExtraInfoForVersionDetails = (
 
 function getNewColumnFromColDiff<A extends TableColumn | ContainerColumn>(
   newCol: Array<A>
-) {
-  return newCol.map((col) => ({
-    ...col,
-    tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-    description: getTextDiff(col.description ?? '', ''),
-    dataTypeDisplay: getTextDiff(col.dataTypeDisplay ?? '', ''),
-    name: getTextDiff(col.name, ''),
-  }));
+): Array<A> {
+  return newCol.map((col) => {
+    let children: Array<A> | undefined;
+    if (!isEmpty(col.children)) {
+      children = getNewColumnFromColDiff(col.children as Array<A>);
+    }
+
+    return {
+      ...col,
+      tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
+      description: getTextDiff(col.description ?? '', ''),
+      dataTypeDisplay: getTextDiff(col.dataTypeDisplay ?? '', ''),
+      name: getTextDiff(col.name, ''),
+      children,
+    };
+  });
 }
 
 export function getColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
-  colList: A[] = []
+  colList: A[] = [],
+  changedEntity = ''
 ) {
-  let newColumns: Array<A> = [];
   if (columnsDiff.added) {
     const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
     newCol.forEach((col) => {
-      const formatColumnData = (arr: Array<A>) => {
+      const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
         arr?.forEach((i) => {
-          if (isEqual(i.name, col.name)) {
-            i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', col.description ?? '');
-            i.dataTypeDisplay = getTextDiff('', col.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', col.name);
+          if (isEqual(i.name, col.name) || updateAll) {
+            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+            i.description = getTextDiff('', i.description ?? '');
+            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', i.name);
+            if (!isEmpty(i.children)) {
+              formatColumnData(i?.children as Array<A>, true);
+            }
           } else {
             formatColumnData(i?.children as Array<A>);
           }
@@ -655,43 +639,179 @@ export function getColumnsDiff<A extends TableColumn | ContainerColumn>(
   }
   if (columnsDiff.deleted) {
     const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
-    newColumns = getNewColumnFromColDiff(newCol);
-  } else {
-    return colList;
+    const newColumns = getNewColumnFromColDiff(newCol);
+
+    const insertNewColumn = (
+      changedEntityField: string,
+      colArray: Array<TableColumn | ContainerColumn>
+    ) => {
+      const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
+      if (isEmpty(changedEntityField)) {
+        const nonExistingColumns = newColumns.filter((newColumn) =>
+          isUndefined(colArray.find((col) => col.name === newColumn.name))
+        );
+        colArray.unshift(...nonExistingColumns);
+      } else {
+        const parentField = fieldsArray.shift();
+        const arr = colArray.find((col) => col.name === parentField)?.children;
+
+        insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
+      }
+    };
+    insertNewColumn(changedEntity, colList);
   }
 
-  return [...newColumns, ...colList];
+  return uniqBy(colList, 'name');
 }
+
+export const getAllDiffByFieldName = (
+  name: string,
+  changeDescription: ChangeDescription,
+  exactMatch?: boolean
+): EntityDiffWithMultiChanges => {
+  const fieldsAdded = changeDescription?.fieldsAdded || [];
+  const fieldsDeleted = changeDescription?.fieldsDeleted || [];
+  const fieldsUpdated = changeDescription?.fieldsUpdated || [];
+  if (exactMatch) {
+    return {
+      added: fieldsAdded.filter((ch) => ch.name === name),
+      deleted: fieldsDeleted.filter((ch) => ch.name === name),
+      updated: fieldsUpdated.filter((ch) => ch.name === name),
+    };
+  } else {
+    return {
+      added: fieldsAdded.filter((ch) => ch.name?.includes(name)),
+      deleted: fieldsDeleted.filter((ch) => ch.name?.includes(name)),
+      updated: fieldsUpdated.filter((ch) => ch.name?.includes(name)),
+    };
+  }
+};
+
+export const getAllChangedEntityNames = (
+  diffObject: EntityDiffWithMultiChanges
+) => {
+  const changedEntityNames: string[] = [];
+  Object.keys(diffObject).forEach((key) => {
+    const changedValues = diffObject[key as keyof EntityDiffWithMultiChanges];
+
+    if (changedValues) {
+      changedValues.forEach((value) => {
+        if (value.name) {
+          changedEntityNames.push(value.name);
+        }
+      });
+    }
+  });
+
+  return changedEntityNames;
+};
 
 export function getColumnsDataWithVersionChanges<
   A extends TableColumn | ContainerColumn
 >(changeDescription: ChangeDescription, colList?: A[]): Array<A> {
-  const columnsDiff = getDiffByFieldName(
+  const columnsDiff = getAllDiffByFieldName(
     EntityField.COLUMNS,
     changeDescription
   );
-  const changedColName = getChangeColumnNameFromDiffValue(
-    getChangedEntityName(columnsDiff)
+
+  const changedFields = getAllChangedEntityNames(columnsDiff);
+
+  let newColumnsList = cloneDeep(colList);
+
+  changedFields?.forEach((changedField) => {
+    const columnDiff = getDiffByFieldName(changedField, changeDescription);
+    const changedEntityName = getChangedEntityName(columnDiff);
+    const changedColName = getChangeColumnNameFromDiffValue(changedEntityName);
+
+    if (isEndsWithField(EntityField.DESCRIPTION, changedEntityName)) {
+      newColumnsList = [
+        ...getEntityDescriptionDiff(columnDiff, changedColName, colList),
+      ];
+    } else if (isEndsWithField(EntityField.TAGS, changedEntityName)) {
+      newColumnsList = [
+        ...getEntityTagDiff(columnDiff, changedColName, colList),
+      ];
+    } else {
+      const changedEntity = changedEntityName
+        ?.split(FQN_SEPARATOR_CHAR)
+        .slice(1)
+        .join(FQN_SEPARATOR_CHAR);
+      newColumnsList = [...getColumnsDiff(columnDiff, colList, changedEntity)];
+    }
+  });
+
+  return newColumnsList ?? [];
+}
+
+export const getUpdatedMessageSchema = (
+  currentVersionData: VersionData,
+  changeDescription: ChangeDescription
+): Topic['messageSchema'] => {
+  let clonedMessageSchema = cloneDeep(
+    (currentVersionData as Topic).messageSchema
+  );
+  const schemaFields = clonedMessageSchema?.schemaFields;
+  const schemaFieldsDiff = getAllDiffByFieldName(
+    EntityField.SCHEMA_FIELDS,
+    changeDescription
   );
 
-  if (
-    isEndsWithField(EntityField.DESCRIPTION, getChangedEntityName(columnsDiff))
-  ) {
-    return getEntityDescriptionDiff(columnsDiff, changedColName, colList);
-  } else if (
-    isEndsWithField(EntityField.TAGS, getChangedEntityName(columnsDiff))
-  ) {
-    return getEntityTagDiff(columnsDiff, changedColName, colList);
-  } else {
-    const columnsDiff = getDiffByFieldName(
-      EntityField.COLUMNS,
-      changeDescription,
-      true
+  const changedSchemaFields = getAllChangedEntityNames(schemaFieldsDiff);
+
+  changedSchemaFields?.forEach((changedSchemaField) => {
+    const schemaFieldDiff = getDiffByFieldName(
+      changedSchemaField,
+      changeDescription
+    );
+    const changedSchemaFieldName = getChangeColumnNameFromDiffValue(
+      getChangedEntityName(schemaFieldDiff)
     );
 
-    return getColumnsDiff(columnsDiff, colList);
-  }
-}
+    if (
+      isEndsWithField(
+        EntityField.DESCRIPTION,
+        getChangedEntityName(schemaFieldDiff)
+      )
+    ) {
+      const formattedSchema = getEntityDescriptionDiff(
+        schemaFieldDiff,
+        changedSchemaFieldName,
+        schemaFields
+      );
+
+      clonedMessageSchema = {
+        ...clonedMessageSchema,
+        schemaFields: formattedSchema,
+      };
+    } else if (
+      isEndsWithField(EntityField.TAGS, getChangedEntityName(schemaFieldDiff))
+    ) {
+      const formattedSchema = getEntityTagDiff(
+        schemaFieldDiff,
+        changedSchemaFieldName,
+        schemaFields
+      );
+
+      clonedMessageSchema = {
+        ...clonedMessageSchema,
+        schemaFields: formattedSchema,
+      };
+    } else {
+      const schemaFieldsDiff = getDiffByFieldName(
+        EntityField.SCHEMA_FIELDS,
+        changeDescription
+      );
+
+      clonedMessageSchema = getSchemasDiff(
+        schemaFieldsDiff,
+        schemaFields,
+        clonedMessageSchema
+      );
+    }
+  });
+
+  return clonedMessageSchema;
+};
 
 export const getUpdatedExtensionDiffFields = (
   entityDetails: EntityDetails,

@@ -11,49 +11,34 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Row, Space, Tag, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
-import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { CSMode } from 'enums/codemirror.enum';
 import { EntityType } from 'enums/entity.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { DataTypeTopic, Field } from '../../generated/entity/data/topic';
+import { getTableExpandableConfig } from '../../utils/TableUtils';
 import {
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TopicSchema.utils';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  SchemaViewType,
-  TopicSchemaFieldsProps,
-} from './TopicSchema.interface';
+} from '../../utils/TopicSchema.utils';
+import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { TopicSchemaFieldsProps } from '../TopicDetails/TopicSchema/TopicSchema.interface';
 
-const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
+const TopicVersionSchemaFields: FC<TopicSchemaFieldsProps> = ({
   messageSchema,
   className,
   hasDescriptionEditAccess,
@@ -67,9 +52,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [viewType, setViewType] = useState<SchemaViewType>(
-    SchemaViewType.FIELDS
-  );
 
   const getAllRowKeys = (data: Field[]) => {
     let keys: string[] = [];
@@ -150,7 +132,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             size={2}>
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
               <Typography.Text className="break-word">
-                {getEntityName(record)}
+                <RichTextEditorPreviewer markdown={getEntityName(record)} />
               </Typography.Text>
             </Tooltip>
           </Space>
@@ -163,9 +145,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         ellipsis: true,
         width: 220,
         render: (dataType: DataTypeTopic, record: Field) => (
-          <Typography.Text>
-            {record.dataTypeDisplay || dataType}
-          </Typography.Text>
+          <RichTextEditorPreviewer
+            markdown={record.dataTypeDisplay || dataType}
+          />
         ),
       },
       {
@@ -245,9 +227,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
+  useEffect(() => {
+    setExpandedRowKeys(schemaAllRowKeys);
+  }, []);
 
   return (
     <Row className="mt-4" gutter={[16, 16]}>
@@ -265,68 +247,54 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       ) : (
         <>
           {!isEmpty(messageSchema?.schemaFields) && (
-            <Col className="d-flex items-center justify-between" span={24}>
-              <Radio.Group value={viewType} onChange={handleViewChange}>
-                <Radio.Button value={SchemaViewType.FIELDS}>
-                  {t('label.field-plural')}
-                </Radio.Button>
-                <Radio.Button value={SchemaViewType.TEXT}>
-                  {t('label.text')}
-                </Radio.Button>
-              </Radio.Group>
+            <Col span={24}>
+              <Row justify="end">
+                <Col>
+                  <Button
+                    className="text-primary rounded-4"
+                    size="small"
+                    type="text"
+                    onClick={toggleExpandAll}>
+                    <Space align="center" size={4}>
+                      {expandedRowKeys.length === schemaAllRowKeys.length ? (
+                        <DownUpArrowIcon
+                          color={DE_ACTIVE_COLOR}
+                          height="14px"
+                        />
+                      ) : (
+                        <UpDownArrowIcon
+                          color={DE_ACTIVE_COLOR}
+                          height="14px"
+                        />
+                      )}
 
-              <Button
-                className="text-primary rounded-4"
-                size="small"
-                type="text"
-                onClick={toggleExpandAll}>
-                <Space align="center" size={4}>
-                  {expandedRowKeys.length === schemaAllRowKeys.length ? (
-                    <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-                  ) : (
-                    <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-                  )}
-
-                  {expandedRowKeys.length === schemaAllRowKeys.length
-                    ? t('label.collapse-all')
-                    : t('label.expand-all')}
-                </Space>
-              </Button>
+                      {expandedRowKeys.length === schemaAllRowKeys.length
+                        ? t('label.collapse-all')
+                        : t('label.expand-all')}
+                    </Space>
+                  </Button>
+                </Col>
+              </Row>
             </Col>
           )}
           <Col span={24}>
-            {viewType === SchemaViewType.TEXT ||
-            isEmpty(messageSchema?.schemaFields) ? (
-              messageSchema?.schemaText && (
-                <SchemaEditor
-                  className="custom-code-mirror-theme custom-query-editor"
-                  editorClass={classNames('table-query-editor')}
-                  mode={{ name: CSMode.JAVASCRIPT }}
-                  options={{
-                    styleActiveLine: false,
-                  }}
-                  value={messageSchema?.schemaText ?? ''}
-                />
-              )
-            ) : (
-              <Table
-                bordered
-                className={className}
-                columns={columns}
-                data-testid="topic-schema-fields-table"
-                dataSource={messageSchema?.schemaFields}
-                expandable={{
-                  ...getTableExpandableConfig<Field>(),
-                  rowExpandable: (record) => !isEmpty(record.children),
-                  onExpandedRowsChange: handleExpandedRowsChange,
-                  expandedRowKeys,
-                }}
-                pagination={false}
-                rowKey="name"
-                scroll={TABLE_SCROLL_VALUE}
-                size="small"
-              />
-            )}
+            <Table
+              bordered
+              className={className}
+              columns={columns}
+              data-testid="topic-schema-fields-table"
+              dataSource={messageSchema?.schemaFields}
+              expandable={{
+                ...getTableExpandableConfig<Field>(),
+                rowExpandable: (record) => !isEmpty(record.children),
+                onExpandedRowsChange: handleExpandedRowsChange,
+                expandedRowKeys,
+              }}
+              pagination={false}
+              rowKey="name"
+              scroll={TABLE_SCROLL_VALUE}
+              size="small"
+            />
           </Col>
         </>
       )}
@@ -348,4 +316,4 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   );
 };
 
-export default TopicSchemaFields;
+export default TopicVersionSchemaFields;

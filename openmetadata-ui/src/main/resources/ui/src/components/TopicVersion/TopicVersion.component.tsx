@@ -22,7 +22,6 @@ import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersio
 import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -40,6 +39,7 @@ import {
   getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
 import { TopicVersionProp } from './TopicVersion.interface';
+import TopicVersionSchemaFields from './TopicVersionSchema';
 
 const TopicVersion: FC<TopicVersionProp> = ({
   version,
@@ -125,15 +125,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  <TopicSchemaFields
-                    defaultExpandAllRows
+                  <TopicVersionSchemaFields
                     isReadOnly
                     entityFieldThreads={[]}
                     entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}
-                    showSchemaDisplayTypeSwitch={false}
                     onThreadLinkSelect={noop}
                   />
                 </Col>
