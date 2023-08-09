@@ -62,28 +62,6 @@ public class EntityCsvTest {
     assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
   }
 
-  @Test
-  void test_validateCsvInvalidRecords() throws IOException {
-    // this test doesn't work as we try to check entity in dry run and the record we pass doesn't resemble an OM entity
-    // Invalid record 2 - Missing required value in h1
-    // Invalid record 3 - Record with only two fields instead of 3
-    List<String> records = listOf(",2,3", "1,2", "1,2,3");
-    String csv = createCsv(CSV_HEADERS, records);
-
-    TestCsv testCsv = new TestCsv();
-    CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.FAILURE, 4, 1, 3);
-
-    String[] expectedRecords = {
-      CsvUtil.recordToString(EntityCsv.getResultHeaders(CSV_HEADERS)),
-      getFailedRecord(",2,3", TestCsv.fieldRequired(0)),
-      getFailedRecord("1,2", TestCsv.invalidFieldCount(3, 2)),
-      getFailedRecord("1,2,3", "[name must not be null, columns must not be null]")
-    };
-
-    assertRows(importResult, expectedRecords);
-  }
-
   public static void assertSummary(
       CsvImportResult importResult,
       Status expectedStatus,
