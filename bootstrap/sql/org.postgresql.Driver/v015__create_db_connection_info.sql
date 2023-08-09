@@ -13,13 +13,8 @@ SET json = jsonb_set(
 WHERE serviceType = 'Trino';
 
 UPDATE dbservice_entity
-SET json = jsonb_set(
-    json,
-    '{connection,config,params}',
-    'null',
-    false
-)
-WHERE serviceType = 'Trino';
+SET json = json::jsonb #- '{connection,config,params}'
+where json #> '{serviceType}' in ('"Trino"');
 
 -- Modify migrations for service connection of trino to move password under authType
 UPDATE dbservice_entity

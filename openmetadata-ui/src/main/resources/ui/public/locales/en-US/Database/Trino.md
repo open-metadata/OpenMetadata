@@ -35,7 +35,6 @@ There are 2 types of auth configs:
 - JWT Auth.
 
 User can authenticate the Trino Instance with auth type as `Basic Authentication` i.e. Password **or** by using `JWT Authentication`.
-$$
 
 
 ## Basic Auth
@@ -74,11 +73,6 @@ $$
 $$section
 ### Proxies $(id="proxies")
 Proxies for the connection to Trino data source
-$$
-
-$$section
-### Params $(id="params")
-URL parameters for connection to the Trino data source
 $$
 
 $$section
