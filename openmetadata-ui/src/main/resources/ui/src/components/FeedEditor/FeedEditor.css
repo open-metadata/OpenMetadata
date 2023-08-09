@@ -1028,9 +1028,7 @@
 
 .ql-mention-list-item {
   cursor: pointer;
-  line-height: 44px;
-  font-size: 16px;
-  padding: 0 20px;
+  padding: 8px 12px;
   vertical-align: middle;
 }
 .ql-mention-list-item.selected {

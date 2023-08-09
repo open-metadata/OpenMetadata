@@ -107,6 +107,18 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           source: matcher,
           showDenotationChar: false,
           renderLoading: () => `${t('label.loading')}...`,
+          renderItem: (item: Record<string, any>) => {
+            return `<div class="d-flex align-center flex-col">
+            ${
+              item.type
+                ? `<span class="text-grey-muted text-xs">${item.type}</span>`
+                : ''
+            }
+            <span class="${item.type ? 'font-medium' : 'w-56'} truncate">${
+              item.name
+            }</span>
+        </div>`;
+          },
         },
         markdownOptions: {},
         clipboard: {

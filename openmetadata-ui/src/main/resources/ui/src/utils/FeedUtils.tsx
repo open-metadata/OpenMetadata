@@ -165,17 +165,19 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
       atValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
+        const name = getEntityPlaceHolder(
+          `@${hit._source.name ?? hit._source.displayName}`,
+          hit._source.deleted
+        );
 
         return {
           id: hit._id,
-          value: getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.displayName}`,
-            hit._source.deleted
-          ),
+          value: name,
           link: buildMentionLink(
             entityUrlMap[entityType as keyof typeof entityUrlMap],
             hit._source.name
           ),
+          name,
         };
       });
     } else {
@@ -185,17 +187,19 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
         const entityType = hit._source.entityType;
+        const name = getEntityPlaceHolder(
+          `@${hit._source.name ?? hit._source.display_name}`,
+          hit._source.deleted
+        );
 
         return {
           id: hit._id,
-          value: getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.display_name}`,
-            hit._source.deleted
-          ),
+          value: name,
           link: buildMentionLink(
             entityUrlMap[entityType as keyof typeof entityUrlMap],
             hit._source.name
           ),
+          name,
         };
       });
     }
@@ -217,6 +221,8 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             entityType,
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
+          type: entityType,
+          name: hit._source.name,
         };
       });
     } else {
@@ -233,6 +239,8 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             entityType,
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
+          type: entityType,
+          name: hit._source.name,
         };
       });
     }
