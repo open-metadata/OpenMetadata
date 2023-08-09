@@ -64,6 +64,11 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     }
   };
 
+  const customFields: RegistryFieldsType = {
+    BooleanField: BooleanFieldTemplate,
+    ArrayField: WorkflowArrayFieldTemplate,
+  };
+
   return (
     <Form
       focusOnFirstError
@@ -71,12 +76,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       omitExtraData
       className={classNames('rjsf no-header', className)}
       customValidate={customValidate}
-      fields={
-        {
-          BooleanField: BooleanFieldTemplate,
-          ArrayField: WorkflowArrayFieldTemplate,
-        } as RegistryFieldsType
-      }
+      fields={customFields}
       formContext={{ handleFocus: onFocus }}
       formData={internalData}
       idSeparator="/"
