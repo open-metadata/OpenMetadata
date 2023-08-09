@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.indexes;
+package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -9,9 +9,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
-import org.openmetadata.service.elasticsearch.ParseTags;
-import org.openmetadata.service.elasticsearch.models.ElasticSearchSuggest;
+import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class DashboardIndex implements ElasticSearchIndex {
@@ -29,28 +29,28 @@ public class DashboardIndex implements ElasticSearchIndex {
       dashboard.setOwner(owner);
     }
     Map<String, Object> doc = JsonUtils.getMap(dashboard);
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    List<ElasticSearchSuggest> chartSuggest = new ArrayList<>();
-    List<ElasticSearchSuggest> dataModelSuggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    List<SearchSuggest> suggest = new ArrayList<>();
+    List<SearchSuggest> serviceSuggest = new ArrayList<>();
+    List<SearchSuggest> chartSuggest = new ArrayList<>();
+    List<SearchSuggest> dataModelSuggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
+    serviceSuggest.add(SearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD, dashboard));
 
     for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
-      chartSuggest.add(ElasticSearchSuggest.builder().input(chart.getDisplayName()).weight(5).build());
+      chartSuggest.add(SearchSuggest.builder().input(chart.getDisplayName()).weight(5).build());
     }
 
     for (EntityReference chart : listOrEmpty(dashboard.getDataModels())) {
-      dataModelSuggest.add(ElasticSearchSuggest.builder().input(chart.getDisplayName()).weight(5).build());
+      dataModelSuggest.add(SearchSuggest.builder().input(chart.getDisplayName()).weight(5).build());
     }
 
     doc.put("name", dashboard.getDisplayName());
     doc.put("displayName", dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
     doc.put("tags", parseTags.getTags());
-    doc.put("followers", ElasticSearchIndexUtils.parseFollowers(dashboard.getFollowers()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(dashboard.getFollowers()));
     doc.put("tier", parseTags.getTierTag());
     doc.put("suggest", suggest);
     doc.put("chart_suggest", chartSuggest);

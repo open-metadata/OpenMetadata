@@ -13,7 +13,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.elasticsearch;
+package org.openmetadata.service.search;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
@@ -41,22 +41,20 @@ import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource.EventList;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class ElasticSearchEventPublisher extends AbstractEventPublisher {
+public class SearchEventPublisher extends AbstractEventPublisher {
   private final SearchClient searchClient;
   private final CollectionDAO dao;
 
-  public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
+  public SearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize());
     this.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();
     this.searchClient = IndexUtil.getSearchClient(esConfig, dao);
-    ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
+    SearchIndexDefinition esIndexDefinition = new SearchIndexDefinition(searchClient);
     esIndexDefinition.createIndexes(esConfig);
   }
 
@@ -152,7 +150,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               String.format(
                   "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
                   e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          throw new ElasticSearchRetriableException(e.getMessage());
+          throw new SearchRetriableException(e.getMessage());
         } else {
           updateElasticSearchFailureStatus(
               contextInfo,

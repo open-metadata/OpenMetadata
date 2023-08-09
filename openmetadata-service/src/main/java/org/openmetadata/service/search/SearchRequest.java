@@ -1,8 +1,8 @@
-package org.openmetadata.service.elasticsearch;
+package org.openmetadata.service.search;
 
 import java.util.List;
 
-public class ElasticSearchRequest {
+public class SearchRequest {
   private final String query;
   private final int from;
   private final int size;
@@ -17,7 +17,7 @@ public class ElasticSearchRequest {
   private final String sortOrder;
   private final List<String> includeSourceFields;
 
-  private ElasticSearchRequest(ElasticSearchRequestBuilder builder) {
+  private SearchRequest(ElasticSearchRequestBuilder builder) {
     this.query = builder.query;
     this.from = builder.from;
     this.size = builder.size;
@@ -160,8 +160,8 @@ public class ElasticSearchRequest {
       return this;
     }
 
-    public ElasticSearchRequest build() {
-      return new ElasticSearchRequest(this);
+    public SearchRequest build() {
+      return new SearchRequest(this);
     }
   }
 }

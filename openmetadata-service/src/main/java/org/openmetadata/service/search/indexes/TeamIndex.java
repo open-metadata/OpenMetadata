@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.indexes;
+package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,8 +6,8 @@ import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
-import org.openmetadata.service.elasticsearch.models.ElasticSearchSuggest;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TeamIndex implements ElasticSearchIndex {
@@ -23,10 +23,10 @@ public class TeamIndex implements ElasticSearchIndex {
       team.setDisplayName(team.getName());
     }
     Map<String, Object> doc = JsonUtils.getMap(team);
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(team.getName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    List<SearchSuggest> suggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(team.getName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEAM);
     return doc;

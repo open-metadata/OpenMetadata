@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch;
+package org.openmetadata.service.search;
 
 import java.util.Collections;
 import java.util.List;
@@ -7,9 +7,9 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
-public final class ElasticSearchIndexUtils {
+public final class SearchIndexUtils {
 
-  private ElasticSearchIndexUtils() {}
+  private SearchIndexUtils() {}
 
   public static List<String> parseFollowers(List<EntityReference> followersRef) {
     if (followersRef == null) {

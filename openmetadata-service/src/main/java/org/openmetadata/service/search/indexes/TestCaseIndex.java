@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch;
+package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +10,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.indexes.ElasticSearchIndex;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TestCaseIndex implements ElasticSearchIndex {
@@ -33,7 +33,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     }
     testCase.setTestSuites(testSuiteArray);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     return doc;
   }
 
@@ -43,7 +43,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     testSuiteArray.add(testSuite);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     doc.put("testSuites", testSuiteArray);
     return doc;
   }

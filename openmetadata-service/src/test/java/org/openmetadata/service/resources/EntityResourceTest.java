@@ -175,7 +175,6 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -204,6 +203,7 @@ import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -1675,8 +1675,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String indexName = jsonObject.getString("index");
         indexNamesFromResponse.add(indexName);
       }
-      for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
+      for (SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
+          SearchIndexDefinition.ElasticSearchIndexType.values()) {
         // check all the indexes are created successfully
         assertTrue(
             indexNamesFromResponse.contains(elasticSearchIndexType.indexName),
