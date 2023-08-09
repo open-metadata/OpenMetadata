@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Form, { FormProps } from '@rjsf/core';
+import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import BooleanFieldTemplate from 'components/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -47,13 +47,17 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   onFocus,
   serviceCategory,
 }) => {
-  const [internalData] = useState<IngestionWorkflowData>();
+  const [internalData, setInternalData] = useState<IngestionWorkflowData>();
 
   const schema = useMemo(
     () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
 
     [pipeLineType, serviceCategory]
   );
+
+  const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
+    setInternalData(e.formData);
+  };
 
   return (
     <Form
@@ -76,6 +80,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       }}
       uiSchema={INGESTION_WORKFLOW_UI_SCHEMA}
       validator={validator}
+      onChange={handleOnChange}
       onFocus={onFocus}>
       <div className="property-wrapper">
         <div className="form-group field field-string">

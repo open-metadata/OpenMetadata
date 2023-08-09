@@ -12,12 +12,11 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Button } from 'antd';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
 const IngestionArrayFieldTemplate: FC<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -26,7 +25,7 @@ const IngestionArrayFieldTemplate: FC<ArrayFieldTemplateProps> = (
 
   return (
     <Fragment>
-      <div className="d-flex tw-justify-between tw-items-center">
+      <Space align="center" className="w-full justify-between">
         <label className="control-label">{title}</label>
         {canAdd && (
           <Button
@@ -43,30 +42,26 @@ const IngestionArrayFieldTemplate: FC<ArrayFieldTemplateProps> = (
             }}
           />
         )}
-      </div>
+      </Space>
       {items.map((element, index) => (
-        <div
-          className={classNames('d-flex tw-items-center tw-w-full', {
-            'tw-mt-2': index > 0,
+        <Space
+          align="center"
+          className={classNames('w-full', {
+            'm-t-xs': index > 0,
           })}
           key={`${element.key}-${index}`}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <button
-              className="focus:tw-outline-none tw-w-7 tw-ml-3"
-              type="button"
+            <Button
+              className="m-t-lg"
+              icon={<DeleteIcon width={16} />}
+              type="text"
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);
-              }}>
-              <SVGIcons
-                alt="delete"
-                icon={Icons.DELETE}
-                title={t('label.delete')}
-                width="16px"
-              />
-            </button>
+              }}
+            />
           )}
-        </div>
+        </Space>
       ))}
     </Fragment>
   );
