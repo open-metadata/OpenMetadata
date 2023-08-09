@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
+import { RegistryFieldsType } from '@rjsf/utils';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import BooleanFieldTemplate from 'components/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -18,6 +19,7 @@ import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionF
 import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import IngestionArrayFieldTemplate from 'components/JSONSchemaTemplate/IngestionArrayFieldTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
+import WorkflowArrayFieldTemplate from 'components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -69,7 +71,12 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       omitExtraData
       className={classNames('rjsf no-header', className)}
       customValidate={customValidate}
-      fields={{ BooleanField: BooleanFieldTemplate }}
+      fields={
+        {
+          BooleanField: BooleanFieldTemplate,
+          ArrayField: WorkflowArrayFieldTemplate,
+        } as RegistryFieldsType
+      }
       formContext={{ handleFocus: onFocus }}
       formData={internalData}
       idSeparator="/"
