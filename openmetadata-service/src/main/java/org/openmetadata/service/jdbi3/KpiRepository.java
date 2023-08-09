@@ -45,11 +45,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
   @Override
   public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
-    if (kpi.getKpiResult() == null) {
-      kpi.withKpiResult(
-          fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult());
-    }
-    return kpi;
+    return kpi.withKpiResult(
+        fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult());
   }
 
   @Override
@@ -155,9 +152,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   private EntityReference getDataInsightChart(Kpi kpi) {
-    return kpi.getDataInsightChart() != null
-        ? kpi.getDataInsightChart()
-        : getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CHART, true);
+    return getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CHART, true);
   }
 
   public KpiResult getKpiResult(String fqn) {

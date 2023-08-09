@@ -38,9 +38,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) {
-    if (metrics.getService() == null) {
-      metrics.setService(getContainer(metrics.getId())); // service is a default field
-    }
+    metrics.setService(getContainer(metrics.getId())); // service is a default field
     if (metrics.getUsageSummary() == null) {
       metrics.withUsageSummary(
           fields.contains("usageSummary")

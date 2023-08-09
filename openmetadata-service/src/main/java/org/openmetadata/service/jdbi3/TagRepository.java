@@ -115,7 +115,6 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public Tag setFields(Tag tag, Fields fields) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
-    tag.setChildren(fields.contains("children") ? getChildren(tag) : tag.getChildren());
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
     }
@@ -124,7 +123,6 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public Tag clearFields(Tag tag, Fields fields) {
-    tag.setChildren(fields.contains("children") ? tag.getChildren() : null);
     return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
   }
 
@@ -134,21 +132,8 @@ public class TagRepository extends EntityRepository<Tag> {
         : daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
   }
 
-  private List<EntityReference> getChildren(Tag entity) {
-    // Don't use cache to handle tag name changes
-    return !nullOrEmpty(entity.getChildren())
-        ? entity.getChildren()
-        : findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
-  }
-
-  private EntityReference getParent(Tag tag) {
-    return tag.getParent() != null ? tag.getParent() : getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
-  }
-
   private EntityReference getClassification(Tag tag) {
-    return tag.getClassification() != null
-        ? tag.getClassification()
-        : getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
+    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
   }
 
   private void addClassificationRelationship(Tag term) {
