@@ -66,7 +66,10 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.connection_obj = get_connection(self.service_connection)
+        try:
+            self.connection_obj = get_connection(self.service_connection)
+        except Exception as e:
+            print(e)    
         self.test_connection()
 
     def prepare(self):
