@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.indexes;
+package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,9 +7,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
-import org.openmetadata.service.elasticsearch.ParseTags;
-import org.openmetadata.service.elasticsearch.models.ElasticSearchSuggest;
+import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class MlModelIndex implements ElasticSearchIndex {
@@ -27,16 +27,16 @@ public class MlModelIndex implements ElasticSearchIndex {
       mlModel.setOwner(owner);
     }
     Map<String, Object> doc = JsonUtils.getMap(mlModel);
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    suggest.add(ElasticSearchSuggest.builder().input(mlModel.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(mlModel.getName()).weight(10).build());
+    List<SearchSuggest> suggest = new ArrayList<>();
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    suggest.add(SearchSuggest.builder().input(mlModel.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(mlModel.getName()).weight(10).build());
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.MLMODEL, mlModel));
     doc.put("displayName", mlModel.getDisplayName() != null ? mlModel.getDisplayName() : mlModel.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", ElasticSearchIndexUtils.parseFollowers(mlModel.getFollowers()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(mlModel.getFollowers()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL);
     doc.put("serviceType", mlModel.getServiceType());

@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.indexes;
+package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,10 +7,10 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
-import org.openmetadata.service.elasticsearch.ParseTags;
-import org.openmetadata.service.elasticsearch.models.ElasticSearchSuggest;
-import org.openmetadata.service.elasticsearch.models.FlattenColumn;
+import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.FlattenColumn;
+import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerIndex implements ColumnIndex {
@@ -29,27 +29,27 @@ public class ContainerIndex implements ColumnIndex {
       container.setOwner(owner);
     }
     Map<String, Object> doc = JsonUtils.getMap(container);
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();
-    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    suggest.add(ElasticSearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(container.getName()).weight(10).build());
+    List<SearchSuggest> suggest = new ArrayList<>();
+    List<SearchSuggest> columnSuggest = new ArrayList<>();
+    List<SearchSuggest> serviceSuggest = new ArrayList<>();
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    suggest.add(SearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(container.getName()).weight(10).build());
     if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(container.getDataModel().getColumns(), cols, null);
 
       for (FlattenColumn col : cols) {
-        columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
+        columnSuggest.add(SearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(container.getService().getName()).weight(5).build());
+    serviceSuggest.add(SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.CONTAINER, container));
 
     doc.put("displayName", container.getDisplayName() != null ? container.getDisplayName() : container.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", ElasticSearchIndexUtils.parseFollowers(container.getFollowers()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(container.getFollowers()));
     doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);

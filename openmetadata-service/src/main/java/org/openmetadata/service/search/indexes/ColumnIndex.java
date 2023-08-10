@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.indexes;
+package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.elasticsearch.models.FlattenColumn;
+import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public interface ColumnIndex extends ElasticSearchIndex {

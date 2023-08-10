@@ -1340,8 +1340,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
     updater.update();
-    String change = updater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
-    return new PutResponse<>(Status.OK, updated, change);
+    return new PutResponse<>(Status.OK, updated, RestUtil.ENTITY_RESTORED);
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {

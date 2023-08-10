@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch;
+package org.openmetadata.service.search;
 
 import java.util.ArrayList;
 import java.util.List;

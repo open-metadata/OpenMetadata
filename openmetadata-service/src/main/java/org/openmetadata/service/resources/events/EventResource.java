@@ -93,11 +93,19 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityCreated` event. When set to `*` all entities will be "
+                      + "`entityUpdated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityUpdated")
           String entityUpdated,
+      @Parameter(
+              description =
+                  "List of comma separated entities requested for "
+                      + "`entityRestored` event. When set to `*` all entities will be "
+                      + "returned",
+              schema = @Schema(type = "string", example = "table,dashboard,..."))
+          @QueryParam("entityRestored")
+          String entityRestored,
       @Parameter(
               description =
                   "List of comma separated entities requested for "
@@ -115,8 +123,10 @@ public class EventResource {
       throws IOException {
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
+    List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
-    List<ChangeEvent> events = dao.list(timestamp, entityCreatedList, entityUpdatedList, entityDeletedList);
+    List<ChangeEvent> events =
+        dao.list(timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
     events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
     return new EventList(events, null, null, events.size());
   }

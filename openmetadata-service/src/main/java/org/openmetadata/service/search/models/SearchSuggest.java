@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.models;
+package org.openmetadata.service.search.models;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
@@ -9,7 +9,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 @Getter
 @Builder
-public class ElasticSearchSuggest {
+public class SearchSuggest {
   String input;
   Integer weight;
 }

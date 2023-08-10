@@ -1,12 +1,12 @@
-package org.openmetadata.service.elasticsearch.indexes;
+package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
-import org.openmetadata.service.elasticsearch.models.ElasticSearchSuggest;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TagIndex implements ElasticSearchIndex {
@@ -19,10 +19,10 @@ public class TagIndex implements ElasticSearchIndex {
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(tag);
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(tag.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(tag.getName()).weight(10).build());
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    List<SearchSuggest> suggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(tag.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(tag.getName()).weight(10).build());
     if (tag.getDisabled() != null && tag.getDisabled()) {
       doc.put("disabled", tag.getDisabled());
     } else {

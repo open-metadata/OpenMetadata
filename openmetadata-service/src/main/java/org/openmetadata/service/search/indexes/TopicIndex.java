@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.indexes;
+package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,10 +11,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils;
-import org.openmetadata.service.elasticsearch.ParseTags;
-import org.openmetadata.service.elasticsearch.models.ElasticSearchSuggest;
-import org.openmetadata.service.elasticsearch.models.FlattenSchemaField;
+import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.FlattenSchemaField;
+import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -33,13 +33,13 @@ public class TopicIndex implements ElasticSearchIndex {
       topic.setOwner(owner);
     }
     Map<String, Object> doc = JsonUtils.getMap(topic);
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    List<ElasticSearchSuggest> fieldSuggest = new ArrayList<>();
-    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(topic.getName()).weight(10).build());
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
-    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
+    List<SearchSuggest> suggest = new ArrayList<>();
+    List<SearchSuggest> fieldSuggest = new ArrayList<>();
+    List<SearchSuggest> serviceSuggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
+    serviceSuggest.add(SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
 
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null
@@ -48,7 +48,7 @@ public class TopicIndex implements ElasticSearchIndex {
       parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
 
       for (FlattenSchemaField field : flattenFields) {
-        fieldSuggest.add(ElasticSearchSuggest.builder().input(field.getName()).weight(5).build());
+        fieldSuggest.add(SearchSuggest.builder().input(field.getName()).weight(5).build());
       }
     }
 
@@ -56,7 +56,7 @@ public class TopicIndex implements ElasticSearchIndex {
     doc.put("displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", ElasticSearchIndexUtils.parseFollowers(topic.getFollowers()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(topic.getFollowers()));
     doc.put("suggest", suggest);
     doc.put("field_suggest", fieldSuggest);
     doc.put("service_suggest", serviceSuggest);

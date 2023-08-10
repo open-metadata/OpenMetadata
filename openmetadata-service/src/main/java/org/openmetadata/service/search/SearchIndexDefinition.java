@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch;
+package org.openmetadata.service.search;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -7,10 +7,9 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchClient;
 
 @Slf4j
-public class ElasticSearchIndexDefinition {
+public class SearchIndexDefinition {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
@@ -20,7 +19,7 @@ public class ElasticSearchIndexDefinition {
 
   private final SearchClient searchClient;
 
-  public ElasticSearchIndexDefinition(SearchClient client) {
+  public SearchIndexDefinition(SearchClient client) {
     this.searchClient = client;
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
       elasticSearchIndexes.put(elasticSearchIndexType, ElasticSearchIndexStatus.NOT_CREATED);

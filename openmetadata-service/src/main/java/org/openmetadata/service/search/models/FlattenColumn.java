@@ -1,4 +1,4 @@
-package org.openmetadata.service.elasticsearch.models;
+package org.openmetadata.service.search.models;
 
 import java.util.List;
 import lombok.Builder;
@@ -8,7 +8,7 @@ import org.openmetadata.schema.type.TagLabel;
 
 @Getter
 @Builder
-public class FlattenSchemaField {
+public class FlattenColumn {
   String name;
   String description;
   @Setter List<TagLabel> tags;
