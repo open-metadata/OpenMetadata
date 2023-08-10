@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Divider, Typography } from 'antd';
 import classNames from 'classnames';
+import AppBadge from 'components/common/Badge/Badge.component';
+import CloseIcon from 'components/Modals/CloseIcon.component';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { capitalize, toString } from 'lodash';
 import React, { Fragment, useState } from 'react';
@@ -99,7 +101,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               </div>
             ) : null}
             <div
-              className="timeline-content p-y-xs cursor-pointer"
+              className="timeline-content p-b-md cursor-pointer"
               onClick={() => versionHandler(toString(currV?.version))}>
               <div className="timeline-wrapper">
                 <span
@@ -118,14 +120,17 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               </div>
               <div>
                 <Typography.Text
-                  className={classNames(' font-medium', {
+                  className={classNames('d-flex font-medium', {
                     'text-primary': toString(currV?.version) === currentVersion,
                   })}>
                   <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
                   {majorVersionChecks() ? (
-                    <span className="text-xs font-medium text-grey-body">
-                      {t('label.major')}
-                    </span>
+                    <AppBadge
+                      bgColor="#EEEAF8"
+                      className="m-l-sm"
+                      color="#292929"
+                      label={t('label.major')}
+                    />
                   ) : null}
                 </Typography.Text>
                 <div
@@ -135,7 +140,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   })}>
                   {getSummary(currV?.changeDescription)}
                 </div>
-                <p className="text-xs">
+                <p className="text-xs font-italic">
                   <span className="font-medium">{currV?.updatedBy}</span>
                   <span className="text-grey-muted">
                     {' '}
@@ -166,24 +171,9 @@ const EntityVersionTimeLine: React.FC<Props> = ({
     <div className={classNames('timeline-drawer', { open: show })}>
       <header className="d-flex justify-between">
         <p className="font-medium ">{t('label.version-plural-history')}</p>
-        <div className="d-flex" onClick={onBack}>
-          <svg
-            className="cursor-pointer"
-            data-testid="closeDrawer"
-            fill="none"
-            stroke="#6B7280"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M6 18L18 6M6 6l12 12"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-        </div>
+        <CloseIcon handleCancel={onBack} />
       </header>
-      <hr />
+      <Divider className="m-t-sm m-b-md" />
 
       <div>{getVersionList()}</div>
     </div>
