@@ -1,0 +1,66 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { AxiosResponse } from 'axios';
+import { Include } from 'generated/type/include';
+import { PagingResponse } from 'Models';
+
+import { Domain } from 'generated/entity/domains/domain';
+import { getURLWithQueryFields } from 'utils/APIUtils';
+import APIClient from './index';
+
+type Params = {
+  fields?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+  include?: Include;
+};
+
+export type ListGlossaryTermsParams = Params & {
+  glossary?: string;
+  parent?: string;
+};
+
+const BASE_URL = '/domains';
+
+export const getDomainList = async (params?: Params) => {
+  const response = await APIClient.get<PagingResponse<Domain[]>>(BASE_URL, {
+    params,
+  });
+
+  return response.data;
+};
+
+export const addDomains = async (data: Domain) => {
+  const response = await APIClient.post<Domain, AxiosResponse<Domain>>(
+    BASE_URL,
+    data
+  );
+
+  return response.data;
+};
+
+export const getDomainByName = async (
+  domainName: string,
+  arrQueryFields: string | string[]
+) => {
+  const url = getURLWithQueryFields(
+    `/domains/name/${domainName}`,
+    arrQueryFields
+  );
+
+  const response = await APIClient.get<Domain>(url);
+
+  return response.data;
+};

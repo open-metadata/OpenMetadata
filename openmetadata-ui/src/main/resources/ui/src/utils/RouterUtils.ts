@@ -133,6 +133,16 @@ export const getEditIngestionPath = (
   return path;
 };
 
+export const getDomainPath = (fqn?: string) => {
+  let path = ROUTES.DOMAIN;
+  if (fqn) {
+    path = ROUTES.DOMAIN_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
+  }
+
+  return path;
+};
+
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {

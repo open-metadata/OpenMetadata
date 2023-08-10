@@ -94,6 +94,24 @@ const LeftSidebar = () => {
               </NavLink>
             ),
           },
+          {
+            key: 'domain',
+            label: (
+              <NavLink
+                className="no-underline"
+                data-testid="appbar-item-domain"
+                to={{
+                  pathname: ROUTES.DOMAIN,
+                }}>
+                <span className="left-panel-item p-y-xss">
+                  <GlossaryIcon className="m-0" width={30} />
+                  <Typography.Text className="left-panel-label">
+                    {t('label.domain', { lng: 'en-US' })}
+                  </Typography.Text>
+                </span>
+              </NavLink>
+            ),
+          },
         ],
       },
     ];

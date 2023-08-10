@@ -72,6 +72,7 @@ export enum ResourceEntity {
   QUERY = 'query',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   EVENT_SUBSCRIPTION = 'eventsubscription',
+  DOMAIN = 'domain',
 }
 
 export interface PermissionContextType {
