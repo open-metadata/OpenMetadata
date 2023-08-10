@@ -1,5 +1,48 @@
 package org.openmetadata.service.search.openSearch;
 
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
+import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -114,50 +157,6 @@ import org.opensearch.search.suggest.SuggestBuilder;
 import org.opensearch.search.suggest.SuggestBuilders;
 import org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
-
-import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
-import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 @Slf4j
 public class OpenSearchClientImpl implements SearchClient {
@@ -360,13 +359,25 @@ public class OpenSearchClientImpl implements SearchClient {
 
   /**
    * @param sourceUrl
-   * @param from
-   * @param size
    * @return
    */
   @Override
-  public Response searchBySourceUrl(String sourceUrl, int from, int size) {
-    return null;
+  public Response searchBySourceUrl(String sourceUrl) throws IOException {
+    String[] indexes =
+        new String[] {
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName
+        };
+    SearchRequest searchRequest = new SearchRequest(indexes);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(QueryBuilders.wildcardQuery("sourceUrl", sourceUrl));
+    searchRequest.source(searchSourceBuilder);
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    return Response.status(OK).entity(response).build();
   }
 
   public Response aggregate(String index, String fieldName, String value, String query) throws IOException {

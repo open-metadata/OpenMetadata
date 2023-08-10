@@ -366,24 +366,22 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   /**
    * @param sourceUrl
-   * @param from
-   * @param size
    * @return
    */
   @Override
-  public Response searchBySourceUrl(String sourceUrl, int from, int size) throws IOException {
+  public Response searchBySourceUrl(String sourceUrl) throws IOException {
     String[] indexes =
         new String[] {
-            ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
-            ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
-            ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
-            ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
-            ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName,
-            ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName,
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName
         };
     SearchRequest searchRequest = new SearchRequest(indexes);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.wildcardQuery("sourceUrl",sourceUrl)).from(from).size(size);
+    searchSourceBuilder.query(QueryBuilders.wildcardQuery("sourceUrl", sourceUrl));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
