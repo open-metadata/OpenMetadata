@@ -53,6 +53,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
             <Icon
+              className="w-7 h-0 m-l-sm"
               component={DeleteIcon}
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);

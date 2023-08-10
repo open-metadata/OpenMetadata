@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
@@ -156,26 +156,25 @@ const Ingestion: React.FC<IngestionProps> = ({
     fetchIngestionPipelinesPermission();
   }, [ingestionList]);
 
-  // TODO: verify this changes and if possible use Row/Col here
   const getIngestionTab = () => {
     return (
-      <div
+      <Row
         className={classNames('mt-4', containerClassName ?? '')}
         data-testid="ingestion-details-container">
-        <div className="d-flex">
-          {(!isRequiredDetailsAvailable || true) && (
-            <div className="text-error font-medium d-flex items-center gap-1">
-              <ExclamationCircleOutlined />
-              <p>
-                {t('message.no-service-connection-details-message', {
-                  serviceName,
-                })}
-              </p>
-            </div>
+        <Col span={24}>
+          {!isRequiredDetailsAvailable && (
+            <Alert
+              showIcon
+              className="mb-4"
+              message={t('message.no-service-connection-details-message', {
+                serviceName,
+              })}
+              type="error"
+            />
           )}
-        </div>
-        <div className="d-flex justify-between">
-          <div>
+        </Col>
+        <Col className="d-flex justify-between" span={24}>
+          <div className="w-max-400 w-full">
             {searchText || !isEmpty(ingestionData) ? (
               <Searchbar
                 placeholder={`${t('message.search-for-ingestion')}...`}
@@ -198,28 +197,30 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             )}
           </div>
-        </div>
-        <IngestionListTable
-          airflowEndpoint={airflowEndpoint}
-          deleteSelection={deleteSelection}
-          deployIngestion={deployIngestion}
-          handleDeleteSelection={handleDeleteSelection}
-          handleEnableDisableIngestion={handleEnableDisableIngestion}
-          handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-          ingestionData={ingestionData}
-          ingestionPipelinesPermission={ingestionPipelinesPermission}
-          isLoading={isLoading}
-          isRequiredDetailsAvailable={isRequiredDetailsAvailable}
-          paging={paging}
-          permissions={permissions}
-          pipelineNameColWidth={pipelineNameColWidth}
-          pipelineType={pipelineType}
-          serviceCategory={serviceCategory}
-          serviceName={serviceName}
-          triggerIngestion={triggerIngestion}
-          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-        />
-      </div>
+        </Col>
+        <Col span={24}>
+          <IngestionListTable
+            airflowEndpoint={airflowEndpoint}
+            deleteSelection={deleteSelection}
+            deployIngestion={deployIngestion}
+            handleDeleteSelection={handleDeleteSelection}
+            handleEnableDisableIngestion={handleEnableDisableIngestion}
+            handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+            ingestionData={ingestionData}
+            ingestionPipelinesPermission={ingestionPipelinesPermission}
+            isLoading={isLoading}
+            isRequiredDetailsAvailable={isRequiredDetailsAvailable}
+            paging={paging}
+            permissions={permissions}
+            pipelineNameColWidth={pipelineNameColWidth}
+            pipelineType={pipelineType}
+            serviceCategory={serviceCategory}
+            serviceName={serviceName}
+            triggerIngestion={triggerIngestion}
+            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+          />
+        </Col>
+      </Row>
     );
   };
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
@@ -165,26 +165,25 @@ const Services = ({
                     <div
                       className="d-flex justify-between text-grey-muted"
                       data-testid="service-card">
-                      <div className="d-flex flex-col justify-between truncate">
-                        <div>
+                      <Row gutter={[0, 6]}>
+                        <Col span={24}>
                           <Link
+                            className="no-underline"
                             to={getServiceDetailsPath(
                               encodeURIComponent(
                                 service.fullyQualifiedName ?? service.name
                               ),
                               serviceName
                             )}>
-                            <button>
-                              <h6
-                                className="text-base text-grey-body font-medium text-left truncate w-48"
-                                data-testid={`service-name-${service.name}`}
-                                title={getEntityName(service)}>
-                                {getEntityName(service)}
-                              </h6>
-                            </button>
+                            <Typography.Text
+                              className="text-base text-grey-body font-medium truncate w-48"
+                              data-testid={`service-name-${service.name}`}
+                              title={getEntityName(service)}>
+                              {getEntityName(service)}
+                            </Typography.Text>
                           </Link>
                           <div
-                            className="text-grey-body break-all description-text p-b-xs"
+                            className="p-t-xs text-grey-body break-all description-text"
                             data-testid="service-description">
                             {service.description ? (
                               <RichTextEditorPreviewer
@@ -198,16 +197,19 @@ const Services = ({
                             )}
                           </div>
                           {getOptionalFields(service, serviceName)}
-                        </div>
-                        <div className="m-b-xss" data-testid="service-type">
-                          <label className="m-b-0">{`${t(
-                            'label.type'
-                          )}:`}</label>
-                          <span className="font-normal m-l-xss text-grey-body">
-                            {service.serviceType}
-                          </span>
-                        </div>
-                      </div>
+                        </Col>
+                        <Col span={24}>
+                          <div className="m-b-xss" data-testid="service-type">
+                            <label className="m-b-0">{`${t(
+                              'label.type'
+                            )}:`}</label>
+                            <span className="font-normal m-l-xss text-grey-body">
+                              {service.serviceType}
+                            </span>
+                          </div>
+                        </Col>
+                      </Row>
+
                       <div className="d-flex flex-col justify-between flex-none">
                         <div
                           className="d-flex justify-end"
