@@ -16,7 +16,6 @@ Test Postgres using the topology
 import types
 from unittest import TestCase
 from unittest.mock import patch
-from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
 from sqlalchemy.types import VARCHAR
 
@@ -39,6 +38,7 @@ from metadata.ingestion.source.database.postgres.metadata import (
     PostgresSource,
 )
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
+from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
 mock_postgres_config = {
     "source": {

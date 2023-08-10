@@ -13,6 +13,9 @@ source:
   sourceConfig:
     config:
       type: DatabaseMetadata
+      schemaFilterPattern:
+        includes:
+          - test_cli_e2e.*
 sink:
   type: metadata-rest
   config: {}
