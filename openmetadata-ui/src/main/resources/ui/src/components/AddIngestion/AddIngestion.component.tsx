@@ -44,6 +44,7 @@ import {
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 
 import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
+import { IngestionWorkflowData } from 'interface/service.interface';
 import {
   getCurrentUserId,
   getIngestionFrequency,
@@ -251,6 +252,8 @@ const AddIngestion = ({
   );
   const [showDeployModal, setShowDeployModal] = useState(false);
 
+  const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>();
+
   const handleStateChange = useCallback(
     (newState: Partial<AddIngestionState>) => {
       dispatch(newState);
@@ -258,43 +261,21 @@ const AddIngestion = ({
     []
   );
 
-  const handleNext = () => {
-    let nextStep;
-    if (!showDBTConfig && activeIngestionStep === 1) {
-      nextStep = activeIngestionStep + 3;
-      if (isServiceTypeOpenMetadata) {
-        nextStep = activeIngestionStep + 2;
-      }
-    } else if (showDBTConfig && activeIngestionStep === 2) {
-      nextStep = activeIngestionStep + 2;
-    } else {
-      nextStep = activeIngestionStep + 1;
-    }
-    setActiveIngestionStep(nextStep);
+  const handleNext = (step: number) => {
+    setActiveIngestionStep(step);
   };
 
-  const handlePrev = () => {
-    let prevStep;
-    if (!showDBTConfig && activeIngestionStep === 4) {
-      prevStep = activeIngestionStep - 3;
-      if (isServiceTypeOpenMetadata) {
-        prevStep = activeIngestionStep - 1;
-      }
-    } else if (
-      !showDBTConfig &&
-      isServiceTypeOpenMetadata &&
-      activeIngestionStep === 3
-    ) {
-      prevStep = activeIngestionStep - 2;
-    } else if (showDBTConfig && activeIngestionStep === 4) {
-      prevStep = activeIngestionStep - 2;
-    } else {
-      prevStep = activeIngestionStep - 1;
-    }
-    setActiveIngestionStep(prevStep);
+  const handlePrev = (step: number) => {
+    setActiveIngestionStep(step);
+  };
+
+  const handleSubmit = (data: IngestionWorkflowData) => {
+    setWorkflowData(data);
+    handleNext(2);
   };
 
   const createNewIngestion = () => {
+    const { name = '', ...rest } = workflowData ?? {};
     setSaveState(LOADING_STATE.WAITING);
     const { repeatFrequency, enableDebugLog, ingestionName } = state;
     // below setting is required to trigger workflow which schedule with one day or more frequency
@@ -310,8 +291,8 @@ const AddIngestion = ({
         startDate: date,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
-      name: trim(ingestionName),
-      displayName: trim(ingestionName),
+      name: trim(name || ingestionName),
+      displayName: trim(name || ingestionName),
       owner: {
         id: getCurrentUserId(),
         type: 'user',
@@ -322,7 +303,7 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: {},
+        config: { ...rest },
       },
     };
 
@@ -331,7 +312,7 @@ const AddIngestion = ({
       onAddIngestionSave(ingestionDetails)
         .then(() => {
           if (showSuccessScreen) {
-            handleNext();
+            handleNext(3);
           } else {
             onSuccessSave?.();
           }
@@ -370,7 +351,7 @@ const AddIngestion = ({
           .then(() => {
             setSaveState(LOADING_STATE.SUCCESS);
             if (showSuccessScreen) {
-              handleNext();
+              handleNext(3);
             } else {
               onSuccessSave?.();
             }
@@ -459,11 +440,11 @@ const AddIngestion = ({
             workflowName={state.ingestionName}
             onCancel={handleCancelClick}
             onFocus={onFocus}
-            onNext={handleNext}
+            onSubmit={handleSubmit}
           />
         )}
 
-        {activeIngestionStep === 4 && (
+        {activeIngestionStep === 2 && (
           <ScheduleInterval
             disabledCronChange={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
@@ -474,13 +455,13 @@ const AddIngestion = ({
             submitButtonLabel={
               isUndefined(data) ? t('label.add-deploy') : t('label.submit')
             }
-            onBack={handlePrev}
+            onBack={() => handlePrev(1)}
             onChange={handleStateChange}
             onDeploy={handleScheduleIntervalDeployClick}
           />
         )}
 
-        {activeIngestionStep > 4 && handleViewServiceClick && (
+        {activeIngestionStep > 2 && handleViewServiceClick && (
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}

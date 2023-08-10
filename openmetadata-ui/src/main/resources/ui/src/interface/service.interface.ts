@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 
+import { ServiceCategory } from 'enums/service.enum';
+import {
+  Pipeline,
+  PipelineType,
+} from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   StorageConnection,
   StorageService,
 } from 'generated/entity/services/storageService';
-import { DashboardServiceMetadataPipeline } from 'generated/metadataIngestion/dashboardServiceMetadataPipeline';
-import { DatabaseServiceMetadataPipeline } from 'generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { DatabaseServiceProfilerPipeline } from 'generated/metadataIngestion/databaseServiceProfilerPipeline';
-import { DatabaseServiceQueryLineagePipeline } from 'generated/metadataIngestion/databaseServiceQueryLineagePipeline';
-import { DatabaseServiceQueryUsagePipeline } from 'generated/metadataIngestion/databaseServiceQueryUsagePipeline';
-import { DataInsightPipeline } from 'generated/metadataIngestion/dataInsightPipeline';
-import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
-import { MessagingServiceMetadataPipeline } from 'generated/metadataIngestion/messagingServiceMetadataPipeline';
-import { MetadataToElasticSearchPipeline } from 'generated/metadataIngestion/metadataToElasticSearchPipeline';
-import { MlmodelServiceMetadataPipeline } from 'generated/metadataIngestion/mlmodelServiceMetadataPipeline';
-import { PipelineServiceMetadataPipeline } from 'generated/metadataIngestion/pipelineServiceMetadataPipeline';
-import { StorageServiceMetadataPipeline } from 'generated/metadataIngestion/storageServiceMetadataPipeline';
-import { TestSuitePipeline } from 'generated/metadataIngestion/testSuitePipeline';
 import {
   DashboardConnection,
   DashboardService,
@@ -113,18 +105,16 @@ export type ConfigData =
   | MetadataConnection
   | StorageConnection;
 
-export type IngestionWorkflowData = (
-  | DatabaseServiceMetadataPipeline
-  | DashboardServiceMetadataPipeline
-  | PipelineServiceMetadataPipeline
-  | MessagingServiceMetadataPipeline
-  | MlmodelServiceMetadataPipeline
-  | StorageServiceMetadataPipeline
-  | DatabaseServiceProfilerPipeline
-  | DatabaseServiceQueryLineagePipeline
-  | DatabaseServiceQueryUsagePipeline
-  | DbtPipeline
-  | DataInsightPipeline
-  | MetadataToElasticSearchPipeline
-  | TestSuitePipeline
-) & { name: string };
+export type IngestionWorkflowData = Pipeline & { name: string };
+
+export interface IngestionWorkflowFormProps {
+  pipeLineType: PipelineType;
+  workflowName: string;
+  okText: string;
+  cancelText: string;
+  serviceCategory: ServiceCategory;
+  className?: string;
+  onCancel: () => void;
+  onFocus: (fieldId: string) => void;
+  onSubmit: (data: IngestionWorkflowData) => void;
+}

@@ -21,24 +21,13 @@ import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemp
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from 'components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
-import { ServiceCategory } from 'enums/service.enum';
-import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { IngestionWorkflowData } from 'interface/service.interface';
+import {
+  IngestionWorkflowData,
+  IngestionWorkflowFormProps,
+} from 'interface/service.interface';
 import React, { FC, useMemo, useState } from 'react';
 import { customValidate } from 'utils/formUtils';
 import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
-
-interface IngestionWorkflowFormProps {
-  pipeLineType: PipelineType;
-  workflowName: string;
-  okText: string;
-  cancelText: string;
-  serviceCategory: ServiceCategory;
-  className?: string;
-  onCancel: () => void;
-  onNext: () => void;
-  onFocus: (fieldId: string) => void;
-}
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
@@ -49,7 +38,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   serviceCategory,
   onCancel,
   onFocus,
-  onNext,
+  onSubmit,
 }) => {
   const [internalData, setInternalData] = useState<IngestionWorkflowData>({
     name: workflowName,
@@ -70,6 +59,10 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const customFields: RegistryFieldsType = {
     BooleanField: BooleanFieldTemplate,
     ArrayField: WorkflowArrayFieldTemplate,
+  };
+
+  const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
+    e.formData && onSubmit(e.formData);
   };
 
   return (
@@ -93,18 +86,15 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       uiSchema={INGESTION_WORKFLOW_UI_SCHEMA}
       validator={validator}
       onChange={handleOnChange}
-      onFocus={onFocus}>
+      onFocus={onFocus}
+      onSubmit={handleSubmit}>
       <Space className="w-full justify-end">
         <Space>
           <Button type="link" onClick={onCancel}>
             {cancelText}
           </Button>
 
-          <Button
-            data-testid="submit-btn"
-            htmlType="submit"
-            type="primary"
-            onClick={onNext}>
+          <Button data-testid="submit-btn" htmlType="submit" type="primary">
             {okText}
           </Button>
         </Space>
