@@ -14,13 +14,18 @@ Test Postgres connector with CLI
 """
 from typing import List
 
+import pytest
+import yaml
+
+from metadata.utils.constants import UTF_8
+
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
 
 class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-    CREATE TABLE IF NOT EXISTS test_cli_e2e.all_datatypes (
+    CREATE TABLE IF NOT EXISTS public.all_datatypes (
     column1 bigint,
     column2 bigserial,
     column5 boolean,
@@ -47,14 +52,14 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     create_view_query: str = """
-    CREATE OR REPLACE VIEW test_cli_e2e.view_all_datatypes AS
+    CREATE OR REPLACE VIEW public.view_all_datatypes AS
         SELECT *
         FROM all_datatypes;
     """
 
     insert_data_queries: List[str] = [
         """
-            INSERT INTO test_cli_e2e.all_datatypes VALUES (
+            INSERT INTO public.all_datatypes VALUES (
             1,
             2,
             true,
@@ -81,11 +86,11 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     ]
 
     drop_table_query: str = """
-        DROP TABLE IF EXISTS test_cli_e2e.all_datatypes;
+        DROP TABLE IF EXISTS public.all_datatypes;
     """
 
     drop_view_query: str = """
-        DROP VIEW  IF EXISTS test_cli_e2e.view_all_datatypes;
+        DROP VIEW  IF EXISTS public.view_all_datatypes;
     """
 
     @staticmethod
@@ -100,7 +105,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_tables() -> int:
-        return 4
+        return 2
 
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
@@ -110,11 +115,11 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "local_postgres.postgres.test_cli_e2e.all_datatypes"
+        return "local_postgres.E2EDB.public.all_datatypes"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return []
+        return ["public"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
@@ -122,7 +127,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
-        return []
+        return [".*test_empty.*"]
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
@@ -135,7 +140,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_filtered_table_includes() -> int:
         return 4
-    
+
     @staticmethod
     def expected_filtered_table_excludes() -> int:
         return 0
@@ -143,12 +148,3 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 23
-
-    def assert_for_vanilla_ingestion(self, source_status, sink_status):
-        self.assertTrue(len(source_status.failures) == 0)
-        self.assertTrue(len(source_status.warnings) == 0)
-        self.assertTrue(len(source_status.filtered) == 12)
-        self.assertTrue(len(source_status.records) >= self.expected_tables())
-        self.assertTrue(len(sink_status.failures) == 0)
-        self.assertTrue(len(sink_status.warnings) == 0)
-        self.assertTrue(len(sink_status.records) > self.expected_tables())
