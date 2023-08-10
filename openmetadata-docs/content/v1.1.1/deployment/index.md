@@ -46,7 +46,7 @@ We support following deployment options
     color="violet-70"
     icon="celebration"
     bold="Deploy on Docker"
-    href="/quick-start/local-deployment"%}
+    href="/deployment/docker"%}
     Deploy OpenMetadata with Docker
   {%/inlineCallout%}
   {%inlineCallout
