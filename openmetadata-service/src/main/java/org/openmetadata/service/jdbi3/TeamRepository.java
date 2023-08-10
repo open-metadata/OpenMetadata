@@ -95,14 +95,9 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : team.getDefaultRoles());
     team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? getInheritedRoles(team) : team.getInheritedRoles());
     team.setParents(fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents());
-    if (team.getChildren() == null) {
-      team.setChildren(fields.contains("children") ? getChildren(team.getId()) : team.getChildren());
-    }
     team.setPolicies(fields.contains("policies") ? getPolicies(team) : team.getPolicies());
     team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
-    if (team.getUserCount() == null) {
-      team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
-    }
+    team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
     return team;
   }
 
@@ -114,7 +109,6 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? team.getDefaultRoles() : null);
     team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? team.getInheritedRoles() : null);
     team.setParents(fields.contains(PARENTS_FIELD) ? team.getParents() : null);
-    team.setChildren(fields.contains("children") ? team.getChildren() : null);
     team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
     team.setChildrenCount(fields.contains("childrenCount") ? team.getChildrenCount() : null);
     return team.withUserCount(fields.contains("userCount") ? team.getUserCount() : null);
@@ -345,7 +339,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(Team team) {
-    return !nullOrEmpty(team.getUsers()) ? team.getUsers() : findTo(team.getId(), TEAM, Relationship.HAS, Entity.USER);
+    return findTo(team.getId(), TEAM, Relationship.HAS, Entity.USER);
   }
 
   private List<EntityRelationshipRecord> getUsersRelationshipRecords(UUID teamId) {
@@ -371,19 +365,14 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getOwns(Team team) {
     // Compile entities owned by the team
-    return !nullOrEmpty(team.getOwns()) ? team.getOwns() : findTo(team.getId(), TEAM, Relationship.OWNS, null);
+    return findTo(team.getId(), TEAM, Relationship.OWNS, null);
   }
 
   private List<EntityReference> getDefaultRoles(Team team) {
-    return !nullOrEmpty(team.getDefaultRoles())
-        ? team.getDefaultRoles()
-        : findTo(team.getId(), TEAM, Relationship.HAS, Entity.ROLE);
+    return findTo(team.getId(), TEAM, Relationship.HAS, Entity.ROLE);
   }
 
   private List<EntityReference> getParents(Team team) {
-    if (!nullOrEmpty(team.getParents())) {
-      return team.getParents();
-    }
     List<EntityReference> parents = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
     if (organization != null && listOrEmpty(parents).isEmpty() && !team.getId().equals(organization.getId())) {
       return new ArrayList<>(List.of(organization.getEntityReference()));
@@ -403,7 +392,12 @@ public class TeamRepository extends EntityRepository<Team> {
     return parents;
   }
 
-  private List<EntityReference> getChildren(UUID teamId) {
+  @Override
+  protected List<EntityReference> getChildren(Team team) {
+    return getChildren(team.getId());
+  }
+
+  protected List<EntityReference> getChildren(UUID teamId) {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
@@ -412,11 +406,11 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getChildrenCount(Team team) {
-    return team.getChildrenCount() != null ? team.getChildrenCount() : getChildren(team.getId()).size();
+    return !nullOrEmpty(team.getChildren()) ? team.getChildren().size() : getChildren(team).size();
   }
 
   private List<EntityReference> getPolicies(Team team) {
-    return !nullOrEmpty(team.getPolicies()) ? team.getPolicies() : findTo(team.getId(), TEAM, Relationship.HAS, POLICY);
+    return findTo(team.getId(), TEAM, Relationship.HAS, POLICY);
   }
 
   private void populateChildren(Team team) {

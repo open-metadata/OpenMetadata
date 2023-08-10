@@ -80,14 +80,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   public Glossary setFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? getTermCount(glossary) : glossary.getTermCount());
-    glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : glossary.getReviewers());
     return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : glossary.getUsageCount());
   }
 
   @Override
   public Glossary clearFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? glossary.getTermCount() : null);
-    glossary.setReviewers(fields.contains("reviewers") ? glossary.getReviewers() : null);
     return glossary.withUsageCount(fields.contains("usageCount") ? glossary.getUsageCount() : null);
   }
 
@@ -113,15 +111,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return glossary.getUsageCount() != null
-        ? glossary.getUsageCount()
-        : daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
   }
 
   private Integer getTermCount(Glossary glossary) {
-    if (glossary.getTermCount() != null) {
-      return glossary.getTermCount();
-    }
     ListFilter filter =
         new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
     return daoCollection.glossaryTermDAO().listCount(filter);
@@ -149,12 +142,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryCsv glossaryCsv = new GlossaryCsv(glossary, user);
     return glossaryCsv.importCsv(csv, dryRun);
-  }
-
-  private List<EntityReference> getReviewers(Glossary entity) {
-    return !nullOrEmpty(entity.getReviewers())
-        ? entity.getReviewers()
-        : findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {

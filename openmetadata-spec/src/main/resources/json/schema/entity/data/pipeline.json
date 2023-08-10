@@ -9,7 +9,7 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "entityName": {
-      "description": "Name of a table. Expected to be unique within a database.",
+      "description": "Name of a pipeline. Expected to be unique within a pipeline service.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
