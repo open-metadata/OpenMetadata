@@ -127,9 +127,9 @@ const TableDetailsPageV1 = () => {
   );
   const tableFqn = useMemo(
     () =>
-      encodeURI(
+      encodeURIComponent(
         getPartialNameFromTableFQN(
-          decodeURI(datasetFQN),
+          decodeURIComponent(datasetFQN),
           [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
           FQN_SEPARATOR_CHAR
         )

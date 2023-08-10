@@ -22,12 +22,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -111,11 +109,7 @@ public class DefaultAuthorizer implements Authorizer {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
-    return getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
-  }
-
-  public static SubjectContext getSubjectContext(String userName) {
-    return SubjectCache.getSubjectContext(EntityInterfaceUtil.quoteName(userName));
+    return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext));
   }
 
   private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {
@@ -125,7 +119,7 @@ public class DefaultAuthorizer implements Authorizer {
         throw new AuthorizationException(notAdmin(loggedInUser.getUser().getName()));
       }
       LOG.debug("Changing subject context from logged-in user to {}", user);
-      return getSubjectContext(user);
+      return SubjectContext.getSubjectContext(user);
     }
     return loggedInUser;
   }

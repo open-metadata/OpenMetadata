@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -70,18 +71,27 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private List<EntityReference> getSchemas(Database database) {
-    if (database == null) {
-      return null;
-    }
-    return findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+    return database == null
+        ? null
+        : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
   public Database setFields(Database database, Fields fields) {
     database.setService(getContainer(database.getId()));
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
-    database.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
+    if (database.getUsageSummary() == null) {
+      database.setUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
+              : null);
+    }
     return database;
+  }
+
+  public Database clearFields(Database database, Fields fields) {
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    return database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
   @Override

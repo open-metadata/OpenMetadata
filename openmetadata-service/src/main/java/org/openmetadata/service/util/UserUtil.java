@@ -19,7 +19,6 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -34,7 +33,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -59,8 +57,7 @@ public final class UserUtil {
     }
   }
 
-  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin)
-      throws IOException {
+  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser = null;
     try {
@@ -69,8 +66,7 @@ public final class UserUtil {
       fieldList.add("authenticationMechanism");
 
       // Fetch Original User, is available
-      User originalUser =
-          userRepository.getByName(null, EntityInterfaceUtil.quoteName(username), new Fields(fieldList));
+      User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
       if (Boolean.FALSE.equals(originalUser.getIsBot()) && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
         updatedUser = originalUser;
 

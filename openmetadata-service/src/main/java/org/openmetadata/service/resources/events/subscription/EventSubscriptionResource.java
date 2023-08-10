@@ -58,6 +58,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.Entity;
@@ -331,7 +332,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           UUID id)
       throws SchedulerException {
     authorizer.authorizeAdmin(securityContext);
-    EventSubscription eventSub = repository.get(null, id, repository.getFields("id,name"));
+    EventSubscription eventSub = repository.find(id, Include.NON_DELETED);
     return ReportsHandler.getInstance().triggerExistingDataInsightJob(eventSub);
   }
 

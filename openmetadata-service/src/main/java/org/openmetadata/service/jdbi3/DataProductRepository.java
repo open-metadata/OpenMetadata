@@ -42,12 +42,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public DataProduct setFields(DataProduct entity, Fields fields) {
-    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
+    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : entity.getExperts());
   }
 
-  // TODO to to inheritance for experts
-  private List<EntityReference> getExperts(DataProduct entity) {
-    return findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
+  @Override
+  public DataProduct clearFields(DataProduct entity, Fields fields) {
+    return entity.withExperts(fields.contains("experts") ? entity.getExperts() : null);
   }
 
   @Override
@@ -57,11 +57,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void storeEntity(DataProduct entity, boolean update) {
-    EntityReference domain = entity.getDomain();
     List<EntityReference> experts = entity.getExperts();
-    entity.withDomain(null).withExperts(null);
+    entity.withExperts(null);
     store(entity, update);
-    entity.withDomain(domain).withExperts(experts);
+    entity.withExperts(experts);
   }
 
   @Override

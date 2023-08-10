@@ -44,7 +44,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -101,8 +100,7 @@ public class UsageResource {
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).build();
+    ResourceContext resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -148,8 +146,7 @@ public class UsageResource {
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).name(fqn).build();
+    ResourceContext resourceContext = new ResourceContext(entity, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -184,8 +181,7 @@ public class UsageResource {
           String id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).build();
+    ResourceContext resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.create(entity, id, usage).toResponse();
   }
@@ -218,8 +214,7 @@ public class UsageResource {
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).id(id).build();
+    ResourceContext resourceContext = new ResourceContext(entity, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdate(entity, id, usage).toResponse();
   }
@@ -256,8 +251,7 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).name(fullyQualifiedName).build();
+    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -294,8 +288,7 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).name(fullyQualifiedName).build();
+    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -325,8 +318,7 @@ public class UsageResource {
           @PathParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).build();
+    ResourceContext resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();

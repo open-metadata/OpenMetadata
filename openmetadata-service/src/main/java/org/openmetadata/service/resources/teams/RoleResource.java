@@ -413,6 +413,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   public static EntityReference getRole(String roleName) {
     RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
-    return roleRepository.getDao().findEntityReferenceByName(roleName);
+    return roleRepository.getReferenceByName(roleName, Include.NON_DELETED);
   }
 }

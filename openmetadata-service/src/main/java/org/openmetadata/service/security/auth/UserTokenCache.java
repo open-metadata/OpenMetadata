@@ -69,7 +69,8 @@ public class UserTokenCache {
       HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(null, userName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
+          userRepository.getByName(
+              null, userName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED, true);
       List<TokenInterface> tokens =
           tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
       tokens.forEach(t -> result.add(((PersonalAccessToken) t).getJwtToken()));

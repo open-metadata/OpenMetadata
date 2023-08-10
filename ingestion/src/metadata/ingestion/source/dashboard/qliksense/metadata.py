@@ -79,6 +79,8 @@ class QliksenseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata_config)
         self.collections: List[QlikDashboard] = []
+        # Data models will be cleared up for each dashboard
+        self.data_models: List[QlikTable] = []
 
     def get_dashboards_list(self) -> Iterable[QlikDashboard]:
         """
@@ -204,7 +206,7 @@ class QliksenseSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def yield_datamodel(self, dashboard_details: QlikDashboard):
+    def yield_datamodel(self, _: QlikDashboard):
         if self.source_config.includeDataModels:
             self.data_models = self.client.get_dashboard_models()
             for data_model in self.data_models or []:

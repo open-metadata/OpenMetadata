@@ -379,7 +379,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   private Bot getBot(CreateBot create, String user) {
     return copy(new Bot(), create, user)
-        .withBotUser(getEntityReference(Entity.USER, EntityInterfaceUtil.quoteName(create.getBotUser())))
+        .withBotUser(getEntityReference(Entity.USER, create.getBotUser()))
         .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());
   }
@@ -400,7 +400,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   private Bot getBot(SecurityContext securityContext, CreateBot create) {
     Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
-    Bot originalBot = retrieveBot(EntityInterfaceUtil.quoteName(bot.getName()));
+    Bot originalBot = retrieveBot(bot.getName());
     User botUser = retrieveUser(bot);
     if (botUser != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
       throw new IllegalArgumentException(String.format("User [%s] is not a bot user", botUser.getName()));
@@ -422,11 +422,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   private User retrieveUser(Bot bot) {
     // TODO fix this code - don't depend on exception
     try {
-      return Entity.getEntityByName(
-          Entity.USER,
-          EntityInterfaceUtil.quoteName(bot.getBotUser().getFullyQualifiedName()),
-          "",
-          Include.NON_DELETED);
+      return Entity.getEntityByName(Entity.USER, bot.getBotUser().getFullyQualifiedName(), "", Include.NON_DELETED);
     } catch (Exception exception) {
       return null;
     }
