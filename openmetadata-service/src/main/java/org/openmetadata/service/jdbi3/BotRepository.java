@@ -40,7 +40,7 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public Bot clearFields(Bot entity, Fields fields) {
-    return entity; // Nothing to do
+    return entity;
   }
 
   @Override
