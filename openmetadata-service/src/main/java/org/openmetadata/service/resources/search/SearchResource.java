@@ -13,37 +13,12 @@
 
 package org.openmetadata.service.resources.search;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMappingSchema;
-import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import javax.validation.Valid;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.suggest.Suggest;
@@ -58,6 +33,32 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
+
+import javax.validation.Valid;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMappingSchema;
+import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
 
 @Slf4j
 @Path("/v1/search")
@@ -181,6 +182,38 @@ public class SearchResource {
             .build();
     return searchClient.search(request);
   }
+
+  @GET
+  @Path("/sourceUrl")
+  @Operation(
+      operationId = "searchEntitiesWithSourceUrl",
+      summary = "Search entities",
+      description =
+          "Search entities using sourceUrl. Use query params `from` and `size` for pagination.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "search response",
+              content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchBySourceUrl(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "source url")
+      @QueryParam("sourceUrl")
+      String sourceUrl,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+      @DefaultValue("0")
+      @QueryParam("from")
+      int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+      @DefaultValue("10")
+      @QueryParam("size")
+      int size) throws IOException {
+
+    return searchClient.searchBySourceUrl(sourceUrl,from,size);
+  }
+
 
   @GET
   @Path("/suggest")
