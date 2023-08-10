@@ -14,9 +14,9 @@
 package org.openmetadata.service.resources.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMappingSchema;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.search.SearchIndexDefinition.getIndexMappingSchema;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,11 +50,11 @@ import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.elasticsearch.ElasticSearchRequest;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
@@ -167,8 +167,8 @@ public class SearchResource {
       query = "*";
     }
 
-    ElasticSearchRequest request =
-        new ElasticSearchRequest.ElasticSearchRequestBuilder(query, size, index)
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
             .from(from)
             .queryFilter(queryFilter)
             .postFilter(postFilter)
@@ -233,8 +233,8 @@ public class SearchResource {
       query = "*";
     }
 
-    ElasticSearchRequest request =
-        new ElasticSearchRequest.ElasticSearchRequestBuilder(query, size, index)
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
             .fieldName(fieldName)
             .deleted(deleted)
             .fetchSource(fetchSource)

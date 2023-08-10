@@ -161,10 +161,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   // TODO move this to base class?
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : listOrEmpty(columns)) {
-      if (c.getTags() == null) {
-        c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-        getColumnTags(setTags, c.getChildren());
-      }
+      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
+      getColumnTags(setTags, c.getChildren());
     }
   }
 

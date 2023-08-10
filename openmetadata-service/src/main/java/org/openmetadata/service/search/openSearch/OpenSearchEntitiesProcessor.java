@@ -10,10 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexFactory;
 import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchIndexDefinition;
+import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -66,11 +66,10 @@ public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, Resul
   }
 
   public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) {
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
     updateRequest.doc(
-        JsonUtils.pojoToJson(
-            Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
+        JsonUtils.pojoToJson(Objects.requireNonNull(SearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

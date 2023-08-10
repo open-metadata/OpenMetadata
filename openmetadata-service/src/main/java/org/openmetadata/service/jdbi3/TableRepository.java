@@ -118,7 +118,6 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public Table setFields(Table table, Fields fields) {
     setDefaultFields(table);
-    // TODO fix this
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
           fields.contains("usageSummary")
@@ -172,9 +171,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) {
-    EntityReference schemaRef =
-        table.getDatabaseSchema() != null ? table.getDatabaseSchema() : getContainer(table.getId());
-    // TODO optimize
+    EntityReference schemaRef = getContainer(table.getId());
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
@@ -295,9 +292,6 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public TestSuite getTestSuite(Table table) {
-    if (table.getTestSuite() != null) {
-      return table.getTestSuite();
-    }
     List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
         daoCollection.relationshipDAO().findTo(table.getId().toString(), TABLE, Relationship.CONTAINS.ordinal());
     Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
@@ -778,10 +772,8 @@ public class TableRepository extends EntityRepository<Table> {
   // TODO duplicated code
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : listOrEmpty(columns)) {
-      if (c.getTags() == null) {
-        c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-        getColumnTags(setTags, c.getChildren());
-      }
+      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
+      getColumnTags(setTags, c.getChildren());
     }
   }
 
@@ -904,9 +896,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private TableJoins getJoins(Table table) {
-    if (table.getJoins() != null) {
-      return table.getJoins();
-    }
     String today = RestUtil.DATE_FORMAT.format(new Date());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     return new TableJoins()
@@ -994,9 +983,7 @@ public class TableRepository extends EntityRepository<Table> {
     // Add custom metrics info to columns if requested
     List<Column> columns = table.getColumns();
     for (Column c : listOrEmpty(columns)) {
-      if (nullOrEmpty(c.getCustomMetrics())) {
-        c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : c.getCustomMetrics());
-      }
+      c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : c.getCustomMetrics());
     }
   }
 

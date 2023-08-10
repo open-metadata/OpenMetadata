@@ -17,7 +17,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
@@ -127,9 +126,6 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {
-    if (!nullOrEmpty(type.getCustomProperties())) {
-      return type.getCustomProperties();
-    }
     if (type.getCategory().equals(Category.Field)) {
       return null; // Property type fields don't support custom properties
     }

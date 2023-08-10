@@ -36,11 +36,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
-import org.openmetadata.service.elasticsearch.ElasticSearchRequest;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.service.util.JsonUtils;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
@@ -54,11 +52,11 @@ public interface SearchClient {
 
   void deleteIndex(ElasticSearchIndexType elasticSearchIndexType);
 
-  Response search(ElasticSearchRequest request) throws IOException;
+  Response search(SearchRequest request) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  Response suggest(ElasticSearchRequest request) throws IOException;
+  Response suggest(SearchRequest request) throws IOException;
 
   ElasticSearchConfiguration.SearchType getSearchType();
 
@@ -84,8 +82,7 @@ public interface SearchClient {
   }
 
   default void updateSearchForEntityUpdated(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event)
-      throws IOException {
+      SearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event) throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -120,8 +117,7 @@ public interface SearchClient {
   void updateClassification(ChangeEvent event) throws IOException;
 
   default void updateTestCase(ChangeEvent event) throws IOException {
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        IndexUtil.getIndexMappingByEntityType(Entity.TEST_CASE);
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TEST_CASE);
     // creating a new test case will return a TestCase entity while bulk adding test cases will return
     // the logical test suite entity with the newly added test cases
     EntityInterface entityInterface = (EntityInterface) event.getEntity();
@@ -233,10 +229,10 @@ public interface SearchClient {
     fieldParams = fieldAddParams;
   }
 
-  default String getIndexMapping(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
+  default String getIndexMapping(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang)
+      throws IOException {
     InputStream in =
-        ElasticSearchIndexDefinition.class.getResourceAsStream(
+        SearchIndexDefinition.class.getResourceAsStream(
             String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()));
     assert in != null;
     return new String(in.readAllBytes());
