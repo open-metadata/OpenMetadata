@@ -13,8 +13,9 @@
       "enum": [
         "entityCreated",
         "entityUpdated",
+        "entityNoChange",
         "entitySoftDeleted",
-	"entityRestored",
+	    "entityRestored",
         "entityDeleted"
       ]
     },

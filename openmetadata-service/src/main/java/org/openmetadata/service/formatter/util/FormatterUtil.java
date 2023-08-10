@@ -255,11 +255,9 @@ public class FormatterUtil {
     ChangeEvent changeEvent = null;
 
     // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/followera
-    if (changeType != null
-        && changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)
-        && responseCode != Response.Status.CREATED.getStatusCode()) {
+    if (changeType != null && changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
       changeEvent = (ChangeEvent) responseContext.getEntity();
-    } else {
+    } else if (responseContext.getEntity() != null && responseContext.getEntity() instanceof EntityInterface) {
       EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
@@ -270,12 +268,10 @@ public class FormatterUtil {
       if (responseCode == Response.Status.CREATED.getStatusCode()
           && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
           && !responseContext.getEntity().getClass().equals(Thread.class)) {
-        if (responseContext.getEntity() instanceof EntityInterface) {
-          changeEvent =
-              getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)
-                  .withEntity(entityInterface)
-                  .withEntityFullyQualifiedName(entityFQN);
-        }
+        changeEvent =
+            getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)
+                .withEntity(entityInterface)
+                .withEntityFullyQualifiedName(entityFQN);
       } else if (changeType != null
           && changeType.equals(
               RestUtil.LOGICAL_TEST_CASES_ADDED)) { // Handles Bulk Add test cases to a logical test suite
