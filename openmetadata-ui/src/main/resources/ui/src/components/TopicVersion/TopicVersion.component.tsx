@@ -128,7 +128,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
                   <TopicSchemaFields
                     defaultExpandAllRows
                     isReadOnly
-                    entityFieldThreads={[]}
                     entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}

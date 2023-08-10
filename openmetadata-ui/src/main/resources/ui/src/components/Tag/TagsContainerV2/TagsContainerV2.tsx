@@ -42,7 +42,6 @@ const TagsContainerV2 = ({
   showTaskHandler = true,
   selectedTags,
   entityType,
-  entityThreadLink,
   entityFqn,
   tagType,
   displayType,
@@ -245,21 +244,14 @@ const TagsContainerV2 = ({
             width={14}
             onClick={() =>
               onThreadLinkSelect?.(
-                entityThreadLink ??
-                  getEntityFeedLink(entityType, entityFqn, 'tags')
+                getEntityFeedLink(entityType, entityFqn, 'tags')
               )
             }
           />
         </Tooltip>
       </Col>
     ),
-    [
-      entityType,
-      entityFqn,
-      entityThreadLink,
-      getEntityFeedLink,
-      onThreadLinkSelect,
-    ]
+    [entityType, entityFqn, onThreadLinkSelect]
   );
 
   const header = useMemo(() => {

@@ -32,7 +32,6 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
-import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
@@ -61,13 +60,12 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCurrentUserId,
   getFeedCounts,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityName, getEntityThreadLink } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -131,9 +129,6 @@ const PipelineDetails = ({
   }>();
 
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -166,12 +161,7 @@ const PipelineDetails = ({
   );
 
   const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.PIPELINE,
-      pipelineFQN,
-      setEntityFieldThreadCount,
-      setFeedCount
-    );
+    getFeedCounts(EntityType.PIPELINE, pipelineFQN, setFeedCount);
   };
 
   const fetchResourcePermission = useCallback(async () => {
@@ -400,10 +390,6 @@ const PipelineDetails = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFieldThreads={getEntityFieldThreadCounts(
-              EntityField.TASKS,
-              entityFieldThreadCount
-            )}
             entityFqn={entityFqn}
             entityType={EntityType.PIPELINE}
             hasEditPermission={
@@ -424,10 +410,6 @@ const PipelineDetails = ({
         width: 300,
         render: (tags, record, index) => (
           <TableTags<Task>
-            entityFieldThreads={getEntityFieldThreadCounts(
-              EntityField.TASKS,
-              entityFieldThreadCount
-            )}
             entityFqn={entityFqn}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
@@ -449,10 +431,6 @@ const PipelineDetails = ({
         width: 300,
         render: (tags, record, index) => (
           <TableTags<Task>
-            entityFieldThreads={getEntityFieldThreadCounts(
-              EntityField.TASKS,
-              entityFieldThreadCount
-            )}
             entityFqn={entityFqn}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
@@ -473,7 +451,6 @@ const PipelineDetails = ({
       entityFqn,
       hasTagEditAccess,
       pipelinePermissions,
-      entityFieldThreadCount,
       getEntityName,
       onThreadLinkSelect,
       handleTableTagSelection,
@@ -532,10 +509,6 @@ const PipelineDetails = ({
                 <Col span={24}>
                   <DescriptionV1
                     description={description}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
                     entityFqn={pipelineFQN}
                     entityName={entityName}
                     entityType={EntityType.PIPELINE}
@@ -603,7 +576,6 @@ const PipelineDetails = ({
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={pipelineFQN}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}
                   permission={
                     (pipelinePermissions.EditAll ||
@@ -619,7 +591,6 @@ const PipelineDetails = ({
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={pipelineFQN}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}
                   permission={
                     (pipelinePermissions.EditAll ||
@@ -713,7 +684,6 @@ const PipelineDetails = ({
       description,
       activeTab,
       feedCount,
-      entityFieldThreadCount,
       isEdit,
       deleted,
       owner,

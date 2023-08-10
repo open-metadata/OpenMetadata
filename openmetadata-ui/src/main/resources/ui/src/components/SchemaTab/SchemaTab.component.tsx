@@ -25,7 +25,6 @@ const SchemaTab: FunctionComponent<Props> = ({
   columnName,
   hasDescriptionEditAccess,
   hasTagEditAccess,
-  entityFieldThreads,
   onThreadLinkSelect,
   isReadOnly = false,
   entityFqn,
@@ -51,7 +50,6 @@ const SchemaTab: FunctionComponent<Props> = ({
 
       <SchemaTable
         columnName={columnName}
-        entityFieldThreads={entityFieldThreads}
         entityFqn={entityFqn}
         hasDescriptionEditAccess={hasDescriptionEditAccess}
         hasTagEditAccess={hasTagEditAccess}

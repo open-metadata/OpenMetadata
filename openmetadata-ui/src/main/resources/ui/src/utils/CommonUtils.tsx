@@ -73,7 +73,6 @@ import { PipelineType } from '../generated/entity/services/ingestionPipelines/in
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
@@ -517,10 +516,7 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
-  conversationCallback: (
-    value: React.SetStateAction<EntityFieldThreadCount[]>
-  ) => void,
-  entityCallback: (value: React.SetStateAction<number>) => void
+  conversationCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
   getFeedCount(
@@ -529,20 +525,7 @@ export const getFeedCounts = (
   )
     .then((res) => {
       if (res) {
-        conversationCallback(res.counts);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
-
-  // To get all thread count (task + conversation)
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        entityCallback(res.totalCount);
+        conversationCallback(res.totalCount);
       } else {
         throw t('server.entity-feed-fetch-error');
       }

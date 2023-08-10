@@ -32,7 +32,6 @@ import { getDashboardDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,10 +39,9 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
-import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
-import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -93,9 +91,6 @@ const DashboardDetails = ({
     index: number;
   }>();
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
   const [threadLink, setThreadLink] = useState<string>('');
 
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -173,12 +168,7 @@ const DashboardDetails = ({
   }, []);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.DASHBOARD,
-      dashboardFQN,
-      setEntityFieldThreadCount,
-      setFeedCount
-    );
+    getFeedCounts(EntityType.DASHBOARD, dashboardFQN, setFeedCount);
   };
 
   useEffect(() => {
@@ -417,12 +407,6 @@ const DashboardDetails = ({
     }
   };
 
-  const entityFieldThreads = useMemo(
-    () =>
-      getEntityFieldThreadCounts(EntityField.CHARTS, entityFieldThreadCount),
-    [entityFieldThreadCount, getEntityFieldThreadCounts]
-  );
-
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -475,10 +459,6 @@ const DashboardDetails = ({
                 fqn: record.fullyQualifiedName ?? '',
                 field: record.description,
               }}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.DESCRIPTION,
-                entityFieldThreadCount
-              )}
               entityFqn={entityFqn}
               entityType={EntityType.DASHBOARD}
               hasEditPermission={editDescriptionPermissions}
@@ -499,7 +479,6 @@ const DashboardDetails = ({
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
-              entityFieldThreads={entityFieldThreads}
               entityFqn={entityFqn}
               entityType={EntityType.DASHBOARD}
               handleTagSelection={handleChartTagSelection}
@@ -522,7 +501,6 @@ const DashboardDetails = ({
         width: 300,
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD}
             handleTagSelection={handleChartTagSelection}
@@ -540,8 +518,6 @@ const DashboardDetails = ({
     [
       deleted,
       entityFqn,
-      entityFieldThreads,
-      entityFieldThreadCount,
       chartsPermissionsArray,
       onThreadLinkSelect,
       hasEditTagAccess,
@@ -564,10 +540,6 @@ const DashboardDetails = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={dashboardDetails.description}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
@@ -608,7 +580,6 @@ const DashboardDetails = ({
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={dashboardDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||
@@ -624,7 +595,6 @@ const DashboardDetails = ({
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={dashboardDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||
@@ -705,7 +675,6 @@ const DashboardDetails = ({
       tableColumn,
       dashboardDetails,
       charts,
-      entityFieldThreadCount,
       entityName,
       dashboardPermissions,
       dashboardTags,
