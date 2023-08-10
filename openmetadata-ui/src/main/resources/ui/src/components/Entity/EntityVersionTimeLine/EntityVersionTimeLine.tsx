@@ -13,7 +13,6 @@
 
 import { Divider, Typography } from 'antd';
 import classNames from 'classnames';
-import AppBadge from 'components/common/Badge/Badge.component';
 import CloseIcon from 'components/Modals/CloseIcon.component';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { capitalize, toString } from 'lodash';
@@ -125,12 +124,11 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   })}>
                   <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
                   {majorVersionChecks() ? (
-                    <AppBadge
-                      bgColor="#EEEAF8"
-                      className="m-l-sm"
-                      color="#292929"
-                      label={t('label.major')}
-                    />
+                    <span
+                      className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
+                      style={{ backgroundColor: '#EEEAF8' }}>
+                      {t('label.major')}
+                    </span>
                   ) : null}
                 </Typography.Text>
                 <div
