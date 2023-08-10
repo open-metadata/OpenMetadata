@@ -117,6 +117,10 @@ SNOWFLAKE_TEST_GET_QUERIES = """
 SELECT query_text from snowflake.account_usage.query_history limit 1
 """
 
+SNOWFLAKE_TEST_GET_TABLES = """
+SELECT TABLE_NAME FROM information_schema.tables LIMIT 1 
+"""
+
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
 
 

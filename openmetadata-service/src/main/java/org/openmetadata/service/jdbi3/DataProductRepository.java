@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -49,13 +48,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public DataProduct clearFields(DataProduct entity, Fields fields) {
     return entity.withExperts(fields.contains("experts") ? entity.getExperts() : null);
-  }
-
-  // TODO to to inheritance for experts
-  private List<EntityReference> getExperts(DataProduct entity) {
-    return !nullOrEmpty(entity.getExperts())
-        ? entity.getExperts()
-        : findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
   }
 
   @Override

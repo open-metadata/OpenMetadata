@@ -42,8 +42,7 @@ public class QueryRepository extends EntityRepository<Query> {
   public Query setFields(Query entity, EntityUtil.Fields fields) {
     entity.setVotes(fields.contains("votes") ? getVotes(entity) : entity.getVotes());
     entity.setQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
-    entity.setUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
-    return entity;
+    return entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
   }
 
   @Override
@@ -54,23 +53,15 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   public List<EntityReference> getQueryUsage(Query queryEntity) {
-    if (queryEntity == null) {
-      return Collections.emptyList();
-    }
-    if (!nullOrEmpty(queryEntity.getQueryUsedIn())) {
-      return queryEntity.getQueryUsedIn();
-    }
-    return findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
+    return queryEntity == null
+        ? Collections.emptyList()
+        : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
   }
 
   public List<EntityReference> getQueryUsers(Query queryEntity) {
-    if (queryEntity == null) {
-      return Collections.emptyList();
-    }
-    if (!nullOrEmpty(queryEntity.getUsers())) {
-      return queryEntity.getUsers();
-    }
-    return findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
+    return queryEntity == null
+        ? Collections.emptyList()
+        : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
   }
 
   @Override

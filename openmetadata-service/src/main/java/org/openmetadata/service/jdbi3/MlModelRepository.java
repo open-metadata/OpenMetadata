@@ -76,9 +76,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) {
-    if (mlModel.getService() == null) {
-      mlModel.setService(getContainer(mlModel.getId()));
-    }
+    mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
@@ -279,12 +277,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private EntityReference getDashboard(MlModel mlModel) {
-    if (mlModel == null) {
-      return null;
-    }
-    return mlModel.getDashboard() != null
-        ? mlModel.getDashboard()
-        : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
+    return mlModel == null ? null : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
   }
 
   public void setDashboard(MlModel mlModel, EntityReference dashboard) {
