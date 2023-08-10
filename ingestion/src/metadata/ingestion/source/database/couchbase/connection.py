@@ -17,12 +17,10 @@ from functools import partial
 # from functools import partial
 from typing import Optional
 
-from pydantic import BaseModel
+from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
 from couchbase.options import ClusterOptions
-from couchbase.auth import PasswordAuthenticator
-from couchbase.exceptions import CouchbaseException
-from couchbase.management.collections import CollectionManager
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -30,7 +28,6 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
     CouchbaseConnection,
 )
-from metadata.ingestion.connections.builders import get_connection_url_common
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -39,14 +36,12 @@ def get_connection(connection: CouchbaseConnection):
     """
     Create connection
     """
-    try:
-        couchbase_cluster = Cluster.connect(connection.endpoint, ClusterOptions(PasswordAuthenticator(connection.username, "Vanshu@123")))
-        return couchbase_cluster
-    except CouchbaseException as e:    
-        print(e)
-    return ""
-          
-    
+    auth = PasswordAuthenticator(
+        connection.username, connection.password.get_secret_value()
+    )
+    couchbase_cluster = Cluster.connect(connection.endpoint, ClusterOptions(auth))
+    return couchbase_cluster
+
 
 def test_connection(
     metadata: OpenMetadata,
@@ -65,18 +60,17 @@ def test_connection(
     holder = SchemaHolder()
 
     def test_get_databases(client: Cluster, holder: SchemaHolder):
-        print("client is ",client)
         buckets = client.buckets()
-        list_bucket=buckets.get_all_buckets()
+        list_bucket = buckets.get_all_buckets()
         for database in list_bucket:
             holder.database = database.name
             break
 
     def test_get_collections(client: Cluster, holder: SchemaHolder):
-        database =  client.bucket(holder.database)
+        database = client.bucket(holder.database)
         collection_manager = database.collections()
         collection_manager.get_all_scopes()
-            
+
     test_fn = {
         "CheckAccess": lambda: True,
         "GetDatabases": partial(test_get_databases, client, holder),
@@ -89,6 +83,3 @@ def test_connection(
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
-    
-
-

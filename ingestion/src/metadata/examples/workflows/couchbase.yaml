@@ -1,13 +1,13 @@
 source:
   type: couchbase
-  serviceName: local_couchbase2
+  serviceName: local_couchbase
   serviceConnection:
     config:
       type: Couchbase
-      bucket: "travel-sample"
-      username: Administrator
-      password: Vanshu@123
-      endpoint: couchbase://127.0.0.1
+      bucket: bucket
+      username: username
+      password: password
+      endpoint: endpoint
   sourceConfig:
     config:
       type: DatabaseMetadata

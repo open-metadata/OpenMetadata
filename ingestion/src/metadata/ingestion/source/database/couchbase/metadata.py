@@ -13,7 +13,7 @@ MongoDB source methods.
 """
 
 import traceback
-from typing import Dict, List, Union, Iterable, Optional, Tuple
+from typing import Dict, List, Union
 
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
     CouchbaseConnection,
@@ -25,12 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_nosql_source import (
-    SAMPLE_SIZE,
-    CommonNoSQLSource,
-)
-from couchbase.cluster import Cluster
-from couchbase.options import ClusterOptions
+from metadata.ingestion.source.database.common_nosql_source import CommonNoSQLSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -55,13 +50,6 @@ class CouchbaseSource(CommonNoSQLSource):
                 f"Expected CouchbaseConnection, but got {connection}"
             )
         return cls(config, metadata_config)
-    
-    def get_schema_object(self) -> List[str]:
-        bucket_name= self.service_connection.bucket
-        bucket = self.couchbase.bucket(bucket_name)
-        collection_manager = bucket.collections()
-        return collection_manager.get_all_scopes()  
-
 
     def get_schema_name_list(self) -> List[str]:
         """
@@ -69,19 +57,23 @@ class CouchbaseSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
-            self.context.scope_list=self.get_schema_object()
+            bucket_name = self.service_connection.bucket
+            bucket = self.couchbase.bucket(bucket_name)
+            collection_manager = bucket.collections()
+            self.context.scope_list = collection_manager.get_all_scopes()
             return [scopes.name for scopes in self.context.scope_list]
         except Exception as exp:
             logger.debug(f"Failed to list database names: {exp}")
             logger.debug(traceback.format_exc())
         return []
-    
+
     def get_table_name_list(self, schema_name: str) -> List[str]:
         """
         Method to get list of table names available within schema db
         need to be overridden by sources
         """
         try:
+            scope_obj = None
             for scope_obj in self.context.scope_list:
                 if scope_obj.name == schema_name:
                     break
@@ -90,10 +82,8 @@ class CouchbaseSource(CommonNoSQLSource):
             logger.debug(
                 f"Failed to list collection names for schema [{schema_name}]: {exp}"
             )
-            logger.debug(traceback.format_exc())  
+            logger.debug(traceback.format_exc())
         return []
-
-
 
     def get_table_columns_dict(
         self, schema_name: str, table_name: str
@@ -102,11 +92,5 @@ class CouchbaseSource(CommonNoSQLSource):
         Method to get actual data available within table
         need to be overridden by sources
         """
-        # try:
-        #     database = self.mongodb[schema_name]
-        #     collection = database.get_collection(table_name)
-        #     return list(collection.find().limit(SAMPLE_SIZE))
-        # except OperationFailure as opf:
-        #     logger.debug(f"Failed to read collection [{table_name}]: {opf}")
-        #     logger.debug(traceback.format_exc())
+
         return []
