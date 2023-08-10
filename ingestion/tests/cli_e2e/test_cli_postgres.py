@@ -157,28 +157,3 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
-
-    @pytest.mark.order(1)
-    def test_vanilla_ingestion(self) -> None:
-        """1. Deploy vanilla ingestion"""
-        # build config file for ingest
-        self.build_config_file()
-        # run ingest with new tables
-        result = self.run_command()
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assert_for_vanilla_ingestion(source_status, sink_status)
-
-    @pytest.mark.order(2)
-    def test_create_table_with_profiler(self) -> None:
-        self.delete_table_and_view()
-        self.create_table_and_view()
-        self.build_config_file()
-        self.run_command()
-        self.build_config_file(
-            E2EType.PROFILER,
-            extra_args={"profileSample": 100},
-        )
-        result = self.run_command("profile")
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assert_for_table_with_profiler(source_status, sink_status)
-    
