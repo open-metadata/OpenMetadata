@@ -13,7 +13,6 @@ Kinesis Models
 """
 # Disable pylint to conform to Kinesis API returns
 # We want to convert to the pydantic models in 1 go
-# pylint: disable=invalid-name
 from enum import Enum
 from typing import List, Optional
 

@@ -22,11 +22,11 @@ OpenMetadata enables you to discover your data using a variety of strategies, in
 topics, dashboards, pipelines, and services. OpenMetadata supports detailed metadata for assets and their components 
 (e.g., columns, charts), including support for complex data types such as arrays and structs.
 
-### Keyword Search
+### Data Discovery
 Find assets based on name, description, component metadata (e.g., for columns, charts), and the containing service.
 
 {% image
-  src="/images/v1.1.1/features/data-discovery-kw-search.gif"
+  src="/images/v1.1.1/features/data-discovery.gif"
 /%}
 
 
@@ -215,7 +215,7 @@ a data issue. Data owners and admins can review changes and revert if necessary.
 
 
 {% image
-  src="/images/v1.1.1/features/metadata-versioning.gif"
+  src="/images/v1.1.1/features/data-versioning.gif"
 /%}
 
 
