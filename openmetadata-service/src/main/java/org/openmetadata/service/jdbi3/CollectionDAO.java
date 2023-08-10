@@ -3486,7 +3486,7 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
             + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
             + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
-            + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount"
+            + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount, "
             + "(SELECT COUNT(*) FROM search_service_entity <cond>) as searchServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
