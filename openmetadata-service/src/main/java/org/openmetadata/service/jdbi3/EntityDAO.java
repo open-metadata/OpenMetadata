@@ -19,8 +19,6 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -29,7 +27,6 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -253,11 +250,11 @@ public interface EntityDAO<T extends EntityInterface> {
   int delete(@Define("table") String table, @Bind("id") String id);
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(EntityInterface entity, String fqn) throws JsonProcessingException {
+  default void insert(EntityInterface entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
-  default void insert(String nameHash, EntityInterface entity, String fqn) throws JsonProcessingException {
+  default void insert(String nameHash, EntityInterface entity, String fqn) {
     insert(getTableName(), nameHash, fqn, JsonUtils.pojoToJson(entity));
   }
 
@@ -265,7 +262,7 @@ public interface EntityDAO<T extends EntityInterface> {
     update(getTableName(), getNameHashColumn(), fqn, id.toString(), json);
   }
 
-  default void update(EntityInterface entity) throws JsonProcessingException {
+  default void update(EntityInterface entity) {
     update(
         getTableName(),
         getNameHashColumn(),
@@ -274,7 +271,7 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
-  default void update(String nameHashColumn, EntityInterface entity) throws JsonProcessingException {
+  default void update(String nameHashColumn, EntityInterface entity) {
     update(
         getTableName(),
         nameHashColumn,
@@ -294,11 +291,11 @@ public interface EntityDAO<T extends EntityInterface> {
     return include == Include.DELETED ? " AND deleted = TRUE" : "";
   }
 
-  default T findEntityById(UUID id, Include include) throws IOException {
+  default T findEntityById(UUID id, Include include) {
     return jsonToEntity(findById(getTableName(), id.toString(), getCondition(include)), id.toString());
   }
 
-  default T findEntityById(UUID id) throws IOException {
+  default T findEntityById(UUID id) {
     return findEntityById(id, Include.NON_DELETED);
   }
 
@@ -316,7 +313,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return jsonToEntity(findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
   }
 
-  default T jsonToEntity(String json, String identity) throws IOException {
+  default T jsonToEntity(String json, String identity) {
     Class<T> clz = getEntityClass();
     T entity = json != null ? JsonUtils.readValue(json, clz) : null;
     if (entity == null) {
@@ -324,26 +321,6 @@ public interface EntityDAO<T extends EntityInterface> {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));
     }
     return entity;
-  }
-
-  default EntityReference findEntityReferenceById(UUID id) throws IOException {
-    return findEntityById(id).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceByName(String fqn) {
-    return findEntityByName(fqn).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceById(UUID id, Include include) throws IOException {
-    return findEntityById(id, include).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceByName(String fqn, Include include) {
-    return findEntityByName(fqn, include).getEntityReference();
-  }
-
-  default String findJsonById(UUID id, Include include) {
-    return findById(getTableName(), id.toString(), getCondition(include));
   }
 
   default String findJsonByFqn(String fqn, Include include) {

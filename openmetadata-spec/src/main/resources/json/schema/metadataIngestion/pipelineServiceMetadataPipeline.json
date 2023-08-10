@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PipelineServiceMetadataPipeline",
   "description": "PipelineService Metadata Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "pipelineMetadataConfigType": {
       "description": "Pipeline Source Config Metadata Pipeline type",

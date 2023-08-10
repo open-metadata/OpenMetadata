@@ -46,7 +46,6 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -79,8 +78,6 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
-  public static final Comparator<FailureDetails> compareLastFailedAt =
-      Comparator.comparing(FailureDetails::getLastFailedAt);
 
   //
   // Matchers used for matching two items in a list
@@ -135,7 +132,7 @@ public final class EntityUtil {
   private EntityUtil() {}
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException, IOException {
+  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -147,7 +144,7 @@ public final class EntityUtil {
   }
 
   // TODO delete
-  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
+  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReference(ref, ALL);
@@ -159,7 +156,7 @@ public final class EntityUtil {
   }
 
   // TODO delete
-  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
+  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
@@ -171,8 +168,7 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType)
-      throws IOException {
+  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType) {
     List<EntityReference> refs = toEntityReferences(list, entityType);
     return populateEntityReferences(refs);
   }
@@ -202,8 +198,7 @@ public final class EntityUtil {
   public static TestSummary getTestCaseExecutionSummary(
       CollectionDAO.EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDAO,
       List<String> testCaseFQNs,
-      String extensionName)
-      throws IOException {
+      String extensionName) {
     List<String> testCaseFQNHashes =
         testCaseFQNs.stream().map(FullyQualifiedName::buildHash).collect(Collectors.toList());
 
@@ -213,7 +208,8 @@ public final class EntityUtil {
 
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
     for (String json : jsonList) {
-      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      TestCaseResult testCaseResult;
+      testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
       String status = testCaseResult.getTestCaseStatus().toString();
       testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
     }
@@ -359,7 +355,7 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static <T extends EntityInterface> String getColumnField(Column column, String columnField) {
+  public static String getColumnField(Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = column.getName();
     return columnField == null
@@ -460,7 +456,7 @@ public final class EntityUtil {
     change.getFieldsUpdated().add(fieldChange);
   }
 
-  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) throws IOException {
+  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {
     return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
   }
 
@@ -521,8 +517,7 @@ public final class EntityUtil {
    * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
    * fully populated object such that ElasticSearch index has all the details.
    */
-  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include)
-      throws IOException {
+  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include) {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
@@ -546,7 +541,7 @@ public final class EntityUtil {
       byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
       return Hex.encodeHexString(checksum);
     }
-    return input;
+    return null;
   }
 
   public static boolean isDescriptionTask(TaskType taskType) {

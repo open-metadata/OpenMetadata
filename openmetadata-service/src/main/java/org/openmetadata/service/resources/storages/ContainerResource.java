@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -142,8 +141,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", service);
     if (root != null) {
       filter.addQueryParam("root", root.toString());
@@ -178,8 +176,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -210,8 +207,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -228,8 +224,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateContainer create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateContainer create) {
     Container container = getContainer(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, container);
   }
@@ -254,8 +249,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -272,8 +266,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateContainer create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateContainer create) {
     Container container = getContainer(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, container);
   }
@@ -295,8 +288,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the container", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
-      throws IOException {
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
@@ -318,8 +310,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Parameter(description = "Id of the container", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
           @PathParam("userId")
-          String userId)
-      throws IOException {
+          String userId) {
     return repository
         .deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
         .toResponse();
@@ -340,8 +331,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Container Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Container Id", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -368,8 +358,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               description = "Container version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -390,8 +379,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -412,8 +400,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the Container", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
-      throws IOException {
+      @Parameter(description = "Name of the Container", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -430,12 +418,11 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Container.class)))
       })
   public Response restoreContainer(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Container getContainer(CreateContainer create, String user) throws IOException {
+  private Container getContainer(CreateContainer create, String user) {
     return copy(new Container(), create, user)
         .withService(getEntityReference(Entity.STORAGE_SERVICE, create.getService()))
         .withParent(create.getParent())

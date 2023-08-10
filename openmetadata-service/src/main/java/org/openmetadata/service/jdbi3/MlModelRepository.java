@@ -18,15 +18,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonPatch;
@@ -44,6 +41,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -77,12 +75,22 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
+  public MlModel setFields(MlModel mlModel, Fields fields) {
     mlModel.setService(getContainer(mlModel.getId()));
-    mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
-    mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
-    return mlModel.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
+    mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
+    if (mlModel.getUsageSummary() == null) {
+      mlModel.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
+              : mlModel.getUsageSummary());
+    }
+    return mlModel;
+  }
+
+  @Override
+  public MlModel clearFields(MlModel mlModel, Fields fields) {
+    mlModel.setDashboard(fields.contains("dashboard") ? mlModel.getDashboard() : null);
+    return mlModel.withUsageSummary(fields.contains("usageSummary") ? mlModel.getUsageSummary() : null);
   }
 
   @Override
@@ -118,7 +126,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   /** Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table DAO. */
-  private void validateReferences(List<MlFeature> mlFeatures) throws IOException {
+  private void validateReferences(List<MlFeature> mlFeatures) {
     for (MlFeature feature : mlFeatures) {
       if (!nullOrEmpty(feature.getFeatureSources())) {
         for (MlFeatureSource source : feature.getFeatureSources()) {
@@ -128,7 +136,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
   }
 
-  private void validateMlDataSource(MlFeatureSource source) throws IOException {
+  private void validateMlDataSource(MlFeatureSource source) {
     if (source.getDataSource() != null) {
       Entity.getEntityReferenceById(
           source.getDataSource().getType(), source.getDataSource().getId(), Include.NON_DELETED);
@@ -136,7 +144,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void prepare(MlModel mlModel) throws IOException {
+  public void prepare(MlModel mlModel) {
     populateService(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
@@ -150,7 +158,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void storeEntity(MlModel mlModel, boolean update) throws IOException {
+  public void storeEntity(MlModel mlModel, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference dashboard = mlModel.getDashboard();
     EntityReference service = mlModel.getService();
@@ -176,7 +184,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public MlModel setInheritedFields(MlModel mlModel, Fields fields) throws IOException {
+  public MlModel setInheritedFields(MlModel mlModel, Fields fields) {
     // If mlModel does not have domain, then inherit it from parent MLModel service
     if (fields.contains(FIELD_DOMAIN) && mlModel.getDomain() == null) {
       MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
@@ -235,10 +243,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
-      throws IOException {
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("mlFeatures")) {
-      MlModel mlModel = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+      MlModel mlModel = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL, false);
       MlFeature mlFeature =
           mlModel.getMlFeatures().stream()
               .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
@@ -263,13 +270,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     super.update(task, entityLink, newValue, user);
   }
 
-  private void populateService(MlModel mlModel) throws IOException {
+  private void populateService(MlModel mlModel) {
     MlModelService service = Entity.getEntity(mlModel.getService(), "", Include.NON_DELETED);
     mlModel.setService(service.getEntityReference());
     mlModel.setServiceType(service.getServiceType());
   }
 
-  private EntityReference getDashboard(MlModel mlModel) throws IOException {
+  private EntityReference getDashboard(MlModel mlModel) {
     return mlModel == null ? null : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
   }
 
@@ -287,7 +294,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateAlgorithm(original, updated);
       updateDashboard(original, updated);
       updateMlFeatures(original, updated);
@@ -297,7 +304,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateTarget(original, updated);
     }
 
-    private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+    private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {
       // Updating an algorithm should be flagged for an ML Model
       if (recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm())) {
         // Mark the EntityUpdater version change to major
@@ -305,7 +312,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
     }
 
-    private void updateMlFeatures(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+    private void updateMlFeatures(MlModel origModel, MlModel updatedModel) {
       List<MlFeature> addedList = new ArrayList<>();
       List<MlFeature> deletedList = new ArrayList<>();
       recordListChange(
@@ -317,7 +324,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           mlFeatureMatch);
     }
 
-    private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+    private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) {
       List<MlHyperParameter> addedList = new ArrayList<>();
       List<MlHyperParameter> deletedList = new ArrayList<>();
       recordListChange(
@@ -329,11 +336,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           mlHyperParameterMatch);
     }
 
-    private void updateMlStore(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+    private void updateMlStore(MlModel origModel, MlModel updatedModel) {
       recordChange("mlStore", origModel.getMlStore(), updatedModel.getMlStore(), true);
     }
 
-    private void updateServer(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+    private void updateServer(MlModel origModel, MlModel updatedModel) {
       // Updating the server can break current integrations to the ML services or enable new integrations
       if (recordChange("server", origModel.getServer(), updatedModel.getServer())) {
         // Mark the EntityUpdater version change to major
@@ -341,14 +348,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
     }
 
-    private void updateTarget(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+    private void updateTarget(MlModel origModel, MlModel updatedModel) {
       // Updating the target changes the model response
       if (recordChange("target", origModel.getTarget(), updatedModel.getTarget())) {
         majorVersionChange = true;
       }
     }
 
-    private void updateDashboard(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+    private void updateDashboard(MlModel origModel, MlModel updatedModel) {
       EntityReference origDashboard = origModel.getDashboard();
       EntityReference updatedDashboard = updatedModel.getDashboard();
       if (recordChange("dashboard", origDashboard, updatedDashboard, true, entityReferenceMatch)) {

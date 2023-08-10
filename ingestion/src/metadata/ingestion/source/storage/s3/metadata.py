@@ -45,14 +45,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.ingestion.source.database.datalake.models import (
-    DatalakeTableSchemaWrapper,
-)
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
     S3ContainerDetails,
 )
 from metadata.ingestion.source.storage.storage_service import StorageServiceSource
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
@@ -203,14 +201,12 @@ class S3Source(StorageServiceSource):
         """
         Extract Column related metadata from s3
         """
-        connection_args = self.service_connection.awsConfig
         data_structure_details = fetch_dataframe(
-            config_source=S3Config(),
+            config_source=S3Config(securityConfig=self.service_connection.awsConfig),
             client=self.s3_client,
             file_fqn=DatalakeTableSchemaWrapper(
                 key=sample_key, bucket_name=bucket_name
             ),
-            connection_kwargs=connection_args,
         )
         columns = []
         if isinstance(data_structure_details, DataFrame):

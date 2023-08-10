@@ -15,8 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -43,27 +41,26 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public DataProduct setFields(DataProduct entity, Fields fields) throws IOException {
-    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
-  }
-
-  // TODO to to inheritance for experts
-  private List<EntityReference> getExperts(DataProduct entity) throws IOException {
-    return findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
+  public DataProduct setFields(DataProduct entity, Fields fields) {
+    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : entity.getExperts());
   }
 
   @Override
-  public void prepare(DataProduct entity) throws IOException {
+  public DataProduct clearFields(DataProduct entity, Fields fields) {
+    return entity.withExperts(fields.contains("experts") ? entity.getExperts() : null);
+  }
+
+  @Override
+  public void prepare(DataProduct entity) {
     // Parent, Experts, Owner are already validated
   }
 
   @Override
-  public void storeEntity(DataProduct entity, boolean update) throws IOException {
-    EntityReference domain = entity.getDomain();
+  public void storeEntity(DataProduct entity, boolean update) {
     List<EntityReference> experts = entity.getExperts();
-    entity.withDomain(null).withExperts(null);
+    entity.withExperts(null);
     store(entity, update);
-    entity.withDomain(domain).withExperts(experts);
+    entity.withExperts(experts);
   }
 
   @Override
@@ -97,11 +94,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateExperts();
     }
 
-    private void updateExperts() throws JsonProcessingException {
+    private void updateExperts() {
       List<EntityReference> origExperts = listOrEmpty(original.getExperts());
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(

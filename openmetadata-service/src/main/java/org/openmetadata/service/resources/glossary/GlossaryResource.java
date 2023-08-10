@@ -137,8 +137,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -170,8 +169,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -203,8 +201,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -223,8 +220,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -251,8 +247,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               description = "glossary version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -269,8 +264,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create) {
     Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, glossary);
   }
@@ -295,8 +289,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -313,8 +306,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create) {
     Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, glossary);
   }
@@ -340,8 +332,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -363,8 +354,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -381,8 +371,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class)))
       })
   public Response restoreGlossary(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -393,8 +382,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public String getCsvDocumentation(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
   }
 
@@ -450,7 +438,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
-  private Glossary getGlossary(CreateGlossary create, String user) throws IOException {
+  private Glossary getGlossary(CreateGlossary create, String user) {
     return copy(new Glossary(), create, user)
         .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withTags(create.getTags())
