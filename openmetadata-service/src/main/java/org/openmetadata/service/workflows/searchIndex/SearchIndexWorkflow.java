@@ -41,13 +41,13 @@ import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchDataInsightProcessor;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchEntitiesProcessor;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchIndexSink;
@@ -346,7 +346,7 @@ public class SearchIndexWorkflow implements Runnable {
       return;
     }
 
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     // Delete index
     searchClient.deleteIndex(indexType);
     // Create index

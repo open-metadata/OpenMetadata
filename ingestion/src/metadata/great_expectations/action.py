@@ -102,7 +102,7 @@ class OpenMetadataValidationAction(ValidationAction):
         self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
 
-    def _run(  # pylint: disable=arguments-renamed,unused-argument
+    def _run(  # pylint: disable=unused-argument
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
         validation_result_suite_identifier: Union[
