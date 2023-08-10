@@ -1,13 +1,12 @@
 package org.openmetadata.service.search;
 
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.service.Entity;
-
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.Entity;
 
 @Slf4j
 public class SearchIndexDefinition {
