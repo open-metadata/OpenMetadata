@@ -756,7 +756,7 @@ const AddIngestion = ({
 
   return (
     <div data-testid="add-ingestion-container">
-      <Typography.Title className="font-medium" level={4}>
+      <Typography.Title className="font-normal" level={5}>
         {heading}
       </Typography.Title>
 

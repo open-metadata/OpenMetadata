@@ -156,13 +156,14 @@ const Ingestion: React.FC<IngestionProps> = ({
     fetchIngestionPipelinesPermission();
   }, [ingestionList]);
 
+  // TODO: verify this changes and if possible use Row/Col here
   const getIngestionTab = () => {
     return (
       <div
         className={classNames('mt-4', containerClassName ?? '')}
         data-testid="ingestion-details-container">
         <div className="d-flex">
-          {!isRequiredDetailsAvailable && (
+          {(!isRequiredDetailsAvailable || true) && (
             <div className="text-error font-medium d-flex items-center gap-1">
               <ExclamationCircleOutlined />
               <p>

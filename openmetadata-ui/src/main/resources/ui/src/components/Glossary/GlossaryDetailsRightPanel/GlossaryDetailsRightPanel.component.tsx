@@ -44,7 +44,7 @@ import {
 } from 'utils/EntityVersionUtils';
 import GlossaryReviewers from './GlossaryReviewers';
 
-type props = {
+type Props = {
   isVersionView?: boolean;
   permissions: OperationPermission;
   selectedData: Glossary | GlossaryTerm;
@@ -58,7 +58,7 @@ const GlossaryDetailsRightPanel = ({
   isGlossary,
   onUpdate,
   isVersionView,
-}: props) => {
+}: Props) => {
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
   }, [permissions]);
@@ -197,7 +197,7 @@ const GlossaryDetailsRightPanel = ({
   return (
     <Row gutter={[0, 40]}>
       <Col data-testid="glossary-owner-name" span="24">
-        <div className="d-flex items-center">
+        <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">
             {t('label.owner')}
           </Typography.Text>
