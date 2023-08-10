@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Modal, Space } from 'antd';
+import { Button, Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
@@ -37,15 +37,7 @@ import {
   LineageDetails,
 } from 'generated/type/entityLineage';
 import { withLoader } from 'hoc/withLoader';
-import {
-  debounce,
-  isEmpty,
-  isNil,
-  isUndefined,
-  union,
-  uniqueId,
-  upperCase,
-} from 'lodash';
+import { debounce, isEmpty, isNil, isUndefined, union, uniqueId } from 'lodash';
 import { LoadingState } from 'Models';
 import Qs from 'qs';
 import React, {
@@ -91,7 +83,6 @@ import {
   getDeletedLineagePlaceholder,
   getEdgeStyle,
   getEdgeType,
-  getEntityNodeIcon,
   getLayoutedElements,
   getLineageData,
   getLoadingStatusValue,
@@ -129,6 +120,7 @@ import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from './AddPipeLineModal';
 import CustomControlsComponent from './CustomControls.component';
+import './entity-lineage.style.less';
 import {
   CustomEdgeData,
   CustomElement,
@@ -146,7 +138,6 @@ import {
   SelectedEdge,
   SelectedNode,
 } from './EntityLineage.interface';
-import './entityLineage.style.less';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
 
@@ -1256,7 +1247,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         y: event.clientY - (reactFlowBounds?.top ?? 0),
       });
       const [label, nodeType] = type.split('-');
-      const Icon = getEntityNodeIcon(label);
       const newNode = {
         id: uniqueId(),
         nodeType,
@@ -1280,18 +1270,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 type="link"
                 onClick={() => removeNodeHandler(newNode as Node)}
               />
-              <Space align="center" size={2}>
-                <Icon
-                  className="m-r-xs"
-                  height={16}
-                  name="entity-icon"
-                  width={16}
-                />
-                <NodeSuggestions
-                  entityType={upperCase(label)}
-                  onSelectHandler={setSelectedEntity}
-                />
-              </Space>
+
+              <NodeSuggestions
+                entityType={label}
+                onSelectHandler={setSelectedEntity}
+              />
             </div>
           ),
           removeNodeHandler,

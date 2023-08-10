@@ -77,7 +77,7 @@ const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
   return (
     <div
       className={classNames('entity-lineage sidebar', {
-        open: show || true,
+        open: show,
       })}>
       {entityData.map((d) => (
         <EntityNode

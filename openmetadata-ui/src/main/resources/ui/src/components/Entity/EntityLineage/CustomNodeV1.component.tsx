@@ -25,8 +25,8 @@ import SVGIcons from 'utils/SvgUtils';
 import { getConstraintIcon } from 'utils/TableUtils';
 import './custom-node.less';
 import { getColumnHandle, getHandle } from './CustomNode.utils';
+import './entity-lineage.style.less';
 import { ModifiedColumn } from './EntityLineage.interface';
-import './entityLineage.style.less';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 const CustomNodeV1 = (props: NodeProps) => {

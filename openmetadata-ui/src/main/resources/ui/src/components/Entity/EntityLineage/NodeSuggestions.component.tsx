@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Empty } from 'antd';
-import Input from 'antd/lib/input/Input';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -33,8 +32,10 @@ import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
 import { formatDataResponse } from 'utils/APIUtils';
 import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
+import { getEntityNodeIcon } from 'utils/EntityLineageUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import './node-suggestion.less';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -48,7 +49,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   const { t } = useTranslation();
 
   const [data, setData] = useState<Array<FormattedTableData>>([]);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+
   const [searchValue, setSearchValue] = useState<string>('');
 
   const getSuggestionLabelHeading = (fqn: string, type: string) => {
@@ -74,7 +75,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         '',
         '',
         SearchIndex[
-          entityType as keyof typeof SearchIndex
+          capitalize(entityType) as keyof typeof SearchIndex
         ] as ExploreSearchIndex
       );
       setData(formatDataResponse(data.data.hits.hits));
@@ -103,38 +104,28 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   };
 
   useEffect(() => {
-    setIsOpen(data.length > 0);
-  }, [data]);
-
-  useEffect(() => {
     getSearchResults(searchValue);
   }, []);
 
+  const Icon = getEntityNodeIcon(entityType);
+
   return (
-    <div data-testid="suggestion-node">
-      <Input
-        className="w-full"
+    <div className="p-x-xs items-center d-flex" data-testid="suggestion-node">
+      <Icon className="m-r-xs" height={16} name="entity-icon" width={16} />
+      <Select
+        autoFocus
+        open
+        showSearch
+        className="w-72 lineage-node-searchbox"
         data-testid="node-search-box"
-        placeholder={`${t('label.search-for-type', {
-          type: capitalize(entityType),
-        })}s...`}
-        type="search"
-        value={searchValue}
-        onChange={handleChange}
-      />
-      {data.length > 0 && isOpen ? (
-        <div
-          aria-labelledby="menu-button"
-          aria-orientation="vertical"
-          className="suggestion-node-item m-t-xss"
-          role="menu">
-          {data.map((entity) => (
+        options={(data || []).map((entity) => ({
+          value: entity.fullyQualifiedName,
+          label: (
             <>
               <div
-                className="d-flex items-center p-xs text-sm"
+                className="d-flex items-center text-sm"
                 key={entity.fullyQualifiedName}
                 onClick={() => {
-                  setIsOpen(false);
                   onSelectHandler?.({
                     description: entity.description,
                     displayName: entity.displayName,
@@ -146,7 +137,10 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 }}>
                 <img
                   alt={entity.serviceType}
+                  className="m-r-xs"
+                  height="16px"
                   src={serviceTypeLogo(entity.serviceType as string)}
+                  width="16px"
                 />
                 <div className="flex-1 text-left">
                   {entity.entityType === EntityType.TABLE && (
@@ -160,24 +154,16 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   <p className="w-max-400 truncate">{entity.name}</p>
                 </div>
               </div>
-              <hr className="w-full" />
             </>
-          ))}
-        </div>
-      ) : (
-        searchValue && (
-          <div>
-            <Empty
-              description={t('label.no-data-found')}
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              style={{
-                width: '326px',
-                height: '70px',
-              }}
-            />
-          </div>
-        )
-      )}
+          ),
+        }))}
+        placeholder={`${t('label.search-for-type', {
+          type: capitalize(entityType),
+        })}s...`}
+        onChange={handleChange}
+        onClick={(e) => e.stopPropagation()}
+        onSearch={debouncedOnSearch}
+      />
     </div>
   );
 };
