@@ -763,17 +763,7 @@ class SampleDataSource(
             )
             yield create_search_index
 
-            if search_index.get("sampleData"):
-
-                search_index_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=SearchIndex,
-                    service_name=self.search_service.name.__root__,
-                    search_index_name=search_index["name"],
-                )
-                search_index_entity = self.metadata.get_by_name(
-                    entity=SearchIndex, fqn=search_index_fqn
-                )
+            # TODO: Add search index sample data
 
     def ingest_looker(self) -> Iterable[Entity]:
         """

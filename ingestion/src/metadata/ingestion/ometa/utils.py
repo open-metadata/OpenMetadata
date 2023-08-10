@@ -31,6 +31,7 @@ def format_name(name: str) -> str:
     return re.sub(r"[" + subs + "]", "_", name)
 
 
+# pylint: disable=too-many-return-statements
 def get_entity_type(
     entity: Union[Type[T], str],
 ) -> str:
