@@ -20,11 +20,14 @@ import { DatabaseServiceMetadataPipeline } from 'generated/metadataIngestion/dat
 import { DatabaseServiceProfilerPipeline } from 'generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { DatabaseServiceQueryLineagePipeline } from 'generated/metadataIngestion/databaseServiceQueryLineagePipeline';
 import { DatabaseServiceQueryUsagePipeline } from 'generated/metadataIngestion/databaseServiceQueryUsagePipeline';
+import { DataInsightPipeline } from 'generated/metadataIngestion/dataInsightPipeline';
 import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
 import { MessagingServiceMetadataPipeline } from 'generated/metadataIngestion/messagingServiceMetadataPipeline';
+import { MetadataToElasticSearchPipeline } from 'generated/metadataIngestion/metadataToElasticSearchPipeline';
 import { MlmodelServiceMetadataPipeline } from 'generated/metadataIngestion/mlmodelServiceMetadataPipeline';
 import { PipelineServiceMetadataPipeline } from 'generated/metadataIngestion/pipelineServiceMetadataPipeline';
 import { StorageServiceMetadataPipeline } from 'generated/metadataIngestion/storageServiceMetadataPipeline';
+import { TestSuitePipeline } from 'generated/metadataIngestion/testSuitePipeline';
 import {
   DashboardConnection,
   DashboardService,
@@ -121,4 +124,7 @@ export type IngestionWorkflowData = (
   | DatabaseServiceQueryLineagePipeline
   | DatabaseServiceQueryUsagePipeline
   | DbtPipeline
+  | DataInsightPipeline
+  | MetadataToElasticSearchPipeline
+  | TestSuitePipeline
 ) & { name: string };
