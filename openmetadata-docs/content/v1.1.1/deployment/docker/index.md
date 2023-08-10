@@ -369,7 +369,8 @@ GRANT CREATE ON EXTENSION pgcrypto TO <openmetadata_psql_user>;
 
 In the above command, replace `<openmetadata_psql_user>` with the sql user used by OpenMetadata Application to connect to PostgreSQL Database.
 
-{%\note%}
+{%/note%}
+
 ## Security
 
 Please follow our [Enable Security Guide](/deployment/docker/security) to configure security for your OpenMetadata

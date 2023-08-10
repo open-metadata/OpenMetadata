@@ -234,3 +234,10 @@ Restart the OpenMetadata Application using `./bin/openmetadata.sh start` which w
 
 Please follow our [Enable Security Guide](/deployment/bare-metal/security) to configure security for your OpenMetadata
 installation.
+
+## Next Steps
+
+1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
+   OpenMetadata.
+3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.
