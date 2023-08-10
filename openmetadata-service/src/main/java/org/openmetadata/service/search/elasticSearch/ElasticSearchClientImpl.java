@@ -13,19 +13,13 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
@@ -151,12 +145,18 @@ import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
+import org.openmetadata.service.search.indexes.ContainerIndex;
+import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.ElasticSearchIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
+import org.openmetadata.service.search.indexes.MlModelIndex;
+import org.openmetadata.service.search.indexes.PipelineIndex;
+import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TeamIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -427,15 +427,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 15.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field(FIELD_NAME, 15.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(NAME_KEYWORD, 25.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field("tasks.name", 2.0f)
-            .field("tasks.description", 1.0f)
+            .fields(PipelineIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
@@ -460,15 +452,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 15.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field(FIELD_NAME, 15.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(NAME_KEYWORD, 25.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field("mlFeatures.name", 2.0f)
-            .field("mlFeatures.description", 1.0f)
+            .fields(MlModelIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
@@ -491,17 +475,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 15.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field(FIELD_NAME, 15.0f)
-            .field(FIELD_NAME_NGRAM)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(NAME_KEYWORD, 25.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field(ES_MESSAGE_SCHEMA_FIELD, 2.0f)
-            .field("messageSchema.schemaFields.description", 1.0f)
-            .field("messageSchema.schemaFields.children.name", 2.0f)
+            .fields(TopicIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
@@ -521,16 +495,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 15.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field(FIELD_NAME, 15.0f)
-            .field(FIELD_NAME_NGRAM)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(NAME_KEYWORD, 25.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field("charts.name", 2.0f)
-            .field("charts.description", 1.0f)
+            .fields(DashboardIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
@@ -601,11 +566,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildUserOrTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 3.0f)
-            .field(DISPLAY_NAME_KEYWORD, 5.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field(FIELD_NAME, 2.0f)
-            .field(NAME_KEYWORD, 3.0f)
+            .fields(UserIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
@@ -614,19 +575,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
-            .field(FIELD_NAME, 10.0f)
-            .field(NAME_KEYWORD, 10.0f)
-            .field(DISPLAY_NAME_KEYWORD, 10.0f)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field("synonyms", 5.0f)
-            .field("synonyms.ngram")
-            .field(FIELD_DESCRIPTION, 3.0f)
-            .field("glossary.name", 5.0f)
-            .field("glossary.displayName", 5.0f)
-            .field("glossary.displayName.ngram")
+            .fields(GlossaryTermIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -658,11 +607,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_NAME, 10.0f)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_NAME_NGRAM, 1.0f)
-            .field("classification.name", 1.0f)
-            .field(FIELD_DESCRIPTION, 3.0f)
+            .fields(TagIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -685,20 +630,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 15.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field(FIELD_NAME, 15.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field(DISPLAY_NAME_KEYWORD, 25.0f)
-            .field(NAME_KEYWORD, 25.0f)
-            .field("dataModel.columns.name", 2.0f)
-            .field(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f)
-            .field("dataModel.columns.name.ngram")
-            .field("dataModel.columns.displayName", 2.0f)
-            .field("dataModel.columns.displayName.ngram")
-            .field("dataModel.columns.description", 1.0f)
-            .field("dataModel.columns.children.name", 2.0f)
+            .fields(ContainerIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
@@ -729,12 +661,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
-            .field(QUERY, 10.0f)
-            .field(QUERY_NGRAM)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .fields(QueryIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -756,13 +683,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 3.0f)
-            .field("testSuite.fullyQualifiedName", 10.0f)
-            .field("testSuite.name", 10.0f)
-            .field("testSuite.description", 3.0f)
-            .field("entityLink", 3.0f)
-            .field("entityFQN", 10.0f)
+            .fields(TestCaseIndex.getFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
