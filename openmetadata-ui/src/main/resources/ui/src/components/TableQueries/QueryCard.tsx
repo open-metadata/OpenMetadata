@@ -15,6 +15,7 @@ import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
+import { EntityType } from 'enums/entity.enum';
 import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
@@ -64,6 +65,7 @@ const QueryCard: FC<QueryCardProp> = ({
     query: query.query,
     isLoading: false,
   });
+  const [selectedTable, setSelectedTable] = useState<string[]>();
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
@@ -99,13 +101,19 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const updateSqlQuery = async () => {
     setSqlQuery((pre) => ({ ...pre, isLoading: true }));
-    if (query.query !== sqlQuery.query) {
-      const updatedData = {
-        ...query,
-        query: sqlQuery.query,
-      };
-      await onQueryUpdate(updatedData, 'query');
-    }
+
+    const updatedData = {
+      ...query,
+      query: query.query !== sqlQuery.query ? sqlQuery.query : query.query,
+      queryUsedIn: isUndefined(selectedTable)
+        ? query.queryUsedIn
+        : selectedTable.map((tableId) => ({
+            id: tableId,
+            type: EntityType.TABLE,
+          })),
+    };
+    await onQueryUpdate(updatedData, 'query');
+
     setSqlQuery((pre) => ({ ...pre, isLoading: false }));
     setIsEditMode(false);
   };
@@ -217,7 +225,12 @@ const QueryCard: FC<QueryCardProp> = ({
           </div>
           <Row align="middle" className="p-y-xs border-top">
             <Col className="p-y-0.5 p-l-md" span={16}>
-              <QueryUsedByOtherTable query={query} tableId={tableId} />
+              <QueryUsedByOtherTable
+                isEditMode={isEditMode}
+                query={query}
+                tableId={tableId}
+                onChange={(value) => setSelectedTable(value)}
+              />
             </Col>
             <Col span={8}>
               {isEditMode && (

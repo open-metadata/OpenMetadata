@@ -52,6 +52,8 @@ export type QueryUsedByTable = {
 export interface QueryUsedByOtherTableProps {
   query: Query;
   tableId?: string;
+  isEditMode: boolean;
+  onChange: (value: string[]) => void;
 }
 
 export interface QueryFiltersProps {

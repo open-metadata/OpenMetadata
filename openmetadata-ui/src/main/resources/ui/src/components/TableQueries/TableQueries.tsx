@@ -128,12 +128,12 @@ const TableQueries: FC<TableQueriesProp> = ({
 
     try {
       const res = await patchQueries(selectedQuery.id || '', jsonPatch);
-      setSelectedQuery((pre) => (pre ? { ...pre, [key]: res[key] } : res));
+      setSelectedQuery((pre) => (pre ? { ...pre, ...res } : res));
       setTableQueries((pre) => {
         return {
           ...pre,
           data: pre.data.map((query) =>
-            query.id === updatedQuery.id ? { ...query, [key]: res[key] } : query
+            query.id === updatedQuery.id ? { ...query, ...res } : query
           ),
         };
       });

@@ -11,23 +11,33 @@
  *  limitations under the License.
  */
 import { Popover, Space, Typography } from 'antd';
-import { getTableDetailsPath } from 'constants/constants';
+import { DefaultOptionType } from 'antd/lib/select';
+import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
+import {
+  getTableDetailsPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_MEDIUM,
+} from 'constants/constants';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from 'constants/Query.constant';
-import { slice } from 'lodash';
+import { SearchIndex } from 'enums/search.enum';
+import { filter, slice } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { searchData } from 'rest/miscAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   QueryUsedByOtherTableProps,
   QueryUsedByTable,
 } from '../TableQueries.interface';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 const QueryUsedByOtherTable = ({
   query,
   tableId,
+  isEditMode,
+  onChange,
 }: QueryUsedByOtherTableProps) => {
   const { t } = useTranslation();
   const { topThreeTable, remainingTable } = useMemo(() => {
@@ -51,43 +61,116 @@ const QueryUsedByOtherTable = ({
     return data;
   }, [query]);
 
+  const tableNames = useMemo(
+    () => (
+      <Text>
+        {topThreeTable.length
+          ? topThreeTable.map((table, index) => (
+              <Text className="m-r-xss" key={table.name}>
+                <Link to={getTableDetailsPath(table.fullyQualifiedName || '')}>
+                  {getEntityName(table)}
+                </Link>
+                {topThreeTable.length - 1 !== index && ','}
+              </Text>
+            ))
+          : '--'}
+        {remainingTable.length ? (
+          <>
+            <Text className="m-r-xss">{t('label.and-lowercase')}</Text>
+            <Popover
+              content={
+                <Space direction="vertical">
+                  {remainingTable.map((table) => (
+                    <Link
+                      key={table.id}
+                      to={getTableDetailsPath(table.fullyQualifiedName || '')}>
+                      {getEntityName(table)}
+                    </Link>
+                  ))}
+                </Space>
+              }
+              placement="bottom"
+              trigger="click">
+              <Text className="show-more" data-testid="show-more">
+                {`${remainingTable.length} ${t('label.more-lowercase')}`}
+              </Text>
+            </Popover>
+          </>
+        ) : null}
+      </Text>
+    ),
+    [topThreeTable, remainingTable]
+  );
+
+  const { initialValue, defaultValue } = useMemo(() => {
+    const { queryUsedIn = [] } = query;
+
+    return queryUsedIn.reduce(
+      (acc, curr) => {
+        return {
+          initialValue: [
+            ...acc.initialValue,
+            {
+              label: getEntityName(curr),
+              value: curr.id,
+            },
+          ],
+          defaultValue: [...acc.defaultValue, curr.id],
+        };
+      },
+      { initialValue: [], defaultValue: [] } as {
+        initialValue: DefaultOptionType[];
+        defaultValue: string[];
+      }
+    );
+  }, [query]);
+
+  const fetchTableEntity = async (
+    searchValue = ''
+  ): Promise<DefaultOptionType[]> => {
+    try {
+      const { data } = await searchData(
+        searchValue,
+        INITIAL_PAGING_VALUE,
+        PAGE_SIZE_MEDIUM,
+        '',
+        '',
+        '',
+        SearchIndex.TABLE
+      );
+      const options = data.hits.hits.map((value) => ({
+        label: getEntityName(value._source),
+        value: value._source.id,
+      }));
+
+      return tableId
+        ? filter(options, ({ value }) => value !== tableId)
+        : options;
+    } catch (error) {
+      return [];
+    }
+  };
+
   return (
-    <Paragraph className="m-b-0" data-testid="para-container">
-      <Text>{`${t('message.query-used-by-other-tables')}: `} </Text>
-      {topThreeTable.length
-        ? topThreeTable.map((table, index) => (
-            <Text className="m-r-xss" key={table.name}>
-              <Link to={getTableDetailsPath(table.fullyQualifiedName || '')}>
-                {getEntityName(table)}
-              </Link>
-              {topThreeTable.length - 1 !== index && ','}
-            </Text>
-          ))
-        : '--'}
-      {remainingTable.length ? (
-        <>
-          <Text className="m-r-xss">{t('label.and-lowercase')}</Text>
-          <Popover
-            content={
-              <Space direction="vertical">
-                {remainingTable.map((table) => (
-                  <Link
-                    key={table.id}
-                    to={getTableDetailsPath(table.fullyQualifiedName || '')}>
-                    {getEntityName(table)}
-                  </Link>
-                ))}
-              </Space>
-            }
-            placement="bottom"
-            trigger="click">
-            <Text className="show-more" data-testid="show-more">
-              {`${remainingTable.length} ${t('label.more-lowercase')}`}
-            </Text>
-          </Popover>
-        </>
-      ) : null}
-    </Paragraph>
+    <Space className="m-b-0" data-testid="para-container">
+      <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
+      {isEditMode ? (
+        <AsyncSelect
+          api={fetchTableEntity}
+          className="w-min-15"
+          defaultValue={defaultValue}
+          mode="multiple"
+          options={initialValue}
+          placeholder={t('label.please-select-entity', {
+            entity: t('label.query-used-in'),
+          })}
+          size="small"
+          onChange={onChange}
+        />
+      ) : (
+        tableNames
+      )}
+    </Space>
   );
 };
 
