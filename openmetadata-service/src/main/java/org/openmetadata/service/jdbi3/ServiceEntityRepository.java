@@ -40,6 +40,7 @@ public abstract class ServiceEntityRepository<
       Class<S> serviceConnectionClass,
       ServiceType serviceType) {
     this(collectionPath, service, dao, entityDAO, serviceConnectionClass, "", serviceType);
+    quoteFqn = true;
   }
 
   protected ServiceEntityRepository(
@@ -58,6 +59,14 @@ public abstract class ServiceEntityRepository<
   @Override
   public T setFields(T entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
+    return entity;
+  }
+
+  @Override
+  public T clearFields(T entity, EntityUtil.Fields fields) {
+    if (!fields.contains("pipelines")) {
+      entity.setPipelines(null);
+    }
     return entity;
   }
 

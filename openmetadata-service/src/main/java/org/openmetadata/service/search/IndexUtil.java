@@ -17,7 +17,6 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
@@ -36,14 +35,14 @@ public class IndexUtil {
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
   public static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
 
-  private static final Map<ElasticSearchIndexDefinition.ElasticSearchIndexType, Set<String>>
-      INDEX_TO_MAPPING_FIELDS_MAP = new EnumMap<>(ElasticSearchIndexDefinition.ElasticSearchIndexType.class);
+  private static final Map<SearchIndexDefinition.ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
+      new EnumMap<>(SearchIndexDefinition.ElasticSearchIndexType.class);
 
   static {
     // Populate Entity Type to Index Map
     ENTITY_TYPE_TO_INDEX_MAP = new HashMap<>();
-    for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
-        ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
+    for (SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
+        SearchIndexDefinition.ElasticSearchIndexType.values()) {
       ENTITY_TYPE_TO_INDEX_MAP.put(elasticSearchIndexType.entityType, elasticSearchIndexType.indexName);
     }
   }
@@ -74,7 +73,7 @@ public class IndexUtil {
    */
   @SneakyThrows
   public static void populateEsFieldsForIndexes(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, IndexMappingLanguage lang) {
+      SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, IndexMappingLanguage lang) {
     if (!isDataInsightIndex(elasticSearchIndexType.entityType)) {
       String indexData = getIndexMapping(elasticSearchIndexType, lang.value());
       JSONObject object = new JSONObject(indexData).getJSONObject(MAPPINGS_KEY).getJSONObject(PROPERTIES_KEY);
@@ -84,39 +83,39 @@ public class IndexUtil {
     }
   }
 
-  public static ElasticSearchIndexDefinition.ElasticSearchIndexType getIndexMappingByEntityType(String type) {
+  public static SearchIndexDefinition.ElasticSearchIndexType getIndexMappingByEntityType(String type) {
     if (type.equalsIgnoreCase(Entity.TABLE)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.USER)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TEAM)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TAG)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
+      return SearchIndexDefinition.ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }
@@ -132,10 +131,10 @@ public class IndexUtil {
     return fields;
   }
 
-  public static String getIndexMapping(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
+  public static String getIndexMapping(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang)
+      throws IOException {
     try (InputStream in =
-        ElasticSearchIndexDefinition.class.getResourceAsStream(
+        SearchIndexDefinition.class.getResourceAsStream(
             String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()))) {
       assert in != null;
       return new String(in.readAllBytes());

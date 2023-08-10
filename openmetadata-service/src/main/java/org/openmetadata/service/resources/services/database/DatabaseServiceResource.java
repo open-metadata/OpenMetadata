@@ -55,7 +55,6 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
@@ -218,8 +217,7 @@ public class DatabaseServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    DatabaseService databaseService =
-        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    DatabaseService databaseService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, databaseService);
   }
 
@@ -427,7 +425,7 @@ public class DatabaseServiceResource
           boolean hardDelete,
       @Parameter(description = "Name of the database service", schema = @Schema(type = "string")) @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

@@ -20,8 +20,8 @@ import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataIns
 import static org.openmetadata.service.Entity.EVENT_SUBSCRIPTION;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.events.scheduled.ReportsHandler.SEARCH_CLIENT;
+import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.SubscriptionUtil.getNumberOfDays;
 
@@ -50,6 +50,8 @@ import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
@@ -58,7 +60,6 @@ import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -108,7 +109,10 @@ public class DataInsightsReportJob implements Job {
         if (!CommonUtil.nullOrEmpty(email)) {
           emails.add(email);
         } else {
-          team.getUsers().forEach(user -> emails.add(SubjectCache.getUserById(user.getId()).getEmail()));
+          for (EntityReference userRef : team.getUsers()) {
+            User user = Entity.getEntity(Entity.USER, userRef.getId(), "", Include.NON_DELETED);
+            emails.add(user.getEmail());
+          }
         }
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =

@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
@@ -61,7 +60,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
     if (entityLink.getFieldName().equals("charts")) {
-      Dashboard dashboard = getByName(null, entityLink.getEntityFQN(), getFields("charts,tags"), Include.ALL);
+      Dashboard dashboard = getByName(null, entityLink.getEntityFQN(), getFields("charts,tags"), Include.ALL, false);
       EntityReference chart =
           dashboard.getCharts().stream()
               .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
@@ -85,14 +84,23 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public Dashboard setFields(Dashboard dashboard, Fields fields) {
     dashboard.setService(getContainer(dashboard.getId()));
-    dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
         fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
-    return dashboard.withUsageSummary(
-        fields.contains("usageSummary")
-            ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
-            : null);
+    if (dashboard.getUsageSummary() == null) {
+      dashboard.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
+              : null);
+    }
+    return dashboard;
+  }
+
+  @Override
+  public Dashboard clearFields(Dashboard dashboard, Fields fields) {
+    dashboard.setCharts(fields.contains("charts") ? dashboard.getCharts() : null);
+    dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
+    return dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
   @Override
@@ -173,10 +181,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
-    if (dashboard == null) {
-      return Collections.emptyList();
-    }
-    return findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
+    return dashboard == null
+        ? Collections.emptyList()
+        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
   }
 
   /** Handles entity updated from PUT and POST operation. */

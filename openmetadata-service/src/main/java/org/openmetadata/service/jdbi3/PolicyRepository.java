@@ -39,7 +39,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
-import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -52,8 +51,14 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public Policy setFields(Policy policy, Fields fields) {
-    policy.setTeams(fields.contains("teams") ? getTeams(policy) : null);
-    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : null);
+    policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
+    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
+  }
+
+  @Override
+  public Policy clearFields(Policy policy, Fields fields) {
+    policy.setTeams(fields.contains("teams") ? policy.getTeams() : null);
+    return policy.withRoles(fields.contains("roles") ? policy.getRoles() : null);
   }
 
   /* Get all the teams that use this policy */
@@ -74,9 +79,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   public void storeEntity(Policy policy, boolean update) {
     store(policy, update);
-    if (update) {
-      PolicyCache.invalidatePolicy(policy.getId());
-    }
   }
 
   @Override
@@ -95,12 +97,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));
     }
-  }
-
-  @Override
-  protected void cleanup(Policy policy) {
-    super.cleanup(policy);
-    PolicyCache.invalidatePolicy(policy.getId());
   }
 
   public void validateRules(Policy policy) {
