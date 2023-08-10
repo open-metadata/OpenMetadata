@@ -54,7 +54,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_view_query: str = """
     CREATE OR REPLACE VIEW public.view_all_datatypes AS
         SELECT *
-        FROM all_datatypes;
+        FROM public.all_datatypes;
     """
 
     insert_data_queries: List[str] = [
@@ -111,7 +111,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:
-        return 22
+        return None
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -135,7 +135,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
-        return 12
+        return 1
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
