@@ -86,11 +86,11 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     ]
 
     drop_table_query: str = """
-        DROP TABLE IF EXISTS all_datatypes;
+        DROP TABLE IF EXISTS test_cli_e2e.all_datatypes;
     """
 
     drop_view_query: str = """
-        DROP VIEW  IF EXISTS view_all_datatypes;
+        DROP VIEW  IF EXISTS test_cli_e2e.view_all_datatypes;
     """
 
     @staticmethod
