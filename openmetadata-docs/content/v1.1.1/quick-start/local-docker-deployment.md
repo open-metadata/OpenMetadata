@@ -204,7 +204,7 @@ You can access Airflow at [http://localhost:8080](http://localhost:8080). Use th
 ## Go on a tour and start discovering the power of metadata & collaboration
 
 {% image
-src="/images/v1.1.0/quickstart/tour.png"
+src="/images/v1.1.1/quickstart/tour.png"
 alt="tour" /%}
 
 ## Cleanup

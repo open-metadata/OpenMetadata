@@ -24,7 +24,7 @@ It is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or greater
-- Amazon RDS (PostgreSQL) engine version between 12 and 14.6
+- Amazon RDS (PostgreSQL) engine version between 12 or greater
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
 
 {%note noteType="Tip"%}

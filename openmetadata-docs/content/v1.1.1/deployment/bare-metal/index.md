@@ -53,12 +53,12 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 ## Elasticsearch (version 7.X)
 
-OpenMetadata supports ElasticSearch version upto 7.13. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
+OpenMetadata supports ElasticSearch version upto 7.17. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
 [Installing ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
 
 We do not support ElasticSearch 8.x yet.
 
-Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.13/setup.html).
+Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setup.html).
 
 If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version upto 1.3. For more information on AWS OpenSearch Service, please visit the offical docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
@@ -67,7 +67,7 @@ If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Se
 OpenMetadata performs metadata ingestion using the Ingestion Framework. Learn more about how to deploy and manage
 the ingestion workflows [here](/deployment/ingestion).
 
-{% partial file="/v1.1.0/deployment/minimum-sizing-requirements.md" /%}
+{% partial file="/v1.1.1/deployment/minimum-sizing-requirements.md" /%}
 
 # Procedure
 
@@ -147,7 +147,7 @@ We support
 
 - Amazon RDS (MySQL) engine version 8 or greater
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.1 or Amazon OpenSearch engine version upto 1.3
-- Amazon RDS (PostgreSQL) engine version between 12 and 14.6
+- Amazon RDS (PostgreSQL) engine version between 12 and 15.X
 
 Note:-
     When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,
@@ -228,7 +228,7 @@ Restart the OpenMetadata Application using `./bin/openmetadata.sh start` which w
 
 # PostgreSQL Issue permission denied to create extension "pgcrypto"
 
-{% partial file="/v1.1.0/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
+{% partial file="/v1.1.1/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
 
 ## Enable Security
 

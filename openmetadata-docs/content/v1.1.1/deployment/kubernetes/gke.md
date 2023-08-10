@@ -28,8 +28,8 @@ All the code snippets in this section assume the `default` namespace for kuberne
 It is recommended to use GCP [Cloud SQL](https://cloud.google.com/sql/) services for Database and [Elastic Cloud GCP](https://www.elastic.co/partners/google-cloud) for Search Engine for Production.
 
 We support -
-- Cloud SQL (MySQL) engine version 8 and greater
-- Cloud SQL (postgreSQL) engine version between 12 and 14
+- Cloud SQL (MySQL) engine version 8 or greater
+- Cloud SQL (postgreSQL) engine version between 12 or greater
 - ElasticSearch Engine version 7.16 to 7.17
 
 We recommend -
