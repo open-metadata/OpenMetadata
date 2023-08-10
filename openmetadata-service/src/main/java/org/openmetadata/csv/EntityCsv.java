@@ -341,15 +341,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     entity.setUpdatedAt(System.currentTimeMillis());
     EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
     Response.Status responseStatus;
+    String violations = ValidatorUtil.validate(entity);
+    if (violations != null) {
+      // JSON schema based validation failed for the entity
+      importFailure(resultsPrinter, violations, csvRecord);
+      return;
+    }
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         repository.prepareInternal(entity);
-        String violations = ValidatorUtil.validate(entity);
-        if (violations != null) {
-          // JSON schema based validation failed for the entity
-          importFailure(resultsPrinter, violations, csvRecord);
-          return;
-        }
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
       } catch (Exception ex) {

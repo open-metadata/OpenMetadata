@@ -30,9 +30,7 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public Report setFields(Report report, Fields fields) {
-    if (report.getService() == null) {
-      report.setService(getService(report)); // service is a default field
-    }
+    report.setService(getService(report)); // service is a default field
     if (report.getUsageSummary() == null) {
       report.withUsageSummary(
           fields.contains("usageSummary")

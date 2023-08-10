@@ -681,6 +681,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : entity.getDomain());
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
+    entity.setChildren(fields.contains("children") ? getChildren(entity) : entity.getChildren());
+    entity.setExperts(fields.contains("experts") ? getExperts(entity) : entity.getExperts());
+    entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : entity.getReviewers());
     setFields(entity, fields);
     return entity;
   }
@@ -692,6 +695,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
+    entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
+    entity.setExperts(fields.contains("experts") ? entity.getExperts() : null);
+    entity.setReviewers(fields.contains("reviewers") ? entity.getReviewers() : null);
     clearFields(entity, fields);
     return entity;
   }
@@ -964,11 +970,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
     // Remove entity from the cache
-    CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entityInterface.getId()));
-    CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entityInterface.getFullyQualifiedName()));
+    invalidate(entityInterface);
 
     // Finally, delete the entity
     dao.delete(id);
+  }
+
+  private void invalidate(T entity) {
+    CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
+    CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
   }
 
   @Transaction
@@ -1034,8 +1044,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (update) {
       dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
       LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+      invalidate(entity);
     } else {
       dao.insert(entity, entity.getFullyQualifiedName());
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -1172,8 +1181,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public Object getExtension(T entity) {
-    if (!supportsExtension || entity.getExtension() != null) {
-      return entity.getExtension();
+    if (!supportsExtension) {
+      return null;
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
     List<ExtensionRecord> records =
@@ -1260,7 +1269,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<TagLabel> getTags(T entity) {
-    return !supportsTags || !nullOrEmpty(entity.getTags()) ? entity.getTags() : getTags(entity.getFullyQualifiedName());
+    return !supportsTags ? null : getTags(entity.getFullyQualifiedName());
   }
 
   protected List<TagLabel> getTags(String fqn) {
@@ -1268,11 +1277,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getFollowers(T entity) {
-    if (!supportsFollower || entity == null) {
-      return Collections.emptyList();
-    }
-    return !nullOrEmpty(entity.getFollowers())
-        ? entity.getFollowers()
+    return !supportsFollower || entity == null
+        ? Collections.emptyList()
         : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
   }
 
@@ -1500,22 +1506,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityReference getOwner(T entity) {
-    return !supportsOwner || entity.getOwner() != null
-        ? entity.getOwner()
-        : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
+    return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
   public EntityReference getDomain(T entity) {
-    return entity.getDomain() != null
-        ? entity.getDomain()
-        : getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
+    return getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
   }
 
   private List<EntityReference> getDataProducts(T entity) {
-    if (!supportsDataProducts || nullOrEmpty(entity.getDataProducts())) {
-      return entity.getDataProducts();
-    }
-    return findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
+    return !supportsDataProducts ? null : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
+  }
+
+  protected EntityReference getParent(T entity) {
+    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, entityType, false);
+  }
+
+  protected List<EntityReference> getChildren(T entity) {
+    return findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType);
+  }
+
+  protected List<EntityReference> getReviewers(T entity) {
+    return findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER);
+  }
+
+  protected List<EntityReference> getExperts(T entity) {
+    return findTo(entity.getId(), entityType, Relationship.EXPERT, Entity.USER);
   }
 
   public EntityReference getOwner(EntityReference ref) {

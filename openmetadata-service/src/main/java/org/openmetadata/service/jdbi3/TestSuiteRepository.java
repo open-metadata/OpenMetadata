@@ -1,7 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
@@ -53,9 +52,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private TestSummary getTestSummary(TestSuite entity) {
-    if (entity.getSummary() != null) {
-      return entity.getSummary();
-    }
     List<EntityReference> testCases = getTestCases(entity);
     List<String> testCaseFQNs =
         testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
@@ -70,9 +66,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) {
-    return !nullOrEmpty(entity.getTests())
-        ? entity.getTests()
-        : findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    return findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }
 
   @Override
