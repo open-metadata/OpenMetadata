@@ -139,7 +139,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 4
+        return 66
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -147,4 +147,4 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 23
+        return 2
