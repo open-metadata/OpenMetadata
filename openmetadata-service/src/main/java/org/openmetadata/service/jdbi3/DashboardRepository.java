@@ -83,16 +83,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public Dashboard setFields(Dashboard dashboard, Fields fields) {
-    if (dashboard.getService() == null) {
-      dashboard.setService(getContainer(dashboard.getId()));
-    }
-    if (dashboard.getCharts() == null) {
-      dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
-    }
-    if (dashboard.getDataModels() == null) {
-      dashboard.setDataModels(
-          fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
-    }
+    dashboard.setService(getContainer(dashboard.getId()));
+    dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
+    dashboard.setDataModels(
+        fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")
@@ -187,10 +181,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
-    if (dashboard == null) {
-      return Collections.emptyList();
-    }
-    return findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
+    return dashboard == null
+        ? Collections.emptyList()
+        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
   }
 
   /** Handles entity updated from PUT and POST operation. */

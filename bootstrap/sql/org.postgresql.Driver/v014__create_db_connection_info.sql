@@ -32,7 +32,8 @@ where serviceType in ('Snowflake') and json#>'{connection,config,includeTempTabl
 
 update dbservice_entity
 set json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"hive"')
-where json#>>'{connection,config,scheme}' in ('impala', 'impala4');
+where json#>>'{connection,config,scheme}' in ('impala', 'impala4')
+and serviceType = 'Hive';
 
 -- remove the dataModel references from Data Models
 UPDATE dashboard_data_model_entity SET json = json #- '{dataModels}';

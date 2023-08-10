@@ -19,7 +19,7 @@ from metadata.generated.schema.security.credentials.githubCredentials import (
 )
 from metadata.ingestion.source.dashboard.looker.models import Includes, ViewName
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
-from metadata.readers.github import GitHubReader
+from metadata.readers.file.github import GitHubReader
 
 
 class TestLookMLGitHubReader(TestCase):
