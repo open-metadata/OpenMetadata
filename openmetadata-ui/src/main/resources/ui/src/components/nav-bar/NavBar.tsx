@@ -71,7 +71,7 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import { WhatsNewModal } from '../Modals/WhatsNewModal';
+import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import './nav-bar.less';

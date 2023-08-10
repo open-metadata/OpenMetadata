@@ -20,8 +20,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { Transi18next } from 'utils/CommonUtils';
-import { WhatsNewModal } from '..';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
+import WhatsNewModal from '../WhatsNewModal';
 import '../WhatsNewModal.styles.less';
 import { getReleaseVersionExpiry } from '../WhatsNewModal.util';
 

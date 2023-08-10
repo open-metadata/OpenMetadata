@@ -22,9 +22,9 @@ const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
     <div className="feature-carousal-container">
       <Carousel autoplay dots autoplaySpeed={3000} easing="ease-in-out">
         {data.map((d) => (
-          <div key={uniqueId()}>
+          <div className="p-x-xss" key={uniqueId()}>
             <p className="text-sm font-medium mb-2">{d.title}</p>
-            <div className="text-sm ">
+            <div className="text-sm m-b-xs">
               <RichTextEditorPreviewer
                 enableSeeMoreVariant={false}
                 markdown={d.description}

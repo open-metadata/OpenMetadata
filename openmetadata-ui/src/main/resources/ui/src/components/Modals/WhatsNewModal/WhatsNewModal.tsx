@@ -28,7 +28,7 @@ import { getReleaseVersionExpiry } from './WhatsNewModal.util';
 
 const cookieStorage = new CookieStorage();
 
-export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
+const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   header,
   onCancel,
   visible,
@@ -62,7 +62,6 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
     <Modal
       centered
       destroyOnClose
-      open
       className="whats-new-modal"
       closeIcon={
         <CloseIcon dataTestId="closeWhatsNew" handleCancel={handleCancel} />
@@ -70,6 +69,7 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
       data-testid="whats-new-dialog"
       footer={null}
       maskClosable={false}
+      open={visible}
       title={
         <Typography.Text strong data-testid="whats-new-header">
           {header}
@@ -161,3 +161,5 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
     </Modal>
   );
 };
+
+export default WhatsNewModal;
