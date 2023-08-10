@@ -52,7 +52,7 @@ openmetadata:
       keepAliveTimeoutSecs: 600
       batchSize: 10
       auth:
-        enabled: false
+        enabled: true
         username: <AMAZON_OPENSEARCH_USERNAME>
         password:
           secretRef: elasticsearch-secrets

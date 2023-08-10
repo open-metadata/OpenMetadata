@@ -53,7 +53,7 @@ openmetadata:
       keepAliveTimeoutSecs: 600
       batchSize: 10
       auth:
-        enabled: false
+        enabled: true
         username: <ELASTIC_CLOUD_USERNAME>
         password:
           secretRef: elasticsearch-secrets
