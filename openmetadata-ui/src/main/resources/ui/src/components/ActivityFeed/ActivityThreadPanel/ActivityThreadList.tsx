@@ -33,7 +33,7 @@ import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedListSeparator from '../FeedListSeprator/FeedListSeparator';
+import FeedListSeparator from '../FeedListSeparator/FeedListSeparator';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';

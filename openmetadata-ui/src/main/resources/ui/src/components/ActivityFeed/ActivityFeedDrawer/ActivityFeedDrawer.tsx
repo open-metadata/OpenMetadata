@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Drawer, Row } from 'antd';
-import Col from 'antd/es/grid/col';
+import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { ThreadType } from 'generated/api/feed/createThread';

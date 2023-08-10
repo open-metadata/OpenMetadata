@@ -33,7 +33,7 @@ describe('Test FeedListSeperator component', () => {
     );
     const relativeDayText = await findByText(container, /today/i);
     const separator = await findByTestId(container, 'separator');
-    const relativeDay = await findByTestId(container, 'relativeday');
+    const relativeDay = await findByTestId(container, 'relative-day');
 
     expect(relativeDayText).toBeInTheDocument();
     expect(separator).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('Test FeedListSeperator component', () => {
     );
 
     const separator = await findByTestId(container, 'separator');
-    const relativeDay = queryByTestId(container, 'relativeday');
+    const relativeDay = queryByTestId(container, 'relative-day');
 
     expect(separator).toBeInTheDocument();
     expect(relativeDay).not.toBeInTheDocument();

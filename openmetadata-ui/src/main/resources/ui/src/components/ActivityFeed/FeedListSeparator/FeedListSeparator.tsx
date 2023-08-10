@@ -15,15 +15,19 @@ import { Divider } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
 import { FeedListSeparatorProp } from '../ActivityFeedList/ActivityFeedList.interface';
-import './feed-list-seprator.less';
+import './feed-list-separator.less';
 
 const FeedListSeparator: FC<FeedListSeparatorProp> = ({
   className,
   relativeDay,
 }) => {
   return (
-    <Divider className={classNames('feed-list-seprator', className)}>
-      {relativeDay}
+    <Divider
+      className={classNames('feed-list-separator', className)}
+      data-testid="separator">
+      {relativeDay ? (
+        <span data-testid="relative-day">{relativeDay}</span>
+      ) : null}
     </Divider>
   );
 };

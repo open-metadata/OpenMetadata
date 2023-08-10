@@ -83,7 +83,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
           </Tooltip>
         ) : null}
         {hideCloseIcon ? null : (
-          <CloseIcon data-testid="closeDrawer" handleCancel={onCancel} />
+          <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />
         )}
       </div>
     </header>
