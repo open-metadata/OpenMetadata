@@ -49,7 +49,11 @@ from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
     S3ContainerDetails,
 )
-from metadata.ingestion.source.storage.storage_service import StorageServiceSource
+from metadata.ingestion.source.storage.storage_service import (
+    KEY_SEPARATOR,
+    OPENMETADATA_TEMPLATE_FILE_NAME,
+    StorageServiceSource,
+)
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_container
@@ -58,8 +62,6 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 S3_CLIENT_ROOT_RESPONSE = "Contents"
-OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
-S3_KEY_SEPARATOR = "/"
 
 
 class S3Metric(Enum):
@@ -107,7 +109,7 @@ class S3Source(StorageServiceSource):
                 if metadata_config:
                     for metadata_entry in metadata_config.entries:
                         logger.info(
-                            f"Extracting metadata from path {metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)} "
+                            f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                             f"and generating structured container"
                         )
                         structured_container: Optional[
@@ -163,14 +165,18 @@ class S3Source(StorageServiceSource):
         if sample_key:
 
             columns = self._get_columns(
-                bucket_name=bucket_name,
+                container_name=bucket_name,
                 sample_key=sample_key,
                 metadata_entry=metadata_entry,
+                config_source=S3Config(
+                    securityConfig=self.service_connection.awsConfig
+                ),
+                client=self.s3_client,
             )
             if columns:
                 return S3ContainerDetails(
-                    name=metadata_entry.dataPath.strip(S3_KEY_SEPARATOR),
-                    prefix=f"{S3_KEY_SEPARATOR}{metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)}",
+                    name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+                    prefix=f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}",
                     creation_date=bucket_response.creation_date.isoformat(),
                     number_of_objects=self._fetch_metric(
                         bucket_name=bucket_name, metric=S3Metric.NUMBER_OF_OBJECTS
@@ -185,35 +191,6 @@ class S3Source(StorageServiceSource):
                     parent=parent,
                 )
         return None
-
-    def _get_columns(
-        self, bucket_name: str, sample_key: str, metadata_entry: MetadataEntry
-    ) -> Optional[List[Column]]:
-        """
-        Get the columns from the file and partition information
-        """
-        extracted_cols = self.extract_column_definitions(bucket_name, sample_key)
-        return (metadata_entry.partitionColumns or []) + (extracted_cols or [])
-
-    def extract_column_definitions(
-        self, bucket_name: str, sample_key: str
-    ) -> List[Column]:
-        """
-        Extract Column related metadata from s3
-        """
-        data_structure_details = fetch_dataframe(
-            config_source=S3Config(securityConfig=self.service_connection.awsConfig),
-            client=self.s3_client,
-            file_fqn=DatalakeTableSchemaWrapper(
-                key=sample_key, bucket_name=bucket_name
-            ),
-        )
-        columns = []
-        if isinstance(data_structure_details, DataFrame):
-            columns = DatalakeSource.get_columns(data_structure_details)
-        if isinstance(data_structure_details, list) and data_structure_details:
-            columns = DatalakeSource.get_columns(data_structure_details[0])
-        return columns
 
     def fetch_buckets(self) -> List[S3BucketResponse]:
         results: List[S3BucketResponse] = []
@@ -310,7 +287,7 @@ class S3Source(StorageServiceSource):
     ) -> S3ContainerDetails:
         return S3ContainerDetails(
             name=bucket_response.name,
-            prefix=S3_KEY_SEPARATOR,
+            prefix=KEY_SEPARATOR,
             creation_date=bucket_response.creation_date.isoformat(),
             number_of_objects=self._fetch_metric(
                 bucket_name=bucket_response.name, metric=S3Metric.NUMBER_OF_OBJECTS
@@ -321,17 +298,6 @@ class S3Source(StorageServiceSource):
             file_formats=[],  # TODO should we fetch some random files by extension here? Would it be valuable info?
             data_model=None,
         )
-
-    @staticmethod
-    def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:
-        """
-        Return a prefix if we have structure data to read
-        """
-        result = f"{metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)}"
-        if not metadata_entry.structureFormat:
-            logger.warning(f"Ignoring un-structured metadata entry {result}")
-            return None
-        return result
 
     def _get_sample_file_path(
         self, bucket_name: str, metadata_entry: MetadataEntry
