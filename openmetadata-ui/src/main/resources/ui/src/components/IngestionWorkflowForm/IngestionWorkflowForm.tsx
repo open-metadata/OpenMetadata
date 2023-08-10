@@ -18,7 +18,6 @@ import classNames from 'classnames';
 import BooleanFieldTemplate from 'components/JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import IngestionArrayFieldTemplate from 'components/JSONSchemaTemplate/IngestionArrayFieldTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from 'components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
@@ -87,7 +86,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       schema={schema}
       showErrorList={false}
       templates={{
-        ArrayFieldTemplate: IngestionArrayFieldTemplate,
         DescriptionFieldTemplate: DescriptionFieldTemplate,
         FieldErrorTemplate: FieldErrorTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
