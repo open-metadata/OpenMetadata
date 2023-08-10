@@ -55,15 +55,15 @@ describe('Test NodeSuggestions Component', () => {
       );
 
       const suggestionNode = await screen.findByTestId('suggestion-node');
-      const searchBox = await screen.findByTestId('node-search-box');
+      const searchInput = await screen.findByRole('combobox');
 
       await act(async () => {
-        fireEvent.change(searchBox, { target: { value: searchValue } });
+        fireEvent.change(searchInput, { target: { value: searchValue } });
       });
 
       expect(suggestionNode).toBeInTheDocument();
-      expect(searchBox).toBeInTheDocument();
-      expect(searchBox).toHaveValue(searchValue);
+      expect(searchInput).toBeInTheDocument();
+      expect(searchInput).toHaveValue(searchValue);
 
       act(() => {
         jest.runAllTimers();
