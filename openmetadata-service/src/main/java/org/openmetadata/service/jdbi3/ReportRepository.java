@@ -31,8 +31,18 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public Report setFields(Report report, Fields fields) {
     report.setService(getService(report)); // service is a default field
-    return report.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId()) : null);
+    if (report.getUsageSummary() == null) {
+      report.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId())
+              : report.getUsageSummary());
+    }
+    return report;
+  }
+
+  @Override
+  public Report clearFields(Report report, Fields fields) {
+    return report.withUsageSummary(fields.contains("usageSummary") ? report.getUsageSummary() : null);
   }
 
   @Override

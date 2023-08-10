@@ -164,17 +164,11 @@ public final class JsonUtils {
   }
 
   public static <T> T convertValue(Object object, Class<T> clz) {
-    if (object == null) {
-      return null;
-    }
-    return OBJECT_MAPPER.convertValue(object, clz);
+    return object == null ? null : OBJECT_MAPPER.convertValue(object, clz);
   }
 
   public static <T> T convertValue(Object object, TypeReference<T> toValueTypeRef) {
-    if (object == null) {
-      return null;
-    }
-    return OBJECT_MAPPER.convertValue(object, toValueTypeRef);
+    return object == null ? null : OBJECT_MAPPER.convertValue(object, toValueTypeRef);
   }
 
   /** Applies the patch on original object and returns the updated object */

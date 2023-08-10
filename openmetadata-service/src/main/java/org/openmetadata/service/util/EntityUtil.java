@@ -46,7 +46,6 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -79,8 +78,6 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
-  public static final Comparator<FailureDetails> compareLastFailedAt =
-      Comparator.comparing(FailureDetails::getLastFailedAt);
 
   //
   // Matchers used for matching two items in a list
@@ -211,7 +208,8 @@ public final class EntityUtil {
 
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
     for (String json : jsonList) {
-      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      TestCaseResult testCaseResult;
+      testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
       String status = testCaseResult.getTestCaseStatus().toString();
       testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
     }
@@ -357,7 +355,7 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static <T extends EntityInterface> String getColumnField(Column column, String columnField) {
+  public static String getColumnField(Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = column.getName();
     return columnField == null
@@ -543,7 +541,7 @@ public final class EntityUtil {
       byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
       return Hex.encodeHexString(checksum);
     }
-    return input;
+    return null;
   }
 
   public static boolean isDescriptionTask(TaskType taskType) {

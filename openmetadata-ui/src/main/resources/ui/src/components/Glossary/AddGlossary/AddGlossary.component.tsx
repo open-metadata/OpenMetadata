@@ -135,8 +135,9 @@ const AddGlossary = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
+        className: 'glossary-richtext-editor',
         initialValue: '',
-        height: '170px',
+        height: 'auto',
         readonly: !allowAccess,
       },
     },
@@ -225,7 +226,7 @@ const AddGlossary = ({
               level={5}>
               {header}
             </Typography.Title>
-            <div data-testid="add-glossary">
+            <div className="add-glossary" data-testid="add-glossary">
               <Form form={form} layout="vertical" onFinish={handleSave}>
                 {generateFormFields(formFields)}
                 <div className="m-t-xss">

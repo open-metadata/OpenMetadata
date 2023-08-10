@@ -39,7 +39,6 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.storage.s3.connection import S3ObjectStoreClient
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -103,7 +102,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.connection: S3ObjectStoreClient = get_connection(self.service_connection)
+        self.connection = get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection

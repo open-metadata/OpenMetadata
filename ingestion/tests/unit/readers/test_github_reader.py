@@ -17,7 +17,7 @@ from unittest import TestCase
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
-from metadata.readers.github import GitHubReader
+from metadata.readers.file.github import GitHubReader
 
 
 class TestGitHubReader(TestCase):

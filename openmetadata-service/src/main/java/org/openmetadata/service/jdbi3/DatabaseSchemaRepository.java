@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -73,18 +74,21 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private List<EntityReference> getTables(DatabaseSchema schema) {
-    if (schema == null) {
-      return Collections.emptyList();
-    }
-    return findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
+    return schema == null
+        ? Collections.emptyList()
+        : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
   }
 
   public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
-    schema.setOwner(fields.contains(FIELD_OWNER) ? getOwner(schema) : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     return schema.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
+  }
+
+  public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
+    schema.setTables(fields.contains("tables") ? schema.getTables() : null);
+    return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
   }
 
   private void setDefaultFields(DatabaseSchema schema) {

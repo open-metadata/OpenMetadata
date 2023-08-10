@@ -27,6 +27,11 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
+  public WebAnalyticEvent clearFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
+    return entity;
+  }
+
+  @Override
   public void prepare(WebAnalyticEvent entity) {
     /* Nothing to do */
   }

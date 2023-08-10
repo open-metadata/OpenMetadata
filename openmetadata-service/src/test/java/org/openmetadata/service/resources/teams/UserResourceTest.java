@@ -61,7 +61,6 @@ import static org.openmetadata.service.util.TestUtils.validateAlphabeticalOrderi
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -564,7 +563,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void patch_makeAdmin_as_nonAdmin_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_makeAdmin_as_nonAdmin_user_401(TestInfo test) throws HttpResponseException {
     // Ensure a non admin user can't make another user admin
     User user =
         createEntity(
@@ -575,7 +574,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void patch_teamAddition_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_teamAddition_200_ok(TestInfo test) throws HttpResponseException {
     // Admin can add user to a team by patching `teams` attribute
     EntityReference team1 =
         TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
