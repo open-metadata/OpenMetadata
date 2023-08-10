@@ -60,7 +60,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
-from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
