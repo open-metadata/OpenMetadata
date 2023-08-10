@@ -197,6 +197,7 @@ import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
+import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
@@ -292,6 +293,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference MLFLOW_REFERENCE;
 
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
+  public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
+  public static EntityReference OPENSEARCH_SEARCH_SERVICE_REFERENCE;
 
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
@@ -415,6 +418,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
     new StorageServiceResourceTest().setupStorageService(test);
+    new SearchServiceResourceTest().setupSearchService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
