@@ -31,12 +31,12 @@ import { noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getUpdatedMessageSchema } from 'utils/TopicVersionUtils';
 import { ChangeDescription } from '../../generated/entity/data/topic';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-  getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
 import { TopicVersionProp } from './TopicVersion.interface';
 import TopicVersionSchemaFields from './TopicVersionSchema';

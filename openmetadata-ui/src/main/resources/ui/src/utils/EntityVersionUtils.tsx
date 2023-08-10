@@ -27,9 +27,8 @@ import {
 } from 'diff';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Field, MessageSchemaObject, Topic } from 'generated/entity/data/topic';
+import { Field } from 'generated/entity/data/topic';
 import { EntityReference } from 'generated/entity/type';
-import { DataTypeTopic } from 'generated/type/schema';
 import { t } from 'i18next';
 import {
   EntityDiffProps,
@@ -77,15 +76,9 @@ export const getChangedEntityNewValue = (diffObject?: EntityDiffProps) =>
   diffObject?.updated?.newValue;
 
 export const getChangeColumnNameFromDiffValue = (name?: string) => {
-  const nameWithoutInternalQuotes = name?.replaceAll(/(?!^")(?!"$)"/g, '');
+  const nameWithoutInternalQuotes = name?.replaceAll(/"/g, '');
 
   return nameWithoutInternalQuotes?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
-};
-
-export const getChangeSchemaFieldsName = (name: string) => {
-  const formattedName = name.replaceAll(/"/g, '');
-
-  return getChangeColumnNameFromDiffValue(formattedName);
 };
 
 export const isEndsWithField = (checkWith: string, name?: string) => {
@@ -442,73 +435,6 @@ export function getEntityTagDiff<
   return entityList ?? [];
 }
 
-function getNewSchemaFromSchemaDiff(newField: Array<Field>): Array<Field> {
-  return newField.map((field) => {
-    let children: Array<Field> | undefined;
-    if (!isEmpty(field.children)) {
-      children = getNewSchemaFromSchemaDiff(field.children as Array<Field>);
-    }
-
-    return {
-      ...field,
-      tags: field.tags?.map((tag) => ({ ...tag, removed: true })),
-      description: getTextDiff(field.description ?? '', ''),
-      dataType: getTextDiff(field.dataType ?? '', '') as DataTypeTopic,
-      dataTypeDisplay: getTextDiff(field.dataTypeDisplay ?? '', ''),
-      name: getTextDiff(field.name, ''),
-      children,
-    };
-  });
-}
-
-export function getSchemasDiff(
-  schemaFieldsDiff: EntityDiffProps,
-  schemaFields: Array<Field> = [],
-  clonedMessageSchema?: MessageSchemaObject
-) {
-  let newFields: Array<Field>;
-  if (schemaFieldsDiff.added) {
-    const newField: Array<Field> = JSON.parse(
-      schemaFieldsDiff.added?.newValue ?? '[]'
-    );
-    newField.forEach((field) => {
-      const formatSchemaFieldsData = (
-        arr: Array<Field>,
-        updateAll?: boolean
-      ) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, field.name) || updateAll) {
-            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', i.description ?? '');
-            i.dataType = getTextDiff('', i.dataType ?? '') as DataTypeTopic;
-            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', i.name);
-            if (!isEmpty(i.children)) {
-              formatSchemaFieldsData(i?.children as Array<Field>, true);
-            }
-          } else {
-            formatSchemaFieldsData(i?.children as Array<Field>);
-          }
-        });
-      };
-      formatSchemaFieldsData(schemaFields ?? []);
-    });
-  }
-  if (schemaFieldsDiff.deleted) {
-    const newField: Array<Field> = JSON.parse(
-      schemaFieldsDiff.deleted?.oldValue ?? '[]'
-    );
-    newFields = getNewSchemaFromSchemaDiff(newField);
-  } else {
-    return { ...clonedMessageSchema, schemaFields };
-  }
-
-  return {
-    ...clonedMessageSchema,
-    schemaFields: [...newFields, ...(schemaFields ?? [])],
-  };
-}
-
 export const getOwnerInfo = (owner: EntityReference, ownerLabel: ReactNode) => {
   const isTeamType = owner.type === 'team';
 
@@ -591,9 +517,9 @@ export const getCommonExtraInfoForVersionDetails = (
   return extraInfo;
 };
 
-function getNewColumnFromColDiff<A extends TableColumn | ContainerColumn>(
-  newCol: Array<A>
-): Array<A> {
+export function getNewColumnFromColDiff<
+  A extends TableColumn | ContainerColumn
+>(newCol: Array<A>): Array<A> {
   return newCol.map((col) => {
     let children: Array<A> | undefined;
     if (!isEmpty(col.children)) {
@@ -611,54 +537,70 @@ function getNewColumnFromColDiff<A extends TableColumn | ContainerColumn>(
   });
 }
 
+function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
+  columnsDiff: EntityDiffProps,
+  colList: A[] = []
+) {
+  const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
+
+  newCol.forEach((col) => {
+    const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, col.name) || updateAll) {
+          i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+          i.description = getTextDiff('', i.description ?? '');
+          i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+          i.name = getTextDiff('', i.name);
+          if (!isEmpty(i.children)) {
+            formatColumnData(i?.children as Array<A>, true);
+          }
+        } else {
+          formatColumnData(i?.children as Array<A>);
+        }
+      });
+    };
+    formatColumnData(colList);
+  });
+}
+
+export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
+  columnsDiff: EntityDiffProps,
+  colList: A[] = [],
+  changedEntity = ''
+) {
+  const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
+  const newColumns = getNewColumnFromColDiff(newCol);
+
+  const insertNewColumn = (
+    changedEntityField: string,
+    colArray: Array<TableColumn | ContainerColumn>
+  ) => {
+    const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
+    if (isEmpty(changedEntityField)) {
+      const nonExistingColumns = newColumns.filter((newColumn) =>
+        isUndefined(colArray.find((col) => col.name === newColumn.name))
+      );
+      colArray.unshift(...nonExistingColumns);
+    } else {
+      const parentField = fieldsArray.shift();
+      const arr = colArray.find((col) => col.name === parentField)?.children;
+
+      insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
+    }
+  };
+  insertNewColumn(changedEntity, colList);
+}
+
 export function getColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
   colList: A[] = [],
   changedEntity = ''
 ) {
   if (columnsDiff.added) {
-    const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
-    newCol.forEach((col) => {
-      const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, col.name) || updateAll) {
-            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', i.description ?? '');
-            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', i.name);
-            if (!isEmpty(i.children)) {
-              formatColumnData(i?.children as Array<A>, true);
-            }
-          } else {
-            formatColumnData(i?.children as Array<A>);
-          }
-        });
-      };
-      formatColumnData(colList);
-    });
+    createAddedColumnsDiff(columnsDiff, colList);
   }
   if (columnsDiff.deleted) {
-    const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
-    const newColumns = getNewColumnFromColDiff(newCol);
-
-    const insertNewColumn = (
-      changedEntityField: string,
-      colArray: Array<TableColumn | ContainerColumn>
-    ) => {
-      const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
-      if (isEmpty(changedEntityField)) {
-        const nonExistingColumns = newColumns.filter((newColumn) =>
-          isUndefined(colArray.find((col) => col.name === newColumn.name))
-        );
-        colArray.unshift(...nonExistingColumns);
-      } else {
-        const parentField = fieldsArray.shift();
-        const arr = colArray.find((col) => col.name === parentField)?.children;
-
-        insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
-      }
-    };
-    insertNewColumn(changedEntity, colList);
+    addDeletedColumnsDiff(columnsDiff, colList, changedEntity);
   }
 
   return uniqBy(colList, 'name');
@@ -742,76 +684,6 @@ export function getColumnsDataWithVersionChanges<
 
   return newColumnsList ?? [];
 }
-
-export const getUpdatedMessageSchema = (
-  currentVersionData: VersionData,
-  changeDescription: ChangeDescription
-): Topic['messageSchema'] => {
-  let clonedMessageSchema = cloneDeep(
-    (currentVersionData as Topic).messageSchema
-  );
-  const schemaFields = clonedMessageSchema?.schemaFields;
-  const schemaFieldsDiff = getAllDiffByFieldName(
-    EntityField.SCHEMA_FIELDS,
-    changeDescription
-  );
-
-  const changedSchemaFields = getAllChangedEntityNames(schemaFieldsDiff);
-
-  changedSchemaFields?.forEach((changedSchemaField) => {
-    const schemaFieldDiff = getDiffByFieldName(
-      changedSchemaField,
-      changeDescription
-    );
-    const changedSchemaFieldName = getChangeColumnNameFromDiffValue(
-      getChangedEntityName(schemaFieldDiff)
-    );
-
-    if (
-      isEndsWithField(
-        EntityField.DESCRIPTION,
-        getChangedEntityName(schemaFieldDiff)
-      )
-    ) {
-      const formattedSchema = getEntityDescriptionDiff(
-        schemaFieldDiff,
-        changedSchemaFieldName,
-        schemaFields
-      );
-
-      clonedMessageSchema = {
-        ...clonedMessageSchema,
-        schemaFields: formattedSchema,
-      };
-    } else if (
-      isEndsWithField(EntityField.TAGS, getChangedEntityName(schemaFieldDiff))
-    ) {
-      const formattedSchema = getEntityTagDiff(
-        schemaFieldDiff,
-        changedSchemaFieldName,
-        schemaFields
-      );
-
-      clonedMessageSchema = {
-        ...clonedMessageSchema,
-        schemaFields: formattedSchema,
-      };
-    } else {
-      const schemaFieldsDiff = getDiffByFieldName(
-        EntityField.SCHEMA_FIELDS,
-        changeDescription
-      );
-
-      clonedMessageSchema = getSchemasDiff(
-        schemaFieldsDiff,
-        schemaFields,
-        clonedMessageSchema
-      );
-    }
-  });
-
-  return clonedMessageSchema;
-};
 
 export const getUpdatedExtensionDiffFields = (
   entityDetails: EntityDetails,
