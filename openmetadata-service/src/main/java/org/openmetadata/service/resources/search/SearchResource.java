@@ -187,7 +187,6 @@ public class SearchResource {
   @Operation(
       operationId = "searchEntitiesWithSourceUrl",
       summary = "Search entities",
-      description = "Search entities using sourceUrl. Use query params `from` and `size` for pagination.",
       responses = {
         @ApiResponse(
             responseCode = "200",
