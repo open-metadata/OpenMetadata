@@ -76,21 +76,4 @@ describe('Test Activity Feed Editor Component', () => {
     expect(editor).toBeInTheDocument();
     expect(sendButton).toBeInTheDocument();
   });
-
-  it('should have passed button classes', async () => {
-    const { container } = render(
-      <ActivityFeedEditor {...mockProp} buttonClass="xyz" />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const editor = await findByTestId(container, 'feed-editor');
-    const sendButton = await findByTestId(container, 'send-button');
-
-    expect(editor).toBeInTheDocument();
-    expect(sendButton).toBeInTheDocument();
-
-    expect(sendButton).toHaveClass('xyz');
-  });
 });

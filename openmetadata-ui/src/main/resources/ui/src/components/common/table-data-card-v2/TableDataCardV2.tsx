@@ -15,7 +15,7 @@ import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
-import { isString, startCase, uniqueId } from 'lodash';
+import { isString, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -172,7 +172,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           )}
         </Row>
 
-        <div className="tw-pt-3">
+        <div className="p-t-sm">
           <TableDataCardBody
             description={source.description || ''}
             extraInfo={otherDetails}
@@ -180,10 +180,10 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           />
         </div>
         {matches && matches.length > 0 ? (
-          <div className="tw-pt-2" data-testid="matches-stats">
+          <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="tw-ml-2" key={uniqueId()}>
+              <span className="m-t-xs" key={i}>
                 {`${data.value} in ${startCase(data.key)}${
                   i !== matches.length - 1 ? ',' : ''
                 }`}

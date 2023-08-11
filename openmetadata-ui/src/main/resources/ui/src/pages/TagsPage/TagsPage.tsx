@@ -28,6 +28,7 @@ import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
 import { ReactComponent as IconDisableTag } from 'assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -80,11 +81,7 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Paging } from '../../generated/type/paging';
-import {
-  getActiveCatClass,
-  getCountBadge,
-  getEntityDeleteMessage,
-} from '../../utils/CommonUtils';
+import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -654,47 +651,51 @@ const TagsPage = () => {
     return (
       <LeftPanelCard id="tags">
         <TagsLeftPanelSkeleton loading={isLoading}>
-          <div className="tw-py-2" data-testid="data-summary-container">
-            <div className="tw-px-3">
-              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+          <div className="p-y-xs" data-testid="data-summary-container">
+            <Space
+              className="w-full p-x-sm m-b-sm"
+              direction="vertical"
+              size={12}>
+              <Typography.Text className="text-sm font-semibold">
                 {t('label.classification-plural')}
-              </h6>
-              <div className="tw-mb-3">
-                <Tooltip
-                  title={
-                    !createClassificationPermission &&
-                    t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    block
-                    className=" text-primary"
-                    data-testid="add-classification"
-                    disabled={!createClassificationPermission}
-                    icon={<PlusIcon className="anticon" />}
-                    onClick={() => {
-                      setIsAddingClassification((prevState) => !prevState);
-                    }}>
-                    <span>
-                      {t('label.add-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </span>
-                  </Button>
-                </Tooltip>
-              </div>
-            </div>
+              </Typography.Text>
+              <Tooltip
+                title={
+                  !createClassificationPermission &&
+                  t('message.no-permission-for-action')
+                }>
+                <Button
+                  block
+                  className=" text-primary"
+                  data-testid="add-classification"
+                  disabled={!createClassificationPermission}
+                  icon={<PlusIcon className="anticon" />}
+                  onClick={() => {
+                    setIsAddingClassification((prevState) => !prevState);
+                  }}>
+                  <span>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </span>
+                </Button>
+              </Tooltip>
+            </Space>
 
             {classifications.map((category: Classification) => (
               <div
-                className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
-                  category.name,
-                  currentClassification?.name
-                )}`}
+                className={classNames(
+                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  {
+                    activeCategory:
+                      currentClassification?.name === category.name,
+                  }
+                )}
                 data-testid="side-panel-classification"
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
                 <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom tag-category label-category self-center"
+                  className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
                   data-testid="tag-name"
                   ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category)}
@@ -809,13 +810,13 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div className="tw-mt-1" data-testid="usage">
-                <span className="text-grey-muted tw-mr-1">
+              <Space align="center" data-testid="usage" size={4}>
+                <span className="text-grey-muted">
                   {`${t('label.usage')}:`}
                 </span>
                 {record.usageCount ? (
                   <Link
-                    className="link-text tw-align-middle"
+                    className="link-text align-middle"
                     data-testid="usage-count"
                     to={getUsageCountLink(record.fullyQualifiedName ?? '')}>
                     {record.usageCount}
@@ -823,7 +824,7 @@ const TagsPage = () => {
                 ) : (
                   <span className="text-grey-muted">{t('label.not-used')}</span>
                 )}
-              </div>
+              </Space>
             </>
           ),
         },
@@ -1036,7 +1037,7 @@ const TagsPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <Typography.Paragraph className="tw-text-center tw-m-auto">
+        <Typography.Paragraph className="text-center m-auto">
           {error}
         </Typography.Paragraph>
       </ErrorPlaceHolder>

@@ -29,7 +29,7 @@ const SigninPage = withSuspenseFallback(
   React.lazy(() => import('pages/login'))
 );
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('pages/page-not-found'))
+  React.lazy(() => import('pages/page-not-found/PageNotFound'))
 );
 
 const ForgotPassword = withSuspenseFallback(
