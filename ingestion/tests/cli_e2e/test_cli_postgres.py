@@ -17,8 +17,6 @@ from typing import List
 import pytest
 import yaml
 
-from metadata.utils.constants import UTF_8
-
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 

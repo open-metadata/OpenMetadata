@@ -38,7 +38,7 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = utils_logger()
 
-INCOMPATIBLE_POSTGRES_VERSION = "13.0"
+OLD_POSTGRES_VERSION = "13.0"
 
 
 @reflection.cache
@@ -382,7 +382,7 @@ def get_postgres_time_column_name(engine) -> str:
     time_column_name = "total_exec_time"
     postgres_version = get_postgres_version(engine)
     if postgres_version and version.parse(postgres_version) < version.parse(
-        INCOMPATIBLE_POSTGRES_VERSION
+        OLD_POSTGRES_VERSION
     ):
         time_column_name = "total_time"
     return time_column_name
