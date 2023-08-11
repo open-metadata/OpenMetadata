@@ -107,6 +107,10 @@ const QueryUsedByOtherTable = ({
 
     return queryUsedIn.reduce(
       (acc, curr) => {
+        if (curr.id === tableId) {
+          return acc;
+        }
+
         return {
           initialValue: [
             ...acc.initialValue,

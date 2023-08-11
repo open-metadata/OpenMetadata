@@ -112,7 +112,9 @@ const QueryCard: FC<QueryCardProp> = ({
             type: EntityType.TABLE,
           })),
     };
-    await onQueryUpdate(updatedData, 'query');
+    if (query.query !== sqlQuery.query || !isUndefined(selectedTable)) {
+      await onQueryUpdate(updatedData, 'query');
+    }
 
     setSqlQuery((pre) => ({ ...pre, isLoading: false }));
     setIsEditMode(false);
@@ -131,13 +133,13 @@ const QueryCard: FC<QueryCardProp> = ({
     } else {
       history.push({
         search: Qs.stringify({ ...searchFilter, query: query.id }),
-        pathname: getQueryPath(datasetFQN, query.id || ''),
+        pathname: getQueryPath(datasetFQN, query.id ?? ''),
       });
     }
   };
 
   const handleCardClick = () => {
-    onQuerySelection && onQuerySelection(query);
+    onQuerySelection?.(query);
   };
 
   return (
