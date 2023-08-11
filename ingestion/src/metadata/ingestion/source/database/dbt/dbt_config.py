@@ -13,11 +13,13 @@ Hosts the singledispatch to get DBT files
 """
 import json
 import traceback
+from collections import defaultdict
 from functools import singledispatch
 from typing import Optional, Tuple
 
 import requests
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
 )
@@ -50,7 +52,7 @@ logger = ometa_logger()
 
 class DBTConfigException(Exception):
     """
-    Raise when encountering errors while extacting dbt files
+    Raise when encountering errors while extracting dbt files
     """
 
 
@@ -91,7 +93,7 @@ def _(config: DbtLocalConfig):
             )
             with open(config.dbtCatalogFilePath, "r", encoding="utf-8") as catalog:
                 dbt_catalog = catalog.read()
-        return DbtFiles(
+        yield DbtFiles(
             dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
             dbt_manifest=json.loads(dbt_manifest),
             dbt_run_results=json.loads(dbt_run_results) if dbt_run_results else None,
@@ -129,7 +131,7 @@ def _(config: DbtHttpConfig):
             )
         if not dbt_manifest:
             raise DBTConfigException("Manifest file not found in file server")
-        return DbtFiles(
+        yield DbtFiles(
             dbt_catalog=dbt_catalog.json() if dbt_catalog else None,
             dbt_manifest=dbt_manifest.json(),
             dbt_run_results=dbt_run_results.json() if dbt_run_results else None,
@@ -206,7 +208,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         if not dbt_manifest:
             raise DBTConfigException("Manifest file not found in DBT Cloud")
 
-        return DbtFiles(
+        yield DbtFiles(
             dbt_catalog=dbt_catalog,
             dbt_manifest=dbt_manifest,
             dbt_run_results=dbt_run_results,
@@ -219,15 +221,11 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
 
 
 @get_dbt_details.register
-def _(config: DbtS3Config):
-    dbt_catalog = None
-    dbt_manifest = None
-    dbt_run_results = None
-    try:
+def _(config: DbtS3Config):  # pylint: disable=too-many-locals, too-many-branches
+    try:  # pylint: disable=too-many-nested-blocks
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
-            AWSClient,
-        )
+
+        blob_grouped_by_directory = defaultdict(list)
 
         aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
 
@@ -240,40 +238,66 @@ def _(config: DbtS3Config):
                 obj_list = bucket.objects.filter(Prefix=prefix)
             else:
                 obj_list = bucket.objects.all()
+
+            # group the objs by the dir
             for bucket_object in obj_list:
-                if DBT_MANIFEST_FILE_NAME in bucket_object.key:
-                    logger.debug(f"{DBT_MANIFEST_FILE_NAME} found")
-                    dbt_manifest = bucket_object.get()["Body"].read().decode()
-                if DBT_CATALOG_FILE_NAME in bucket_object.key:
-                    logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
-                    dbt_catalog = bucket_object.get()["Body"].read().decode()
-                if DBT_RUN_RESULTS_FILE_NAME in bucket_object.key:
-                    logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
-                    dbt_run_results = bucket_object.get()["Body"].read().decode()
-        if not dbt_manifest:
-            raise DBTConfigException("Manifest file not found in s3")
-        return DbtFiles(
-            dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
-            dbt_manifest=json.loads(dbt_manifest),
-            dbt_run_results=json.loads(dbt_run_results) if dbt_run_results else None,
-        )
-    except DBTConfigException as exc:
-        raise exc
+                subdirectory = (
+                    bucket_object.key.rsplit("/", 1)[0]
+                    if "/" in bucket_object.key
+                    else ""
+                )
+                blob_grouped_by_directory[subdirectory].append(bucket_object)
+
+            for key, blobs in blob_grouped_by_directory.items():
+                dbt_catalog = None
+                dbt_manifest = None
+                dbt_run_results = None
+                try:
+                    for bucket_object in blobs:
+                        if DBT_MANIFEST_FILE_NAME in bucket_object.key:
+                            logger.debug(
+                                f"{DBT_MANIFEST_FILE_NAME} found in {bucket_object.key}"
+                            )
+                            dbt_manifest = bucket_object.get()["Body"].read().decode()
+                        if DBT_CATALOG_FILE_NAME in bucket_object.key:
+                            logger.debug(
+                                f"{DBT_CATALOG_FILE_NAME} found in {bucket_object.key}"
+                            )
+                            dbt_catalog = bucket_object.get()["Body"].read().decode()
+                        if DBT_RUN_RESULTS_FILE_NAME in bucket_object.key:
+                            logger.debug(
+                                f"{DBT_RUN_RESULTS_FILE_NAME} found in {bucket_object.key}"
+                            )
+                            dbt_run_results = (
+                                bucket_object.get()["Body"].read().decode()
+                            )
+                    if not dbt_manifest:
+                        raise DBTConfigException(
+                            f"Manifest file not found in s3 dir: {key}"
+                        )
+                    yield DbtFiles(
+                        dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
+                        dbt_manifest=json.loads(dbt_manifest),
+                        dbt_run_results=json.loads(dbt_run_results)
+                        if dbt_run_results
+                        else None,
+                    )
+                except DBTConfigException as exc:
+                    logger.warning(exc)
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise DBTConfigException(f"Error fetching dbt files from s3: {exc}")
 
 
 @get_dbt_details.register
-def _(config: DbtGcsConfig):
-    dbt_catalog = None
-    dbt_manifest = None
-    dbt_run_results = None
-    try:
+def _(config: DbtGcsConfig):  # pylint: disable=too-many-locals, too-many-branches
+    try:  # pylint: disable=too-many-nested-blocks
         bucket_name, prefix = get_dbt_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
         set_google_credentials(gcp_credentials=config.dbtSecurityConfig)
+
+        blob_grouped_by_directory = defaultdict(list)
         client = storage.Client()
         if not bucket_name:
             buckets = client.list_buckets()
@@ -284,36 +308,48 @@ def _(config: DbtGcsConfig):
                 obj_list = client.list_blobs(bucket.name, prefix=prefix)
             else:
                 obj_list = client.list_blobs(bucket.name)
+
+            # group the objs by the dir
             for blob in obj_list:
-                if DBT_MANIFEST_FILE_NAME in blob.name:
-                    logger.debug(f"{DBT_MANIFEST_FILE_NAME} found")
-                    dbt_manifest = blob.download_as_string().decode()
-                if DBT_CATALOG_FILE_NAME in blob.name:
-                    logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
-                    dbt_catalog = blob.download_as_string().decode()
-                if DBT_RUN_RESULTS_FILE_NAME in blob.name:
-                    logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
-                    dbt_run_results = blob.download_as_string().decode()
-        if not dbt_manifest:
-            raise DBTConfigException("Manifest file not found in gcs")
-        return DbtFiles(
-            dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
-            dbt_manifest=json.loads(dbt_manifest),
-            dbt_run_results=json.loads(dbt_run_results) if dbt_run_results else None,
-        )
-    except DBTConfigException as exc:
-        raise exc
+                subdirectory = blob.name.rsplit("/", 1)[0] if "/" in blob.name else ""
+                blob_grouped_by_directory[subdirectory].append(blob)
+
+            for key, blobs in blob_grouped_by_directory.items():
+                dbt_catalog = None
+                dbt_manifest = None
+                dbt_run_results = None
+                try:
+                    for blob in blobs:
+                        if DBT_MANIFEST_FILE_NAME in blob.name:
+                            logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
+                            dbt_manifest = blob.download_as_string().decode()
+                        if DBT_CATALOG_FILE_NAME in blob.name:
+                            logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
+                            dbt_catalog = blob.download_as_string().decode()
+                        if DBT_RUN_RESULTS_FILE_NAME in blob.name:
+                            logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found in {key}")
+                            dbt_run_results = blob.download_as_string().decode()
+                    if not dbt_manifest:
+                        raise DBTConfigException(
+                            f"Manifest file not found in gcs dir: {key}"
+                        )
+                    yield DbtFiles(
+                        dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
+                        dbt_manifest=json.loads(dbt_manifest),
+                        dbt_run_results=json.loads(dbt_run_results)
+                        if dbt_run_results
+                        else None,
+                    )
+                except DBTConfigException as exc:
+                    logger.warning(exc)
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise DBTConfigException(f"Error fetching dbt files from gcs: {exc}")
 
 
 @get_dbt_details.register
-def _(config: DbtAzureConfig):
-    dbt_catalog = None
-    dbt_manifest = None
-    dbt_run_results = None
-    try:
+def _(config: DbtAzureConfig):  # pylint: disable=too-many-locals, too-many-branches
+    try:  # pylint: disable=too-many-nested-blocks
         bucket_name, prefix = get_dbt_prefix_config(config)
         from azure.identity import (  # pylint: disable=import-outside-toplevel
             ClientSecretCredential,
@@ -330,6 +366,7 @@ def _(config: DbtAzureConfig):
                 config.dbtSecurityConfig.clientSecret.get_secret_value(),
             ),
         )
+        blob_grouped_by_directory = defaultdict(list)
 
         if not bucket_name:
             container_dicts = azure_client.list_containers()
@@ -345,37 +382,59 @@ def _(config: DbtAzureConfig):
                 blob_list = container_client.list_blobs(name_starts_with=prefix)
             else:
                 blob_list = container_client.list_blobs()
+
+            # group the blobs by the dir
             for blob in blob_list:
-                if DBT_MANIFEST_FILE_NAME in blob.name:
-                    logger.debug(f"{DBT_MANIFEST_FILE_NAME} found")
-                    dbt_manifest = (
-                        container_client.download_blob(blob.name)
-                        .readall()
-                        .decode("utf-8")
+                subdirectory = blob.name.rsplit("/", 1)[0] if "/" in blob.name else ""
+                blob_grouped_by_directory[subdirectory].append(blob)
+
+            for key, blobs in blob_grouped_by_directory.items():
+                dbt_catalog = None
+                dbt_manifest = None
+                dbt_run_results = None
+                try:
+                    for blob in blobs:
+                        if DBT_MANIFEST_FILE_NAME in blob.name:
+                            logger.debug(
+                                f"{DBT_MANIFEST_FILE_NAME} found in {blob.name}"
+                            )
+                            dbt_manifest = (
+                                container_client.download_blob(blob.name)
+                                .readall()
+                                .decode("utf-8")
+                            )
+                        if DBT_CATALOG_FILE_NAME in blob.name:
+                            logger.debug(
+                                f"{DBT_CATALOG_FILE_NAME} found in {blob.name}"
+                            )
+                            dbt_catalog = (
+                                container_client.download_blob(blob.name)
+                                .readall()
+                                .decode("utf-8")
+                            )
+                        if DBT_RUN_RESULTS_FILE_NAME in blob.name:
+                            logger.debug(
+                                f"{DBT_RUN_RESULTS_FILE_NAME} found in {blob.name}"
+                            )
+                            dbt_run_results = (
+                                container_client.download_blob(blob.name)
+                                .readall()
+                                .decode("utf-8")
+                            )
+                    if not dbt_manifest:
+                        raise DBTConfigException(
+                            f"Manifest file not found in azure dir: {key}"
+                        )
+                    yield DbtFiles(
+                        dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
+                        dbt_manifest=json.loads(dbt_manifest),
+                        dbt_run_results=json.loads(dbt_run_results)
+                        if dbt_run_results
+                        else None,
                     )
-                if DBT_CATALOG_FILE_NAME in blob.name:
-                    logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
-                    dbt_catalog = (
-                        container_client.download_blob(blob.name)
-                        .readall()
-                        .decode("utf-8")
-                    )
-                if DBT_RUN_RESULTS_FILE_NAME in blob.name:
-                    logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
-                    dbt_run_results = (
-                        container_client.download_blob(blob.name)
-                        .readall()
-                        .decode("utf-8")
-                    )
-        if not dbt_manifest:
-            raise DBTConfigException("Manifest file not found in Azure")
-        return DbtFiles(
-            dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
-            dbt_manifest=json.loads(dbt_manifest),
-            dbt_run_results=json.loads(dbt_run_results) if dbt_run_results else None,
-        )
-    except DBTConfigException as exc:
-        raise exc
+                except Exception as exc:
+                    logger.warning(exc)
+
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise DBTConfigException(f"Error fetching dbt files from Azure: {exc}")
