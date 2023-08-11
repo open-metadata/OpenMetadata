@@ -55,7 +55,8 @@ public class BotTokenCache {
     public String load(@CheckForNull String botName) throws IOException {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(null, botName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
+          userRepository.getByName(
+              null, botName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED, true);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       if (authenticationMechanism != null) {
         JWTAuthMechanism jwtAuthMechanism =

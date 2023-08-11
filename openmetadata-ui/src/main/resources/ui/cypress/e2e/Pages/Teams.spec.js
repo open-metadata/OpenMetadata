@@ -357,12 +357,25 @@ describe('Teams flow should work properly', () => {
       `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
       'getSelectedTeam'
     );
+    interceptURL(
+      'GET',
+      `/api/v1/teams?limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      'getTeamParent'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/teams?fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      'getChildrenCount'
+    );
 
     cy.get('table').should('contain', TEAM_DETAILS.name).click();
 
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
+    verifyResponseStatusCode('@getTeamParent', 200);
+    verifyResponseStatusCode('@getChildrenCount', 200);
+
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedname);

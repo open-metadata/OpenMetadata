@@ -22,7 +22,6 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -80,6 +79,7 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -92,6 +92,7 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -119,7 +120,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.resources.tags.TagLabelCache;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -190,6 +191,9 @@ public interface CollectionDAO {
   MlModelDAO mlModelDAO();
 
   @CreateSqlObject
+  SearchIndexDAO searchIndexDAO();
+
+  @CreateSqlObject
   GlossaryDAO glossaryDAO();
 
   @CreateSqlObject
@@ -233,6 +237,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   StorageServiceDAO storageServiceDAO();
+
+  @CreateSqlObject
+  SearchServiceDAO searchServiceDAO();
 
   @CreateSqlObject
   ContainerDAO containerDAO();
@@ -530,6 +537,40 @@ public interface CollectionDAO {
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
         @Define("sqlCondition") String mysqlCond);
+  }
+
+  interface SearchServiceDAO extends EntityDAO<SearchService> {
+    @Override
+    default String getTableName() {
+      return "search_service_entity";
+    }
+
+    @Override
+    default Class<SearchService> getEntityClass() {
+      return SearchService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface SearchIndexDAO extends EntityDAO<SearchIndex> {
+    @Override
+    default String getTableName() {
+      return "search_index_entity";
+    }
+
+    @Override
+    default Class<SearchIndex> getEntityClass() {
+      return SearchIndex.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
   }
 
   interface EntityExtensionDAO {
@@ -2047,7 +2088,7 @@ public interface CollectionDAO {
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
-      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getDescription(tagLabel)));
+      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelUtil.getDescription(tagLabel)));
       return tags;
     }
 
@@ -3346,11 +3387,7 @@ public interface CollectionDAO {
         String rowNumber = rs.getString("row_num");
         String json = rs.getString("json");
         ReportData reportData;
-        try {
-          reportData = JsonUtils.readValue(json, ReportData.class);
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
+        reportData = JsonUtils.readValue(json, ReportData.class);
         return new ReportDataRow(rowNumber, reportData);
       }
     }
@@ -3402,6 +3439,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT COUNT(*) FROM storage_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM search_index_entity <cond>) as searchIndexCount, "
                 + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
                 + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
@@ -3410,6 +3448,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM search_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM storage_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
@@ -3423,6 +3462,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT COUNT(*) FROM storage_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM search_index_entity <cond>) as searchIndexCount, "
                 + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
                 + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
@@ -3431,6 +3471,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM search_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM storage_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
@@ -3445,7 +3486,8 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
             + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
             + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
-            + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount")
+            + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount, "
+            + "(SELECT COUNT(*) FROM search_service_entity <cond>) as searchServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
 
@@ -3483,26 +3525,22 @@ public interface CollectionDAO {
       Settings settings = new Settings();
       settings.setConfigType(configType);
       Object value;
-      try {
-        switch (configType) {
-          case EMAIL_CONFIGURATION:
-            value = JsonUtils.readValue(json, SmtpSettings.class);
-            break;
-          case CUSTOM_LOGO_CONFIGURATION:
-            value = JsonUtils.readValue(json, LogoConfiguration.class);
-            break;
-          case SLACK_APP_CONFIGURATION:
-            value = JsonUtils.readValue(json, String.class);
-            break;
-          case SLACK_BOT:
-          case SLACK_INSTALLER:
-            value = JsonUtils.readValue(json, new TypeReference<HashMap<String, Object>>() {});
-            break;
-          default:
-            throw new IllegalArgumentException("Invalid Settings Type " + configType);
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      switch (configType) {
+        case EMAIL_CONFIGURATION:
+          value = JsonUtils.readValue(json, SmtpSettings.class);
+          break;
+        case CUSTOM_LOGO_CONFIGURATION:
+          value = JsonUtils.readValue(json, LogoConfiguration.class);
+          break;
+        case SLACK_APP_CONFIGURATION:
+          value = JsonUtils.readValue(json, String.class);
+          break;
+        case SLACK_BOT:
+        case SLACK_INSTALLER:
+          value = JsonUtils.readValue(json, new TypeReference<HashMap<String, Object>>() {});
+          break;
+        default:
+          throw new IllegalArgumentException("Invalid Settings Type " + configType);
       }
       settings.setConfigValue(value);
       return settings;
@@ -3512,14 +3550,10 @@ public interface CollectionDAO {
   class TokenRowMapper implements RowMapper<TokenInterface> {
     @Override
     public TokenInterface map(ResultSet rs, StatementContext ctx) throws SQLException {
-      try {
-        return getToken(TokenType.fromValue(rs.getString("tokenType")), rs.getString("json"));
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      return getToken(TokenType.fromValue(rs.getString("tokenType")), rs.getString("json"));
     }
 
-    public static TokenInterface getToken(TokenType type, String json) throws IOException {
+    public static TokenInterface getToken(TokenType type, String json) {
       TokenInterface resp;
       switch (type) {
         case EMAIL_VERIFICATION:

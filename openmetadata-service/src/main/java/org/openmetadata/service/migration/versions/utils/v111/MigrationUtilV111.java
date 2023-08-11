@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -120,7 +119,7 @@ public class MigrationUtilV111 {
     }
   }
 
-  public static void updateTestSuite(Handle handle, TestSuite suite, String updateSql) throws JsonProcessingException {
+  public static void updateTestSuite(Handle handle, TestSuite suite, String updateSql) {
     if (suite.getExecutableEntityReference() != null) {
       try {
         EntityReference executableEntityRef = suite.getExecutableEntityReference();

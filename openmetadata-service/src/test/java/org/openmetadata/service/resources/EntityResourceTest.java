@@ -69,7 +69,6 @@ import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -176,7 +175,6 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -199,12 +197,14 @@ import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
+import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -293,6 +293,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference MLFLOW_REFERENCE;
 
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
+  public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
+  public static EntityReference OPENSEARCH_SEARCH_SERVICE_REFERENCE;
 
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
@@ -416,6 +418,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
     new StorageServiceResourceTest().setupStorageService(test);
+    new SearchServiceResourceTest().setupSearchService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
@@ -1046,7 +1049,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K request = createRequest(getEntityName(test), "", null, USER1_REF);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    // Update the entity as USER_OWNER1
+    // Update the entity as USER1
     request.withDescription("newDescription");
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "newDescription");
@@ -1445,7 +1448,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void patch_deleted_attribute_disallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_deleted_attribute_disallowed_400(TestInfo test) throws HttpResponseException {
     if (!supportsPatch || !supportsSoftDelete) {
       return;
     }
@@ -1632,19 +1635,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   void testInvalidEntityList() {
     // Invalid entityCreated list
     assertResponse(
-        () -> getChangeEvents("invalidEntity", entityType, null, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        () -> getChangeEvents("invalidEntity", entityType, null, null, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityCreated");
 
     // Invalid entityUpdated list
     assertResponse(
-        () -> getChangeEvents(null, "invalidEntity", entityType, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        () -> getChangeEvents(null, "invalidEntity", null, entityType, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityUpdated");
 
     // Invalid entityDeleted list
     assertResponse(
-        () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        () -> getChangeEvents(entityType, null, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityDeleted");
   }
@@ -1676,8 +1679,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String indexName = jsonObject.getString("index");
         indexNamesFromResponse.add(indexName);
       }
-      for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
+      for (SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
+          SearchIndexDefinition.ElasticSearchIndexType.values()) {
         // check all the indexes are created successfully
         assertTrue(
             indexNamesFromResponse.contains(elasticSearchIndexType.indexName),
@@ -1768,7 +1771,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
-      throws HttpResponseException, JsonProcessingException, InterruptedException {
+      throws HttpResponseException, InterruptedException {
     if (supportsTags && supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -1965,7 +1968,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     updated.setOwner(reduceEntityReference(updated.getOwner()));
     String updatedEntityJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
@@ -2306,7 +2309,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
-                    getChangeEvents(createdFilter, updatedFilter, null, timestamp, authHeaders), timestamp));
+                    getChangeEvents(createdFilter, updatedFilter, null, null, timestamp, authHeaders), timestamp));
     ChangeEvent changeEvent = eventHolder.getExpectedEvent();
     assertNotNull(
         changeEvent,
@@ -2348,7 +2351,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
-        .until(() -> eventHolder.hasDeletedEvent(getChangeEvents(null, null, entityType, timestamp, authHeaders), id));
+        .until(
+            () ->
+                eventHolder.hasDeletedEvent(getChangeEvents(null, null, null, entityType, timestamp, authHeaders), id));
     ChangeEvent changeEvent = eventHolder.getExpectedEvent();
 
     assertNotNull(changeEvent, "Deleted event after " + timestamp + " was not found for entity " + id);
@@ -2365,11 +2370,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected ResultList<ChangeEvent> getChangeEvents(
-      String entityCreated, String entityUpdated, String entityDeleted, long timestamp, Map<String, String> authHeaders)
+      String entityCreated,
+      String entityUpdated,
+      String entityRestored,
+      String entityDeleted,
+      long timestamp,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("events");
     target = entityCreated == null ? target : target.queryParam("entityCreated", entityCreated);
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
+    target = entityUpdated == null ? target : target.queryParam("entityRestored", entityRestored);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
     target = target.queryParam("timestamp", timestamp);
     return TestUtils.get(target, EventList.class, authHeaders);
@@ -2740,7 +2751,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public void assertOwnershipInheritanceOverride(T entity, K updateRequest, EntityReference newOwner)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     // When an entity has ownership set, it does not inherit owner from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwner(newOwner);
@@ -2765,7 +2776,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public void assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
-      throws JsonProcessingException, HttpResponseException {
+      throws HttpResponseException {
     // When an entity has domain set, it does not inherit domain from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setDomain(newDomain);
