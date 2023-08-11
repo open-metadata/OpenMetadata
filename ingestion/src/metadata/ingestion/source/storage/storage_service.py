@@ -140,7 +140,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         By default, nothing needs to be closed
         """
-        pass
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -149,7 +148,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         By default, nothing needs to be taken care of when loading the source
         """
-        pass
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
@@ -171,8 +169,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             return None
         return result
 
+    @staticmethod
     def extract_column_definitions(
-        self,
         bucket_name: str,
         sample_key: str,
         config_source: ConfigSource,

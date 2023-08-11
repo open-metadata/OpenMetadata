@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, Iterable, List, Optional
 
-from pandas import DataFrame
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
@@ -25,7 +24,6 @@ from metadata.generated.schema.entity.data.container import (
     Container,
     ContainerDataModel,
 )
-from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
@@ -44,7 +42,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
     S3ContainerDetails,
@@ -54,8 +51,6 @@ from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
     StorageServiceSource,
 )
-from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 
@@ -295,7 +290,7 @@ class S3Source(StorageServiceSource):
             size=self._fetch_metric(
                 bucket_name=bucket_response.name, metric=S3Metric.BUCKET_SIZE_BYTES
             ),
-            file_formats=[],  # TODO should we fetch some random files by extension here? Would it be valuable info?
+            file_formats=[],
             data_model=None,
         )
 
