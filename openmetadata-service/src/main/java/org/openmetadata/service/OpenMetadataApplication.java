@@ -73,7 +73,6 @@ import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
@@ -96,6 +95,7 @@ import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchEventPublisher;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -412,10 +412,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
     // register ElasticSearch Event publisher
     if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
-      ElasticSearchEventPublisher elasticSearchEventPublisher =
-          new ElasticSearchEventPublisher(
+      SearchEventPublisher searchEventPublisher =
+          new SearchEventPublisher(
               openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
-      EventPubSub.addEventHandler(elasticSearchEventPublisher);
+      EventPubSub.addEventHandler(searchEventPublisher);
     }
 
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {

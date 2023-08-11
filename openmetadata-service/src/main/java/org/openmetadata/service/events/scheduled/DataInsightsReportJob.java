@@ -20,8 +20,8 @@ import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataIns
 import static org.openmetadata.service.Entity.EVENT_SUBSCRIPTION;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.events.scheduled.ReportsHandler.SEARCH_CLIENT;
+import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.SubscriptionUtil.getNumberOfDays;
 

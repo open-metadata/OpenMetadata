@@ -12,10 +12,10 @@ import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
-import org.openmetadata.service.elasticsearch.indexes.ReportDataIndexes;
 import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchIndexDefinition;
+import org.openmetadata.service.search.indexes.ReportDataIndexes;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -64,7 +64,7 @@ public class ElasticSearchDataInsightProcessor implements Processor<BulkRequest,
   }
 
   private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);

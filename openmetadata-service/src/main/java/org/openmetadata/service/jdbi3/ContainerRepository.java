@@ -9,7 +9,6 @@ import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import javax.json.JsonPatch;
 import org.openmetadata.schema.EntityInterface;
@@ -48,8 +47,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public Container setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
-    container.setChildren(fields.contains("children") ? getChildrenContainers(container) : container.getChildren());
-    container.setParent(fields.contains("parent") ? getParentContainer(container) : container.getParent());
+    container.setParent(fields.contains("parent") ? getParent(container) : container.getParent());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
     }
@@ -58,6 +56,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public Container clearFields(Container container, EntityUtil.Fields fields) {
+    container.setChildren(fields.contains("children") ? getChildren(container) : null);
     container.setParent(fields.contains("parent") ? container.getParent() : null);
     return container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
@@ -69,31 +68,10 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
   }
 
-  private EntityReference getParentContainer(Container container) {
-    if (container == null) return null;
-    return container.getParent() != null
-        ? container.getParent()
-        : getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
-  }
-
   private void setDefaultFields(Container container) {
-    if (container.getService() != null) {
-      {
-        return;
-      }
-    }
     EntityReference parentServiceRef =
         getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
     container.withService(parentServiceRef);
-  }
-
-  private List<EntityReference> getChildrenContainers(Container container) {
-    if (container == null) {
-      return Collections.emptyList();
-    }
-    return !nullOrEmpty(container.getChildren())
-        ? container.getChildren()
-        : findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }
 
   @Override

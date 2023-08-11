@@ -325,7 +325,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
 
-    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30);
+    waitAndCheckForEvents("*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30);
 
     // Check all webhook status
     assertAlertStatusSuccessWithId(w1Alert.getId());
@@ -372,7 +372,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
-    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 40);
+    waitAndCheckForEvents("*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 40);
     assertAlertStatusSuccessWithName("healthy");
   }
 
@@ -384,13 +384,13 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
     assertTrue(callbackEvents.size() > 0);
     long timestamp = callbackEvents.get(0).getTimestamp();
-    waitAndCheckForEvents(entity, null, null, timestamp, callbackEvents, 30);
+    waitAndCheckForEvents(entity, null, null, null, timestamp, callbackEvents, 30);
 
     // For the entity all the webhooks registered for updated events have the right number of events
     callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
     timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
-    waitAndCheckForEvents(null, entity, null, timestamp, callbackEvents, 30);
+    waitAndCheckForEvents(null, entity, null, null, timestamp, callbackEvents, 30);
 
     // TODO add delete event support
   }
@@ -398,13 +398,15 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
   public void waitAndCheckForEvents(
       String entityCreated,
       String entityUpdated,
+      String entityRestored,
       String entityDeleted,
       long timestamp,
       Collection<ChangeEvent> callbackEvents,
       int iteration)
       throws HttpResponseException {
     List<ChangeEvent> expected =
-        getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
+        getChangeEvents(entityCreated, entityUpdated, entityRestored, entityDeleted, timestamp, ADMIN_AUTH_HEADERS)
+            .getData();
     Awaitility.await()
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(iteration * 100L))

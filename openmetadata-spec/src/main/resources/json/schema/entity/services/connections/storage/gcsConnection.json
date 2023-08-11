@@ -9,8 +9,8 @@
     "gcsType": {
       "description": "Gcs service type",
       "type": "string",
-      "enum": ["Gcs"],
-      "default": "Gcs"
+      "enum": ["GCS"],
+      "default": "GCS"
     }
   },
   "properties": {
@@ -18,7 +18,7 @@
       "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/gcsType",
-      "default": "Gcs"
+      "default": "GCS"
     },
     "credentials": {
       "title": "GCP Credentials",

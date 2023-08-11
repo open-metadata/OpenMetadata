@@ -13,10 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
-import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.EventType.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,11 +31,16 @@ public class ChangeEventRepository {
 
   @Transaction
   public List<ChangeEvent> list(
-      long timestamp, List<String> entityCreatedList, List<String> entityUpdatedList, List<String> entityDeletedList)
+      long timestamp,
+      List<String> entityCreatedList,
+      List<String> entityUpdatedList,
+      List<String> entityRestoredList,
+      List<String> entityDeletedList)
       throws IOException {
     List<String> jsons = new ArrayList<>();
     jsons.addAll(dao.list(ENTITY_CREATED.value(), entityCreatedList, timestamp));
     jsons.addAll(dao.list(ENTITY_UPDATED.value(), entityUpdatedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_RESTORED.value(), entityRestoredList, timestamp));
     jsons.addAll(dao.list(ENTITY_DELETED.value(), entityDeletedList, timestamp));
     jsons.addAll(dao.list(ENTITY_SOFT_DELETED.value(), entityDeletedList, timestamp));
 
