@@ -16,12 +16,15 @@ package org.openmetadata.service.formatter.entity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
 
 import java.util.List;
+
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.util.JsonUtils;
 
 public class QueryFormatter implements EntityFormatter {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
@@ -42,7 +45,7 @@ public class QueryFormatter implements EntityFormatter {
     Query query = (Query) entity;
     StringBuilder field = new StringBuilder();
     @SuppressWarnings("unchecked")
-    List<EntityReference> queryUsedIn = (List<EntityReference>) fieldValue;
+    List<EntityReference> queryUsedIn = JsonUtils.readObjects(fieldValue.toString(), EntityReference.class);
     field.append("for '").append(query.getQuery()).append("', ").append(messageFormatter.getLineBreak());
     field.append("Query Used in :- ");
     int i = 1;
