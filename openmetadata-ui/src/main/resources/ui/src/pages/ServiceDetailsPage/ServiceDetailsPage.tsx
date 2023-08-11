@@ -915,7 +915,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
     const isOwner = AppState.userDetails.id === serviceDetails?.owner?.id;
-    const showIngestionTab = Boolean(isOwner || isAdminUser);
+    const isUserInOwnerTeam = AppState.userDetails.teams?.find(
+      (team) => team.id === serviceDetails?.owner?.id
+    );
+    const showIngestionTab = Boolean(
+      isUserInOwnerTeam || isOwner || isAdminUser
+    );
 
     if (serviceCategory !== ServiceCategory.METADATA_SERVICES) {
       tabs.push({
