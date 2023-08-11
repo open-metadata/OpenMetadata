@@ -156,11 +156,6 @@ services:
       WEB_CONF_XSS_CSP_ENABLED: ${WEB_CONF_XSS_CSP_ENABLED:-false}
       WEB_CONF_XSS_CSP_POLICY: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
       WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
-    depends_on:
-      elasticsearch:
-        condition: service_started
-      mysql:
-        condition: service_healthy
     networks:
       - app_net
 
@@ -304,6 +299,9 @@ services:
     ports:
       - "8585:8585"
       - "8586:8586"
+    depends_on:
+      execute-migrate-all:
+        condition: service_completed_successfully
     networks:
       - app_net
     healthcheck:
