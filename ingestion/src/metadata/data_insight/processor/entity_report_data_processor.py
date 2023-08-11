@@ -124,18 +124,20 @@ class EntityReportDataProcessor(DataProcessor):
     def _flatten_results(self, data: dict) -> Iterable[ReportData]:
         items = {}
         for key, value in data.items():
-            items["entityType"] = ast.literal_eval(key) if key == "None" else key
+            items["serviceName"] = ast.literal_eval(key) if key == "None" else key
             for key, value in value.items():
-                items["team"] = ast.literal_eval(key) if key == "None" else key
+                items["entityType"] = ast.literal_eval(key) if key == "None" else key
                 for key, value in value.items():
-                    items["entityTier"] = (
-                        ast.literal_eval(key) if key == "None" else key
-                    )
-                    yield ReportData(
-                        timestamp=self.timestamp,
-                        reportDataType=ReportDataType.EntityReportData.value,
-                        data=EntityReportData.parse_obj({**items, **value}),
-                    )  # type: ignore
+                    items["team"] = ast.literal_eval(key) if key == "None" else key
+                    for key, value in value.items():
+                        items["entityTier"] = (
+                            ast.literal_eval(key) if key == "None" else key
+                        )
+                        yield ReportData(
+                            timestamp=self.timestamp,
+                            reportDataType=ReportDataType.EntityReportData.value,
+                            data=EntityReportData.parse_obj({**items, **value}),
+                        )  # type: ignore
 
     def fetch_data(self) -> Iterable[T]:
         for entity in ENTITIES:
@@ -166,9 +168,10 @@ class EntityReportDataProcessor(DataProcessor):
         Returns:
             dict:
         """
-        refined_data = defaultdict(lambda: defaultdict(dict))
+        refined_data = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         for entity in self.fetch_data():
             data_blob_for_entity = {}
+
             try:
                 team = (
                     self._get_team(entity.owner)
@@ -225,16 +228,16 @@ class EntityReportDataProcessor(DataProcessor):
 
             data_blob_for_entity_counter = Counter(data_blob_for_entity)
 
-            if not refined_data[entity.__class__.__name__][str(team)].get(
-                str(entity_tier)
-            ):
-                refined_data[entity.__class__.__name__][str(team)][
-                    str(entity_tier)
-                ] = data_blob_for_entity_counter
+            if not refined_data[str(entity.service.name)][entity.__class__.__name__][
+                str(team)
+            ].get(str(entity_tier)):
+                refined_data[str(entity.service.name)][entity.__class__.__name__][
+                    str(team)
+                ][str(entity_tier)] = data_blob_for_entity_counter
             else:
-                refined_data[entity.__class__.__name__][str(team)][
-                    str(entity_tier)
-                ].update(data_blob_for_entity_counter)
+                refined_data[str(entity.service.name)][entity.__class__.__name__][
+                    str(team)
+                ][str(entity_tier)].update(data_blob_for_entity_counter)
 
             self.processor_status.scanned(entity.name.__root__)
 

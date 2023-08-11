@@ -15,6 +15,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   public static final String ENTITY_COUNT = "entityCount";
   public static final String DATA_ENTITY_COUNT = "data.entityCount";
   public static final String ENTITY_TYPE = "entityType";
+  public static final String SERVICE_NAME = "serviceName";
+  public static final String DATA_SERVICE_NAME = "data.serviceName";
   public static final String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
   public static final String DATA_COMPLETED_DESCRIPTIONS = "data.completedDescriptions";
   public static final String HAS_OWNER_FRACTION = "hasOwnerFraction";

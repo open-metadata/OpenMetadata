@@ -1474,8 +1474,12 @@ public class OpenSearchClientImpl implements SearchClient {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
         return new OsEntitiesDescriptionAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        return new OsServicesDescriptionAggregator(aggregations, dataInsightChartType);
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         return new OsEntitiesOwnerAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        return new OsServicesOwnerAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TYPE:
         return new OsTotalEntitiesAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TIER:
@@ -1567,6 +1571,18 @@ public class OpenSearchClientImpl implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        termsAggregationBuilder =
+                AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                        .field(DataInsightChartRepository.DATA_SERVICE_NAME)
+                        .size(1000);
+        sumAggregationBuilder =
+                AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
+                        .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
+        return dateHistogramAggregationBuilder.subAggregation(
+                termsAggregationBuilder
+                        .subAggregation(sumAggregationBuilder)
+                        .subAggregation(sumEntityCountAggregationBuilder));
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
@@ -1579,6 +1595,18 @@ public class OpenSearchClientImpl implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        termsAggregationBuilder =
+                AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                        .field(DataInsightChartRepository.DATA_SERVICE_NAME)
+                        .size(1000);
+        sumAggregationBuilder =
+                AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
+                        .field(DataInsightChartRepository.DATA_HAS_OWNER);
+        return dateHistogramAggregationBuilder.subAggregation(
+                termsAggregationBuilder
+                        .subAggregation(sumAggregationBuilder)
+                        .subAggregation(sumEntityCountAggregationBuilder));
       case TOTAL_ENTITIES_BY_TIER:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TIER)
