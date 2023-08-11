@@ -37,6 +37,9 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_TEST_GET_QUERIES,
     POSTGRES_TEST_GET_TAGS,
 )
+from metadata.ingestion.source.database.postgres.utils import (
+    get_postgres_time_column_name,
+)
 
 
 def get_connection(connection: PostgresConnection) -> Engine:
@@ -68,8 +71,11 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+
     queries = {
-        "GetQueries": POSTGRES_TEST_GET_QUERIES,
+        "GetQueries": POSTGRES_TEST_GET_QUERIES.format(
+            time_column_name=get_postgres_time_column_name(engine=engine),
+        ),
         "GetDatabases": POSTGRES_GET_DATABASE,
         "GetTags": POSTGRES_TEST_GET_TAGS,
     }
