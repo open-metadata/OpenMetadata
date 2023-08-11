@@ -695,7 +695,7 @@ const TagsPage = () => {
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
                 <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom self-center"
+                  className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
                   data-testid="tag-name"
                   ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category)}
