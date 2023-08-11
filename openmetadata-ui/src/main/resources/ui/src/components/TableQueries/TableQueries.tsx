@@ -114,12 +114,12 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   useEffect(() => {
-    if (selectedQuery && selectedQuery.id) {
+    if (selectedQuery?.id) {
       fetchResourcePermission();
     }
   }, [selectedQuery]);
 
-  const handleQueryUpdate = async (updatedQuery: Query, key: keyof Query) => {
+  const handleQueryUpdate = async (updatedQuery: Query) => {
     if (isUndefined(selectedQuery)) {
       return;
     }

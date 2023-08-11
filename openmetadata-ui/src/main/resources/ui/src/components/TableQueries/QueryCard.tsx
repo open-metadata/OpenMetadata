@@ -107,10 +107,18 @@ const QueryCard: FC<QueryCardProp> = ({
       query: query.query !== sqlQuery.query ? sqlQuery.query : query.query,
       queryUsedIn: isUndefined(selectedTable)
         ? query.queryUsedIn
-        : selectedTable.map((tableId) => ({
-            id: tableId,
-            type: EntityType.TABLE,
-          })),
+        : selectedTable.map((tableId) => {
+            const existingTable = query.queryUsedIn?.find(
+              (table) => table.id === tableId
+            );
+
+            return (
+              existingTable ?? {
+                id: tableId,
+                type: EntityType.TABLE,
+              }
+            );
+          }),
     };
     if (query.query !== sqlQuery.query || !isUndefined(selectedTable)) {
       await onQueryUpdate(updatedData, 'query');
