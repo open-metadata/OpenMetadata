@@ -325,9 +325,10 @@ def _(config: DbtAzureConfig):
         azure_client = BlobServiceClient(
             f"https://{config.dbtSecurityConfig.accountName}.blob.core.windows.net/",
             credential=ClientSecretCredential(
-                config.dbtSecurityConfig.tenantId,
-                config.dbtSecurityConfig.clientId,
-                config.dbtSecurityConfig.clientSecret.get_secret_value(),
+                tenant_id=config.dbtSecurityConfig.tenantId,
+                client_id=config.dbtSecurityConfig.clientId,
+                client_secret=config.dbtSecurityConfig.clientSecret.get_secret_value(),
+                additionally_allowed_tenants=["*"]
             ),
         )
 

@@ -79,9 +79,10 @@ def _(config: AzureConfig):
 
     try:
         credentials = ClientSecretCredential(
-            config.securityConfig.tenantId,
-            config.securityConfig.clientId,
-            config.securityConfig.clientSecret.get_secret_value(),
+            tenant_id=config.securityConfig.tenantId,
+            client_id=config.securityConfig.clientId,
+            client_secret=config.securityConfig.clientSecret.get_secret_value(),
+            additionally_allowed_tenants=["*"]
         )
 
         azure_client = BlobServiceClient(
