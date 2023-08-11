@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.USER;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -24,8 +25,8 @@ import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
-  private static final String QUERY_PATCH_FIELDS = "users,query";
-  private static final String QUERY_UPDATE_FIELDS = "users,votes";
+  private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn";
+  private static final String QUERY_UPDATE_FIELDS = "users,votes,queryUsedIn";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -170,11 +171,20 @@ public class QueryRepository extends EntityRepository<Query> {
     public void entitySpecificUpdate() {
       updateFromRelationships(
           "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
-      if (operation.isPatch() && !original.getQuery().equals(updated.getQuery())) {
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          "queryUsedIn",
+          original.getQueryUsedIn(),
+          updated.getQueryUsedIn(),
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
+      String originalChecksum = EntityUtil.hash(original.getQuery());
+      String updatedChecksum = EntityUtil.hash(updated.getQuery());
+      if (!originalChecksum.equals(updatedChecksum)) {
         recordChange("query", original.getQuery(), updated.getQuery());
-        String checkSum = EntityUtil.hash(updated.getQuery());
-        recordChange("name", original.getName(), checkSum);
-        recordChange("checkSum", original.getChecksum(), checkSum);
+        recordChange("checkSum", original.getChecksum(), updatedChecksum);
       }
     }
   }

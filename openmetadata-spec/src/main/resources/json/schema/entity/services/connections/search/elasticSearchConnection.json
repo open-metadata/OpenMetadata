@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/search/elasticSearchConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearch Connection",
+  "description": "ElasticSearch Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.search.ElasticSearchConnection",
+  "definitions": {
+    "elasticSearchType": {
+      "description": "ElasticSearch service type",
+      "type": "string",
+      "enum": ["ElasticSearch"],
+      "default": "ElasticSearch"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "ElasticSearch Type",
+      "description": "ElasticSearch Type",
+      "$ref": "#/definitions/elasticSearchType",
+      "default": "ElasticSearch"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the ElasticSearch service.",
+      "type": "string"
+    },
+    "scheme": {
+      "description": "Http/Https connection scheme",
+      "type": "string",
+      "default": "http"
+    },
+    "username": {
+      "description": "Elastic Search Username for Login",
+      "type": "string"
+    },
+    "password": {
+      "description": "Elastic Search Password for Login",
+      "type": "string"
+    },
+    "truststorePath": {
+      "description": "Truststore Path",
+      "type": "string"
+    },
+    "truststorePassword": {
+      "description": "Truststore Password",
+      "type": "string"
+    },
+    "connectionTimeoutSecs": {
+      "description": "Connection Timeout in Seconds",
+      "type": "integer",
+      "default": 5
+    },
+    "socketTimeoutSecs": {
+      "description": "Socket Timeout in Seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "keepAliveTimeoutSecs": {
+      "description": "Keep Alive Timeout in Seconds",
+      "type": "integer"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort"
+  ]
+}
