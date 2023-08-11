@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -140,8 +139,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -162,8 +160,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
-      throws IOException {
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -196,8 +193,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -231,8 +227,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -261,8 +256,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
               description = "DataModel version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -280,8 +274,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardDataModel create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardDataModel create) {
     DashboardDataModel dashboardDataModel = getDataModel(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboardDataModel);
   }
@@ -307,8 +300,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -325,8 +317,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardDataModel create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardDataModel create) {
     DashboardDataModel dashboardDataModel = getDataModel(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboardDataModel);
   }
@@ -345,8 +336,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
-      throws IOException {
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
@@ -362,8 +352,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
       @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          UUID userId)
-      throws IOException {
+          UUID userId) {
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
@@ -384,8 +373,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -408,8 +396,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the data model", schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -427,12 +414,11 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class)))
       })
   public Response restoreDataModel(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private DashboardDataModel getDataModel(CreateDashboardDataModel create, String user) throws IOException {
+  private DashboardDataModel getDataModel(CreateDashboardDataModel create, String user) {
     DatabaseUtil.validateColumns(create.getColumns());
     return copy(new DashboardDataModel(), create, user)
         .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))

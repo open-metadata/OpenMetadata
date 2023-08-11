@@ -21,10 +21,12 @@ from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema
 from pydantic.main import ModelMetaclass
 
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
+from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+RECORD_DATATYPE_NAME = "RECORD"
 
 
 def _parse_array_children(
@@ -138,11 +140,11 @@ def parse_record_fields(field: RecordSchema, cls: ModelMetaclass = FieldModel):
     """
     children = cls(
         name=field.name,
-        dataType=DataTypeTopic.RECORD,
+        dataType=RECORD_DATATYPE_NAME,
         children=[
             cls(
                 name=field.type.name,
-                dataType=DataTypeTopic.RECORD,
+                dataType=RECORD_DATATYPE_NAME,
                 children=get_avro_fields(field.type, cls),
                 description=field.type.doc,
             )

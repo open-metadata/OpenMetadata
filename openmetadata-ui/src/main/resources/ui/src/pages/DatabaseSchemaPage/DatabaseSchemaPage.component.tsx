@@ -28,6 +28,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -58,6 +59,7 @@ import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
 import {
   getDatabaseSchemaDetailsPath,
@@ -206,7 +208,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const res = await getTableList({
           ...params,
-          databaseSchema: databaseSchemaFQN,
+          databaseSchema: getDecodedFqn(databaseSchemaFQN),
           include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
         });
         setTableData(res);
@@ -274,7 +276,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     (activeKey: string) => {
       if (activeKey !== activeTab) {
         history.push({
-          pathname: getDatabaseSchemaDetailsPath(databaseSchemaFQN, activeKey),
+          pathname: getDatabaseSchemaDetailsPath(
+            getDecodedFqn(databaseSchemaFQN),
+            activeKey
+          ),
         });
       }
     },
@@ -636,4 +641,4 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 };
 
-export default observer(DatabaseSchemaPage);
+export default observer(withActivityFeed(DatabaseSchemaPage));

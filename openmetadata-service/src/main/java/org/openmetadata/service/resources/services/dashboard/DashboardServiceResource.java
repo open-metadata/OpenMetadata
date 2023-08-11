@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -56,7 +55,6 @@ import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
@@ -132,8 +130,7 @@ public class DashboardServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
     ResultList<DashboardService> dashboardServices =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -168,8 +165,7 @@ public class DashboardServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     DashboardService dashboardService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, dashboardService);
   }
@@ -203,10 +199,8 @@ public class DashboardServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    DashboardService dashboardService =
-        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+          Include include) {
+    DashboardService dashboardService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, dashboardService);
   }
 
@@ -227,8 +221,7 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TestConnectionResult testConnectionResult)
-      throws IOException {
+      @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DashboardService service = repository.addTestConnectionResult(id, testConnectionResult);
@@ -250,8 +243,8 @@ public class DashboardServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -261,7 +254,7 @@ public class DashboardServiceResource
                   try {
                     DashboardService dashboardService = JsonUtils.readValue((String) json, DashboardService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, dashboardService));
-                  } catch (IOException e) {
+                  } catch (Exception e) {
                     return json;
                   }
                 })
@@ -294,8 +287,7 @@ public class DashboardServiceResource
               description = "dashboard service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     DashboardService dashboardService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, dashboardService);
   }
@@ -314,8 +306,7 @@ public class DashboardServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create) {
     DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
@@ -336,8 +327,7 @@ public class DashboardServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update) {
     DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
@@ -364,8 +354,7 @@ public class DashboardServiceResource
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -391,8 +380,8 @@ public class DashboardServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -418,9 +407,8 @@ public class DashboardServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
+          String name) {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -437,12 +425,11 @@ public class DashboardServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class)))
       })
   public Response restoreDashboardService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private DashboardService getService(CreateDashboardService create, String user) throws IOException {
+  private DashboardService getService(CreateDashboardService create, String user) {
     return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

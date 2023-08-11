@@ -25,6 +25,7 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -171,7 +172,12 @@ const AddService = ({
   // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
-      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
+      history.push(
+        getServiceDetailsPath(
+          getEncodedFqn(newServiceData.name),
+          serviceCategory
+        )
+      );
     }
   };
 

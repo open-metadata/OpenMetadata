@@ -117,6 +117,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
+import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -701,6 +702,6 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
 
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return `/database/${fqn}`;
+      return `/database/${getEncodedFqn(fqn)}`;
   }
 };

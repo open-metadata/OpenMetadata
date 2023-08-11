@@ -126,7 +126,8 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this table.",

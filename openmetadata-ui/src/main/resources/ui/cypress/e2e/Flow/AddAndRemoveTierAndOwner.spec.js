@@ -29,7 +29,7 @@ import {
 
 const ENTITIES = {
   table: {
-    ...SEARCH_ENTITY_TABLE.table_4,
+    ...SEARCH_ENTITY_TABLE.table_5,
     schema: 'shopify',
     database: 'ecommerce_db',
   },
@@ -81,12 +81,13 @@ const addRemoveOwner = (isGlossaryPage) => {
 };
 
 const addRemoveTier = () => {
+  interceptURL('GET', '/api/v1/tags?parent=Tier&limit=10', 'fetchTier');
   cy.get('[data-testid="edit-tier"]').click();
+  verifyResponseStatusCode('@fetchTier', 200);
   cy.get('[data-testid="radio-btn-Tier1"]').click({ waitForAnimations: true });
-
+  verifyResponseStatusCode('@patchOwner', 200);
   cy.get('[data-testid="radio-btn-Tier1"]').should('be.checked');
 
-  verifyResponseStatusCode('@patchOwner', 200);
   cy.clickOutside();
   cy.get('[data-testid="Tier"]').should('contain', TIER);
 

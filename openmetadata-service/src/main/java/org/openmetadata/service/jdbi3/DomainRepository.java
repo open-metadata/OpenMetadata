@@ -14,10 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.DOMAIN;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -44,31 +41,23 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public Domain setFields(Domain entity, Fields fields) throws IOException {
-    entity.withParent(fields.contains("parent") ? getParent(entity) : null);
-    entity.withChildren(fields.contains("children") ? getChildren(entity) : null);
-    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
-  }
-
-  private EntityReference getParent(Domain entity) throws IOException {
-    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, DOMAIN, false);
-  }
-
-  private List<EntityReference> getChildren(Domain entity) throws IOException {
-    return findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
-  }
-
-  private List<EntityReference> getExperts(Domain entity) throws IOException {
-    return findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
+  public Domain setFields(Domain entity, Fields fields) {
+    return entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
   }
 
   @Override
-  public void prepare(Domain entity) throws IOException {
+  public Domain clearFields(Domain entity, Fields fields) {
+    entity.withParent(fields.contains("parent") ? entity.getParent() : null);
+    return entity;
+  }
+
+  @Override
+  public void prepare(Domain entity) {
     // Parent, Experts, Owner are already validated
   }
 
   @Override
-  public void storeEntity(Domain entity, boolean update) throws IOException {
+  public void storeEntity(Domain entity, boolean update) {
     EntityReference parent = entity.getParent();
     List<EntityReference> children = entity.getChildren();
     List<EntityReference> experts = entity.getExperts();
@@ -115,11 +104,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateExperts();
     }
 
-    private void updateExperts() throws JsonProcessingException {
+    private void updateExperts() {
       List<EntityReference> origExperts = listOrEmpty(original.getExperts());
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(

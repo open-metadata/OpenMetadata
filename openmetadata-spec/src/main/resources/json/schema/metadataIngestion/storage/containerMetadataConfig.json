@@ -4,6 +4,7 @@
   "title": "StorageContainerConfig",
   "description": "Definition of the properties contained by an object store container template config file",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.ContainerMetadataConfig",
+  "type": "object",
   "definitions": {
     "metadataEntry": {
       "description": "Config properties for a container found in a user-supplied metadata config",
@@ -37,9 +38,7 @@
           "default": null
         }
       },
-      "required": [
-        "dataPath"
-      ]
+      "required": ["dataPath"]
     }
   },
   "properties": {

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -169,7 +168,7 @@ public class ReIndexingHandler {
     REINDEXING_JOB_MAP.remove(jobId);
   }
 
-  public EventPublisherJob getJob(UUID jobId) throws IOException {
+  public EventPublisherJob getJob(UUID jobId) {
     SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
       String recordString =
@@ -179,7 +178,7 @@ public class ReIndexingHandler {
     return REINDEXING_JOB_MAP.get(jobId).getJobData();
   }
 
-  public EventPublisherJob getLatestJob() throws IOException {
+  public EventPublisherJob getLatestJob() {
     List<SearchIndexWorkflow> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
     if (!activeJobs.isEmpty()) {
       return activeJobs.get(activeJobs.size() - 1).getJobData();
@@ -189,7 +188,7 @@ public class ReIndexingHandler {
     }
   }
 
-  public List<EventPublisherJob> getAllJobs() throws IOException {
+  public List<EventPublisherJob> getAllJobs() {
     List<EventPublisherJob> result = new ArrayList<>();
     List<SearchIndexWorkflow> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
     List<EventPublisherJob> activeEventPubJob =

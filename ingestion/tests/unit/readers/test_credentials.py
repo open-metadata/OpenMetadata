@@ -20,7 +20,7 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
-from metadata.readers.credentials import (
+from metadata.readers.file.credentials import (
     get_credentials_from_url,
     update_repository_name,
 )
