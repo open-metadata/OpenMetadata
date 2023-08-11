@@ -98,7 +98,7 @@ def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     storage_options = return_azure_storage_options(config_source)
     account_url = AZURE_PATH.format(
         bucket_name=bucket_name,
-        account_name=storage_options.get("account_name"),
+        account_name=config_source.securityConfig.accountName,
         key=key,
     )
     dataframe = pd.read_parquet(account_url, storage_options=storage_options)
