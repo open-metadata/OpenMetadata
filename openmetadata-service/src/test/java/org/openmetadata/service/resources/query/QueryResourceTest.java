@@ -5,6 +5,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
+import static org.openmetadata.service.util.EntityUtil.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -27,11 +28,7 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -43,6 +40,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   private EntityReference TABLE_REF;
+  private EntityReference TABLE_REF_2;
   private String QUERY;
   private String QUERY_CHECKSUM;
 
@@ -154,6 +152,24 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     Query updatedEntity2 = JsonUtils.convertValue(changeEvent2.getEntity(), Query.class);
     assertEquals(0, updatedEntity2.getVotes().getUpVotes());
     assertEquals(1, updatedEntity2.getVotes().getDownVotes());
+  }
+
+  @Test
+  void patch_queryAttributes_200_ok(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setQueryUsedIn(List.of(TEST_TABLE2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(query.getVersion());
+    fieldAdded(change, "queryUsedIn", List.of(TEST_TABLE2.getEntityReference()));
+    fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
+    patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    updatedQuery.setQuery("select * from table1");
+    updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
+    change = getChangeDescription(query.getVersion());
+    fieldUpdated(change, "queryUsedIn", List.of(TABLE_REF), List.of(TABLE_REF, TEST_TABLE2));
+    fieldUpdated(change, "query", query.getQuery(), updatedQuery.getQuery());
   }
 
   @Test
