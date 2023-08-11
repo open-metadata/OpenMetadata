@@ -168,7 +168,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     updatedQuery.setQuery("select * from table1");
     updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
     change = getChangeDescription(query.getVersion());
-    fieldUpdated(change,"queryUsedIn", List.of(TABLE_REF), List.of(TABLE_REF, TEST_TABLE2));
+    fieldUpdated(change, "queryUsedIn", List.of(TABLE_REF), List.of(TABLE_REF, TEST_TABLE2));
     fieldUpdated(change, "query", query.getQuery(), updatedQuery.getQuery());
   }
 

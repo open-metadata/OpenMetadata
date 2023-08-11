@@ -18,7 +18,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -175,12 +174,12 @@ public class QueryRepository extends EntityRepository<Query> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(
-              "queryUsedIn",
-              original.getQueryUsedIn(),
-              updated.getQueryUsedIn(),
-              added,
-              deleted,
-              EntityUtil.entityReferenceMatch);
+          "queryUsedIn",
+          original.getQueryUsedIn(),
+          updated.getQueryUsedIn(),
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
       String originalChecksum = EntityUtil.hash(original.getQuery());
       String updatedChecksum = EntityUtil.hash(updated.getQuery());
       if (!originalChecksum.equals(updatedChecksum)) {
