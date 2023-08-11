@@ -114,6 +114,9 @@
       "href": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "text"
+      },
       "owner": {
         "properties": {
           "id": {

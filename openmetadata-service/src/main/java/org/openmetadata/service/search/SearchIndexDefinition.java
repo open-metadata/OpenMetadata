@@ -50,6 +50,11 @@ public class SearchIndexDefinition {
         ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
     TEST_CASE_SEARCH_INDEX(
         Entity.TEST_CASE, "test_case_search_index", "/elasticsearch/%s/test_case_index_mapping.json"),
+
+    DATABASE_SEARCH_INDEX(Entity.DATABASE, "database_search_index", "/elasticsearch/%s/database_index_mapping.json"),
+
+    DATABASE_SCHEMA_SEARCH_INDEX(
+        Entity.DATABASE_SCHEMA, "database_schema_search_index", "/elasticsearch/%s/database_schema_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",

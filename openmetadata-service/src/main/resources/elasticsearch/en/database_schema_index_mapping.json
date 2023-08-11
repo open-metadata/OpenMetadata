@@ -18,16 +18,6 @@
             "om_stemmer"
           ]
         },
-        "om_analyzer_jp" : {
-          "tokenizer" : "kuromoji_tokenizer",
-          "type" : "custom",
-          "filter" : [
-            "kuromoji_baseform",
-            "kuromoji_part_of_speech",
-            "kuromoji_number",
-            "kuromoji_stemmer"
-          ]
-        },
         "om_ngram": {
           "tokenizer": "ngram",
           "min_gram": 1,
@@ -52,7 +42,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -70,7 +60,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -84,30 +74,11 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
-          }
-        }
-      },
-      "tags": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
           }
         }
       },
@@ -122,9 +93,6 @@
         "type": "text"
       },
       "href": {
-        "type": "text"
-      },
-      "sourceUrl": {
         "type": "text"
       },
       "owner": {
@@ -210,11 +178,12 @@
             "type": "text"
           }
         }
+
       },
       "serviceType": {
         "type": "keyword"
       },
-      "location": {
+      "database": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -230,6 +199,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -285,50 +255,29 @@
           }
         }
       },
-      "databaseSchemas": {
+      "tags": {
         "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
+          "tagFQN": {
+            "type": "keyword"
           },
-          "type": {
-            "type": "text"
-          },
-          "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
+          "labelType": {
+            "type": "keyword"
           },
           "description": {
             "type": "text"
           },
-          "deleted": {
-            "type": "text"
+          "source": {
+            "type": "keyword"
           },
-          "href": {
-            "type": "text"
+          "state": {
+            "type": "keyword"
           }
         }
       },
-      "default": {
-        "description": "Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
-        "type": "boolean",
-        "default": false
-      },
       "deleted": {
+        "type": "text"
+      },
+      "sourceUrl": {
         "type": "text"
       }
     }
