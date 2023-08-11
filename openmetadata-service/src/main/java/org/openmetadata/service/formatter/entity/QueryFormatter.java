@@ -16,8 +16,6 @@ package org.openmetadata.service.formatter.entity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
 
 import java.util.List;
-
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityReference;

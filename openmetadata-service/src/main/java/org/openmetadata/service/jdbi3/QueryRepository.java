@@ -106,14 +106,13 @@ public class QueryRepository extends EntityRepository<Query> {
     return new QueryUpdater(original, updated, operation);
   }
 
-  private void storeQueryUsedIn(UUID queryId, List<EntityReference> addQueryUsedIn, List<EntityReference> deleteQueryUsedIn) {
+  private void storeQueryUsedIn(
+      UUID queryId, List<EntityReference> addQueryUsedIn, List<EntityReference> deleteQueryUsedIn) {
     for (EntityReference entityRef : listOrEmpty(addQueryUsedIn)) {
-      addRelationship(
-          entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
+      addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
     }
     for (EntityReference entityRef : listOrEmpty(deleteQueryUsedIn)) {
-      deleteRelationship(
-          entityRef.getId(), entityRef.getType(), queryId, Entity.QUERY,  Relationship.MENTIONED_IN);
+      deleteRelationship(entityRef.getId(), entityRef.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
     }
   }
 
