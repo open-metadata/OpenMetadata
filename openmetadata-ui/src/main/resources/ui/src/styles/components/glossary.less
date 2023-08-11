@@ -167,3 +167,11 @@
   height: @glossary-page-height;
   overflow-y: auto;
 }
+
+.glossary-richtext-editor .toastui-editor,
+.edit-glossary-modal .toastui-editor {
+  min-height: 150px !important; // overriding inline style
+  .ProseMirror {
+    min-height: 150px;
+  }
+}

@@ -602,11 +602,12 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCaseInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Column Profile')
       .click();
-
+    verifyResponseStatusCode('@getTestCaseInfo', 200);
     cy.get('[data-row-key="shop_id"]')
       .contains('shop_id')
       .scrollIntoView()
@@ -618,7 +619,6 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('#math_graph').scrollIntoView().should('be.visible');
     cy.get('#sum_graph').scrollIntoView().should('be.visible');
 
-    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCaseInfo');
     interceptURL(
       'GET',
       '/api/v1/dataQuality/testCases/*/testCaseResult?*',
@@ -629,10 +629,11 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get(`[data-testid="${testCaseName}"]`).click();
-    verifyResponseStatusCode('@getTestResult', 200);
-    cy.get(`[id="${testCaseName}_graph"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.wait('@getTestResult').then(() => {
+      cy.get(`[id="${testCaseName}_graph"]`)
+        .scrollIntoView()
+        .should('be.visible');
+    });
   });
 
   it('SQL query should be visible while editing the test case', () => {
