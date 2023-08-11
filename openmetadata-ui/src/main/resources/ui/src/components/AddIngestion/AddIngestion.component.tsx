@@ -14,7 +14,7 @@
 import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { LOADING_STATE } from 'enums/common.enum';
 import { Connection } from 'generated/api/services/createDatabaseService';
-import { isEmpty, isUndefined, trim } from 'lodash';
+import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, {
   Reducer,
   useCallback,
@@ -340,7 +340,9 @@ const AddIngestion = ({
         },
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {
-          config: {},
+          config: {
+            ...(omit(workflowData, 'name') ?? {}),
+          },
         },
       };
 
@@ -406,6 +408,7 @@ const AddIngestion = ({
       </span>
     );
   };
+
   const getExcludedSteps = () => {
     const excludedSteps = [];
     if (showDBTConfig) {
@@ -437,6 +440,7 @@ const AddIngestion = ({
             okText={t('label.next')}
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
+            workflowData={sourceConfig}
             workflowName={state.ingestionName}
             onCancel={handleCancelClick}
             onFocus={onFocus}

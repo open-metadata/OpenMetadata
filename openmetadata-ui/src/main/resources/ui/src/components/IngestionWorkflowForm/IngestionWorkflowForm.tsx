@@ -36,11 +36,13 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   okText,
   cancelText,
   serviceCategory,
+  workflowData,
   onCancel,
   onFocus,
   onSubmit,
 }) => {
   const [internalData, setInternalData] = useState<IngestionWorkflowData>({
+    ...workflowData,
     name: workflowName,
   });
 

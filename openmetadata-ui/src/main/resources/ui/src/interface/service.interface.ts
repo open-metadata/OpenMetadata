@@ -113,6 +113,7 @@ export interface IngestionWorkflowFormProps {
   okText: string;
   cancelText: string;
   serviceCategory: ServiceCategory;
+  workflowData: Pipeline;
   className?: string;
   onCancel: () => void;
   onFocus: (fieldId: string) => void;
