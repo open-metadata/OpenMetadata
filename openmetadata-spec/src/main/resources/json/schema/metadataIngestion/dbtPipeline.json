@@ -70,7 +70,7 @@
     "parsingTimeoutLimit": {
       "description": "Configuration to set the timeout for parsing the query in seconds.",
       "type": "integer",
-      "default": "300"
+      "default": 300
     },
     "databaseFilterPattern": {
       "description": "Regex to only fetch databases that matches the pattern.",
