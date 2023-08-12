@@ -75,11 +75,6 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  @Override
-  public Metrics addHref(UriInfo uriInfo, Metrics entity) {
-    return entity;
-  }
-
   public static class MetricsList extends ResultList<Metrics> {
     /* Required for serde */
   }
