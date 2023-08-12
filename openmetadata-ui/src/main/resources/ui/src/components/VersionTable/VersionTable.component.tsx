@@ -57,6 +57,7 @@ const VersionTable = ({
       const deletedConstraint = deletedConstraintDiffsList?.find((diff) =>
         diff.name?.includes(name)
       );
+
       let addedConstraintIcon = null;
       let deletedConstraintIcon = null;
       if (!isUndefined(addedConstraint)) {
@@ -81,6 +82,15 @@ const VersionTable = ({
         );
       }
 
+      const noConstraintChange =
+        isUndefined(addedConstraint) && isUndefined(deletedConstraint);
+
+      const constraintIcon = prepareConstraintIcon(
+        name,
+        record.constraint,
+        tableConstraints
+      );
+
       return (
         <Space
           align="start"
@@ -88,6 +98,7 @@ const VersionTable = ({
           size={2}>
           {deletedConstraintIcon}
           {addedConstraintIcon}
+          {noConstraintChange && constraintIcon}
           <RichTextEditorPreviewer markdown={name} />
         </Space>
       );
