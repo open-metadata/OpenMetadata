@@ -23,7 +23,7 @@ logger = profiler_logger()
 
 class CustomDateTimeRange(TypeDecorator):
     """
-    Convert CustomDateTimeRange
+    Convert CustomDateTimeRange to String to distinguish upper and lower inc/inf bounds along with lower and upper range
     """
 
     impl = String
@@ -33,14 +33,20 @@ class CustomDateTimeRange(TypeDecorator):
     def python_type(self):
         return str
 
-    def process_result_value(self, value, dialect):
-        """This is executed during result retrieval
-            Needs to be done, as DateTimeRange returns DateTimeRange object which is not json serializable
+    def process_result_value(self, value, _):
+        """
+        This is executed during result retrieval
+        Needs to be done, as DateTimeRange returns DateTimeRange object which is not json serializable.
+        example of how tsrange looks like: [2010-01-01 14:30, 2010-01-01 15:30)
+        The input for a range value must follow one of the below patterns
+            (lower-bound,upper-bound)
+            (lower-bound,upper-bound]
+            [lower-bound,upper-bound)
+            [lower-bound,upper-bound]
+            empty
         Args:
-            value: database record
-            dialect: database dialect
+            value: database datetimerange
         Returns:
             python conversion DateTimeRange for sample data
         """
-
-        return f"{[value.lower, value.upper]}"
+        return str(value) if value else None

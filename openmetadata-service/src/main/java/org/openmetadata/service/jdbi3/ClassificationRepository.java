@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -46,6 +47,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         dao,
         "",
         "");
+    quoteFqn = true;
   }
 
   @Override
@@ -55,13 +57,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public Classification setFields(Classification classification, Fields fields) {
-    if (fields.contains("termCount")) {
-      classification.withTermCount(getTermCount(classification));
-    }
-    if (fields.contains("usageCount")) {
-      classification.withUsageCount(getUsageCount(classification));
-    }
-    return classification;
+    classification.withTermCount(fields.contains("termCount") ? getTermCount(classification) : null);
+    return classification.withUsageCount(fields.contains("usageCount") ? getUsageCount(classification) : null);
   }
 
   @Override
@@ -86,18 +83,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private int getTermCount(Classification classification) {
-    if (classification.getTermCount() != null) {
-      return classification.getTermCount();
-    }
     ListFilter filter =
         new ListFilter(Include.NON_DELETED).addQueryParam("parent", classification.getFullyQualifiedName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
-    if (classification.getUsageCount() != null) {
-      return classification.getUsageCount();
-    }
     return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
   }
 

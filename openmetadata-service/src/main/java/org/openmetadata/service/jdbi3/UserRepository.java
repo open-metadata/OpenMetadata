@@ -121,10 +121,6 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(user.getIsBot())) {
       return null; // No inherited roles for bots
     }
-    if (!nullOrEmpty(user.getInheritedRoles())) {
-      return user.getInheritedRoles();
-    }
-    getTeams(user);
     return SubjectContext.getRolesForTeams(getTeams(user));
   }
 
@@ -255,9 +251,6 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getOwns(User user) {
-    if (user.getOwns() != null) {
-      return user.getOwns();
-    }
     // Compile entities owned by the user
     List<EntityRelationshipRecord> ownedEntities =
         daoCollection.relationshipDAO().findTo(user.getId().toString(), USER, Relationship.OWNS.ordinal());
@@ -273,7 +266,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getFollows(User user) {
-    return user.getFollows() != null ? user.getFollows() : findTo(user.getId(), USER, Relationship.FOLLOWS, null);
+    return findTo(user.getId(), USER, Relationship.FOLLOWS, null);
   }
 
   private List<EntityReference> getTeamChildren(UUID teamId) {
@@ -307,14 +300,11 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Get all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) {
-    return user.getRoles() != null ? user.getRoles() : findTo(user.getId(), USER, Relationship.HAS, Entity.ROLE);
+    return findTo(user.getId(), USER, Relationship.HAS, Entity.ROLE);
   }
 
   /* Get all the teams that user belongs to User entity */
   public List<EntityReference> getTeams(User user) {
-    if (!nullOrEmpty(user.getTeams())) {
-      return user.getTeams();
-    }
     List<EntityReference> teams = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
     // Filter deleted teams
     teams = listOrEmpty(teams).stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());

@@ -37,6 +37,7 @@ public final class RestUtil {
   public static final String ENTITY_FIELDS_CHANGED = "entityFieldsChanged";
   public static final String ENTITY_NO_CHANGE = "entityNoChange";
   public static final String ENTITY_SOFT_DELETED = "entitySoftDeleted";
+  public static final String ENTITY_RESTORED = "entityRestored";
   public static final String ENTITY_DELETED = "entityDeleted";
   public static final String DELETED_USER_NAME = "DeletedUser";
   public static final String DELETED_USER_DISPLAY = "User was deleted";
@@ -147,6 +148,7 @@ public final class RestUtil {
       if (changeType.equals(RestUtil.ENTITY_CREATED)
           || changeType.equals(RestUtil.ENTITY_UPDATED)
           || changeType.equals(RestUtil.ENTITY_NO_CHANGE)
+          || changeType.equals(RestUtil.ENTITY_RESTORED)
           || changeType.equals(RestUtil.LOGICAL_TEST_CASES_ADDED)) {
         return responseBuilder.entity(entity).build();
       } else {

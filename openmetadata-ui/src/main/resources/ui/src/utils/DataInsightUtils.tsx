@@ -171,7 +171,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         {payload.map((entry, index) => (
           <li
-            className="d-flex items-center justify-between tw-gap-6 tw-pb-1.5 text-sm"
+            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
             key={`item-${index}`}>
             <span className="flex items-center text-grey-muted">
               <Surface className="mr-2" height={12} version="1.1" width={12}>

@@ -23,8 +23,8 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii import PII
 from metadata.pii.column_name_scanner import ColumnNameScanner
+from metadata.pii.constants import PII
 from metadata.pii.ner_scanner import NERScanner
 from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger

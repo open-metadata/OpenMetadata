@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static java.lang.Boolean.FALSE;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
@@ -64,16 +63,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /* Get all the teams that use this policy */
   private List<EntityReference> getTeams(Policy policy) {
-    return !nullOrEmpty(policy.getTeams())
-        ? policy.getTeams()
-        : findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
+    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
   }
 
   /* Get all the roles that use this policy */
   private List<EntityReference> getRoles(Policy policy) {
-    return !nullOrEmpty(policy.getRoles())
-        ? policy.getRoles()
-        : findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
+    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
   }
 
   @Override

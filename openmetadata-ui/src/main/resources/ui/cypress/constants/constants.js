@@ -83,6 +83,13 @@ export const SEARCH_ENTITY_TABLE = {
     serviceName: 'sample_data',
     entityType: 'Table',
   },
+  table_5: {
+    term: 'dim.api/client',
+    displayName: 'dim.api/client',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+    entityType: 'Table',
+  },
 };
 
 export const SEARCH_ENTITY_TOPIC = {

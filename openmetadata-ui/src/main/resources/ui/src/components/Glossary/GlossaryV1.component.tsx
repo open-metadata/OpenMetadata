@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import Loader from 'components/Loader/Loader';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
@@ -38,15 +37,16 @@ import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
-import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
+import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
+import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';

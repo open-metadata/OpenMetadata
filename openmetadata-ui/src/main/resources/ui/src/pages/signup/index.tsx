@@ -103,15 +103,16 @@ const SignUp = () => {
 
   return loading ? (
     <p
-      className="text-center text-grey-body tw-h3 d-flex justify-center items-center"
+      className="text-center text-grey-body d-flex justify-center items-center"
       data-testid="loading-content">
       {t('label.creating-account')}
       {ELLIPSES}
     </p>
   ) : (
-    <div className="tw-h-screen d-flex justify-center">
+    // TODO: replace this with form
+    <div className="d-flex justify-center">
       <div className="d-flex flex-col items-center signup-box">
-        <div className="d-flex justify-center items-center tw-my-7">
+        <div className="d-flex justify-center items-center">
           <OMDLogo
             data-testid="om-logo"
             height={50}
@@ -119,26 +120,26 @@ const SignUp = () => {
             width={50}
           />
         </div>
-        <div className="tw-mb-7">
-          <h4 className="tw-font-semibold" data-testid="om-heading">
+        <div>
+          <h4 className="font-semibold" data-testid="om-heading">
             <Transi18next
               i18nKey="label.join-entity"
-              renderElement={<span className="tw-text-primary" />}
+              renderElement={<span className="text-primary" />}
               values={{
                 entity: t('label.open-metadata'),
               }}
             />
           </h4>
         </div>
-        <div className="tw-px-8 tw-w-full">
+        <div className="w-full">
           <form
             action="."
             data-testid="create-user-form"
             method="POST"
             onSubmit={onSubmitHandler}>
-            <div className="tw-mb-4">
+            <div>
               <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                className="d-block text-body text-grey-body required-field"
                 data-testid="full-name-label"
                 htmlFor="displayName">
                 {t('label.full-name')}
@@ -146,9 +147,6 @@ const SignUp = () => {
               <input
                 required
                 autoComplete="off"
-                className="tw-appearance-none tw-border tw-border-main  
-              tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
-              focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 data-testid="full-name-input"
                 id="displayName"
                 name="displayName"
@@ -160,19 +158,14 @@ const SignUp = () => {
                 onChange={onChangeHandler}
               />
             </div>
-            <div className="tw-mb-4">
-              <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
-                data-testid="username-label"
-                htmlFor="name">
+            <div>
+              <label data-testid="username-label" htmlFor="name">
                 {t('label.username')}
               </label>
               <input
                 readOnly
                 required
                 autoComplete="off"
-                className="cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
-                  tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 data-testid="username-input"
                 id="name"
                 name="name"
@@ -182,19 +175,14 @@ const SignUp = () => {
                 onChange={onChangeHandler}
               />
             </div>
-            <div className="tw-mb-4">
-              <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
-                data-testid="email-label"
-                htmlFor="email">
+            <div>
+              <label data-testid="email-label" htmlFor="email">
                 {t('label.email')}
               </label>
               <input
                 readOnly
                 required
                 autoComplete="off"
-                className="cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
-                  tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 data-testid="email-input"
                 id="email"
                 name="email"
@@ -206,10 +194,8 @@ const SignUp = () => {
                 onChange={onChangeHandler}
               />
             </div>
-            <div className="tw-mb-4">
-              <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
-                data-testid="select-team-label">
+            <div>
+              <label data-testid="select-team-label">
                 {t('label.select-field', {
                   field: t('label.team-plural-lowercase'),
                 })}
@@ -220,10 +206,8 @@ const SignUp = () => {
                 onSelectionChange={setSelectedTeams}
               />
             </div>
-            <div className="d-flex tw-my-7 tw-justify-end">
+            <div className="d-flex justify-end">
               <Button
-                className="tw-text-white 
-                       tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"
                 data-testid="create-button"
                 htmlType="submit"
                 type="primary">

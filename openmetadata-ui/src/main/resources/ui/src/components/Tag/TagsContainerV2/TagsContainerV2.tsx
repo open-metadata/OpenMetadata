@@ -42,7 +42,6 @@ const TagsContainerV2 = ({
   showTaskHandler = true,
   selectedTags,
   entityType,
-  entityThreadLink,
   entityFqn,
   tagType,
   displayType,
@@ -156,7 +155,7 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col onClick={handleAddClick}>
+        <Col className="m-t-xss" onClick={handleAddClick}>
           <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
         </Col>
       ) : null,
@@ -245,21 +244,14 @@ const TagsContainerV2 = ({
             width={14}
             onClick={() =>
               onThreadLinkSelect?.(
-                entityThreadLink ??
-                  getEntityFeedLink(entityType, entityFqn, 'tags')
+                getEntityFeedLink(entityType, entityFqn, 'tags')
               )
             }
           />
         </Tooltip>
       </Col>
     ),
-    [
-      entityType,
-      entityFqn,
-      entityThreadLink,
-      getEntityFeedLink,
-      onThreadLinkSelect,
-    ]
+    [entityType, entityFqn, onThreadLinkSelect]
   );
 
   const header = useMemo(() => {

@@ -24,12 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getNameFromFQN } from 'utils/CommonUtils';
 import EntityLink from 'utils/EntityLink';
-import {
-  getEntityFieldDisplay,
-  getEntityFQN,
-  getEntityType,
-  prepareFeedLink,
-} from 'utils/FeedUtils';
+import { getEntityFQN, getEntityType, prepareFeedLink } from 'utils/FeedUtils';
 import { getTaskDetailPath } from 'utils/TasksUtils';
 import {
   getDateTimeFromMilliSeconds,
@@ -47,7 +42,6 @@ interface TaskFeedCardProps {
   feed: Thread;
   className?: string;
   showThread?: boolean;
-  isEntityFeed?: boolean;
   isOpenInDrawer?: boolean;
   isActive?: boolean;
   isForFeedTab?: boolean;
@@ -58,7 +52,6 @@ const TaskFeedCard = ({
   post,
   feed,
   className = '',
-  isEntityFeed = false,
   showThread = true,
   isActive,
   hidePopover = false,
@@ -114,34 +107,27 @@ const TaskFeedCard = ({
 
       <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
-      {isEntityFeed ? (
-        <span className="tw-heading" data-testid="headerText-entityField">
-          {getEntityFieldDisplay(feed.about)}
-        </span>
-      ) : (
-        <>
-          {isForFeedTab ? null : (
-            <>
-              <span className="p-r-xss">{entityType}</span>
-              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-                <Link
-                  className="break-all"
-                  data-testid="entitylink"
-                  to={prepareFeedLink(entityType, entityFQN)}
-                  onClick={(e) => e.stopPropagation()}>
-                  {getNameFromFQN(entityFQN)}
-                </Link>
-              </EntityPopOverCard>
-            </>
-          )}
 
-          {!isEmpty(taskField) ? (
-            <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
-              {taskField}
-            </span>
-          ) : null}
+      {isForFeedTab ? null : (
+        <>
+          <span className="p-r-xss">{entityType}</span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="break-all"
+              data-testid="entitylink"
+              to={prepareFeedLink(entityType, entityFQN)}
+              onClick={(e) => e.stopPropagation()}>
+              {getNameFromFQN(entityFQN)}
+            </Link>
+          </EntityPopOverCard>
         </>
       )}
+
+      {!isEmpty(taskField) ? (
+        <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
+          {taskField}
+        </span>
+      ) : null}
     </Typography.Text>
   );
 

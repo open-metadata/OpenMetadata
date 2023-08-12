@@ -36,14 +36,6 @@ const mockProps: TopicSchemaFieldsProps = {
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
   entityFqn: 'topic.fqn',
-  entityFieldThreads: [
-    {
-      entityLink:
-        '#E::topic::sample_kafka.address_book::messageSchema::schemaFields::AddressBook::description>',
-      count: 1,
-      entityField: 'messageSchema::schemaFields::AddressBook::description',
-    },
-  ],
   onThreadLinkSelect: jest.fn(),
 };
 

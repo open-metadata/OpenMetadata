@@ -82,6 +82,18 @@ public interface EntityInterface {
     return null;
   }
 
+  default List<EntityReference> getChildren() {
+    return null;
+  }
+
+  default List<EntityReference> getReviewers() {
+    return null;
+  }
+
+  default List<EntityReference> getExperts() {
+    return null;
+  }
+
   default EntityReference getDomain() {
     return null;
   }
@@ -121,6 +133,18 @@ public interface EntityInterface {
   }
 
   default void setExtension(Object extension) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setChildren(List<EntityReference> entityReference) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setReviewers(List<EntityReference> entityReference) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setExperts(List<EntityReference> entityReference) {
     /* no-op implementation to be overridden */
   }
 
