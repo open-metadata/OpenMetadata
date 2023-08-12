@@ -304,7 +304,7 @@ export const getSummary = (
   return (
     <Fragment>
       {isDeleteUpdated?.length > 0 ? (
-        <p className="tw-mb-2">
+        <Typography.Paragraph>
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
@@ -316,37 +316,37 @@ export const getSummary = (
                   });
             })
             .join(', ')}
-        </p>
+        </Typography.Paragraph>
       ) : null}
       {fieldsAdded?.length > 0 ? (
-        <p className="tw-mb-2">
+        <Typography.Paragraph>
           {getSummaryText(
             isPrefix,
             fieldsAdded,
             t('label.added'),
             t('label.added-lowercase')
           )}
-        </p>
+        </Typography.Paragraph>
       ) : null}
       {fieldsUpdated?.length ? (
-        <p className="tw-mb-2">
+        <Typography.Paragraph>
           {getSummaryText(
             isPrefix,
             fieldsUpdated,
             t('label.edited'),
             t('label.updated-lowercase')
           )}
-        </p>
+        </Typography.Paragraph>
       ) : null}
       {fieldsDeleted?.length ? (
-        <p className="tw-mb-2">
+        <Typography.Paragraph>
           {getSummaryText(
             isPrefix,
             fieldsDeleted,
             t('label.removed'),
             t('label.deleted-lowercase')
           )}
-        </p>
+        </Typography.Paragraph>
       ) : null}
     </Fragment>
   );

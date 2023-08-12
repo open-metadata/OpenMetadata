@@ -39,7 +39,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   isReadOnly,
   onUpdate,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }) => {
   const { t } = useTranslation();
@@ -138,7 +137,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             hasEditPermission={hasDescriptionEditAccess}
@@ -157,7 +155,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
@@ -179,7 +176,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
@@ -198,7 +194,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       isReadOnly,
       entityFqn,
       hasTagEditAccess,
-      entityFieldThreads,
       hasDescriptionEditAccess,
       editContainerColumnDescription,
       getEntityName,

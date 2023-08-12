@@ -19,8 +19,7 @@ import { ReactComponent as RequestIcon } from 'assets/svg/request-icon.svg';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useHistory } from 'react-router';
 import {
   getRequestDescriptionPath,
@@ -29,7 +28,6 @@ import {
 } from 'utils/TasksUtils';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -45,7 +43,6 @@ interface Props {
   isReadOnly?: boolean;
   entityType: EntityType;
   entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
@@ -67,7 +64,7 @@ const DescriptionV1 = ({
   isReadOnly = false,
   removeBlur = false,
   entityName,
-  entityFieldThreads,
+
   onThreadLinkSelect,
   entityType,
   entityFqn,
@@ -76,7 +73,6 @@ const DescriptionV1 = ({
   showCommentsIcon = true,
   reduceDescription,
 }: Props) => {
-  const descriptionThread = entityFieldThreads?.[0];
   const history = useHistory();
 
   const handleRequestDescription = () => {
@@ -91,28 +87,20 @@ const DescriptionV1 = ({
     );
   };
 
+  const entityLink = useMemo(
+    () => getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION),
+    [entityType, entityFqn]
+  );
+
   const editButton = () => {
-    const isDescriptionThread = !isUndefined(descriptionThread);
     const extraIcons = showCommentsIcon && (
       <Icon
         component={CommentIcon}
-        data-testid={
-          isDescriptionThread
-            ? 'description-thread'
-            : 'start-description-thread'
-        }
+        data-testid="description-thread"
         style={{ color: DE_ACTIVE_COLOR }}
         width={20}
         onClick={() => {
-          isDescriptionThread
-            ? onThreadLinkSelect?.(descriptionThread?.entityLink ?? '')
-            : onThreadLinkSelect?.(
-                getEntityFeedLink(
-                  entityType,
-                  entityFqn,
-                  EntityField.DESCRIPTION
-                )
-              );
+          onThreadLinkSelect?.(entityLink);
         }}
       />
     );

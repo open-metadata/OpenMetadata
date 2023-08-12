@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Divider } from 'antd';
 import classNames from 'classnames';
 import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
 import React, { FC, useCallback } from 'react';
@@ -51,7 +52,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   const postLength = feed?.posts?.length ?? 0;
 
   const handleFeedClick = useCallback(() => {
-    onFeedClick && onFeedClick(feed);
+    onFeedClick?.(feed);
   }, [onFeedClick, feed]);
 
   return (
@@ -86,18 +87,18 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
 
       {showThread && postLength > 0 ? (
         <div className="feed-posts" data-testid="replies">
-          <div className="d-flex">
-            <span data-testid="replies-count">
-              {getReplyText(
-                postLength,
-                t('label.reply-lowercase'),
-                t('label.reply-lowercase-plural')
-              )}
-            </span>
-            <span className="flex-auto self-center tw-ml-1.5">
-              <hr />
-            </span>
-          </div>
+          <Divider
+            plain
+            className="m-y-sm"
+            data-testid="replies-count"
+            orientation="left">
+            {getReplyText(
+              postLength,
+              t('label.reply-lowercase'),
+              t('label.reply-lowercase-plural')
+            )}
+          </Divider>
+
           {feed?.posts?.map((reply) => (
             <ActivityFeedCardV1
               isPost

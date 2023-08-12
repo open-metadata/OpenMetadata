@@ -12,6 +12,7 @@
  */
 
 import { Space, Typography } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
@@ -25,7 +26,7 @@ import { CurrentTourPageType } from 'enums/tour.enum';
 import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -130,7 +131,7 @@ const Appbar: React.FC = (): JSX.Element => {
           target="_blank">
           <Space size={4}>
             <IconDoc
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="Doc icon"
               width={14}
@@ -152,7 +153,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <Link className="link-title" to={ROUTES.SWAGGER}>
           <Space size={4}>
             <IconAPI
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="API icon"
               width={14}
@@ -172,7 +173,7 @@ const Appbar: React.FC = (): JSX.Element => {
           target="_blank">
           <Space size={4}>
             <IconSlackGrey
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="slack icon"
               width={14}
@@ -215,7 +216,7 @@ const Appbar: React.FC = (): JSX.Element => {
           target="_blank">
           <Space size={4}>
             <IconVersionBlack
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="Version icon"
               width={14}
@@ -240,7 +241,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const getUsersRoles = (userRoleArr: string[], name: string) => {
     return (
       <div>
-        <div className="text-grey-muted tw-text-xs">{name}</div>
+        <div className="text-grey-muted text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
           <Typography.Paragraph
             className="ant-typography-ellipsis-custom font-normal"
@@ -249,7 +250,6 @@ const Appbar: React.FC = (): JSX.Element => {
             {userRole}
           </Typography.Paragraph>
         ))}
-        <hr className="tw-my-1.5" />
       </div>
     );
   };
@@ -262,7 +262,7 @@ const Appbar: React.FC = (): JSX.Element => {
     return currentUser?.displayName || currentUser?.name || TERM_USER;
   };
 
-  const getUserData = () => {
+  const profileDropdown = useMemo(() => {
     const currentUser = isAuthDisabled
       ? appState.nonSecureUserDetails
       : appState.userDetails;
@@ -280,67 +280,100 @@ const Appbar: React.FC = (): JSX.Element => {
     const teams = userTeams.splice(0, 3);
     const remainingTeamsCount = max([userTeams.length, 0]);
 
-    return (
-      <div className="tw-max-w-xs" data-testid="greeting-text">
-        <Link
-          data-testid="user-name"
-          to={getUserPath(currentUser?.name as string)}>
-          {' '}
-          <Typography.Paragraph
-            className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color"
-            ellipsis={{ rows: 1, tooltip: true }}>
-            {name}
-          </Typography.Paragraph>
-        </Link>
-        <hr className="m-y-sm" />
-        {roles.length > 0 ? getUsersRoles(roles, t('label.role-plural')) : null}
-        {inheritedRoles.length > 0
-          ? getUsersRoles(inheritedRoles, t('label.inherited-role-plural'))
-          : null}
-        {teams.length > 0 ? (
-          <div>
-            <span className="text-grey-muted tw-text-xs">
-              {t('label.team-plural')}
-            </span>
-            {teams.map((t, i) => (
-              <Typography.Paragraph
-                className="ant-typography-ellipsis-custom text-sm"
-                ellipsis={{ tooltip: true }}
-                key={i}>
-                <Link to={getTeamAndUserDetailsPath(t.name as string)}>
-                  {t.displayName || t.name}
-                </Link>
-              </Typography.Paragraph>
-            ))}
-            {remainingTeamsCount ? (
-              <Link
-                className="more-teams-pill"
-                to={getUserPath(currentUser?.name as string)}>
-                {remainingTeamsCount} {t('label.more')}
-              </Link>
-            ) : null}
-            <hr className="m-t-sm" />
-          </div>
-        ) : null}
-      </div>
-    );
-  };
+    const dropDownOption: ItemType[] = [
+      {
+        label: (
+          <Link
+            data-testid="user-name"
+            to={getUserPath(currentUser?.name as string)}>
+            <Typography.Paragraph
+              className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color"
+              ellipsis={{ rows: 1, tooltip: true }}>
+              {name}
+            </Typography.Paragraph>
+          </Link>
+        ),
+        key: 'user-name',
+      },
+      {
+        type: 'divider',
+      },
+    ];
 
-  const profileDropdown = [
-    {
-      name: getUserData(),
-      to: '',
-      disabled: false,
-      icon: <></>,
-      isText: true,
-    },
-    {
-      name: t('label.logout'),
-      to: '',
-      disabled: false,
-      method: onLogoutHandler,
-    },
-  ];
+    if (roles.length > 0) {
+      dropDownOption.push(
+        {
+          key: 'role',
+          label: getUsersRoles(roles, t('label.role-plural')),
+        },
+        {
+          type: 'divider',
+        }
+      );
+    }
+    if (inheritedRoles.length > 0) {
+      dropDownOption.push(
+        {
+          key: 'inherited-role-plural',
+          label: getUsersRoles(
+            inheritedRoles,
+            t('label.inherited-role-plural')
+          ),
+        },
+        {
+          type: 'divider',
+        }
+      );
+    }
+
+    if (teams.length > 0) {
+      dropDownOption.push(
+        {
+          label: (
+            <div>
+              <span className="text-grey-muted text-xs">
+                {t('label.team-plural')}
+              </span>
+              {teams.map((t, i) => (
+                <Typography.Paragraph
+                  className="ant-typography-ellipsis-custom text-sm"
+                  ellipsis={{ tooltip: true }}
+                  key={i}>
+                  <Link to={getTeamAndUserDetailsPath(t.name as string)}>
+                    {t.displayName || t.name}
+                  </Link>
+                </Typography.Paragraph>
+              ))}
+              {remainingTeamsCount ? (
+                <Link
+                  className="more-teams-pill"
+                  to={getUserPath(currentUser?.name as string)}>
+                  {remainingTeamsCount} {t('label.more')}
+                </Link>
+              ) : null}
+            </div>
+          ),
+          key: 'teams',
+        },
+        {
+          type: 'divider',
+        }
+      );
+    }
+
+    dropDownOption.push({
+      label: (
+        <Typography.Link
+          className="ant-typography-ellipsis-custom text-sm"
+          onClick={onLogoutHandler}>
+          {t('label.logout')}
+        </Typography.Link>
+      ),
+      key: 'logout',
+    });
+
+    return dropDownOption;
+  }, [appState, getNonDeletedTeams, onLogoutHandler]);
 
   const searchHandler = (value: string) => {
     if (!isTourOpen) {

@@ -138,7 +138,7 @@ export const WHATS_NEW = [
       'New Connectors': `- AWS Glue\n- DBT\n- Maria DB`,
       'User Interface': `- UI displays all the metadata changes of an entity over time as Version History. Clicking on the Version button, users can view the change log of an entity from the very beginning.\n- The UI supports setting up metadata ingestion workflows.\n- Improvements have been made in drawing the entity node details for lineage.\n- Entity link is supported for each tab on the details page.\n- Guided steps have been added for setting up ElasticSearch.\n- The entity details, search results page (Explore), landing pages, and components have been redesigned for better project structure and code maintenance.`,
       'OpenMetadata Quickstart':
-        '- Shipped a Python package to simplify OpenMetadata docker installation.\n<code class="tw-bg-grey-muted-lite tw-text-grey-body tw-font-medium">pip install openmetadata-ingestion[docker]\n\nmetadata docker --run</code>',
+        '- Shipped a Python package to simplify OpenMetadata docker installation.\n<code class="bg-grey-muted-lite text-grey-body font-medium">pip install openmetadata-ingestion[docker]\n\nmetadata docker --run</code>',
       'Helm Charts': `- Installing OpenMetadata in your cloud provider or on-premise got easier.\n- We worked on Helm charts to get the OpenMetadata and dependencies up and running on Kubernetes.`,
       'Other Features':
         '- Upgraded from JDBI 2 to JDBI 3, which will support newer versions.',

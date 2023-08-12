@@ -62,7 +62,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   onUpdate,
   hasTagEditAccess,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
   isVersionView = false,
 }) => {
@@ -198,7 +197,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             hasEditPermission={hasDescriptionEditAccess}
@@ -217,7 +215,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
@@ -239,7 +236,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
