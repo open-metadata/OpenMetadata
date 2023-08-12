@@ -22,7 +22,6 @@ export type TagsContainerV2Props = {
   showTaskHandler?: boolean;
   selectedTags: EntityTags[];
   entityType?: string;
-  entityThreadLink?: string;
   entityFqn?: string;
   tagType: TagSource;
   showHeader?: boolean;

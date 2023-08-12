@@ -47,14 +47,14 @@ const FeedCardBody: FC<FeedBodyProp> = ({
     onPostUpdate(postMessage);
   };
 
+  const getDefaultValue = (defaultMessage: string) => {
+    return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
+  };
+
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onCancelPostUpdate();
     setPostMessage(getDefaultValue(message));
-  };
-
-  const getDefaultValue = (defaultMessage: string) => {
-    return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
   const FEED_BODY = useMemo(
@@ -63,16 +63,14 @@ const FeedCardBody: FC<FeedBodyProp> = ({
         <ActivityFeedEditor
           defaultValue={getDefaultValue(message)}
           editAction={
-            <div className="d-flex tw-justify-end tw-gap-2 tw-mr-1.5">
+            <div className="d-flex">
               <Button
-                className="tw-border tw-border-primary tw-text-primary tw-rounded"
                 data-testid="cancel-button"
                 size="small"
                 onClick={handleCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="tw-rounded"
                 data-testid="save-button"
                 disabled={!postMessage.length}
                 size="small"
@@ -103,8 +101,8 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   }, [message]);
 
   return (
-    <div className={classNames('tw-group', isEditPost ? '' : className)}>
-      <div className="feed-meesage">
+    <>
+      <div className={classNames('feed-message', isEditPost ? '' : className)}>
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
             <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
@@ -113,7 +111,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
               {t('label.to-lowercase')}{' '}
               {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
             </Typography.Text>
-            <Typography.Text className="tw-font-semibold">
+            <Typography.Text className="font-medium">
               {postMessage}
             </Typography.Text>
             <RichTextEditorPreviewer
@@ -131,7 +129,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           onReactionSelect={onReactionSelect}
         />
       )}
-    </div>
+    </>
   );
 };
 

@@ -42,7 +42,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('../ActivityFeedList/FeedListSeparator', () => {
+jest.mock('../FeedListSeparator/FeedListSeparator', () => {
   return jest.fn().mockReturnValue(<p>FeedListSeparator</p>);
 });
 

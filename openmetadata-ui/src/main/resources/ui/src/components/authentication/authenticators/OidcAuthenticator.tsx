@@ -14,7 +14,7 @@
 import { isEmpty } from 'lodash';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
 import SigninPage from 'pages/login';
-import PageNotFound from 'pages/page-not-found';
+import PageNotFound from 'pages/page-not-found/PageNotFound';
 import React, {
   ComponentType,
   forwardRef,

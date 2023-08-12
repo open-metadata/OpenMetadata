@@ -71,7 +71,7 @@ function IngestionListTable({
             : t('message.no-permission-to-view')
         }>
         <Typography.Link
-          className="tw-mr-2 overflow-wrap-anywhere"
+          className="m-r-xs overflow-wrap-anywhere"
           data-testid="ingestion-dag-link"
           disabled={!(permissions.ViewAll || permissions.ViewBasic)}
           href={`${airflowEndpoint}/tree?dag_id=${text}`}

@@ -16,6 +16,10 @@ import React from 'react';
 import { HeaderProps } from './PageHeader.interface';
 import './PageHeader.style.less';
 
+/**
+ * @deprecated will be removed
+ * I don't see any need of this page we can eliminate this in future releases
+ */
 const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
   return (
     <div className="page-header-container">

@@ -31,7 +31,6 @@ import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import { Props, UserPageTabs } from './Users.interface';
 import './Users.style.less';
-import { userPageFilterList } from './Users.util';
 import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
 import UserProfileImage from './UsersProfile/UserProfileImage/UserProfileImage.component';
 import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component';
@@ -175,7 +174,6 @@ const Users = ({
     followingEntities,
     ownedEntities,
     isUserEntitiesLoading,
-    userPageFilterList,
     entityDetails,
     activityFeed,
   ]);

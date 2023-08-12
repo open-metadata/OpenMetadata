@@ -27,7 +27,6 @@ const TableTags = <T extends TableUnion>({
   entityFqn,
   isReadOnly,
   hasTagEditAccess,
-  entityFieldThreads,
   showInlineEditTagButton,
   onThreadLinkSelect,
   handleTagSelection,
@@ -57,7 +56,6 @@ const TableTags = <T extends TableUnion>({
                   fqn: record.fullyQualifiedName ?? '',
                   field: record.tags ?? [],
                 }}
-                entityFieldThreads={entityFieldThreads}
                 entityFqn={entityFqn}
                 entityTaskType={EntityField.TAGS}
                 entityType={entityType}
