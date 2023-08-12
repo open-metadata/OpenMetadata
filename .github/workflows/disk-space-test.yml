@@ -45,7 +45,7 @@ jobs:
             haskell: true
             large-packages: false
             docker-images: false
-            swap-storage: false
+            swap-storage: true
       - name: Check Disk Space After Action Build
         run: |
             echo "=============================================="
