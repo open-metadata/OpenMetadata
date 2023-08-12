@@ -126,12 +126,13 @@ export const getConstraintIcon = (
   isConstraintAdded?: boolean,
   isConstraintDeleted?: boolean
 ) => {
-  let title: string, icon: SvgComponent;
+  let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = t('label.primary-key');
         icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
+        dataTestId = 'primary-key';
       }
 
       break;
@@ -139,6 +140,7 @@ export const getConstraintIcon = (
       {
         title = t('label.unique');
         icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
+        dataTestId = 'unique';
       }
 
       break;
@@ -146,6 +148,7 @@ export const getConstraintIcon = (
       {
         title = t('label.not-null');
         icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
+        dataTestId = 'not-null';
       }
 
       break;
@@ -153,6 +156,7 @@ export const getConstraintIcon = (
       {
         title = t('label.foreign-key');
         icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
+        dataTestId = 'foreign-key';
       }
 
       break;
@@ -173,6 +177,7 @@ export const getConstraintIcon = (
           'diff-removed': isConstraintDeleted,
         })}
         component={icon}
+        data-testid={`constraint-icon-${dataTestId}`}
         style={{ fontSize: width }}
       />
     </Tooltip>
