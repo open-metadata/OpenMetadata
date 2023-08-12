@@ -119,9 +119,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   const ResultCount = () => {
     if (showResultCount && (isFilterSelected || filter?.quickFilter)) {
       if (MAX_RESULT_HITS === totalValue) {
-        return <div className="tw-mb-1">{`About ${totalValue} results`}</div>;
+        return <div>{`About ${totalValue} results`}</div>;
       } else {
-        return <div className="tw-mb-1">{pluralize(totalValue, 'result')}</div>;
+        return <div>{pluralize(totalValue, 'result')}</div>;
       }
     } else {
       return null;
@@ -151,9 +151,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                 <>
                   <ResultCount />
                   {data.length > 0 ? (
-                    <div
-                      className="tw-grid tw-grid-rows-1 tw-grid-cols-1"
-                      data-testid="search-results">
+                    <div data-testid="search-results">
                       {searchResultCards}
                       <Pagination
                         hideOnSinglePage

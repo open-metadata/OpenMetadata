@@ -22,7 +22,6 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
 import { getFieldThreadElement } from 'utils/FeedElementUtils';
 import {
   getEntityTaskDetails,
@@ -40,7 +39,6 @@ const EntityTasks = ({
   entityFqn,
   entityType,
   entityTaskType,
-  entityFieldThreads,
   onThreadLinkSelect,
 }: EntityTasksProps) => {
   const { t } = useTranslation();
@@ -113,13 +111,10 @@ const EntityTasks = ({
 
       {/*  List Conversation */}
       {getFieldThreadElement(
-        columnName,
-        entityTaskType,
-        entityFieldThreads,
         onThreadLinkSelect,
         entityType,
         entityFqn,
-        `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}${entityTaskType}`
+        columnName
       )}
     </Space>
   );

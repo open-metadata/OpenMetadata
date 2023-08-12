@@ -113,7 +113,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
             <Popover
               key={i}
               title={
-                <div className="tw-text-left">
+                <div className="text-left">
                   {r.timestamp && (
                     <p>
                       {`${t('label.execution-date')}:`}{' '}

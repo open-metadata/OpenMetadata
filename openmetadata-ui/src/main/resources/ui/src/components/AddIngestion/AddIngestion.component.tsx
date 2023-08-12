@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { LOADING_STATE } from 'enums/common.enum';
 import { Connection } from 'generated/api/services/createDatabaseService';
@@ -399,9 +400,7 @@ const AddIngestion = ({
 
     return (
       <span>
-        <span className="tw-mr-1 tw-font-semibold">
-          {`"${state.ingestionName}"`}
-        </span>
+        <span className="font-medium">{`"${state.ingestionName}"`}</span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}
         </span>
@@ -425,7 +424,9 @@ const AddIngestion = ({
 
   return (
     <div data-testid="add-ingestion-container">
-      <h6 className="tw-heading tw-text-base">{heading}</h6>
+      <Typography.Title className="font-normal" level={5}>
+        {heading}
+      </Typography.Title>
 
       <IngestionStepper
         activeStep={activeIngestionStep}
@@ -433,7 +434,7 @@ const AddIngestion = ({
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
-      <div className="tw-pt-7">
+      <div className="p-t-lg">
         {activeIngestionStep === 1 && (
           <IngestionWorkflowForm
             cancelText={t('label.cancel')}
