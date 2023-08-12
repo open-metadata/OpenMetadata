@@ -650,7 +650,11 @@ export const getAllChangedEntityNames = (
 
 export function getColumnsDataWithVersionChanges<
   A extends TableColumn | ContainerColumn
->(changeDescription: ChangeDescription, colList?: A[]): Array<A> {
+>(
+  changeDescription: ChangeDescription,
+  colList?: A[],
+  isContainerEntity?: boolean
+): Array<A> {
   const columnsDiff = getAllDiffByFieldName(
     EntityField.COLUMNS,
     changeDescription
@@ -673,10 +677,10 @@ export function getColumnsDataWithVersionChanges<
       newColumnsList = [
         ...getEntityTagDiff(columnDiff, changedColName, colList),
       ];
-    } else {
+    } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
       const changedEntity = changedEntityName
         ?.split(FQN_SEPARATOR_CHAR)
-        .slice(1)
+        .slice(isContainerEntity ? 2 : 1)
         .join(FQN_SEPARATOR_CHAR);
       newColumnsList = [...getColumnsDiff(columnDiff, colList, changedEntity)];
     }
@@ -703,4 +707,29 @@ export const getUpdatedExtensionDiffFields = (
         },
       }
     : { extensionObject: {} };
+};
+
+export const getConstraintChanges = (changeDescription: ChangeDescription) => {
+  const constraintAddedDiff = getAllDiffByFieldName(
+    EntityField.CONSTRAINT,
+    changeDescription
+  ).added;
+  const constraintDeletedDiff = getAllDiffByFieldName(
+    EntityField.CONSTRAINT,
+    changeDescription
+  ).deleted;
+  const constraintUpdatedDiff = getAllDiffByFieldName(
+    EntityField.CONSTRAINT,
+    changeDescription
+  ).updated;
+  const addedConstraintDiffsList: FieldChange[] = [
+    ...(constraintAddedDiff ?? []),
+    ...(constraintUpdatedDiff ?? []),
+  ];
+  const deletedConstraintDiffsList: FieldChange[] = [
+    ...(constraintDeletedDiff ?? []),
+    ...(constraintUpdatedDiff ?? []),
+  ];
+
+  return { addedConstraintDiffsList, deletedConstraintDiffsList };
 };

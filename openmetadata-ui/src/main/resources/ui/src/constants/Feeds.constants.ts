@@ -74,6 +74,7 @@ export enum EntityField {
   MESSAGE_SCHEMA = 'messageSchema',
   CHARTS = 'charts',
   DATA_MODEL = 'dataModel',
+  CONSTRAINT = 'constraint',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

@@ -15,7 +15,8 @@ import { Col, Row, Space, Table, Tooltip } from 'antd';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { Column } from '../../generated/entity/data/table';
@@ -38,7 +39,8 @@ const VersionTable = ({
   columns,
   joins,
   tableConstraints,
-  constraintUpdatedColumns,
+  addedConstraintDiffsList,
+  deletedConstraintDiffsList,
 }: VersionTableProps) => {
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const { t } = useTranslation();
@@ -46,6 +48,52 @@ const VersionTable = ({
   const [searchText, setSearchText] = useState('');
 
   const data = useMemo(() => makeData(searchedColumns), [searchedColumns]);
+
+  const renderColumnName = useCallback(
+    (name: Column['name'], record: Column) => {
+      const addedConstraint = addedConstraintDiffsList?.find((diff) =>
+        diff.name?.includes(name)
+      );
+      const deletedConstraint = deletedConstraintDiffsList?.find((diff) =>
+        diff.name?.includes(name)
+      );
+      let addedConstraintIcon = null;
+      let deletedConstraintIcon = null;
+      if (!isUndefined(addedConstraint)) {
+        addedConstraintIcon = prepareConstraintIcon(
+          name,
+          record.constraint,
+          tableConstraints,
+          undefined,
+          undefined,
+          true
+        );
+      }
+      if (!isUndefined(deletedConstraint)) {
+        deletedConstraintIcon = prepareConstraintIcon(
+          name,
+          deletedConstraint.oldValue,
+          tableConstraints,
+          undefined,
+          undefined,
+          false,
+          true
+        );
+      }
+
+      return (
+        <Space
+          align="start"
+          className="w-max-90 vertical-align-inherit"
+          size={2}>
+          {deletedConstraintIcon}
+          {addedConstraintIcon}
+          <RichTextEditorPreviewer markdown={name} />
+        </Space>
+      );
+    },
+    [tableConstraints, addedConstraintDiffsList, deletedConstraintDiffsList]
+  );
 
   const versionTableColumns = useMemo(
     () => [
@@ -55,22 +103,7 @@ const VersionTable = ({
         key: 'name',
         accessor: 'name',
         width: 200,
-        render: (name: Column['name'], record: Column) => (
-          <Space
-            align="start"
-            className="w-max-90 vertical-align-inherit"
-            size={2}>
-            {prepareConstraintIcon(
-              name,
-              record.constraint,
-              tableConstraints,
-              undefined,
-              undefined,
-              constraintUpdatedColumns?.includes(name)
-            )}
-            <RichTextEditorPreviewer markdown={name} />
-          </Space>
-        ),
+        render: renderColumnName,
       },
       {
         title: t('label.type'),
@@ -147,7 +180,7 @@ const VersionTable = ({
         ),
       },
     ],
-    [columnName, joins, data]
+    [columnName, joins, data, renderColumnName]
   );
 
   const handleSearchAction = (searchValue: string) => {

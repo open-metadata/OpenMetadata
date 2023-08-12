@@ -27,7 +27,7 @@ import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagSource } from 'generated/type/tagLabel';
-import { cloneDeep, isUndefined, toString } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -41,9 +41,9 @@ import {
 } from '../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
-  getChangeColumnNameFromDiffValue,
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
+  getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
@@ -78,12 +78,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   const columns = useMemo(() => {
     const colList = cloneDeep((currentVersionData as Table).columns);
 
-    const newColList = getColumnsDataWithVersionChanges<Column>(
-      changeDescription,
-      colList
-    );
-
-    return newColList;
+    return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
@@ -123,21 +118,10 @@ const TableVersion: React.FC<TableVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
-  const constraintUpdatedColumns = useMemo(() => {
-    const constraintDiff = changeDescription?.fieldsUpdated;
-    const changedColumnsList: string[] = [];
-
-    if (!isUndefined(constraintDiff)) {
-      constraintDiff.forEach((diff) => {
-        const columnName = getChangeColumnNameFromDiffValue(diff.name);
-        if (columnName) {
-          changedColumnsList.push(columnName);
-        }
-      });
-    }
-
-    return changedColumnsList;
-  }, [changeDescription]);
+  const { addedConstraintDiffsList, deletedConstraintDiffsList } = useMemo(
+    () => getConstraintChanges(changeDescription),
+    [changeDescription]
+  );
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -157,13 +141,14 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <VersionTable
+                    addedConstraintDiffsList={addedConstraintDiffsList}
                     columnName={getPartialNameFromTableFQN(
                       datasetFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
-                    constraintUpdatedColumns={constraintUpdatedColumns}
+                    deletedConstraintDiffsList={deletedConstraintDiffsList}
                     joins={(currentVersionData as Table).joins as ColumnJoins[]}
                     tableConstraints={
                       (currentVersionData as Table).tableConstraints
@@ -218,7 +203,8 @@ const TableVersion: React.FC<TableVersionProp> = ({
       description,
       datasetFQN,
       columns,
-      constraintUpdatedColumns,
+      deletedConstraintDiffsList,
+      addedConstraintDiffsList,
       currentVersionData,
       entityPermissions,
     ]

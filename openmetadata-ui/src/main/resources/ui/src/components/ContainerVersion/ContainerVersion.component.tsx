@@ -42,6 +42,7 @@ import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
+  getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
@@ -78,12 +79,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       (currentVersionData as Container).dataModel?.columns
     );
 
-    const newColList = getColumnsDataWithVersionChanges<Column>(
+    return getColumnsDataWithVersionChanges<Column>(
       changeDescription,
-      colList
+      colList,
+      true
     );
-
-    return newColList;
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
@@ -123,6 +123,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const { addedConstraintDiffsList, deletedConstraintDiffsList } = useMemo(
+    () => getConstraintChanges(changeDescription),
+    [changeDescription]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -141,12 +146,14 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <VersionTable
+                    addedConstraintDiffsList={addedConstraintDiffsList}
                     columnName={getPartialNameFromTableFQN(
                       containerFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
+                    deletedConstraintDiffsList={deletedConstraintDiffsList}
                     joins={[]}
                   />
                 </Col>
@@ -194,7 +201,15 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         ),
       },
     ],
-    [description, containerFQN, columns, currentVersionData, entityPermissions]
+    [
+      description,
+      containerFQN,
+      columns,
+      currentVersionData,
+      entityPermissions,
+      addedConstraintDiffsList,
+      deletedConstraintDiffsList,
+    ]
   );
 
   if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
