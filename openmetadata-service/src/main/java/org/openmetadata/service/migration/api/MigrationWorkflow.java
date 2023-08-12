@@ -15,12 +15,15 @@ public class MigrationWorkflow {
   private final List<MigrationStep> migrations;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
+
+  private final String nativeSQLScriptRootPath;
   private final boolean forceMigrations;
 
-  public MigrationWorkflow(Jdbi jdbi, List<MigrationStep> migrationSteps, boolean forceMigrations) {
+  public MigrationWorkflow(Jdbi jdbi, List<MigrationStep> migrationSteps, String nativeSQLScriptRootPath, boolean forceMigrations) {
     this.jdbi = jdbi;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
     this.forceMigrations = forceMigrations;
+    this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
     // Sort Migration on the basis of version
     migrationSteps.sort(Comparator.comparing(MigrationStep::getMigrationVersion));
 
