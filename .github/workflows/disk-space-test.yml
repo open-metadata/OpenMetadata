@@ -43,8 +43,8 @@ jobs:
             android: true
             dotnet: true
             haskell: true
-            large-packages: false
-            docker-images: true
+            large-packages: true
+            docker-images: false
             swap-storage: true
       - name: Check Disk Space After Action Build
         run: |
