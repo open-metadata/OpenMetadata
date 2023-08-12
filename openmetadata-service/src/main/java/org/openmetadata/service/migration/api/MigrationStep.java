@@ -15,7 +15,7 @@ public interface MigrationStep {
 
   ConnectionType getDatabaseConnectionType();
 
-  void initialize(Handle handle);
+  void initialize(Handle handle, String sqlRootPath);
 
   // Handle Non-transactional supported SQLs here Example changes in table struct (DDL
   void preDDL();

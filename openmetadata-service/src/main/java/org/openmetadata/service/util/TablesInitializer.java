@@ -62,7 +62,9 @@ import org.reflections.Reflections;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
-  private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
+  private static final String OPTION_FLYWAY_SCRIPT_ROOT_PATH = "flyway-sql-root";
+
+  private static final String OPTION_NATIVE_SQL_ROOT_PATH = "native-sql-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
   private static final String OPTION_FORCE_MIGRATIONS = "force";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
@@ -73,7 +75,9 @@ public final class TablesInitializer {
   static {
     OPTIONS = new Options();
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
-    OPTIONS.addOption("s", OPTION_SCRIPT_ROOT_PATH, true, "Root directory of script path");
+    OPTIONS.addOption("s", OPTION_FLYWAY_SCRIPT_ROOT_PATH, true, "Root directory of flyway sql script path");
+    OPTIONS.addOption("n", OPTION_NATIVE_SQL_ROOT_PATH, true, "Root directory of native sql script path");
+
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(
         OPTION_FORCE_MIGRATIONS,
@@ -119,7 +123,7 @@ public final class TablesInitializer {
   public static void main(String[] args) throws Exception {
     CommandLineParser parser = new DefaultParser();
     CommandLine commandLine = parser.parse(OPTIONS, args);
-    if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH) || !commandLine.hasOption(OPTION_SCRIPT_ROOT_PATH)) {
+    if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH) || !commandLine.hasOption(OPTION_NATIVE_SQL_ROOT_PATH) || !commandLine.hasOption(OPTION_FLYWAY_SCRIPT_ROOT_PATH)) {
       usage();
       System.exit(1);
     }
@@ -190,7 +194,8 @@ public final class TablesInitializer {
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
     }
-    String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
+    String nativeSQLScriptRootPath = commandLine.getOptionValue(OPTION_FLYWAY_SCRIPT_ROOT_PATH);
+    String scriptRootPath = commandLine.getOptionValue(OPTION_FLYWAY_SCRIPT_ROOT_PATH);
     Flyway flyway =
         get(
             jdbcUrl,
@@ -200,7 +205,7 @@ public final class TablesInitializer {
             config.getDataSourceFactory().getDriverClass(),
             !disableValidateOnMigrate);
     try {
-      execute(config, flyway, schemaMigrationOptionSpecified);
+      execute(config, flyway, schemaMigrationOptionSpecified, nativeSQLScriptRootPath);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
       printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
@@ -238,8 +243,9 @@ public final class TablesInitializer {
         .load();
   }
 
+
   private static void execute(
-      OpenMetadataApplicationConfig config, Flyway flyway, SchemaMigrationOption schemaMigrationOption)
+      OpenMetadataApplicationConfig config, Flyway flyway, SchemaMigrationOption schemaMigrationOption, String nativeSQLRootPath)
       throws SQLException {
     final Jdbi jdbi =
         Jdbi.create(
@@ -274,13 +280,13 @@ public final class TablesInitializer {
         }
         flyway.migrate();
         validateAndRunSystemDataMigrations(
-            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), forceMigrations);
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), nativeSQLRootPath, forceMigrations);
         break;
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
-            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), forceMigrations);
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()),nativeSQLRootPath, forceMigrations);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -330,10 +336,11 @@ public final class TablesInitializer {
     }
   }
 
-  public static void validateAndRunSystemDataMigrations(Jdbi jdbi, ConnectionType connType, boolean forceMigrations) {
+  public static void validateAndRunSystemDataMigrations(Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath,
+                                                        boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
-    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, forceMigrations);
+    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, nativeMigrationSQLPath, forceMigrations);
     workflow.runMigrationWorkflows();
   }
 

@@ -22,6 +22,8 @@ public class MySQLMigration implements MigrationStep {
   private MigrationDAO migrationDAO;
   private Handle handle;
 
+  private String sqlRootPath;
+
   @Override
   public String getMigrationVersion() {
     return "1.1.0";
@@ -43,8 +45,9 @@ public class MySQLMigration implements MigrationStep {
   }
 
   @Override
-  public void initialize(Handle handle) {
+  public void initialize(Handle handle, String sqlRootPath) {
     this.handle = handle;
+    this.sqlRootPath = sqlRootPath;
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
   }

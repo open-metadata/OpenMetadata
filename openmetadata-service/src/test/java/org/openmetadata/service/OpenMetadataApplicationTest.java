@@ -97,7 +97,7 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.start();
 
     final String migrationScripsLocation =
-        ResourceHelpers.resourceFilePath("db/sql/" + sqlContainer.getDriverClassName());
+        ResourceHelpers.resourceFilePath("db/sql/flyway" + sqlContainer.getDriverClassName());
     Flyway flyway =
         Flyway.configure()
             .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
@@ -146,6 +146,9 @@ public abstract class OpenMetadataApplicationTest {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
+
+    final String nativeMigrationScripsLocation =
+            ResourceHelpers.resourceFilePath("db/sql/native" + sqlContainer.getDriverClassName());
     validateAndRunSystemDataMigrations(jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), false);
 
     APP.before();

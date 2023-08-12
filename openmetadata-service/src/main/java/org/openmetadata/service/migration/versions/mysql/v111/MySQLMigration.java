@@ -42,7 +42,7 @@ public class MySQLMigration implements MigrationStep {
   }
 
   @Override
-  public void initialize(Handle handle) {
+  public void initialize(Handle handle, String s) {
     this.handle = handle;
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
