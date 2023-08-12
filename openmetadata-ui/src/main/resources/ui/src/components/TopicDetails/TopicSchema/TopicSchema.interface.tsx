@@ -31,6 +31,7 @@ export interface TopicSchemaFieldsProps
   isReadOnly: boolean;
   entityFqn: string;
   entityFieldThreads: EntityFieldThreads[];
+  isVersionView?: boolean;
   onUpdate?: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
