@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Radio, RadioChangeEvent, Space } from 'antd';
+import {
+  Button,
+  Modal,
+  Radio,
+  RadioChangeEvent,
+  Space,
+  Typography,
+} from 'antd';
+import Input from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, {
@@ -30,6 +38,7 @@ import {
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import './delete-widget-modal.style.less';
 import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
 const DeleteWidgetModal = ({
@@ -215,14 +224,14 @@ const DeleteWidgetModal = ({
                 data-testid={option.type}
                 key={option.type}
                 value={option.type}>
-                <p
-                  className="tw-text-sm tw-mb-1 tw-font-medium"
+                <Typography.Paragraph
+                  className="delete-widget-title"
                   data-testid={`${option.type}-option`}>
                   {option.title}
-                </p>
-                <p className="text-grey-muted tw-text-xs tw-mb-2">
+                </Typography.Paragraph>
+                <Typography.Paragraph className="text-grey-muted text-xs">
                   {option.description}
-                </p>
+                </Typography.Paragraph>
               </Radio>
             )
         )}
@@ -235,9 +244,8 @@ const DeleteWidgetModal = ({
           />
         </div>
 
-        <input
+        <Input
           autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="confirmation-text-input"
           disabled={entityDeleteState.loading === 'waiting'}
           name="entityName"

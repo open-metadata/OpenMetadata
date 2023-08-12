@@ -20,7 +20,7 @@ const CloseIcon = ({ handleCancel, dataTestId }: CloseIconInterface) => {
       className="w-6 h-6 m-l-xss cursor-pointer"
       data-testid={dataTestId}
       fill="none"
-      stroke="currentColor"
+      stroke="#6B7280"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
       onClick={handleCancel}>

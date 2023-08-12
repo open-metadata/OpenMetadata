@@ -19,7 +19,6 @@ import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { PAGE_SIZE } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { EntityLinkThreadCount } from 'generated/api/feed/threadCount';
@@ -31,7 +30,6 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
-import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
 
 interface SchemaTablesTabProps {
@@ -59,7 +57,6 @@ function SchemaTablesTab({
   databaseSchemaDetails,
   tableDataLoading,
   description,
-  entityFieldThreadCount,
   editDescriptionPermission,
   isEdit,
   tableData,
@@ -113,10 +110,6 @@ function SchemaTablesTab({
       <Col data-testid="description-container" span={24}>
         <DescriptionV1
           description={description}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.DESCRIPTION,
-            entityFieldThreadCount
-          )}
           entityFqn={databaseSchemaDetails.fullyQualifiedName}
           entityName={getEntityName(databaseSchemaDetails)}
           entityType={EntityType.DATABASE_SCHEMA}

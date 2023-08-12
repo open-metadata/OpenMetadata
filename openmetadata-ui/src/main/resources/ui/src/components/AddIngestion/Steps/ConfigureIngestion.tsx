@@ -456,7 +456,6 @@ const ConfigureIngestion = ({
     helperText: t('message.query-log-duration-message'),
     hasSeparator: true,
     props: {
-      className: 'tw-form-inputs tw-form-inputs-padding',
       'data-testid': 'query-log-duration',
       value: queryLogDuration,
       onChange: handleQueryLogDuration,
@@ -475,7 +474,6 @@ const ConfigureIngestion = ({
     helperText: t('message.result-limit-message'),
     hasSeparator: true,
     props: {
-      className: 'tw-form-inputs tw-form-inputs-padding',
       'data-testid': 'result-limit',
       value: resultLimit,
       onChange: handleResultLimit,
@@ -935,7 +933,6 @@ const ConfigureIngestion = ({
         helperText: t('message.stage-file-location-message'),
         hasSeparator: true,
         props: {
-          className: 'tw-form-inputs tw-form-inputs-padding',
           'data-testid': 'stage-file-location',
           value: stageFileLocation,
           onChange: handleStageFileLocation,
@@ -1057,7 +1054,6 @@ const ConfigureIngestion = ({
         required: false,
         type: FieldTypes.NUMBER,
         props: {
-          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
           'data-testid': 'threadCount',
           placeholder: '5',
           value: threadCount,
@@ -1076,7 +1072,6 @@ const ConfigureIngestion = ({
         required: false,
         type: FieldTypes.NUMBER,
         props: {
-          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
           'data-testid': 'timeoutSeconds',
           placeholder: '43200',
           value: timeoutSeconds,

@@ -20,7 +20,6 @@ import { EntityTags, TagOption } from 'Models';
 import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column } from '../../generated/entity/data/table';
-import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export interface TableTagsComponentProps<T> {
   tags: TagLabel[];
@@ -29,7 +28,6 @@ export interface TableTagsComponentProps<T> {
   record: T;
   index: number;
   hasTagEditAccess: boolean;
-  entityFieldThreads: EntityFieldThreads[];
   type: TagSource;
   showInlineEditTagButton?: boolean;
   entityType: EntityType;

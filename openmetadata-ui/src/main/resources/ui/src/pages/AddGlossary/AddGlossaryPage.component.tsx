@@ -12,8 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import AddGlossary from 'components/AddGlossary/AddGlossary.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import AddGlossary from 'components/Glossary/AddGlossary/AddGlossary.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_MESSAGE } from 'constants/constants';
