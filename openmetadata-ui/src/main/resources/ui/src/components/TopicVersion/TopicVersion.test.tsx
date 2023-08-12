@@ -52,7 +52,7 @@ jest.mock('components/Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
   jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 
-jest.mock('./TopicVersionSchema', () =>
+jest.mock('components/TopicDetails/TopicSchema/TopicSchema', () =>
   jest.fn().mockImplementation(() => <div>TopicSchema</div>)
 );
 
