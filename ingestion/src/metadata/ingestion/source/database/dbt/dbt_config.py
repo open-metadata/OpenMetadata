@@ -15,7 +15,7 @@ import json
 import traceback
 from collections import defaultdict
 from functools import singledispatch
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import requests
 
@@ -214,6 +214,18 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         raise DBTConfigException(f"Error fetching dbt files from DBT Cloud: {exc}")
 
 
+def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict:
+    """
+    Method to group the objs by the dir
+    """
+    blob_grouped_by_directory = defaultdict(list)
+    for blob in blobs:
+        if [file_name for file_name in DBT_FILE_NAMES_LIST if file_name in blob]:
+            subdirectory = blob.rsplit("/", 1)[0] if "/" in blob else ""
+            blob_grouped_by_directory[subdirectory].append(blob)
+    return blob_grouped_by_directory
+
+
 def download_dbt_files(
     blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
 ) -> Iterable[DbtFiles]:
@@ -257,8 +269,6 @@ def _(config: DbtS3Config):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
 
-        blob_grouped_by_directory = defaultdict(list)
-
         client = AWSClient(config.dbtSecurityConfig).get_client(service_name="s3")
 
         if not bucket_name:
@@ -269,20 +279,11 @@ def _(config: DbtS3Config):
             kwargs = {"Bucket": bucket["Name"]}
             if prefix:
                 kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
-            # group the objs by the dir
-            for key in list_s3_objects(client, **kwargs):
-                if [
-                    file_name
-                    for file_name in DBT_FILE_NAMES_LIST
-                    if file_name in key["Key"]
-                ]:
-                    subdirectory = (
-                        key["Key"].rsplit("/", 1)[0] if "/" in key["Key"] else ""
-                    )
-                    blob_grouped_by_directory[subdirectory].append(key["Key"])
 
             yield from download_dbt_files(
-                blob_grouped_by_directory=blob_grouped_by_directory,
+                blob_grouped_by_directory=get_blobs_grouped_by_dir(
+                    blobs=[key["Key"] for key in list_s3_objects(client, **kwargs)]
+                ),
                 config=config,
                 client=client,
                 bucket_name=bucket["Name"],
@@ -301,7 +302,6 @@ def _(config: DbtGcsConfig):
 
         set_google_credentials(gcp_credentials=config.dbtSecurityConfig)
 
-        blob_grouped_by_directory = defaultdict(list)
         client = storage.Client()
         if not bucket_name:
             buckets = client.list_buckets()
@@ -313,20 +313,10 @@ def _(config: DbtGcsConfig):
             else:
                 obj_list = client.list_blobs(bucket.name)
 
-            # group the objs by the dir
-            for blob in obj_list:
-                if [
-                    file_name
-                    for file_name in DBT_FILE_NAMES_LIST
-                    if file_name in blob.name
-                ]:
-                    subdirectory = (
-                        blob.name.rsplit("/", 1)[0] if "/" in blob.name else ""
-                    )
-                    blob_grouped_by_directory[subdirectory].append(blob.name)
-
             yield from download_dbt_files(
-                blob_grouped_by_directory=blob_grouped_by_directory,
+                blob_grouped_by_directory=get_blobs_grouped_by_dir(
+                    blobs=[blob.name for blob in obj_list]
+                ),
                 config=config,
                 client=client,
                 bucket_name=bucket.name,
@@ -355,7 +345,6 @@ def _(config: DbtAzureConfig):
                 config.dbtSecurityConfig.clientSecret.get_secret_value(),
             ),
         )
-        blob_grouped_by_directory = defaultdict(list)
 
         if not bucket_name:
             container_dicts = client.list_containers()
@@ -372,20 +361,10 @@ def _(config: DbtAzureConfig):
             else:
                 blob_list = container_client.list_blobs()
 
-            # group the objs by the dir
-            for blob in blob_list:
-                if [
-                    file_name
-                    for file_name in DBT_FILE_NAMES_LIST
-                    if file_name in blob.name
-                ]:
-                    subdirectory = (
-                        blob.name.rsplit("/", 1)[0] if "/" in blob.name else ""
-                    )
-                    blob_grouped_by_directory[subdirectory].append(blob.name)
-
             yield from download_dbt_files(
-                blob_grouped_by_directory=blob_grouped_by_directory,
+                blob_grouped_by_directory=get_blobs_grouped_by_dir(
+                    blobs=[blob.name for blob in blob_list]
+                ),
                 config=config,
                 client=client,
                 bucket_name=container_client.container_name,
