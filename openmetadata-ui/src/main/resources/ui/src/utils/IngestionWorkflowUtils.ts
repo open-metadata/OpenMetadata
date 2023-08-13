@@ -62,6 +62,11 @@ export const getSchemaByWorkflowType = (
       description: 'Name of the workflow',
       type: 'string',
     },
+    enableDebugLog: {
+      title: 'Enable Debug Log',
+      type: 'boolean',
+      default: false,
+    },
   };
   let schema = {};
 

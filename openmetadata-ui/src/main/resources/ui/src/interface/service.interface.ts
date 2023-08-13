@@ -105,7 +105,10 @@ export type ConfigData =
   | MetadataConnection
   | StorageConnection;
 
-export type IngestionWorkflowData = Pipeline & { name: string };
+export type IngestionWorkflowData = Pipeline & {
+  name: string;
+  enableDebugLog?: boolean;
+};
 
 export interface IngestionWorkflowFormProps {
   pipeLineType: PipelineType;

@@ -22,7 +22,7 @@ jest.mock('../../common/CronEditor/CronEditor', () => {
 
 const mockScheduleIntervalProps: ScheduleIntervalProps = {
   status: 'initial',
-  repeatFrequency: '',
+  scheduleInterval: '',
   onBack: jest.fn(),
   onDeploy: jest.fn(),
   submitButtonLabel: 'Add',

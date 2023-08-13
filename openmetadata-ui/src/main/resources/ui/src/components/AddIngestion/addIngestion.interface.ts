@@ -77,9 +77,9 @@ export interface ConfigureIngestionProps {
 }
 
 export type ScheduleIntervalProps = {
-  onChange: (newState: Partial<AddIngestionState>) => void;
+  onChange: (newScheduleInterval: string) => void;
   status: LoadingState;
-  repeatFrequency: string;
+  scheduleInterval: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
   disabledCronChange?: boolean;

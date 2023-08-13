@@ -25,14 +25,10 @@ const ScheduleInterval = ({
   onBack,
   onChange,
   onDeploy,
-  repeatFrequency,
+  scheduleInterval,
   status,
   submitButtonLabel,
 }: ScheduleIntervalProps) => {
-  const handleRepeatFrequencyChange = (repeatFrequency: string) =>
-    onChange({
-      repeatFrequency: repeatFrequency,
-    });
   const { t } = useTranslation();
 
   return (
@@ -40,8 +36,8 @@ const ScheduleInterval = ({
       <CronEditor
         disabledCronChange={disabledCronChange}
         includePeriodOptions={includePeriodOptions}
-        value={repeatFrequency}
-        onChange={handleRepeatFrequencyChange}
+        value={scheduleInterval}
+        onChange={onChange}
       />
 
       <Col className="d-flex justify-end mt-4" span={24}>
