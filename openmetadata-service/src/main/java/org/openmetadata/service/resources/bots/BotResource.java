@@ -128,6 +128,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @Override
   public Bot addHref(UriInfo uriInfo, Bot entity) {
+    super.addHref(uriInfo, entity);
     Entity.withHref(uriInfo, entity.getBotUser());
     return entity;
   }

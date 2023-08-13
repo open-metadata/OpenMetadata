@@ -29,7 +29,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -37,7 +36,6 @@ import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -52,13 +50,6 @@ public class TestConnectionDefinitionResource
     extends EntityResource<TestConnectionDefinition, TestConnectionDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
   static final String FIELDS = "owner";
-
-  @Override
-  public TestConnectionDefinition addHref(UriInfo uriInfo, TestConnectionDefinition testConnectionDefinition) {
-    testConnectionDefinition.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, testConnectionDefinition.getId()));
-    Entity.withHref(uriInfo, testConnectionDefinition.getOwner());
-    return testConnectionDefinition;
-  }
 
   public TestConnectionDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestConnectionDefinition.class, new TestConnectionDefinitionRepository(dao), authorizer);

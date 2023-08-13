@@ -452,7 +452,6 @@ public interface CollectionDAO {
       }
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-
       return listBefore(getTableName(), getNameColumn(), sqlCondition, limit, before);
     }
 
