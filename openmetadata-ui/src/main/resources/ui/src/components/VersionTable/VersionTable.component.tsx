@@ -19,7 +19,7 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { Column } from '../../generated/entity/data/table';
+import { Column, TableConstraint } from '../../generated/entity/data/table';
 import {
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -39,8 +39,10 @@ const VersionTable = ({
   columns,
   joins,
   tableConstraints,
-  addedConstraintDiffsList,
-  deletedConstraintDiffsList,
+  addedColumnConstraintDiffs,
+  deletedColumnConstraintDiffs,
+  addedTableConstraintDiffs,
+  deletedTableConstraintDiffs,
 }: VersionTableProps) => {
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const { t } = useTranslation();
@@ -51,45 +53,56 @@ const VersionTable = ({
 
   const renderColumnName = useCallback(
     (name: Column['name'], record: Column) => {
-      const addedConstraint = addedConstraintDiffsList?.find((diff) =>
+      const addedColumnConstraint = addedColumnConstraintDiffs?.find((diff) =>
         diff.name?.includes(name)
       );
-      const deletedConstraint = deletedConstraintDiffsList?.find((diff) =>
-        diff.name?.includes(name)
+      const deletedColumnConstraint = deletedColumnConstraintDiffs?.find(
+        (diff) => diff.name?.includes(name)
       );
+      let addedTableConstraint: TableConstraint[] | undefined;
+      let deletedTableConstraint: TableConstraint[] | undefined;
+
+      addedTableConstraintDiffs?.forEach((diff) => {
+        const constraintNewValue = JSON.parse(diff.newValue);
+        constraintNewValue?.forEach((constraint: TableConstraint) => {
+          if (constraint.columns?.includes(name)) {
+            addedTableConstraint = [constraint];
+          }
+        });
+      });
+
+      deletedTableConstraintDiffs?.forEach((diff) => {
+        const constraintOldValue = JSON.parse(diff.oldValue);
+        constraintOldValue?.forEach((constraint: TableConstraint) => {
+          if (constraint.columns?.includes(name)) {
+            deletedTableConstraint = [constraint];
+          }
+        });
+      });
 
       let addedConstraintIcon = null;
       let deletedConstraintIcon = null;
-      if (!isUndefined(addedConstraint)) {
-        addedConstraintIcon = prepareConstraintIcon(
-          name,
-          record.constraint,
-          tableConstraints,
-          undefined,
-          undefined,
-          true
-        );
-      }
-      if (!isUndefined(deletedConstraint)) {
-        deletedConstraintIcon = prepareConstraintIcon(
-          name,
-          deletedConstraint.oldValue,
-          tableConstraints,
-          undefined,
-          undefined,
-          false,
-          true
-        );
-      }
 
-      const noConstraintChange =
-        isUndefined(addedConstraint) && isUndefined(deletedConstraint);
+      const existingAddedTableConstraint = isUndefined(addedTableConstraint)
+        ? tableConstraints
+        : undefined;
 
-      const constraintIcon = prepareConstraintIcon(
-        name,
-        record.constraint,
-        tableConstraints
-      );
+      addedConstraintIcon = prepareConstraintIcon({
+        columnName: name,
+        columnConstraint: addedColumnConstraint?.newValue ?? record.constraint,
+        tableConstraints: addedTableConstraint ?? existingAddedTableConstraint,
+        isColumnConstraintAdded: !isUndefined(addedColumnConstraint),
+        isTableConstraintAdded: !isUndefined(addedTableConstraint),
+      });
+
+      deletedConstraintIcon = prepareConstraintIcon({
+        columnName: name,
+        columnConstraint: deletedColumnConstraint?.oldValue,
+        tableConstraints: deletedTableConstraint,
+        isColumnConstraintAdded: false,
+        isColumnConstraintDeleted: !isUndefined(deletedColumnConstraint),
+        isTableConstraintDeleted: !isUndefined(deletedTableConstraint),
+      });
 
       return (
         <Space
@@ -98,12 +111,17 @@ const VersionTable = ({
           size={2}>
           {deletedConstraintIcon}
           {addedConstraintIcon}
-          {noConstraintChange && constraintIcon}
           <RichTextEditorPreviewer markdown={name} />
         </Space>
       );
     },
-    [tableConstraints, addedConstraintDiffsList, deletedConstraintDiffsList]
+    [
+      tableConstraints,
+      addedColumnConstraintDiffs,
+      deletedColumnConstraintDiffs,
+      addedTableConstraintDiffs,
+      deletedTableConstraintDiffs,
+    ]
   );
 
   const versionTableColumns = useMemo(

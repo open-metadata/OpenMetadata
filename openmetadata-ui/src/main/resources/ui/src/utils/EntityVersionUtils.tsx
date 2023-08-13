@@ -709,27 +709,31 @@ export const getUpdatedExtensionDiffFields = (
     : { extensionObject: {} };
 };
 
-export const getConstraintChanges = (changeDescription: ChangeDescription) => {
+export const getConstraintChanges = (
+  changeDescription: ChangeDescription,
+  fieldName: EntityField
+) => {
   const constraintAddedDiff = getAllDiffByFieldName(
-    EntityField.CONSTRAINT,
+    fieldName,
     changeDescription
   ).added;
   const constraintDeletedDiff = getAllDiffByFieldName(
-    EntityField.CONSTRAINT,
+    fieldName,
     changeDescription
   ).deleted;
   const constraintUpdatedDiff = getAllDiffByFieldName(
-    EntityField.CONSTRAINT,
+    fieldName,
     changeDescription
   ).updated;
-  const addedConstraintDiffsList: FieldChange[] = [
+
+  const addedConstraintDiffs: FieldChange[] = [
     ...(constraintAddedDiff ?? []),
     ...(constraintUpdatedDiff ?? []),
   ];
-  const deletedConstraintDiffsList: FieldChange[] = [
+  const deletedConstraintDiffs: FieldChange[] = [
     ...(constraintDeletedDiff ?? []),
     ...(constraintUpdatedDiff ?? []),
   ];
 
-  return { addedConstraintDiffsList, deletedConstraintDiffsList };
+  return { addedConstraintDiffs, deletedConstraintDiffs };
 };

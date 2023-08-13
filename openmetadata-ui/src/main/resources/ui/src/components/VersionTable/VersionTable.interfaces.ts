@@ -22,8 +22,10 @@ export interface VersionTableProps {
   columnName: string;
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
-  addedConstraintDiffsList?: FieldChange[];
-  deletedConstraintDiffsList?: FieldChange[];
+  addedColumnConstraintDiffs?: FieldChange[];
+  deletedColumnConstraintDiffs?: FieldChange[];
+  addedTableConstraintDiffs?: FieldChange[];
+  deletedTableConstraintDiffs?: FieldChange[];
   constraintUpdatedColumns?: string[];
   tableConstraints?: Array<TableConstraint>;
 }

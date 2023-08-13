@@ -123,8 +123,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
-  const { addedConstraintDiffsList, deletedConstraintDiffsList } = useMemo(
-    () => getConstraintChanges(changeDescription),
+  const {
+    addedConstraintDiffs: addedColumnConstraintDiffs,
+    deletedConstraintDiffs: deletedColumnConstraintDiffs,
+  } = useMemo(
+    () => getConstraintChanges(changeDescription, EntityField.CONSTRAINT),
     [changeDescription]
   );
 
@@ -146,14 +149,14 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <VersionTable
-                    addedConstraintDiffsList={addedConstraintDiffsList}
+                    addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
                       containerFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
-                    deletedConstraintDiffsList={deletedConstraintDiffsList}
+                    deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
                     joins={[]}
                   />
                 </Col>
@@ -207,8 +210,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       columns,
       currentVersionData,
       entityPermissions,
-      addedConstraintDiffsList,
-      deletedConstraintDiffsList,
+      addedColumnConstraintDiffs,
+      deletedColumnConstraintDiffs,
     ]
   );
 

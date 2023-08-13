@@ -119,13 +119,19 @@ export const getTagsWithoutTier = (
   );
 };
 
-export const getConstraintIcon = (
+export const getConstraintIcon = ({
   constraint = '',
   className = '',
   width = '16px',
-  isConstraintAdded?: boolean,
-  isConstraintDeleted?: boolean
-) => {
+  isConstraintAdded,
+  isConstraintDeleted,
+}: {
+  constraint?: string;
+  className?: string;
+  width?: string;
+  isConstraintAdded?: boolean;
+  isConstraintDeleted?: boolean;
+}) => {
   let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
@@ -432,15 +438,27 @@ export function getTableExpandableConfig<T>(
   return expandableConfig;
 }
 
-export const prepareConstraintIcon = (
-  columnName: string,
-  columnConstraint?: string,
-  tableConstraints?: TableConstraint[],
-  iconClassName?: string,
-  iconWidth?: string,
-  isConstraintAdded?: boolean,
-  isConstraintDeleted?: boolean
-) => {
+export const prepareConstraintIcon = ({
+  columnName,
+  columnConstraint,
+  tableConstraints,
+  iconClassName,
+  iconWidth,
+  isColumnConstraintAdded,
+  isColumnConstraintDeleted,
+  isTableConstraintAdded,
+  isTableConstraintDeleted,
+}: {
+  columnName: string;
+  columnConstraint?: string;
+  tableConstraints?: TableConstraint[];
+  iconClassName?: string;
+  iconWidth?: string;
+  isColumnConstraintAdded?: boolean;
+  isColumnConstraintDeleted?: boolean;
+  isTableConstraintAdded?: boolean;
+  isTableConstraintDeleted?: boolean;
+}) => {
   // get the table constraint for column
   const tableConstraint = tableConstraints?.find((constraint) =>
     constraint.columns?.includes(columnName)
@@ -448,22 +466,24 @@ export const prepareConstraintIcon = (
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(
-        columnConstraint,
-        iconClassName || 'm-r-xs',
-        iconWidth,
-        isConstraintAdded,
-        isConstraintDeleted
-      )
+    ? getConstraintIcon({
+        constraint: columnConstraint,
+        className: iconClassName || 'm-r-xs',
+        width: iconWidth,
+        isConstraintAdded: isColumnConstraintAdded,
+        isConstraintDeleted: isColumnConstraintDeleted,
+      })
     : null;
 
   // prepare table constraint element
   const tableConstraintEl = tableConstraint
-    ? getConstraintIcon(
-        tableConstraint.constraintType,
-        iconClassName || 'm-r-xs',
-        iconWidth
-      )
+    ? getConstraintIcon({
+        constraint: tableConstraint.constraintType,
+        className: iconClassName || 'm-r-xs',
+        width: iconWidth,
+        isConstraintAdded: isTableConstraintAdded,
+        isConstraintDeleted: isTableConstraintDeleted,
+      })
     : null;
 
   return (

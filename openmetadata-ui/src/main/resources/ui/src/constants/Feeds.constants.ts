@@ -75,6 +75,7 @@ export enum EntityField {
   CHARTS = 'charts',
   DATA_MODEL = 'dataModel',
   CONSTRAINT = 'constraint',
+  TABLE_CONSTRAINTS = 'tableConstraints',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

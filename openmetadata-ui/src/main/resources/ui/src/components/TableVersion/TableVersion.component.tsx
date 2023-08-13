@@ -118,8 +118,20 @@ const TableVersion: React.FC<TableVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
-  const { addedConstraintDiffsList, deletedConstraintDiffsList } = useMemo(
-    () => getConstraintChanges(changeDescription),
+  const {
+    addedConstraintDiffs: addedColumnConstraintDiffs,
+    deletedConstraintDiffs: deletedColumnConstraintDiffs,
+  } = useMemo(
+    () => getConstraintChanges(changeDescription, EntityField.CONSTRAINT),
+    [changeDescription]
+  );
+
+  const {
+    addedConstraintDiffs: addedTableConstraintDiffs,
+    deletedConstraintDiffs: deletedTableConstraintDiffs,
+  } = useMemo(
+    () =>
+      getConstraintChanges(changeDescription, EntityField.TABLE_CONSTRAINTS),
     [changeDescription]
   );
 
@@ -141,14 +153,16 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <VersionTable
-                    addedConstraintDiffsList={addedConstraintDiffsList}
+                    addedColumnConstraintDiffs={addedColumnConstraintDiffs}
+                    addedTableConstraintDiffs={addedTableConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
                       datasetFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
-                    deletedConstraintDiffsList={deletedConstraintDiffsList}
+                    deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
+                    deletedTableConstraintDiffs={deletedTableConstraintDiffs}
                     joins={(currentVersionData as Table).joins as ColumnJoins[]}
                     tableConstraints={
                       (currentVersionData as Table).tableConstraints
@@ -203,8 +217,10 @@ const TableVersion: React.FC<TableVersionProp> = ({
       description,
       datasetFQN,
       columns,
-      deletedConstraintDiffsList,
-      addedConstraintDiffsList,
+      deletedColumnConstraintDiffs,
+      deletedTableConstraintDiffs,
+      addedColumnConstraintDiffs,
+      addedTableConstraintDiffs,
       currentVersionData,
       entityPermissions,
     ]
