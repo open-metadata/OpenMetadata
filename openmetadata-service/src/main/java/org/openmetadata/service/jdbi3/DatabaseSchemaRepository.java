@@ -14,19 +14,15 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -99,27 +95,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) {
-    Database database = null;
-    UUID databaseId = schema.getDatabase().getId();
-    // If schema does not have owner, then inherit parent database owner
-    if (fields.contains(FIELD_OWNER) && schema.getOwner() == null) {
-      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner,domain", ALL);
-      schema.withOwner(database.getOwner());
-    }
-
-    // If schema does not have domain, then inherit it from parent database
-    if (fields.contains(FIELD_DOMAIN) && schema.getDomain() == null) {
-      if (database == null) {
-        database = Entity.getEntity(Entity.DATABASE, databaseId, "domain", ALL);
-      }
-      schema.withDomain(database.getDomain());
-    }
-
-    // If schema does not have its own retention period, then inherit parent database retention period
-    if (schema.getRetentionPeriod() == null) {
-      database = database == null ? Entity.getEntity(Entity.DATABASE, databaseId, "", ALL) : database;
-      schema.withRetentionPeriod(database.getRetentionPeriod());
-    }
+    Database database = Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
+    inheritOwner(schema, fields, database);
+    inheritDomain(schema, fields, database);
+    schema.withRetentionPeriod(
+        schema.getRetentionPeriod() == null ? database.getRetentionPeriod() : schema.getRetentionPeriod());
     return schema;
   }
 

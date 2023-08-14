@@ -60,7 +60,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/charts")
@@ -76,11 +75,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
-    chart.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, chart.getId()));
-    Entity.withHref(uriInfo, chart.getOwner());
+    super.addHref(uriInfo, chart);
     Entity.withHref(uriInfo, chart.getService());
-    Entity.withHref(uriInfo, chart.getFollowers());
-    Entity.withHref(uriInfo, chart.getDomain());
     return chart;
   }
 

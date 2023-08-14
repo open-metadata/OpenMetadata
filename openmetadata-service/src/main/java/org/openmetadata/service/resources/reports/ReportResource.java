@@ -74,11 +74,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  @Override
-  public Report addHref(UriInfo uriInfo, Report entity) {
-    return entity;
-  }
-
   public static class ReportList extends ResultList<Report> {
     /* Required for serde */
   }

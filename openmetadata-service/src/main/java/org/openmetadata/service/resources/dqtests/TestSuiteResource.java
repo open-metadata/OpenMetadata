@@ -70,13 +70,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   static final String FIELDS = "owner,tests,summary";
 
-  @Override
-  public TestSuite addHref(UriInfo uriInfo, TestSuite testSuite) {
-    testSuite.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, testSuite.getId()));
-    Entity.withHref(uriInfo, testSuite.getOwner());
-    return testSuite;
-  }
-
   public TestSuiteResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestSuite.class, new TestSuiteRepository(dao), authorizer);
   }

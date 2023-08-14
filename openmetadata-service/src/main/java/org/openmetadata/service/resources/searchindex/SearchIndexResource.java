@@ -78,10 +78,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
 
   @Override
   public SearchIndex addHref(UriInfo uriInfo, SearchIndex searchIndex) {
-    Entity.withHref(uriInfo, searchIndex.getOwner());
+    super.addHref(uriInfo, searchIndex);
     Entity.withHref(uriInfo, searchIndex.getService());
-    Entity.withHref(uriInfo, searchIndex.getFollowers());
-    Entity.withHref(uriInfo, searchIndex.getDomain());
     return searchIndex;
   }
 
