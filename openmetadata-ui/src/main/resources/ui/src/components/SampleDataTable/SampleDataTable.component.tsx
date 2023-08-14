@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table as AntdTable, Typography } from 'antd';
+import { Button, Space, Table as AntdTable, Tooltip, Typography } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
@@ -39,12 +41,30 @@ import {
   SampleDataType,
 } from './sample.interface';
 import './SampleDataTable.style.less';
-const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
+const SampleDataTable = ({
+  isTableDeleted,
+  tableId,
+  ownerId,
+  permissions,
+}: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails]
+  );
+
+  const hasPermission = useMemo(
+    () =>
+      permissions.EditAll ||
+      permissions.EditSampleData ||
+      currentUser?.id === ownerId,
+    [ownerId, permissions, currentUser]
+  );
 
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
@@ -152,15 +172,18 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
       data-testid="sample-data"
       id="sampleDataDetails">
       <Space className="m-b-md justify-end w-full">
-        <Button
-          danger
-          data-testid="delete-sample-data"
-          type="primary"
-          onClick={() => setIsDeleteModalOpen(true)}>
-          {t('label.delete-entity', {
-            entity: t('label.sample-data'),
-          })}
-        </Button>
+        <Tooltip title={!hasPermission && NO_PERMISSION_FOR_ACTION}>
+          <Button
+            danger
+            data-testid="delete-sample-data"
+            disabled={!hasPermission}
+            type="primary"
+            onClick={() => setIsDeleteModalOpen(true)}>
+            {t('label.delete-entity', {
+              entity: t('label.sample-data'),
+            })}
+          </Button>
+        </Tooltip>
       </Space>
 
       <AntdTable
@@ -179,7 +202,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         allowSoftDelete={false}
         api={handleDeleteSampleData}
         entityName={t('label.sample-data')}
-        entityType={EntityType.TABLE}
+        entityType={EntityType.SAMPLE_DATA}
         visible={isDeleteModalOpen}
         onCancel={() => {
           setIsDeleteModalOpen(false);

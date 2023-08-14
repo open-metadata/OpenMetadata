@@ -12,10 +12,25 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import React from 'react';
 import { getSampleDataByTableId } from 'rest/tableAPI';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import SampleDataTable from './SampleDataTable.component';
+
+const mockProps = {
+  tableId: 'id',
+  ownerId: 'ownerId',
+  permissions: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  } as OperationPermission,
+};
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
@@ -47,7 +62,7 @@ describe('Test SampleDataTable Component', () => {
     );
 
     await act(async () => {
-      render(<SampleDataTable tableId="id" />);
+      render(<SampleDataTable {...mockProps} />);
     });
 
     const errorPlaceholder = screen.getByTestId('error-placeholder');
@@ -57,7 +72,7 @@ describe('Test SampleDataTable Component', () => {
 
   it('Renders all the data that was sent to the component', async () => {
     await act(async () => {
-      render(<SampleDataTable tableId="id" />);
+      render(<SampleDataTable {...mockProps} />);
     });
 
     const deleteButton = screen.getByTestId('delete-sample-data');
@@ -67,5 +82,23 @@ describe('Test SampleDataTable Component', () => {
     expect(deleteButton).toBeInTheDocument();
     expect(table).toBeInTheDocument();
     expect(deleteModal).toBeInTheDocument();
+  });
+
+  it('Delete sample data button should be disabled when not have permission', async () => {
+    await act(async () => {
+      render(
+        <SampleDataTable
+          {...mockProps}
+          permissions={{
+            ...mockProps.permissions,
+            EditAll: false,
+          }}
+        />
+      );
+    });
+
+    const deleteButton = screen.getByTestId('delete-sample-data');
+
+    expect(deleteButton).toBeDisabled();
   });
 });
