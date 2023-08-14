@@ -66,7 +66,10 @@ const VersionTable = ({
         const constraintNewValue = JSON.parse(diff.newValue);
         constraintNewValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
-            addedTableConstraint = [constraint];
+            addedTableConstraint = [
+              ...(addedTableConstraint ?? []),
+              constraint,
+            ];
           }
         });
       });
@@ -75,7 +78,10 @@ const VersionTable = ({
         const constraintOldValue = JSON.parse(diff.oldValue);
         constraintOldValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
-            deletedTableConstraint = [constraint];
+            deletedTableConstraint = [
+              ...(deletedTableConstraint ?? []),
+              constraint,
+            ];
           }
         });
       });

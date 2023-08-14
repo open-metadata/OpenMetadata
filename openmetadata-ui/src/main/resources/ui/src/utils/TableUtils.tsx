@@ -459,8 +459,8 @@ export const prepareConstraintIcon = ({
   isTableConstraintAdded?: boolean;
   isTableConstraintDeleted?: boolean;
 }) => {
-  // get the table constraint for column
-  const tableConstraint = tableConstraints?.find((constraint) =>
+  // get the table constraints for column
+  const filteredTableConstraints = tableConstraints?.filter((constraint) =>
     constraint.columns?.includes(columnName)
   );
 
@@ -476,14 +476,16 @@ export const prepareConstraintIcon = ({
     : null;
 
   // prepare table constraint element
-  const tableConstraintEl = tableConstraint
-    ? getConstraintIcon({
-        constraint: tableConstraint.constraintType,
-        className: iconClassName || 'm-r-xs',
-        width: iconWidth,
-        isConstraintAdded: isTableConstraintAdded,
-        isConstraintDeleted: isTableConstraintDeleted,
-      })
+  const tableConstraintEl = filteredTableConstraints
+    ? filteredTableConstraints.map((tableConstraint) =>
+        getConstraintIcon({
+          constraint: tableConstraint.constraintType,
+          className: iconClassName || 'm-r-xs',
+          width: iconWidth,
+          isConstraintAdded: isTableConstraintAdded,
+          isConstraintDeleted: isTableConstraintDeleted,
+        })
+      )
     : null;
 
   return (
