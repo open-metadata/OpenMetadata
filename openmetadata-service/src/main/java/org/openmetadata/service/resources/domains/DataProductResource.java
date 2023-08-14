@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.domains;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +24,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -48,6 +51,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
@@ -56,7 +61,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -71,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dataProducts", order = 4) // initialize after user resource
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
-  static final String FIELDS = "domain,owner,experts";
+  static final String FIELDS = "domain,owner,experts,assets";
 
   public DataProductResource(CollectionDAO dao, Authorizer authorizer) {
     super(DataProduct.class, new DataProductRepository(dao), authorizer);
@@ -79,10 +83,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
 
   @Override
   public DataProduct addHref(UriInfo uriInfo, DataProduct dataProduct) {
-    dataProduct.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, dataProduct.getId()));
-    Entity.withHref(uriInfo, dataProduct.getExperts());
-    Entity.withHref(uriInfo, dataProduct.getOwner());
-    Entity.withHref(uriInfo, dataProduct.getDomain());
+    super.addHref(uriInfo, dataProduct);
+    Entity.withHref(uriInfo, dataProduct.getAssets());
     return dataProduct;
   }
 
@@ -113,6 +115,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description = "Filter data products by domain name",
+              schema = @Schema(type = "string", example = "marketing"))
+          @QueryParam("domain")
+          String domain,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(description = "Returns list of DataProduct before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -120,7 +127,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Parameter(description = "Returns list of DataProduct after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return listInternal(uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+    ListFilter filter = new ListFilter(null).addQueryParam("domain", domain);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -318,8 +326,15 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
 
   private DataProduct getDataProduct(CreateDataProduct create, String user) {
     List<String> experts = create.getExperts();
-    return copy(new DataProduct(), create, user)
-        .withFullyQualifiedName(create.getName())
-        .withExperts(EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
+    DataProduct dataProduct =
+        copy(new DataProduct(), create, user)
+            .withFullyQualifiedName(create.getName())
+            .withExperts(EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
+    dataProduct.withAssets(new ArrayList<>());
+    for (EntityReference asset : listOrEmpty(create.getAssets())) {
+      asset = Entity.getEntityReference(asset, Include.NON_DELETED);
+      dataProduct.getAssets().add(asset);
+    }
+    return dataProduct;
   }
 }

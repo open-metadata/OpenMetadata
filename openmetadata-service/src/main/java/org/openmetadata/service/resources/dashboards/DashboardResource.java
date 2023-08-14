@@ -77,12 +77,10 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
-    Entity.withHref(uriInfo, dashboard.getOwner());
+    super.addHref(uriInfo, dashboard);
     Entity.withHref(uriInfo, dashboard.getService());
     Entity.withHref(uriInfo, dashboard.getCharts());
-    Entity.withHref(uriInfo, dashboard.getFollowers());
     Entity.withHref(uriInfo, dashboard.getDataModels());
-    Entity.withHref(uriInfo, dashboard.getDomain());
     return dashboard;
   }
 

@@ -79,8 +79,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
-    test.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, test.getId()));
-    Entity.withHref(uriInfo, test.getOwner());
+    super.addHref(uriInfo, test);
     Entity.withHref(uriInfo, test.getTestSuite());
     Entity.withHref(uriInfo, test.getTestDefinition());
     return test;

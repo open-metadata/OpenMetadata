@@ -112,7 +112,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
-    Entity.withHref(uriInfo, ingestionPipeline.getOwner());
+    super.addHref(uriInfo, ingestionPipeline);
     Entity.withHref(uriInfo, ingestionPipeline.getService());
     return ingestionPipeline;
   }

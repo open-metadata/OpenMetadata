@@ -49,7 +49,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -65,8 +64,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
 
   @Override
   public Kpi addHref(UriInfo uriInfo, Kpi kpi) {
-    kpi.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, kpi.getId()));
-    Entity.withHref(uriInfo, kpi.getOwner());
+    super.addHref(uriInfo, kpi);
     Entity.withHref(uriInfo, kpi.getDataInsightChart());
     return kpi;
   }

@@ -14,9 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.List;
@@ -127,11 +125,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public DashboardDataModel setInheritedFields(DashboardDataModel dataModel, Fields fields) {
-    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(dataModel.getDomain())) {
-      DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "domain", ALL);
-      dataModel.setDomain(dashboardService.getDomain());
-    }
-    return dataModel;
+    DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "domain", ALL);
+    return inheritDomain(dataModel, fields, dashboardService);
   }
 
   @Override

@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -186,11 +185,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public MlModel setInheritedFields(MlModel mlModel, Fields fields) {
     // If mlModel does not have domain, then inherit it from parent MLModel service
-    if (fields.contains(FIELD_DOMAIN) && mlModel.getDomain() == null) {
-      MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
-      mlModel.withDomain(service.getDomain());
-    }
-    return mlModel;
+    MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
+    return inheritDomain(mlModel, fields, service);
   }
 
   /**
