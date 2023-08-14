@@ -1562,8 +1562,12 @@ public class ElasticSearchClientImpl implements SearchClient {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
         return new EsEntitiesDescriptionAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        return new EsServicesDescriptionAggregator(aggregations, dataInsightChartType);
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         return new EsEntitiesOwnerAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        return new EsServicesOwnerAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TYPE:
         return new EsTotalEntitiesAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TIER:
@@ -1656,10 +1660,34 @@ public class ElasticSearchClientImpl implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        termsAggregationBuilder =
+            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
+                .size(1000);
+        sumAggregationBuilder =
+            AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
+                .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
+        return dateHistogramAggregationBuilder.subAggregation(
+            termsAggregationBuilder
+                .subAggregation(sumAggregationBuilder)
+                .subAggregation(sumEntityCountAggregationBuilder));
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
                 .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
+                .size(1000);
+        sumAggregationBuilder =
+            AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
+                .field(DataInsightChartRepository.DATA_HAS_OWNER);
+        return dateHistogramAggregationBuilder.subAggregation(
+            termsAggregationBuilder
+                .subAggregation(sumAggregationBuilder)
+                .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        termsAggregationBuilder =
+            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
                 .size(1000);
         sumAggregationBuilder =
             AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
