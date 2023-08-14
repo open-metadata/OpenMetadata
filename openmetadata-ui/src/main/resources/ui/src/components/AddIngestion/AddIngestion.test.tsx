@@ -63,6 +63,10 @@ jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
 
+jest.mock('components/IngestionWorkflowForm/IngestionWorkflowForm', () => {
+  return jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>);
+});
+
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {
     const { container } = render(<AddIngestion {...mockAddIngestionProps} />);
@@ -73,28 +77,10 @@ describe('Test AddIngestion component', () => {
     );
     const configureIngestion = await findByText(
       container,
-      'ConfigureIngestion.component'
+      'Ingestion workflow form'
     );
 
     expect(addIngestionContainer).toBeInTheDocument();
     expect(configureIngestion).toBeInTheDocument();
-  });
-
-  it('should render DBT Config step for database services', async () => {
-    const { container } = render(
-      <AddIngestion
-        {...mockAddIngestionProps}
-        activeIngestionStep={2}
-        pipelineType={PipelineType.Metadata}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-      />
-    );
-
-    const dbtConfigFormBuilder = await findByText(
-      container,
-      'DBTConfigFormBuilder.component'
-    );
-
-    expect(dbtConfigFormBuilder).toBeInTheDocument();
   });
 });
