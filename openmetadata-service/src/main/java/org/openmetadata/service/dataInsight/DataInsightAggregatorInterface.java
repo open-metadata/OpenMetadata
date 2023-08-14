@@ -8,6 +8,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 
 public abstract class DataInsightAggregatorInterface {
   protected static final String ENTITY_TYPE = "entityType";
+  protected static final String SERVICE_NAME = "serviceName";
   protected static final String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
   protected static final String HAS_OWNER_FRACTION = "hasOwnerFraction";
   protected static final String ENTITY_COUNT = "entityCount";
