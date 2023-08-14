@@ -26,7 +26,7 @@ import {
   IngestionWorkflowFormProps,
 } from 'interface/service.interface';
 import React, { FC, useMemo, useState } from 'react';
-import { customValidate } from 'utils/formUtils';
+import { customValidate, transformErrors } from 'utils/formUtils';
 import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
@@ -87,6 +87,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
         FieldErrorTemplate: FieldErrorTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
       }}
+      transformErrors={transformErrors}
       uiSchema={INGESTION_WORKFLOW_UI_SCHEMA}
       validator={validator}
       onChange={handleOnChange}
