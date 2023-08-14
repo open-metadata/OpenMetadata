@@ -14,16 +14,18 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { DeleteWidgetModalProps } from './DeleteWidget.interface';
+import { DeleteUnion, DeleteWidgetModalProps } from './DeleteWidget.interface';
 import DeleteWidgetModal from './DeleteWidgetModal';
 
-const mockProps: DeleteWidgetModalProps = {
+const mockProps: DeleteWidgetModalProps<DeleteUnion> = {
   visible: true,
   onCancel: jest.fn(),
   entityName: 'entityName',
   entityType: 'entityType',
   entityId: 'entityId',
 };
+
+const mockAPI = jest.fn();
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
@@ -76,6 +78,26 @@ describe('Test DeleteWidgetV1 Component', () => {
       expect(confirmButton).not.toBeDisabled();
 
       userEvent.click(confirmButton);
+    });
+  });
+
+  it('Delete click should work properly on External API', async () => {
+    await act(async () => {
+      render(<DeleteWidgetModal {...mockProps} api={mockAPI} />);
+
+      const inputBox = await screen.findByTestId('confirmation-text-input');
+      const confirmButton = await screen.findByTestId('confirm-button');
+      const hardDelete = await screen.findByTestId('hard-delete');
+
+      userEvent.click(hardDelete);
+
+      userEvent.type(inputBox, 'DELETE');
+
+      expect(confirmButton).not.toBeDisabled();
+
+      userEvent.click(confirmButton);
+
+      expect(mockAPI).toHaveBeenCalled();
     });
   });
 

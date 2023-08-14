@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import { Space, Table as AntdTable, Typography } from 'antd';
+import { Button, Space, Table as AntdTable, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
+import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { getSampleDataByTableId } from 'rest/tableAPI';
+import {
+  deleteSampleDataByTableId,
+  getSampleDataByTableId,
+} from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
@@ -39,6 +44,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
 
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
@@ -91,6 +97,9 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
     }
   };
 
+  const handleDeleteSampleData = async () =>
+    await deleteSampleDataByTableId(tableId);
+
   useEffect(() => {
     setIsLoading(true);
     if (!isTableDeleted && tableId && !isTourPage) {
@@ -114,7 +123,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder className="error-placeholder">
         <Typography.Paragraph>
           <Transi18next
             i18nKey="message.view-sample-data-entity"
@@ -142,6 +151,18 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
+      <Space className="m-b-md justify-end w-full">
+        <Button
+          danger
+          data-testid="delete-sample-data"
+          type="primary"
+          onClick={() => setIsDeleteModalOpen(true)}>
+          {t('label.delete-entity', {
+            entity: t('label.sample-data'),
+          })}
+        </Button>
+      </Space>
+
       <AntdTable
         bordered
         columns={sampleData?.columns}
@@ -151,6 +172,18 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         rowKey="name"
         scroll={{ x: true }}
         size="small"
+      />
+
+      <DeleteWidgetModal
+        afterDeleteAction={fetchSampleData}
+        allowSoftDelete={false}
+        api={handleDeleteSampleData}
+        entityName={t('label.sample-data')}
+        entityType={EntityType.TABLE}
+        visible={isDeleteModalOpen}
+        onCancel={() => {
+          setIsDeleteModalOpen(false);
+        }}
       />
     </div>
   );

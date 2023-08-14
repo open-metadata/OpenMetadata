@@ -36,6 +36,10 @@ jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
     );
 });
 
+jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
+  return jest.fn().mockReturnValue(<p>DeleteWidgetModal</p>);
+});
+
 describe('Test SampleDataTable Component', () => {
   it('Render error placeholder if the columns passed are empty', async () => {
     (getSampleDataByTableId as jest.Mock).mockImplementationOnce(() =>
@@ -56,8 +60,12 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable tableId="id" />);
     });
 
+    const deleteButton = screen.getByTestId('delete-sample-data');
     const table = screen.getByTestId('sample-data-table');
+    const deleteModal = screen.getByText('DeleteWidgetModal');
 
+    expect(deleteButton).toBeInTheDocument();
     expect(table).toBeInTheDocument();
+    expect(deleteModal).toBeInTheDocument();
   });
 });
