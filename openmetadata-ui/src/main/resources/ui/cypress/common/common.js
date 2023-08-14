@@ -519,10 +519,7 @@ export const visitEntityDetailsPage = (
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-      cy.get(`[data-testid="${id}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+      cy.get(`[data-testid="${id}"]`).scrollIntoView().click();
     }
   });
 
