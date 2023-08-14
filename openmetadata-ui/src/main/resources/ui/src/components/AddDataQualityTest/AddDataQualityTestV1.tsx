@@ -169,9 +169,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
       const successMessage = isNewTestSuite ? undefined : (
         <span>
-          <span className="tw-mr-1 tw-font-semibold">{`"${
-            testCaseRes?.name ?? t('label.test-case')
-          }"`}</span>
+          <span className="font-medium">
+            {`"${testCaseRes?.name ?? t('label.test-case')}"`}{' '}
+          </span>
           <span>
             {`${t('message.has-been-created-successfully')}.`}
             &nbsp;

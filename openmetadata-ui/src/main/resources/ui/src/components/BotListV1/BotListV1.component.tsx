@@ -98,14 +98,16 @@ const BotListV1 = ({
         dataIndex: 'displayName',
         key: 'displayName',
         width: 200,
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            data-testid={`bot-link-${getEntityName(record)}`}
-            to={getBotsPath(record?.fullyQualifiedName || record?.name || '')}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          const name = getEntityName(record);
+          const fqn = record.fullyQualifiedName || record.name || '';
+
+          return (
+            <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: t('label.description'),
@@ -137,23 +139,15 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Space align="center" size={8}>
-              <Tooltip placement="topRight" title={title}>
-                <Button
-                  data-testid={`bot-delete-${getEntityName(record)}`}
-                  disabled={isDisabled}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.delete')}
-                      className="tw-w-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
-                  type="text"
-                  onClick={() => setSelectedUser(record)}
-                />
-              </Tooltip>
-            </Space>
+            <Tooltip placement="topRight" title={title}>
+              <Button
+                data-testid={`bot-delete-${getEntityName(record)}`}
+                disabled={isDisabled}
+                icon={<SVGIcons alt={t('label.delete')} icon={Icons.DELETE} />}
+                type="text"
+                onClick={() => setSelectedUser(record)}
+              />
+            </Tooltip>
           );
         },
       },
@@ -202,7 +196,7 @@ const BotListV1 = ({
 
   return handleErrorPlaceholder ? (
     <Row>
-      <Col className="w-full d-flex tw-justify-end">
+      <Col className="w-full d-flex justify-end">
         <Space align="end" size={5}>
           <Switch
             checked={showDeleted}
@@ -231,7 +225,7 @@ const BotListV1 = ({
       </Col>
 
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}

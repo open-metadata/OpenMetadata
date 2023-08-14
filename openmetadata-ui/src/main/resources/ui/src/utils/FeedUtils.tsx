@@ -387,8 +387,8 @@ export const getEntityFieldDisplay = (entityField: string) => {
   if (entityField && entityField.length) {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
-      <span className="tw-px-1">
-        <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+      <span className="p-x-xss">
+        <RightOutlined className="text-xs m-t-xss cursor-default text-grey-muted align-middle " />
       </span>
     );
 

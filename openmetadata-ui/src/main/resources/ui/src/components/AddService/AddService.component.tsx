@@ -212,7 +212,7 @@ const AddService = ({
         activeStep={activeServiceStep}
         steps={STEPS_FOR_ADD_SERVICE}
       />
-      <div className="tw-pt-5">
+      <div className="m-t-lg">
         {activeServiceStep === 1 && (
           <SelectServiceType
             handleServiceTypeClick={handleServiceTypeClick}

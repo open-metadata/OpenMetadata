@@ -20,6 +20,10 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
@@ -28,10 +32,6 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import {
-  LeafNodes,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 import PipelineDetails from './PipelineDetails.component';
 
 /**
@@ -137,15 +137,11 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage</p>);
-});
-
 jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);

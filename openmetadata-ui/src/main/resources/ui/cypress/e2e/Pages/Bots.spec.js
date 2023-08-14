@@ -35,7 +35,7 @@ const expirationTime = {
   threemonths: '90',
 };
 const getCreatedBot = () => {
-  interceptURL('GET', `/api/v1/bots/name/${botName}`, 'getCreatedBot');
+  interceptURL('GET', `/api/v1/bots/name/${botName}*`, 'getCreatedBot');
   // Click on created Bot name
   cy.get(`[data-testid="bot-link-${botName}"]`)
     .should('exist')

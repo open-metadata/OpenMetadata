@@ -41,7 +41,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -49,7 +48,6 @@ import org.openmetadata.service.jdbi3.TestDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -65,13 +63,6 @@ import org.openmetadata.service.util.ResultList;
 public class TestDefinitionResource extends EntityResource<TestDefinition, TestDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owner";
-
-  @Override
-  public TestDefinition addHref(UriInfo uriInfo, TestDefinition testDefinition) {
-    testDefinition.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, testDefinition.getId()));
-    Entity.withHref(uriInfo, testDefinition.getOwner());
-    return testDefinition;
-  }
 
   public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);

@@ -62,7 +62,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.Reindex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/glossaries")
@@ -73,15 +72,6 @@ import org.openmetadata.service.util.ResultList;
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
   static final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain";
-
-  @Override
-  public Glossary addHref(UriInfo uriInfo, Glossary glossary) {
-    glossary.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, glossary.getId()));
-    Entity.withHref(uriInfo, glossary.getOwner());
-    Entity.withHref(uriInfo, glossary.getReviewers());
-    Entity.withHref(uriInfo, glossary.getDomain());
-    return glossary;
-  }
 
   public GlossaryResource(CollectionDAO dao, Authorizer authorizer) {
     super(Glossary.class, new GlossaryRepository(dao), authorizer);
