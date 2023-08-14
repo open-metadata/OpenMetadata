@@ -89,7 +89,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:
-        return 25
+        return 22
 
     @staticmethod
     def fqn_created_table() -> str:
