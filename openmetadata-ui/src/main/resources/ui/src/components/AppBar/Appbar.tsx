@@ -244,7 +244,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <div className="text-grey-muted text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
           <Typography.Paragraph
-            className="ant-typography-ellipsis-custom font-normal"
+            className="ant-typography-ellipsis-custom font-normal m-b-0"
             ellipsis={{ tooltip: true }}
             key={i}>
             {userRole}
@@ -287,7 +287,7 @@ const Appbar: React.FC = (): JSX.Element => {
             data-testid="user-name"
             to={getUserPath(currentUser?.name as string)}>
             <Typography.Paragraph
-              className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color"
+              className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
               ellipsis={{ rows: 1, tooltip: true }}>
               {name}
             </Typography.Paragraph>
@@ -336,7 +336,7 @@ const Appbar: React.FC = (): JSX.Element => {
               </span>
               {teams.map((t, i) => (
                 <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom text-sm"
+                  className="ant-typography-ellipsis-custom text-sm m-b-0"
                   ellipsis={{ tooltip: true }}
                   key={i}>
                   <Link to={getTeamAndUserDetailsPath(t.name as string)}>
@@ -364,7 +364,7 @@ const Appbar: React.FC = (): JSX.Element => {
     dropDownOption.push({
       label: (
         <Typography.Link
-          className="ant-typography-ellipsis-custom text-sm"
+          className="ant-typography-ellipsis-custom text-sm m-b-0"
           onClick={onLogoutHandler}>
           {t('label.logout')}
         </Typography.Link>
