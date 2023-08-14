@@ -15,7 +15,7 @@ import {
   CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import {
   getDashboardDetailsPath,
   getMlModelPath,

@@ -69,7 +69,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -85,13 +84,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-
-  @Override
-  public Workflow addHref(UriInfo uriInfo, Workflow workflow) {
-    workflow.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, workflow.getId()));
-    Entity.withHref(uriInfo, workflow.getOwner());
-    return workflow;
-  }
 
   public WorkflowResource(CollectionDAO dao, Authorizer authorizer) {
     super(Workflow.class, new WorkflowRepository(dao), authorizer);

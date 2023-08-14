@@ -1096,7 +1096,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      queryBuilder.must(new TermQueryBuilder(UpdateSearchEventsConstant.DATABASE_ID, database.getId()));
+      queryBuilder.must(new TermQueryBuilder(UpdateSearchEventsConstant.DATABASE_ID, database.getId().toString()));
       request.setQuery(queryBuilder);
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
@@ -1116,7 +1116,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      queryBuilder.must(new TermQueryBuilder(UpdateSearchEventsConstant.DATABASE_SCHEMA_ID, databaseSchema.getId()));
+      queryBuilder.must(
+          new TermQueryBuilder(UpdateSearchEventsConstant.DATABASE_SCHEMA_ID, databaseSchema.getId().toString()));
       request.setQuery(queryBuilder);
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
@@ -1135,7 +1136,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     DatabaseService databaseService = (DatabaseService) event.getEntity();
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, databaseService.getId()));
+      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, databaseService.getId().toString()));
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
       // set deleted flag to true on all the tables
@@ -1153,7 +1154,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     PipelineService pipelineService = (PipelineService) event.getEntity();
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, pipelineService.getId()));
+      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, pipelineService.getId().toString()));
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
       // set deleted flag to true on all the pipelines
@@ -1179,7 +1180,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     MlModelService mlModelService = (MlModelService) event.getEntity();
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, mlModelService.getId()));
+      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, mlModelService.getId().toString()));
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
       // set deleted flag to true on all the pipelines
@@ -1197,7 +1198,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     StorageService storageService = (StorageService) event.getEntity();
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, storageService.getId()));
+      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, storageService.getId().toString()));
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
       // set deleted flag to true on all the containers
@@ -1215,7 +1216,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     MessagingService messagingService = (MessagingService) event.getEntity();
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, messagingService.getId()));
+      request.setQuery(
+          new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, messagingService.getId().toString()));
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
       // set deleted flag to true on all the containers
@@ -1233,7 +1235,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     DashboardService dashboardService = (DashboardService) event.getEntity();
     if (event.getEventType() == ENTITY_DELETED) {
       DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, dashboardService.getId()));
+      request.setQuery(
+          new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, dashboardService.getId().toString()));
       deleteEntityFromElasticSearchByQuery(request);
     } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
       // set deleted flag to true on all the containers
@@ -1559,8 +1562,12 @@ public class ElasticSearchClientImpl implements SearchClient {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
         return new EsEntitiesDescriptionAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        return new EsServicesDescriptionAggregator(aggregations, dataInsightChartType);
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         return new EsEntitiesOwnerAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        return new EsServicesOwnerAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TYPE:
         return new EsTotalEntitiesAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TIER:
@@ -1653,10 +1660,34 @@ public class ElasticSearchClientImpl implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        termsAggregationBuilder =
+            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
+                .size(1000);
+        sumAggregationBuilder =
+            AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
+                .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
+        return dateHistogramAggregationBuilder.subAggregation(
+            termsAggregationBuilder
+                .subAggregation(sumAggregationBuilder)
+                .subAggregation(sumEntityCountAggregationBuilder));
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
                 .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
+                .size(1000);
+        sumAggregationBuilder =
+            AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
+                .field(DataInsightChartRepository.DATA_HAS_OWNER);
+        return dateHistogramAggregationBuilder.subAggregation(
+            termsAggregationBuilder
+                .subAggregation(sumAggregationBuilder)
+                .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        termsAggregationBuilder =
+            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
                 .size(1000);
         sumAggregationBuilder =
             AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)

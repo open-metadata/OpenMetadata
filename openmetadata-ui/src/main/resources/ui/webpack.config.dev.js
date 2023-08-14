@@ -91,7 +91,6 @@ module.exports = {
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
           path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
-          path.resolve(__dirname, 'node_modules/tailwindcss'),
           path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/react-toastify'),

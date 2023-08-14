@@ -40,6 +40,7 @@ describe('Test FeedPanelHeader Component', () => {
       container,
       'add-new-conversation'
     );
+
     const drawerCloseButton = await findByTestId(container, 'closeDrawer');
 
     expect(title).toBeInTheDocument();

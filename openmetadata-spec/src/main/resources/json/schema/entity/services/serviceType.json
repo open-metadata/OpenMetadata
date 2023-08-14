@@ -12,7 +12,8 @@
     "Metadata",
     "MlModel",
     "Pipeline",
-    "Storage"
+    "Storage",
+    "Search"
   ],
   "additionalProperties": false
 }

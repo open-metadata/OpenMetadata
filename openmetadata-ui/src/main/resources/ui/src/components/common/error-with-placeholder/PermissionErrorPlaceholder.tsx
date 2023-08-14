@@ -25,18 +25,18 @@ const PermissionErrorPlaceholder = ({
   const { t } = useTranslation();
 
   return (
-    <div className={classNames('mt-24 h-full flex-center', className)}>
+    <div className={classNames('h-full flex-center', className)}>
       <Space
         align="center"
         data-testid="permission-error-placeholder"
         direction="vertical"
-        size={10}>
+        size="small">
         <NoAccessPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
           width={size}
         />
-        <div className="m-t-sm text-center text-sm font-normal">
+        <div className="text-center text-sm font-normal">
           <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
             {t('message.no-access-placeholder')}
           </Typography.Paragraph>

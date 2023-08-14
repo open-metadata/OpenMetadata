@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Typography } from 'antd';
+import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagButton from 'components/TagButton/TagButton.component';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
@@ -84,24 +84,14 @@ function GlossaryTermSummary({
           </Col>
           <Col span={24}>
             {reviewers.length > 0 ? (
-              <div className="d-flex flex-wrap">
+              <Space wrap size={[8, 8]}>
                 {reviewers.map((assignee) => (
-                  <>
-                    <span
-                      className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
-                      key={assignee.fullyQualifiedName}>
-                      <ProfilePicture
-                        id=""
-                        name={assignee.name || ''}
-                        width="20"
-                      />
-                      <span className="tw-self-center tw-ml-2">
-                        {assignee?.displayName || assignee?.name}
-                      </span>
-                    </span>
-                  </>
+                  <OwnerLabel
+                    key={assignee.fullyQualifiedName}
+                    owner={assignee}
+                  />
                 ))}
-              </div>
+              </Space>
             ) : (
               <Typography.Text
                 className="text-grey-body"
