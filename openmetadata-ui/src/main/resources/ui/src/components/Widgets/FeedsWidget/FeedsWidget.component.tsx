@@ -41,11 +41,11 @@ const FeedsWidget = () => {
 
   useEffect(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation);
+      getFeedData(FeedFilter.ALL, undefined, ThreadType.Conversation);
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task);
+      getFeedData(FeedFilter.ALL, undefined, ThreadType.Task);
     }
   }, [activeTab]);
 

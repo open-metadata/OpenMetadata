@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table as AntdTable, Tooltip, Typography } from 'antd';
+import { Button, Space, Table as AntdTable, Typography } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { mockDatasetData } from 'constants/mockTourData.constants';
+import { LOADING_STATE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { observer } from 'mobx-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
@@ -30,7 +31,7 @@ import {
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import { Transi18next } from '../../utils/CommonUtils';
+import { getEntityDeleteMessage, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -52,6 +53,7 @@ const SampleDataTable = ({
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [deleteState, setDeleteState] = useState(LOADING_STATE.INITIAL);
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -64,6 +66,11 @@ const SampleDataTable = ({
       permissions.EditSampleData ||
       currentUser?.id === ownerId,
     [ownerId, permissions, currentUser]
+  );
+
+  const handleDeleteModal = useCallback(
+    () => setIsDeleteModalOpen((prev) => !prev),
+    []
   );
 
   const getSampleDataWithType = (table: Table) => {
@@ -117,8 +124,24 @@ const SampleDataTable = ({
     }
   };
 
-  const handleDeleteSampleData = async () =>
-    await deleteSampleDataByTableId(tableId);
+  const handleDeleteSampleData = async () => {
+    setDeleteState(LOADING_STATE.WAITING);
+
+    try {
+      await deleteSampleDataByTableId(tableId);
+      handleDeleteModal();
+      fetchSampleData();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', {
+          entity: t('label.sample-data'),
+        })
+      );
+    } finally {
+      setDeleteState(LOADING_STATE.SUCCESS);
+    }
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -172,18 +195,17 @@ const SampleDataTable = ({
       data-testid="sample-data"
       id="sampleDataDetails">
       <Space className="m-b-md justify-end w-full">
-        <Tooltip title={!hasPermission && NO_PERMISSION_FOR_ACTION}>
+        {hasPermission && (
           <Button
             danger
             data-testid="delete-sample-data"
-            disabled={!hasPermission}
             type="primary"
-            onClick={() => setIsDeleteModalOpen(true)}>
+            onClick={handleDeleteModal}>
             {t('label.delete-entity', {
               entity: t('label.sample-data'),
             })}
           </Button>
-        </Tooltip>
+        )}
       </Space>
 
       <AntdTable
@@ -197,19 +219,19 @@ const SampleDataTable = ({
         size="small"
       />
 
-      <DeleteWidgetModal
-        afterDeleteAction={fetchSampleData}
-        allowSoftDelete={false}
-        api={handleDeleteSampleData}
-        entityName={t('label.sample-data')}
-        entityType={EntityType.SAMPLE_DATA}
-        visible={isDeleteModalOpen}
-        onCancel={() => {
-          setIsDeleteModalOpen(false);
-        }}
-      />
+      {isDeleteModalOpen && (
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
+          entityName={t('label.sample-data')}
+          entityType={EntityType.SAMPLE_DATA}
+          loadingState={deleteState}
+          visible={isDeleteModalOpen}
+          onCancel={handleDeleteModal}
+          onConfirm={handleDeleteSampleData}
+        />
+      )}
     </div>
   );
 };
 
-export default withLoader<SampleDataProps>(SampleDataTable);
+export default withLoader<SampleDataProps>(observer(SampleDataTable));

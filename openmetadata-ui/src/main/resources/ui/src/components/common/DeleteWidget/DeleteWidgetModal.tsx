@@ -39,13 +39,9 @@ import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './delete-widget-modal.style.less';
-import {
-  DeleteType,
-  DeleteUnion,
-  DeleteWidgetModalProps,
-} from './DeleteWidget.interface';
+import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
-const DeleteWidgetModal = <T extends DeleteUnion>({
+const DeleteWidgetModal = ({
   allowSoftDelete = true,
   visible,
   deleteMessage,
@@ -55,11 +51,10 @@ const DeleteWidgetModal = <T extends DeleteUnion>({
   entityType,
   onCancel,
   entityId,
-  api,
   prepareType = true,
   isRecursiveDelete,
   afterDeleteAction,
-}: DeleteWidgetModalProps<T>) => {
+}: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
@@ -119,14 +114,12 @@ const DeleteWidgetModal = <T extends DeleteUnion>({
     try {
       setIsLoading(false);
       setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
-      const response = await (api
-        ? api()
-        : deleteEntity(
-            prepareType ? prepareEntityType(entityType) : entityType,
-            entityId ?? '',
-            Boolean(isRecursiveDelete),
-            !entityDeleteState.softDelete
-          ));
+      const response = await deleteEntity(
+        prepareType ? prepareEntityType(entityType) : entityType,
+        entityId ?? '',
+        Boolean(isRecursiveDelete),
+        !entityDeleteState.softDelete
+      );
 
       if (response.status === 200) {
         showSuccessToast(

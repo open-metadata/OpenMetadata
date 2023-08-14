@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import React from 'react';
 import { getSampleDataByTableId } from 'rest/tableAPI';
@@ -51,8 +52,8 @@ jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
     );
 });
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
-  return jest.fn().mockReturnValue(<p>DeleteWidgetModal</p>);
+jest.mock('components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
+  return jest.fn().mockReturnValue(<p>EntityDeleteModal</p>);
 });
 
 describe('Test SampleDataTable Component', () => {
@@ -77,14 +78,12 @@ describe('Test SampleDataTable Component', () => {
 
     const deleteButton = screen.getByTestId('delete-sample-data');
     const table = screen.getByTestId('sample-data-table');
-    const deleteModal = screen.getByText('DeleteWidgetModal');
 
     expect(deleteButton).toBeInTheDocument();
     expect(table).toBeInTheDocument();
-    expect(deleteModal).toBeInTheDocument();
   });
 
-  it('Delete sample data button should be disabled when not have permission', async () => {
+  it('Delete sample data button should not be present when not have permission', async () => {
     await act(async () => {
       render(
         <SampleDataTable
@@ -97,8 +96,22 @@ describe('Test SampleDataTable Component', () => {
       );
     });
 
+    expect(screen.queryByTestId('delete-sample-data')).not.toBeInTheDocument();
+  });
+
+  it('Render Delete Modal when delete sample data button is clicked', async () => {
+    await act(async () => {
+      render(<SampleDataTable {...mockProps} />);
+    });
+
     const deleteButton = screen.getByTestId('delete-sample-data');
 
-    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toBeInTheDocument();
+
+    userEvent.click(deleteButton);
+
+    const deleteModal = screen.getByText('EntityDeleteModal');
+
+    expect(deleteModal).toBeInTheDocument();
   });
 });

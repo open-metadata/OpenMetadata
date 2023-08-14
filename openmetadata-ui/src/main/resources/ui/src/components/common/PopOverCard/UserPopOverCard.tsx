@@ -78,10 +78,10 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         </p>
 
         <p className="d-flex flex-wrap m-t-xss">
-          {teams.map((team, i) => (
+          {teams.map((team) => (
             <span
               className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss"
-              key={i}>
+              key={team.id}>
               {team?.displayName ?? team?.name}
             </span>
           ))}
@@ -109,8 +109,10 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
               {TERM_ADMIN}
             </span>
           )}
-          {roles.map((role, i) => (
-            <span className="bg-grey rounded-4 p-x-xs text-xs m-b-xss" key={i}>
+          {roles.map((role) => (
+            <span
+              className="bg-grey rounded-4 p-x-xs text-xs m-b-xss"
+              key={role.id}>
               {role?.displayName ?? role?.name}
             </span>
           ))}

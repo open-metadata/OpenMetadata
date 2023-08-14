@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
 import { Table } from 'generated/entity/data/table';
 
 export type DeleteUnion = Table;
-export interface DeleteWidgetModalProps<T> {
-  api?: () => Promise<AxiosResponse<T>>;
+export interface DeleteWidgetModalProps {
   visible: boolean;
   onCancel: () => void;
   allowSoftDelete?: boolean;
