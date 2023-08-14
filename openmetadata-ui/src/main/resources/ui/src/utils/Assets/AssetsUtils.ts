@@ -17,6 +17,7 @@ import {
 import { EntityType } from 'enums/entity.enum';
 import { Operation } from 'fast-json-patch';
 import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
+import { getGlossariesByName, patchGlossaries } from 'rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
@@ -43,6 +44,8 @@ export const getAPIfromSource = (
       return patchTopicDetails;
     case EntityType.CONTAINER:
       return patchContainerDetails;
+    case EntityType.GLOSSARY:
+      return patchGlossaries;
   }
 };
 
@@ -65,6 +68,8 @@ export const getEntityAPIfromSource = (
       return getTopicByFqn;
     case EntityType.CONTAINER:
       return getContainerByName;
+    case EntityType.GLOSSARY:
+      return getGlossariesByName;
   }
 };
 

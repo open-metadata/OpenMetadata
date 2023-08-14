@@ -16,6 +16,7 @@ import { ReactComponent as GovernIcon } from 'assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from 'assets/svg/globalsearch.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { ReactComponent as QualityIcon } from 'assets/svg/ic-quality-v1.svg';
 import { ReactComponent as SettingsIcon } from 'assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from 'assets/svg/lampcharge.svg';
@@ -91,24 +92,6 @@ const LeftSidebar = () => {
                     {t('label.classification', { lng: 'en-US' })}
                   </Typography.Text>
                 </div>
-              </NavLink>
-            ),
-          },
-          {
-            key: 'domain',
-            label: (
-              <NavLink
-                className="no-underline"
-                data-testid="appbar-item-domain"
-                to={{
-                  pathname: ROUTES.DOMAIN,
-                }}>
-                <span className="left-panel-item p-y-xss">
-                  <GlossaryIcon className="m-0" width={30} />
-                  <Typography.Text className="left-panel-label">
-                    {t('label.domain', { lng: 'en-US' })}
-                  </Typography.Text>
-                </span>
               </NavLink>
             ),
           },
@@ -189,6 +172,24 @@ const LeftSidebar = () => {
           selectedKeys={subMenuItemSelected}
           triggerSubMenuAction="click"
         />
+        <Col span={24}>
+          <NavLink
+            className="no-underline"
+            data-testid="appbar-item-domain"
+            to={{
+              pathname: ROUTES.DOMAIN,
+            }}>
+            <div
+              className={`left-panel-item  ${
+                location.pathname.startsWith('/domain') ? 'active' : ''
+              }`}>
+              <DomainIcon className="m-0" width={30} />
+              <Typography.Text className="left-panel-label">
+                {t('label.domain-plural', { lng: 'en-US' })}
+              </Typography.Text>
+            </div>
+          </NavLink>
+        </Col>
       </Row>
       <Row className="p-y-sm">
         <Col span={24}>

@@ -24,11 +24,13 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { PAGE_SIZE_LARGE, ROUTES } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { compare } from 'fast-json-patch';
 import { Domain } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
 import { useHistory, useParams } from 'react-router-dom';
-import { getDomainByName, getDomainList } from 'rest/domainAPI';
+import { getDomainByName, getDomainList, patchDomains } from 'rest/domainAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
+import { getDomainPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
@@ -76,6 +78,37 @@ const DomainPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDomainUpdate = async (updatedData: Domain) => {
+    if (activeDomain) {
+      const jsonPatch = compare(activeDomain, updatedData);
+      try {
+        const response = await patchDomains(
+          activeDomain.id as string,
+          jsonPatch
+        );
+
+        setActiveDomain(response);
+
+        setDomains((pre) => {
+          return pre.map((item) => {
+            if (item.name === response.name) {
+              return response;
+            } else {
+              return item;
+            }
+          });
+        });
+
+        if (activeDomain?.name !== updatedData.name) {
+          history.push(getDomainPath(response.fullyQualifiedName));
+          fetchDomainList();
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
 
@@ -141,6 +174,7 @@ const DomainPage = () => {
         <DomainDetailsPage
           domain={activeDomain}
           loading={isMainContentLoading}
+          onUpdate={handleDomainUpdate}
         />
       )}
     </PageLayoutV1>

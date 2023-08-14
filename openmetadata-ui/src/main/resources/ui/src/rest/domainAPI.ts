@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
 
+import { Operation } from 'fast-json-patch';
 import { Domain } from 'generated/entity/domains/domain';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
@@ -46,6 +47,20 @@ export const addDomains = async (data: Domain) => {
   const response = await APIClient.post<Domain, AxiosResponse<Domain>>(
     BASE_URL,
     data
+  );
+
+  return response.data;
+};
+
+export const patchDomains = async (id: string, patch: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<Domain>>(
+    `/domains/${id}`,
+    patch,
+    configOptions
   );
 
   return response.data;

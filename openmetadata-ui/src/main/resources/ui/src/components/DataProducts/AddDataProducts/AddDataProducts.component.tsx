@@ -37,7 +37,7 @@ import { checkPermission } from 'utils/PermissionsUtils';
 import { getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
-const AddDomain = () => {
+const AddDataProducts = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm();
@@ -123,7 +123,6 @@ const AddDomain = () => {
     key,
     value: DomainType[key as keyof typeof DomainType],
   }));
-
   const formFields: FieldProp[] = [
     {
       name: 'name',
@@ -327,4 +326,4 @@ const AddDomain = () => {
   );
 };
 
-export default AddDomain;
+export default AddDataProducts;

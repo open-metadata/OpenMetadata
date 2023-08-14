@@ -13,31 +13,59 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { AxiosError } from 'axios';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import { AssetsTabRef } from 'components/GlossaryTerms/tabs/AssetsTabs.component';
 import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { Domain } from 'generated/entity/domains/domain';
-import React, { useMemo } from 'react';
+import { noop } from 'lodash';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
-import { getDomainPath } from 'utils/RouterUtils';
+import { useHistory, useParams } from 'react-router-dom';
+import { addDomains } from 'rest/domainAPI';
+import { getIsErrorMatch } from 'utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getDomainDetailsPath, getDomainPath } from 'utils/RouterUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import Fqn from '../../../utils/Fqn';
+import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
 import '../domain.less';
 import { DomainTabs } from '../DomainPage.interface';
+import DocumentationTab from '../DomainTabs/DocumentationTab/DocumentationTab.component';
+import DomainAssetsTabs from '../DomainTabs/DomainAssetsTab/DomainAssetsTabs.component';
 
 interface props {
   domain: Domain;
   loading: boolean;
+  onUpdate: (value: Domain) => Promise<void>;
 }
 
-const DomainDetailsPage = ({ domain, loading }: props) => {
+const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
   const { t } = useTranslation();
+  const { getEntityPermission } = usePermissionProvider();
+  const history = useHistory();
   const { fqn, tab: activeTab } = useParams<{ fqn: string; tab: string }>();
-  const domainFqn = fqn ? decodeURIComponent(fqn) : null;
+  const domainFqn = fqn ? decodeURIComponent(fqn) : '';
+  const assetTabRef = useRef<AssetsTabRef>(null);
+  const [domainPermission, setDomainPermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+  const [showAddSubDomainModal, setShowAddSubDomainModal] = useState(false);
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -63,7 +91,7 @@ const DomainDetailsPage = ({ domain, loading }: props) => {
         };
       }),
     ];
-  }, []);
+  }, [domainFqn]);
 
   const addButtonContent = [
     {
@@ -73,12 +101,60 @@ const DomainDetailsPage = ({ domain, loading }: props) => {
     {
       label: t('label.sub-domain-plural'),
       key: '2',
+      onClick: () => setShowAddSubDomainModal(true),
     },
     {
       label: t('label.data-product-plural'),
       key: '3',
     },
   ];
+
+  const addSubDomain = useCallback(async (formData: Domain) => {
+    const updatedExperts =
+      formData.experts && formData.experts.map((item) => item.name);
+    const data = {
+      ...formData,
+      experts: updatedExperts,
+      domain: fqn,
+    };
+
+    try {
+      await addDomains(data as Domain);
+    } catch (error) {
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.sub-domain'),
+              entityPlural: t('label.sub-domain-lowercase-plural'),
+              name: data.name,
+            })
+          : (error as AxiosError),
+        t('server.add-entity-error', {
+          entity: t('label.sub-domain-lowercase'),
+        })
+      );
+    } finally {
+      setShowAddSubDomainModal(false);
+    }
+  }, []);
+
+  const fetchDomainPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.GLOSSARY_TERM,
+        domain.id as string
+      );
+      setDomainPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleTabChange = (activeKey: string) => {
+    if (activeKey !== activeTab) {
+      history.push(getDomainDetailsPath(domainFqn, activeKey));
+    }
+  };
 
   const tabs = useMemo(() => {
     return [
@@ -90,13 +166,7 @@ const DomainDetailsPage = ({ domain, loading }: props) => {
           />
         ),
         key: DomainTabs.DOCUMENTATION,
-        children: (
-          <RichTextEditorPreviewer
-            className="p-x-md"
-            enableSeeMoreVariant={false}
-            markdown={domain.description}
-          />
-        ),
+        children: <DocumentationTab domain={domain} onUpdate={onUpdate} />,
       },
       {
         label: (
@@ -113,11 +183,20 @@ const DomainDetailsPage = ({ domain, loading }: props) => {
           <TabsLabel id={DomainTabs.ASSETS} name={t('label.asset-plural')} />
         ),
         key: DomainTabs.ASSETS,
-        children: <></>,
+        children: (
+          <DomainAssetsTabs
+            isSummaryPanelOpen
+            permissions={domainPermission}
+            ref={assetTabRef}
+            onAddAsset={noop}
+            onAssetClick={noop}
+          />
+        ),
       },
       {
         label: (
           <TabsLabel
+            count={domain.children?.length ?? 0}
             id={DomainTabs.SUBDOMAINS}
             name={t('label.sub-domain-plural')}
           />
@@ -126,62 +205,74 @@ const DomainDetailsPage = ({ domain, loading }: props) => {
         children: <></>,
       },
     ];
-  }, []);
+  }, [domain, domainPermission]);
+
+  useEffect(() => {
+    fetchDomainPermission();
+  }, [fqn]);
 
   if (loading) {
     return <Loader />;
   }
 
   return (
-    <Row
-      className="domain-details"
-      data-testid="domain-details"
-      gutter={[0, 32]}>
-      <Col className="p-x-md" flex="auto">
-        <EntityHeader
-          breadcrumb={breadcrumbs}
-          entityData={domain}
-          entityType={EntityType.DOMAIN}
-          icon={
-            <DomainIcon
-              color={DE_ACTIVE_COLOR}
-              height={36}
-              name="folder"
-              width={32}
-            />
-          }
-          serviceName=""
-        />
-      </Col>
-      <Col className="p-x-md" flex="280px">
-        <div style={{ textAlign: 'right' }}>
-          <Dropdown
-            className="m-l-xs"
-            menu={{
-              items: addButtonContent,
-            }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Button type="primary">
-              <Space>
-                {t('label.add')}
-                <DownOutlined />
-              </Space>
-            </Button>
-          </Dropdown>
-        </div>
-      </Col>
+    <>
+      <Row
+        className="domain-details"
+        data-testid="domain-details"
+        gutter={[0, 12]}>
+        <Col className="p-x-md" flex="auto">
+          <EntityHeader
+            breadcrumb={breadcrumbs}
+            entityData={domain}
+            entityType={EntityType.DOMAIN}
+            icon={
+              <DomainIcon
+                color={DE_ACTIVE_COLOR}
+                height={36}
+                name="folder"
+                width={32}
+              />
+            }
+            serviceName=""
+          />
+        </Col>
+        <Col className="p-x-md" flex="280px">
+          <div style={{ textAlign: 'right' }}>
+            <Dropdown
+              className="m-l-xs"
+              menu={{
+                items: addButtonContent,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button type="primary">
+                <Space>
+                  {t('label.add')}
+                  <DownOutlined />
+                </Space>
+              </Button>
+            </Dropdown>
+          </div>
+        </Col>
 
-      <Col span={24}>
-        <Tabs
-          destroyInactiveTabPane
-          activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-          className="domain-details-page-tabs"
-          data-testid="tabs"
-          items={tabs}
-        />
-      </Col>
-    </Row>
+        <Col span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+            className="domain-details-page-tabs"
+            data-testid="tabs"
+            items={tabs}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
+      <AddSubDomainModal
+        open={showAddSubDomainModal}
+        onCancel={() => setShowAddSubDomainModal(false)}
+        onSubmit={(data: Domain) => addSubDomain(data)}
+      />
+    </>
   );
 };
 
