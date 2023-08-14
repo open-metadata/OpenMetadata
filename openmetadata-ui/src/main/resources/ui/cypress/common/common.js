@@ -475,7 +475,8 @@ export const visitEntityDetailsPage = (
   serviceName,
   entity,
   dataTestId,
-  entityType
+  entityType,
+  count = 0
 ) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
@@ -486,7 +487,7 @@ export const visitEntityDetailsPage = (
   interceptURL(
     'GET',
     `/api/v1/search/suggest?q=*&index=*`,
-    `searchQuery-${entity}`
+    `searchQuery-${entity}-${count}`
   );
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
   const id = dataTestId ?? `${serviceName}-${term}`;
@@ -499,7 +500,7 @@ export const visitEntityDetailsPage = (
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  verifyResponseStatusCode(`@searchQuery-${entity}`, 200);
+  verifyResponseStatusCode(`@searchQuery-${entity}-${count}`, 200);
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
     if ($body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length) {
