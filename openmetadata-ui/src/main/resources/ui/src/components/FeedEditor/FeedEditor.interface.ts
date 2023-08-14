@@ -17,8 +17,8 @@ export interface MentionSuggestionsItem {
   value: string;
   link: string;
   name: string;
-  type?: string | undefined;
-  avatarEle?: string | undefined;
+  type?: string;
+  avatarEle?: string;
 }
 
 export interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
