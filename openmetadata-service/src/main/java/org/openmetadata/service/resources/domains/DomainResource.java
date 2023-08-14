@@ -57,7 +57,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -79,11 +78,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
 
   @Override
   public Domain addHref(UriInfo uriInfo, Domain domain) {
-    domain.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, domain.getId()));
+    super.addHref(uriInfo, domain);
     Entity.withHref(uriInfo, domain.getParent());
-    Entity.withHref(uriInfo, domain.getChildren());
-    Entity.withHref(uriInfo, domain.getExperts());
-    Entity.withHref(uriInfo, domain.getOwner());
     return domain;
   }
 

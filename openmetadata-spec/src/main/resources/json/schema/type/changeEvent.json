@@ -15,7 +15,7 @@
         "entityUpdated",
         "entityNoChange",
         "entitySoftDeleted",
-	    "entityRestored",
+        "entityRestored",
         "entityDeleted"
       ]
     },
