@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 
 import java.util.List;
 import org.openmetadata.schema.entity.data.Database;
@@ -62,12 +61,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public Database setInheritedFields(Database database, Fields fields) {
-    // If database does not have domain, then inherit it from parent database service
-    if (fields.contains(FIELD_DOMAIN) && database.getDomain() == null) {
-      DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
-      database.withDomain(service.getDomain());
-    }
-    return database;
+    DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
+    return inheritDomain(database, fields, service);
   }
 
   private List<EntityReference> getSchemas(Database database) {

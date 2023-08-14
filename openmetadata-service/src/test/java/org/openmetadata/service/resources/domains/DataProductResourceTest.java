@@ -2,6 +2,9 @@ package org.openmetadata.service.resources.domains;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.FIELD_ASSETS;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -9,15 +12,24 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
+import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.TestUtils;
+import org.openmetadata.service.util.TestUtils.UpdateType;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
   public DataProductResourceTest() {
@@ -31,13 +43,96 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             createRequest(getEntityName(test, 1)).withDomain(SUB_DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
   }
 
+  @Test
+  void testDataProductAssets(TestInfo test) throws IOException {
+    // Create Data product with Table1 as the asset
+    CreateDataProduct create = createRequest(getEntityName(test)).withAssets(List.of(TEST_TABLE1.getEntityReference()));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    entityInDataProduct(TEST_TABLE1, product, true); // Table1 is part of data product
+
+    TopicResourceTest topicTest = new TopicResourceTest();
+    Topic topic = topicTest.createEntity(topicTest.createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+
+    // Add asset topic with PUT
+    create.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
+    ChangeDescription change = getChangeDescription(product.getVersion());
+    fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    entityInDataProduct(topic, product, true); // topic is part of data product
+
+    // Remove asset topic with PUT
+    create.withAssets(List.of(TEST_TABLE1.getEntityReference()));
+    change = getChangeDescription(product.getVersion());
+    fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    entityInDataProduct(topic, product, false); // topic is not part of data product
+
+    // Add topic asset with PATCH
+    String json = JsonUtils.pojoToJson(product);
+    product.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
+    change = getChangeDescription(product.getVersion());
+    fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    entityInDataProduct(topic, product, true); // topic is part of data product
+
+    // Remove asset topic with PATCH
+    json = JsonUtils.pojoToJson(product);
+    product.withAssets(List.of(TEST_TABLE1.getEntityReference()));
+    change = getChangeDescription(product.getVersion());
+    fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
+    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    entityInDataProduct(topic, product, false); // topic is not part of data product
+  }
+
+  @Test
+  void testDataProductExperts(TestInfo test) throws IOException {
+    CreateDataProduct create = createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add User2 as expert using PUT
+    create.withExperts(List.of(USER1.getFullyQualifiedName(), USER2.getFullyQualifiedName()));
+    ChangeDescription change = getChangeDescription(product.getVersion());
+    fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove User2 as expert using PUT
+    create.withExperts(List.of(USER1.getFullyQualifiedName()));
+    change = getChangeDescription(product.getVersion());
+    fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Add User2 as expert using PATCH
+    String json = JsonUtils.pojoToJson(product);
+    product.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
+    change = getChangeDescription(product.getVersion());
+    fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove User2 as expert using PATCH
+    json = JsonUtils.pojoToJson(product);
+    product.withExperts(List.of(USER1.getEntityReference()));
+    change = getChangeDescription(product.getVersion());
+    fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
+    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  private void entityInDataProduct(EntityInterface entity, EntityInterface product, boolean inDataProduct)
+      throws HttpResponseException {
+    // Only table or topic is expected to assets currently in the tests
+    EntityResourceTest test =
+        entity.getEntityReference().getType().equals(Entity.TABLE) ? new TableResourceTest() : new TopicResourceTest();
+    entity = test.getEntity(entity.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
+    TestUtils.existsInEntityReferenceList(entity.getDataProducts(), product.getId(), inDataProduct);
+  }
+
   @Override
   public CreateDataProduct createRequest(String name) {
     return new CreateDataProduct()
         .withName(name)
         .withDescription(name)
         .withDomain(DOMAIN.getFullyQualifiedName())
-        .withExperts(listOf(USER1.getFullyQualifiedName()));
+        .withExperts(listOf(USER1.getFullyQualifiedName()))
+        .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
 
   @Override
@@ -46,6 +141,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Entity specific validation
     assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
+    assertEntityReferences(request.getAssets(), createdEntity.getAssets());
   }
 
   @Override
@@ -53,6 +149,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Entity specific validation
     assertReference(expected.getDomain(), updated.getDomain());
     assertEntityReferences(expected.getExperts(), updated.getExperts());
+    assertEntityReferences(expected.getAssets(), updated.getAssets());
   }
 
   @Override
@@ -63,7 +160,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(getDataProduct.getOwner(), getDataProduct.getExperts());
-    String fields = "owner,domain,experts";
+    String fields = "owner,domain,experts,assets";
     getDataProduct =
         byName
             ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -71,6 +168,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Fields requested are received
     assertReference(dataProduct.getDomain(), getDataProduct.getDomain());
     assertEntityReferences(dataProduct.getExperts(), getDataProduct.getExperts());
+    assertEntityReferences(dataProduct.getAssets(), getDataProduct.getAssets());
 
     // Checks for other owner, tags, and followers is done in the base class
     return getDataProduct;
@@ -85,7 +183,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       EntityReference expectedRef = (EntityReference) expected;
       EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
       assertEquals(expectedRef.getId(), actualRef.getId());
-    } else if (fieldName.startsWith("experts")) {
+    } else if (fieldName.startsWith("experts") || fieldName.startsWith("assets")) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
       List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
