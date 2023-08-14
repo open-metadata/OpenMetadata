@@ -20,7 +20,11 @@ import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionF
 import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from 'components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
-import { INGESTION_WORKFLOW_UI_SCHEMA } from 'constants/Services.constant';
+import {
+  INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+  INGESTION_WORKFLOW_UI_SCHEMA,
+} from 'constants/Services.constant';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
@@ -53,6 +57,18 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
     [pipeLineType, serviceCategory]
   );
+
+  const uiSchema = useMemo(() => {
+    let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
+    if (pipeLineType === PipelineType.ElasticSearchReindex) {
+      commonSchema = {
+        ...commonSchema,
+        ...INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+      };
+    }
+
+    return commonSchema;
+  }, []);
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -88,7 +104,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
         ObjectFieldTemplate: ObjectFieldTemplate,
       }}
       transformErrors={transformErrors}
-      uiSchema={INGESTION_WORKFLOW_UI_SCHEMA}
+      uiSchema={uiSchema}
       validator={validator}
       onChange={handleOnChange}
       onFocus={onFocus}

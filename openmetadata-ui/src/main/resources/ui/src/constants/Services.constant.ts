@@ -275,6 +275,15 @@ export const DEF_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden' },
 };
 
+export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
+  useSSL: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  verifyCerts: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  timeout: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  caCerts: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  useAwsCredentials: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  regionName: { 'ui:widget': 'hidden', 'ui:hideError': true },
+};
+
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [

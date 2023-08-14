@@ -19,8 +19,6 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../constants/Ingestions.constant';
 import { FormSubmitType } from '../../enums/form.enum';
-import { ServiceCategory } from '../../enums/service.enum';
-import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import {
   CreateIngestionPipeline,
   LogLevels,
@@ -71,11 +69,13 @@ const AddIngestion = ({
       getIngestionFrequency(pipelineType)
   );
 
-  const { sourceConfig } = useMemo(
+  const { sourceConfig, ingestionName } = useMemo(
     () => ({
       sourceConfig: data?.sourceConfig.config,
+      ingestionName:
+        data?.name ?? getIngestionName(serviceData.name, pipelineType),
     }),
-    [data, pipelineType]
+    [data, pipelineType, serviceData]
   );
 
   const isSettingsPipeline = useMemo(
@@ -95,18 +95,6 @@ const AddIngestion = ({
 
     [isSettingsPipeline]
   );
-
-  const { isDatabaseService, isServiceTypeOpenMetadata } = useMemo(() => {
-    return {
-      isDatabaseService: serviceCategory === ServiceCategory.DATABASE_SERVICES,
-      isServiceTypeOpenMetadata:
-        serviceData.serviceType === MetadataServiceType.OpenMetadata,
-    };
-  }, [serviceCategory]);
-
-  const showDBTConfig = useMemo(() => {
-    return isDatabaseService && pipelineType === PipelineType.Dbt;
-  }, [isDatabaseService, pipelineType]);
 
   const [saveState, setSaveState] = useState<LOADING_STATE>(
     LOADING_STATE.INITIAL
@@ -251,28 +239,12 @@ const AddIngestion = ({
 
     return (
       <span>
-        <span className="font-medium">{`"${
-          data?.name ?? getIngestionName(serviceData.name, pipelineType)
-        }"`}</span>
+        <span className="font-medium">{`"${ingestionName}"`}</span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}
         </span>
       </span>
     );
-  };
-
-  const getExcludedSteps = () => {
-    const excludedSteps = [];
-    if (showDBTConfig) {
-      excludedSteps.push(1);
-    } else {
-      excludedSteps.push(2);
-    }
-    if (!isServiceTypeOpenMetadata) {
-      excludedSteps.push(3);
-    }
-
-    return excludedSteps;
   };
 
   return (
@@ -283,7 +255,7 @@ const AddIngestion = ({
 
       <IngestionStepper
         activeStep={activeIngestionStep}
-        excludeSteps={getExcludedSteps()}
+        excludeSteps={[]}
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
@@ -296,9 +268,7 @@ const AddIngestion = ({
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
             workflowData={sourceConfig ?? {}}
-            workflowName={
-              data?.name ?? getIngestionName(serviceData.name, pipelineType)
-            }
+            workflowName={ingestionName}
             onCancel={handleCancelClick}
             onFocus={onFocus}
             onSubmit={handleSubmit}
@@ -326,9 +296,7 @@ const AddIngestion = ({
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}
-            name={
-              data?.name ?? getIngestionName(serviceData.name, pipelineType)
-            }
+            name={ingestionName}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
@@ -339,9 +307,7 @@ const AddIngestion = ({
 
         <DeployIngestionLoaderModal
           action={ingestionAction}
-          ingestionName={
-            data?.name ?? getIngestionName(serviceData.name, pipelineType)
-          }
+          ingestionName={ingestionName}
           isDeployed={isIngestionDeployed}
           isIngestionCreated={isIngestionCreated}
           progress={ingestionProgress}
