@@ -13,7 +13,7 @@ MongoDB source methods.
 """
 
 import traceback
-from typing import Dict, List, Union
+from typing import Dict, Iterable, List, Union
 
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
     CouchbaseConnection,
@@ -51,14 +51,23 @@ class CouchbaseSource(CommonNoSQLSource):
             )
         return cls(config, metadata_config)
 
+    def get_database_names(self) -> Iterable[str]:
+        if self.service_connection.bucket:
+            yield self.service_connection.__dict__.get("bucket")
+        else:
+            buckets = self.couchbase.buckets()
+            for bucket_name in buckets.get_all_buckets():
+                yield bucket_name.name
+
     def get_schema_name_list(self) -> List[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
         """
         try:
-            bucket_name = self.service_connection.bucket
-            bucket = self.couchbase.bucket(bucket_name)
+            # for bucket_name in self.get_database_names():
+            database_name = self.context.database.name.__root__
+            bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
             self.context.scope_list = collection_manager.get_all_scopes()
             return [scopes.name for scopes in self.context.scope_list]

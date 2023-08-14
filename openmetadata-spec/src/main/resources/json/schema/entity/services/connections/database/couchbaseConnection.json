@@ -6,20 +6,32 @@
     "type": "object",
     "javaType": "org.openmetadata.schema.services.connections.database.CouchbaseConnection",
     "definitions": {
-        "couchbaseType": {
-          "description": "Service type.",
-          "type": "string",
-          "enum": ["Couchbase"],
-          "default": "Couchbase"
-        }
+      "couchbaseType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Couchbase"],
+        "default": "Couchbase"
       },
-      "properties": {
-        "type": {
-          "title": "Service Type",
-          "description": "Service Type",
-          "$ref": "#/definitions/couchbaseType",
-          "default": "Couchbase"
-        },
+      "couchbaseScheme": {
+        "description": "SQLAlchemy driver scheme options.",
+        "type": "string",
+        "enum": ["couchbase"],
+        "default": "couchbase"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/couchbaseType",
+        "default": "Couchbase"
+      },
+      "scheme": {
+        "title": "Connection Scheme",
+        "description": "SQLAlchemy driver scheme options.",
+        "$ref": "#/definitions/couchbaseScheme",
+        "default": "couchbase"
+      },
     
         "bucket": {
             "title": "Connection Bucket",
