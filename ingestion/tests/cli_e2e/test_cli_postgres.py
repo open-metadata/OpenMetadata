@@ -93,7 +93,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def get_connector_name() -> str:
-        return "Postgres"
+        return "postgres"
 
     def create_table_and_view(self) -> None:
         SQACommonMethods.create_table_and_view(self)
