@@ -3407,7 +3407,7 @@ public interface CollectionDAO {
     void updateReportExtensionAtTimestampByKeyInternal(
         @Bind("value") String value,
         @Bind("reportDataType") String reportDataType,
-        @Bind("entityFQNHash") String entityFQNHash,
+        @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("json") String json,
         @Bind("timestamp") Long timestamp,
