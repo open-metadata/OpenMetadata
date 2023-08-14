@@ -27,11 +27,10 @@ from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
-from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
-
+# pylint: disable=too-many-locals
 class Histogram(HybridMetric):
     """
     AVG Metric
@@ -102,8 +101,9 @@ class Histogram(HybridMetric):
         self, res_iqr: float, res_row_count: float, res_min: float, res_max: float
     ):
         """Get the number of bins and the width of each bin.
-        We'll first use the Freedman-Diaconis rule to compute the number of bins. If the number of bins is greater than 100,
-        we'll fall back to Sturge's rule. If the number of bins is still greater than 100, we'll default to 100 bins.
+        We'll first use the Freedman-Diaconis rule to compute the number of bins.
+        If the number of bins is greater than 100, we'll fall back to Sturge's rule. If the number of bins
+        is still greater than 100, we'll default to 100 bins.
 
         Args:
             res_iqr (float): IQR (first quartile - third quartile)
@@ -166,9 +166,9 @@ class Histogram(HybridMetric):
         ending_bin_bound = res_min + bin_width
 
         if is_concatenable(self.col.type):
-            col = LenFn(column(self.col.name))
+            col = LenFn(column(self.col.name, self.col.type))
         else:
-            col = column(self.col.name)  # type: ignore
+            col = column(self.col.name, self.col.type)  # type: ignore
 
         case_stmts = []
         for bin_num in range(num_bins):

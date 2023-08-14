@@ -72,8 +72,7 @@ import org.openmetadata.schema.api.configuration.extension.Extension;
 import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
-import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
@@ -85,6 +84,7 @@ import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
@@ -95,6 +95,7 @@ import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchEventPublisher;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -249,10 +250,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     if (catalogConfig.getAuthenticationConfiguration() != null
-        && catalogConfig
-            .getAuthenticationConfiguration()
-            .getProvider()
-            .equals(SSOAuthMechanism.SsoServiceType.SAML.toString())) {
+        && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
       ServletRegistration.Dynamic samlRedirectServlet =
           environment.servlets().addServlet("saml_login", new SamlLoginServlet());
@@ -390,10 +388,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
-      case "basic":
+      case BASIC:
         authenticatorHandler = new BasicAuthenticator();
         break;
-      case "ldap":
+      case LDAP:
         authenticatorHandler = new LdapAuthenticator();
         break;
       default:
@@ -414,10 +412,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
     // register ElasticSearch Event publisher
     if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
-      ElasticSearchEventPublisher elasticSearchEventPublisher =
-          new ElasticSearchEventPublisher(
+      SearchEventPublisher searchEventPublisher =
+          new SearchEventPublisher(
               openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
-      EventPubSub.addEventHandler(elasticSearchEventPublisher);
+      EventPubSub.addEventHandler(searchEventPublisher);
     }
 
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
@@ -490,6 +488,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     @Override
     public void stop() throws InterruptedException, SchedulerException {
+      LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
+      LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
       ReportsHandler.shutDown();
       LOG.info("Stopping the application");

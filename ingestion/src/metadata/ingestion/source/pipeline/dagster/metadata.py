@@ -212,13 +212,19 @@ class DagsterSource(PipelineServiceSource):
         """
         Get List of all pipelines
         """
-
-        results = self.client.get_run_list()
-        for result in results:
-            self.context.repository_location = result.location.name
-            self.context.repository_name = result.name
-            for job in result.pipelines or []:
-                yield job
+        try:
+            results = self.client.get_run_list()
+            for result in results:
+                self.context.repository_location = result.location.name
+                self.context.repository_name = result.name
+                for job in result.pipelines or []:
+                    yield job
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unable to get pipelines list\n"
+                f"Please check if dagster is running correctly and is in good state: {exc}"
+            )
 
     def get_pipeline_name(self, pipeline_details: DagsterPipeline) -> str:
         """

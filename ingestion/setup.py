@@ -93,7 +93,7 @@ base_requirements = {
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
-    "importlib-metadata~=4.12.0",  # From airflow constraints
+    "importlib-metadata~=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
@@ -106,7 +106,7 @@ base_requirements = {
     "PyYAML",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "setuptools~=65.6.3",
+    "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage>=1.0.4",
     "tabulate==0.9.0",
@@ -120,14 +120,14 @@ base_requirements = {
 plugins: Dict[str, Set[str]] = {
     "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"PyAthena[SQLAlchemy]"},
+    "athena": {"pyathena==2.25.2"},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], "azure-identity", "azure-storage-blob"},
     "bigquery": {
         "cachetools",
-        "google-cloud-datacatalog==3.6.2",
+        "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         "sqlalchemy-bigquery>=1.2.2",
@@ -213,6 +213,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["packaging"],
     },
     "powerbi": {VERSIONS["msal"]},
+    "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
@@ -272,7 +273,7 @@ setup(
     description="Ingestion Framework for OpenMetadata",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     options={"build_exe": build_options},
     package_dir={"": "src"},
     package_data={"metadata.examples": ["workflows/*.yaml"]},
@@ -307,6 +308,7 @@ setup(
                         "airflow",
                         "db2",
                         "great-expectations",
+                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
                     }
                 ]
             )

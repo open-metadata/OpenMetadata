@@ -12,34 +12,38 @@
  */
 
 import { Card, Col, Row, Space, Tabs } from 'antd';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { AxiosError } from 'axios';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getFeedCounts } from 'utils/CommonUtils';
-import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
+import { restoreDataModel } from 'rest/dataModelsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getFeedCounts, refreshPage } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
@@ -65,9 +69,6 @@ const DataModelDetails = ({
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const {
     hasEditDescriptionPermission,
@@ -100,7 +101,6 @@ const DataModelDetails = ({
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
       dashboardDataModelFQN,
-      setEntityFieldThreadCount,
       setFeedCount
     );
   };
@@ -143,7 +143,10 @@ const DataModelDetails = ({
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
       history.push({
-        pathname: getDataModelDetailsPath(dashboardDataModelFQN, tabValue),
+        pathname: getDataModelDetailsPath(
+          getDecodedFqn(dashboardDataModelFQN),
+          tabValue
+        ),
       });
     }
   };
@@ -158,6 +161,26 @@ const DataModelDetails = ({
     handleUpdateTags(updatedTags);
   };
 
+  const handleRestoreDataModel = async () => {
+    try {
+      await restoreDataModel(dataModelData.id ?? '');
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.data-model'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.data-model'),
+        })
+      );
+    }
+  };
+
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
@@ -165,10 +188,6 @@ const DataModelDetails = ({
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={description}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.DESCRIPTION,
-                entityFieldThreadCount
-              )}
               entityFqn={dashboardDataModelFQN}
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
@@ -183,10 +202,6 @@ const DataModelDetails = ({
             />
             <ModelTab
               data={dataModelData?.columns || []}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.COLUMNS,
-                entityFieldThreadCount
-              )}
               entityFqn={dashboardDataModelFQN}
               hasEditDescriptionPermission={hasEditDescriptionPermission}
               hasEditTagsPermission={hasEditTagsPermission}
@@ -202,8 +217,8 @@ const DataModelDetails = ({
           flex="320px">
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
               entityFqn={dashboardDataModelFQN}
-              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
@@ -212,8 +227,8 @@ const DataModelDetails = ({
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
               entityFqn={dashboardDataModelFQN}
-              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
@@ -229,7 +244,6 @@ const DataModelDetails = ({
     dataModelData,
     description,
     dashboardDataModelFQN,
-    entityFieldThreadCount,
     hasEditTagsPermission,
     deleted,
     hasEditDescriptionPermission,
@@ -266,14 +280,12 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              fqn={dataModelData?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchDataModel}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            fqn={dataModelData?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchDataModel}
+          />
         ),
       },
       ...(dataModelData?.sql
@@ -313,15 +325,12 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="card-body-full m-md w-auto h-60vh"
-            data-testid="lineage-details">
-            <EntityLineageComponent
-              deleted={deleted}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={hasEditLineagePermission}
-            />
-          </Card>
+          <EntityLineageComponent
+            deleted={deleted}
+            entity={dataModelData as SourceType}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={hasEditLineagePermission}
+          />
         ),
       },
     ];
@@ -337,13 +346,14 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={() => Promise.resolve()}
+            onRestoreDataAsset={handleRestoreDataModel}
             onTierUpdate={handleUpdateTier}
             onVersionClick={versionHandler}
           />
@@ -376,4 +386,4 @@ const DataModelDetails = ({
   );
 };
 
-export default DataModelDetails;
+export default withActivityFeed<DataModelDetailsProps>(DataModelDetails);

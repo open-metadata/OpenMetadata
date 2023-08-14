@@ -104,15 +104,6 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
-## Ingestion publish
-.PHONY: publish
-publish:  ## Publish the ingestion module to PyPI
-	$(MAKE) install_dev generate
-	cd ingestion; \
-	  python setup.py install sdist bdist_wheel; \
-	  twine check dist/*; \
-	  twine upload dist/*
-
 ## Yarn
 .PHONY: yarn_install_cache
 yarn_install_cache:  ## Use Yarn to install UI dependencies
@@ -151,15 +142,6 @@ core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To
 	cd ingestion-core; \
 		. venv/bin/activate; \
 		python -m incremental.update metadata --dev
-
-.PHONY: core_publish
-core_publish:  ## Install, generate and publish the ingestion-core module to Test PyPI
-	$(MAKE) core_clean core_generate
-	cd ingestion-core; \
-		. venv/bin/activate; \
-		python setup.py install sdist bdist_wheel; \
-		twine check dist/*; \
-		twine upload -r testpypi dist/*
 
 .PHONY: core_py_antlr
 core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core

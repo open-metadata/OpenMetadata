@@ -96,12 +96,17 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   <Typography.Text className="text-xs">
                     {resultData.displayName ?? name}
                   </Typography.Text>
-                  <Tooltip
-                    placement="bottom"
-                    title={getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
-                    trigger="hover">
-                    <InfoCircleOutlined style={{ fontSize: '14px' }} />
-                  </Tooltip>
+                  {daysLeft <= 0 || isTargetMet ? (
+                    <Tooltip
+                      placement="bottom"
+                      title={getKpiResultFeedback(
+                        daysLeft,
+                        Boolean(isTargetMet)
+                      )}
+                      trigger="hover">
+                      <InfoCircleOutlined style={{ fontSize: '14px' }} />
+                    </Tooltip>
+                  ) : null}
                 </Space>
                 <Progress
                   percent={Number(currentProgress)}

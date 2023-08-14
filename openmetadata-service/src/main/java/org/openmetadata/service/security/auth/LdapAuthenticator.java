@@ -9,7 +9,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
@@ -121,7 +120,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
-  private User checkAndCreateUser(String email) throws IOException {
+  private User checkAndCreateUser(String email) {
     // Check if the user exists in OM Database
     try {
       return userRepository.getByName(null, email.split("@")[0], userRepository.getFields("id,name,email"));
@@ -143,13 +142,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
-      EmailUtil.getInstance()
-          .sendAccountStatus(
-              storedUser,
-              "Multiple Failed Login Attempts.",
-              String.format(
-                  "Someone is tried accessing your account. Login is Blocked for %s minutes.",
-                  loginConfiguration.getAccessBlockTime()));
+      EmailUtil.sendAccountStatus(
+          storedUser,
+          "Multiple Failed Login Attempts.",
+          String.format(
+              "Someone is tried accessing your account. Login is Blocked for %s seconds.",
+              loginConfiguration.getAccessBlockTime()));
     }
   }
 
@@ -225,7 +223,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
+  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
     tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());

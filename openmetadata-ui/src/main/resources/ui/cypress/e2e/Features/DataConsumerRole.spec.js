@@ -14,6 +14,7 @@
 import {
   interceptURL,
   login,
+  uuid,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
@@ -29,7 +30,7 @@ import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 const CREDENTIALS = {
   firstName: 'Test_Data_Consumer',
   lastName: 'User_Data_consumer',
-  email: 'test_dataconsumer@openmetadata.org',
+  email: `test_dataconsumer${uuid()}@openmetadata.org`,
   password: 'User@OMD123',
 };
 
@@ -164,15 +165,16 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .click({ force: true });
-    verifyResponseStatusCode('@getUserPage', 200);
-    cy.get('[data-testid="left-panel"]').should(
-      'contain',
-      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
-    );
+    cy.wait('@getUserPage').then((response) => {
+      CREDENTIALS.id = response.response.body.id;
+    });
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
 
-    cy.get('[data-testid="left-panel"]')
-      .should('be.visible')
-      .should('contain', policy);
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
+    ).should('contain', policy);
   });
 
   it('Check if the new user has only edit access on description and tags', () => {
@@ -248,8 +250,6 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
 
-    cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
-
     cy.clickOnLogo();
 
     // Check CRUD for Tags
@@ -280,10 +280,28 @@ describe('DataConsumer Edit policy should work properly', () => {
     Object.values(PERMISSIONS).forEach((id) => {
       if (id.testid === '[data-menu-id*="metadata"]') {
         cy.get(id.testid).should('be.visible').click();
-        cy.get(`[data-testid="no-data-placeholder"]`).should('be.visible');
       } else {
         cy.get(id.testid).should('not.be.exist');
       }
+    });
+  });
+});
+
+describe('Cleanup', () => {
+  beforeEach(() => {
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
+  });
+
+  it('delete user', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
     });
   });
 });

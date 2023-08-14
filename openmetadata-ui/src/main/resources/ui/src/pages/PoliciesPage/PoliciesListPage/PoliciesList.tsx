@@ -18,7 +18,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -76,7 +76,13 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
           <Link
             className="link-hover"
             data-testid="policy-name"
-            to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
+            to={
+              record.fullyQualifiedName
+                ? getPolicyWithFqnPath(
+                    encodeURIComponent(record.fullyQualifiedName)
+                  )
+                : ''
+            }>
             {getEntityName(record)}
           </Link>
         ),
@@ -86,7 +92,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
+          <RichTextEditorPreviewer markdown={record?.description ?? ''} />
         ),
       },
       {
@@ -104,7 +110,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
                 viewRolePermission ? (
                   <Link
                     key={uniqueId()}
-                    to={getRoleWithFqnPath(role.fullyQualifiedName || '')}>
+                    to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                     {getEntityName(role)}
                   </Link>
                 ) : (
@@ -175,6 +181,10 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
     ];
   }, []);
 
+  const handleAfterDeleteAction = useCallback(() => {
+    fetchPolicies();
+  }, [fetchPolicies]);
+
   return (
     <>
       <Table
@@ -189,7 +199,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
       />
       {selectedPolicy && deletePolicyPermission && (
         <DeleteWidgetModal
-          afterDeleteAction={fetchPolicies}
+          afterDeleteAction={handleAfterDeleteAction}
           allowSoftDelete={false}
           deleteMessage={t('message.are-you-sure-delete-entity', {
             entity: getEntityName(selectedPolicy),

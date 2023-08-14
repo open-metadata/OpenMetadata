@@ -14,6 +14,7 @@ import { Tabs } from 'antd';
 import AppState from 'AppState';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockFeedData } from 'constants/mockTourData.constants';
 import { FeedFilter } from 'enums/mydata.enum';
@@ -28,7 +29,9 @@ import './feeds-widget.less';
 const FeedsWidget = () => {
   const { t } = useTranslation();
   const { isTourOpen } = useTourProvider();
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
+    ActivityFeedTabs.ALL
+  );
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
   const [taskCount, setTaskCount] = useState(0);
   const currentUser = useMemo(
@@ -37,36 +40,20 @@ const FeedsWidget = () => {
   );
 
   useEffect(() => {
-    if (activeTab === 'all') {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation).catch(
-        () => {
-          // ignore since error is displayed in toast in the parent promise.
-          // Added block for sonar code smell
-        }
-      );
-    } else if (activeTab === 'mentions') {
-      getFeedData(FeedFilter.MENTIONS).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
-    } else if (activeTab === 'tasks') {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task)
-        .then((data) => {
-          const openTasks = data.filter(
-            (item) => item.task?.status === ThreadTaskStatus.Open
-          );
-          setTaskCount(openTasks.length);
-        })
-        .catch(() => {
-          // ignore since error is displayed in toast in the parent promise.
-          // Added block for sonar code smell
-        });
+    if (activeTab === ActivityFeedTabs.ALL) {
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation);
+    } else if (activeTab === ActivityFeedTabs.MENTIONS) {
+      getFeedData(FeedFilter.MENTIONS);
+    } else if (activeTab === ActivityFeedTabs.TASKS) {
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task);
     }
   }, [activeTab]);
 
   const countBadge = useMemo(() => {
     return getCountBadge(taskCount, '', activeTab === 'tasks');
   }, [taskCount, activeTab]);
+
+  const onTabChange = (key: string) => setActiveTab(key as ActivityFeedTabs);
 
   useEffect(() => {
     getFeedsWithFilter(
@@ -95,12 +82,13 @@ const FeedsWidget = () => {
   }, [activeTab, entityThread]);
 
   return (
-    <div className="feeds-widget-container">
+    <div className="feeds-widget-container" data-testid="activity-feed-widget">
       <Tabs
+        destroyInactiveTabPane
         items={[
           {
             label: t('label.all'),
-            key: 'all',
+            key: ActivityFeedTabs.ALL,
             children: (
               <ActivityFeedListV1
                 emptyPlaceholderText={t('message.no-activity-feed')}
@@ -108,12 +96,13 @@ const FeedsWidget = () => {
                 hidePopover={false}
                 isLoading={loading && !isTourOpen}
                 showThread={false}
+                tab={ActivityFeedTabs.ALL}
               />
             ),
           },
           {
             label: `@${t('label.mention-plural')}`,
-            key: 'mentions',
+            key: ActivityFeedTabs.MENTIONS,
             children: (
               <ActivityFeedListV1
                 emptyPlaceholderText={t('message.no-mentions')}
@@ -121,6 +110,7 @@ const FeedsWidget = () => {
                 hidePopover={false}
                 isLoading={loading}
                 showThread={false}
+                tab={ActivityFeedTabs.MENTIONS}
               />
             ),
           },
@@ -131,7 +121,7 @@ const FeedsWidget = () => {
                 {countBadge}
               </>
             ),
-            key: 'tasks',
+            key: ActivityFeedTabs.TASKS,
             children: (
               <ActivityFeedListV1
                 emptyPlaceholderText={t('message.no-tasks-assigned')}
@@ -139,11 +129,12 @@ const FeedsWidget = () => {
                 hidePopover={false}
                 isLoading={loading}
                 showThread={false}
+                tab={ActivityFeedTabs.TASKS}
               />
             ),
           },
         ]}
-        onChange={(key) => setActiveTab(key)}
+        onChange={onTabChange}
       />
     </div>
   );

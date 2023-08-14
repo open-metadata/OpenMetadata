@@ -113,6 +113,7 @@ class LineageSource(QueryParserSource, ABC):
                 database_name=table_query.databaseName,
                 schema_name=table_query.databaseSchema,
                 dialect=dialect,
+                timeout_seconds=self.source_config.parsingTimeoutLimit,
             )
 
             for lineage_request in lineages or []:

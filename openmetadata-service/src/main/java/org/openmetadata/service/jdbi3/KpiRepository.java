@@ -3,11 +3,9 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.Entity.KPI;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -25,9 +23,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -47,13 +43,20 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) throws IOException {
-    kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : null);
-    return kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : null);
+  public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) {
+    kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
+    return kpi.withKpiResult(
+        fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult());
   }
 
   @Override
-  public void prepare(Kpi kpi) throws IOException {
+  public Kpi clearFields(Kpi kpi, EntityUtil.Fields fields) {
+    kpi.setDataInsightChart(fields.contains("dataInsightChart") ? kpi.getDataInsightChart() : null);
+    return kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? kpi.getKpiResult() : null);
+  }
+
+  @Override
+  public void prepare(Kpi kpi) {
     // validate targetDefinition
     DataInsightChart chart = Entity.getEntity(kpi.getDataInsightChart(), "metrics", Include.NON_DELETED);
     kpi.setDataInsightChart(chart.getEntityReference());
@@ -82,7 +85,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public void storeEntity(Kpi kpi, boolean update) throws IOException {
+  public void storeEntity(Kpi kpi, boolean update) {
     EntityReference dataInsightChart = kpi.getDataInsightChart();
     KpiResult kpiResults = kpi.getKpiResult();
     kpi.withDataInsightChart(null).withKpiResult(null);
@@ -97,7 +100,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) throws IOException {
+  public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
 
@@ -117,7 +120,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) throws IOException {
+  public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
     KpiResult storedKpiResult =
@@ -148,25 +151,16 @@ public class KpiRepository extends EntityRepository<Kpi> {
     return change;
   }
 
-  private EntityReference getDataInsightChart(Kpi kpi) throws IOException {
+  private EntityReference getDataInsightChart(Kpi kpi) {
     return getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CHART, true);
   }
 
-  public void validateDataInsightChartOneToOneMapping(UUID chartId) {
-    // Each Chart has one unique Kpi mapping
-    List<EntityRelationshipRecord> recordList = findTo(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
-    if (!recordList.isEmpty() && !chartId.equals(recordList.get(0).getId())) {
-      throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
-    }
-  }
-
-  public KpiResult getKpiResult(String fqn) throws IOException {
+  public KpiResult getKpiResult(String fqn) {
     return JsonUtils.readValue(getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
   public ResultList<KpiResult> getKpiResults(
-      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
-      throws IOException {
+      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(
@@ -200,7 +194,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateToRelationship(
           "dataInsightChart",
           KPI,

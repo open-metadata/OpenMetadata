@@ -49,7 +49,7 @@
         },
         "assignees": {
           "description": "List of users or teams the task is assigned to",
-          "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+          "$ref": "../../type/entityReferenceList.json"
         },
         "status": {
           "$ref": "#/definitions/threadTaskStatus"

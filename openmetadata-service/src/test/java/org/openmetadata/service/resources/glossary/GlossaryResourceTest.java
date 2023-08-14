@@ -84,9 +84,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
   public GlossaryResourceTest() {
-    // TODO add system glossary
     super(Entity.GLOSSARY, Glossary.class, GlossaryResource.GlossaryList.class, "glossaries", GlossaryResource.FIELDS);
-    supportsEmptyDescription = false;
     supportsSearchIndex = true;
   }
 
@@ -118,7 +116,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
-    System.out.println("Setup glossaries done");
   }
 
   @Test
@@ -341,7 +338,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()]+$\"\"]")};
+    String[] expectedRows = {
+      resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()%]+$\"\"]")
+    };
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid parent

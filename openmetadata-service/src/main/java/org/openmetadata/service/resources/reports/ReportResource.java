@@ -74,11 +74,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  @Override
-  public Report addHref(UriInfo uriInfo, Report entity) {
-    return entity;
-  }
-
   public static class ReportList extends ResultList<Report> {
     /* Required for serde */
   }
@@ -100,8 +95,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
+          String fieldsParam) {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
     return repository.listAfter(uriInfo, fields, filter, 10000, null);
@@ -139,6 +133,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Override
   @POST
   @Operation(
       operationId = "getReportByFQN",
@@ -151,12 +146,12 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
     return super.create(uriInfo, securityContext, report);
   }
 
+  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateReport",
@@ -170,7 +165,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
     return super.createOrUpdate(uriInfo, securityContext, report);
   }

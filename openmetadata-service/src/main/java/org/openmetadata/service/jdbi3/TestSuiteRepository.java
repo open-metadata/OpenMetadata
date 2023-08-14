@@ -5,7 +5,6 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.SecurityContext;
@@ -35,16 +34,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    quoteFqn = true;
   }
 
   @Override
-  public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) throws IOException {
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
-    entity.setSummary(fields.contains("summary") ? getTestSummary(entity) : null);
-    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : null);
+  public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
+    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    entity.setSummary(fields.contains("summary") ? getTestSummary(entity) : entity.getSummary());
+    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
   }
 
-  private TestSummary getTestSummary(TestSuite entity) throws IOException {
+  @Override
+  public TestSuite clearFields(TestSuite entity, EntityUtil.Fields fields) {
+    entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
+    entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
+    return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
+  }
+
+  private TestSummary getTestSummary(TestSuite entity) {
     List<EntityReference> testCases = getTestCases(entity);
     List<String> testCaseFQNs =
         testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
@@ -58,10 +65,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     /* Nothing to do */
   }
 
-  private List<EntityReference> getTestCases(TestSuite entity) throws IOException {
-    List<CollectionDAO.EntityRelationshipRecord> testCases =
-        findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-    return EntityUtil.getEntityReferences(testCases);
+  private List<EntityReference> getTestCases(TestSuite entity) {
+    return findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }
 
   @Override
@@ -71,18 +76,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public void storeEntity(TestSuite entity, boolean update) throws IOException {
+  public void storeEntity(TestSuite entity, boolean update) {
     store(entity, update);
   }
 
   @Override
-  public void storeRelationships(TestSuite entity) throws IOException {
+  public void storeRelationships(TestSuite entity) {
     if (Boolean.TRUE.equals(entity.getExecutable())) {
       storeExecutableRelationship(entity);
     }
   }
 
-  public void storeExecutableRelationship(TestSuite testSuite) throws IOException {
+  public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =
         Entity.getEntityByName(
             Entity.TABLE, testSuite.getExecutableEntityReference().getFullyQualifiedName(), null, null);
@@ -90,7 +95,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public RestUtil.DeleteResponse<TestSuite> deleteLogicalTestSuite(
-      SecurityContext securityContext, TestSuite original, boolean hardDelete) throws IOException {
+      SecurityContext securityContext, TestSuite original, boolean hardDelete) {
     // deleting a logical will delete the test suite and only remove
     // the relationship to test cases if hardDelete is true. Test Cases
     // will not be deleted.
@@ -123,7 +128,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       List<EntityReference> origTests = listOrEmpty(original.getTests());
       List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
       recordChange("tests", origTests, updatedTests);

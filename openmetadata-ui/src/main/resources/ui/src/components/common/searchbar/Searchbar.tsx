@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Input, InputProps } from 'antd';
-import { ReactComponent as ClearIcon } from 'assets/svg/close-circle-outlined.svg';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
@@ -32,6 +30,7 @@ type Props = {
   showLoadingStatus?: boolean;
   showClearSearch?: boolean;
   inputProps?: InputProps;
+  searchBarDataTestId?: string;
 };
 
 const Searchbar = ({
@@ -42,7 +41,8 @@ const Searchbar = ({
   label,
   removeMargin = false,
   showLoadingStatus = false,
-  showClearSearch = false,
+  showClearSearch = true,
+  searchBarDataTestId,
   inputProps,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
@@ -75,21 +75,24 @@ const Searchbar = ({
 
   return (
     <div
-      className={classNames('tw-group page-search-bar', {
-        'tw-mb-4': !removeMargin,
+      className={classNames('page-search-bar', {
+        'm-b-md': !removeMargin,
       })}
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
       <div className="flex relative">
         <Input
-          data-testid="searchbar"
+          allowClear={showClearSearch}
+          data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
-          prefix={
-            <SVGIcons
-              alt="icon-search"
-              className="tw-w-4 tw-h-4 tw-mr-0.5"
-              icon={searchIcon}
-            />
+          prefix={<SVGIcons alt="icon-search" icon={searchIcon} />}
+          suffix={
+            showLoadingStatus &&
+            loadingState === 'waiting' && (
+              <div className="absolute d-block text-center">
+                <Loader size="small" type="default" />
+              </div>
+            )
           }
           type="text"
           value={userSearch}
@@ -99,19 +102,9 @@ const Searchbar = ({
           {...inputProps}
         />
         {showLoadingStatus && loadingState === 'waiting' && (
-          <div className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none">
+          <div className="absolute d-block text-center">
             <Loader size="small" type="default" />
           </div>
-        )}
-        {showClearSearch && searchValue && (
-          <Icon
-            className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center cursor-pointer"
-            component={ClearIcon}
-            onClick={() => {
-              debouncedOnSearch('');
-              setUserSearch('');
-            }}
-          />
         )}
       </div>
     </div>

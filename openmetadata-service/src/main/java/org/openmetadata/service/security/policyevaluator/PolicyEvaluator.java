@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -61,8 +60,7 @@ public class PolicyEvaluator {
   public static void hasPermission(
       @NonNull SubjectContext subjectContext,
       @NonNull ResourceContextInterface resourceContext,
-      @NonNull OperationContext operationContext)
-      throws IOException {
+      @NonNull OperationContext operationContext) {
     // First run through all the DENY policies
     evaluateDenySubjectPolicies(subjectContext, resourceContext, operationContext);
 
@@ -77,15 +75,13 @@ public class PolicyEvaluator {
   }
 
   private static void evaluateDenySubjectPolicies(
-      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext)
-      throws IOException {
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
     Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, true);
   }
 
   private static void evaluateAllowSubjectPolicies(
-      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext)
-      throws IOException {
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
     Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, false);
   }
@@ -163,7 +159,7 @@ public class PolicyEvaluator {
   }
 
   public static ResourcePermission getPermission(
-      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) throws IOException {
+      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
     // Initialize all permissions to NOT_ALLOW
     ResourcePermission resourcePermission = getResourcePermission(resourceContext.getResource(), Access.NOT_ALLOW);
 

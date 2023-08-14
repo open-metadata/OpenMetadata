@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_EVENT;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -28,12 +27,17 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
+  public WebAnalyticEvent clearFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
+    return entity;
+  }
+
+  @Override
   public void prepare(WebAnalyticEvent entity) {
     /* Nothing to do */
   }
 
   @Override
-  public void storeEntity(WebAnalyticEvent entity, boolean update) throws IOException {
+  public void storeEntity(WebAnalyticEvent entity, boolean update) {
     store(entity, update);
   }
 
@@ -43,7 +47,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Transaction
-  public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) throws IOException {
+  public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) {
     webAnalyticEventData.setEventId(UUID.randomUUID());
     storeTimeSeries(
         webAnalyticEventData.getEventType().value(),
@@ -60,8 +64,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     deleteExtensionBeforeTimestamp(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);
   }
 
-  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs)
-      throws IOException {
+  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs) {
     List<WebAnalyticEventData> webAnalyticEventData;
     webAnalyticEventData =
         JsonUtils.readObjects(

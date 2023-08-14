@@ -14,12 +14,12 @@
 import {
   Button,
   Col,
-  Popover,
   Radio,
   RadioChangeEvent,
   Row,
   Space,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
@@ -63,7 +63,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   defaultExpandAllRows = false,
   showSchemaDisplayTypeSwitch = true,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }) => {
   const { t } = useTranslation();
@@ -150,14 +149,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             align="start"
             className="w-max-90 vertical-align-inherit"
             size={2}>
-            <Popover
-              destroyTooltipOnHide
-              content={getEntityName(record)}
-              trigger="hover">
+            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
               <Typography.Text className="break-word">
                 {getEntityName(record)}
               </Typography.Text>
-            </Popover>
+            </Tooltip>
           </Space>
         ),
       },
@@ -184,7 +180,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             hasEditPermission={hasDescriptionEditAccess}
@@ -203,7 +198,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
@@ -225,7 +219,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}

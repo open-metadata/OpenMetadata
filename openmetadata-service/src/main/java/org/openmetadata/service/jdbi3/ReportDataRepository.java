@@ -92,7 +92,7 @@ public class ReportDataRepository {
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(EntityUtil.hash(reportDataType.value()), REPORT_DATA_EXTENSION, startTs, endTs),
+                .listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
             ReportData.class);
 
     return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());

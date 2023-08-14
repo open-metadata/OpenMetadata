@@ -12,12 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityTabs } from 'enums/entity.enum';
+import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
@@ -69,6 +67,7 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
+  QLIK_SENSE,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
@@ -117,6 +116,8 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
+import { getEncodedFqn } from './StringsUtils';
+import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const serviceTypeLogo = (type: string) => {
@@ -246,6 +247,9 @@ export const serviceTypeLogo = (type: string) => {
     case DashboardServiceType.Mode:
       return MODE;
 
+    case DashboardServiceType.QlikSense:
+      return QLIK_SENSE;
+
     case PipelineServiceType.Airflow:
       return AIRFLOW;
 
@@ -335,6 +339,7 @@ export const getIngestionName = (
     [
       IngestionPipelineType.Profiler,
       IngestionPipelineType.Metadata,
+      IngestionPipelineType.Lineage,
       IngestionPipelineType.Dbt,
     ].includes(type)
   ) {
@@ -443,10 +448,10 @@ export const getOptionalFields = (
       const messagingService = service as MessagingService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.broker-plural')}:</label>
+        <div className="m-b-xss truncate" data-testid="additional-field">
+          <label className="m-b-0">{t('label.broker-plural')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
             {getBrokers(messagingService.connection?.config)}
           </span>
@@ -457,10 +462,10 @@ export const getOptionalFields = (
       const dashboardService = service as DashboardService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
+        <div className="m-b-xss truncate" data-testid="additional-field">
+          <label className="m-b-0">{t('label.url-uppercase')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
             {getDashboardURL(dashboardService.connection?.config)}
           </span>
@@ -471,10 +476,10 @@ export const getOptionalFields = (
       const pipelineService = service as PipelineService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
+        <div className="m-b-xss truncate" data-testid="additional-field">
+          <label className="m-b-0">{t('label.url-uppercase')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
             {pipelineService.connection?.config?.hostPort || '--'}
           </span>
@@ -487,18 +492,18 @@ export const getOptionalFields = (
 
       return (
         <>
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">{t('label.registry')}:</label>
+          <div className="m-b-xss truncate" data-testid="additional-field">
+            <label className="m-b-0">{t('label.registry')}:</label>
             <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
               {mlmodel.connection?.config?.registryUri || '--'}
             </span>
           </div>
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">{t('label.tracking')}:</label>
+          <div className="m-b-xss truncate" data-testid="additional-field">
+            <label className="m-b-0">{t('label.tracking')}:</label>
             <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
               {mlmodel.connection?.config?.trackingUri || '--'}
             </span>
@@ -645,52 +650,54 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
   }
 };
 
-export const getServicePageTabs = (
-  serviceName: ServiceTypes,
-  instanceCount: number,
-  ingestionCount: number,
-  servicePermission: OperationPermission,
-  dataModelCount: number,
-  showIngestionTab: boolean
-) => {
-  const tabs = [];
-
-  if (serviceName !== ServiceCategory.METADATA_SERVICES) {
-    tabs.push({
-      name: getCountLabel(serviceName),
-      key: getCountLabel(serviceName).toLowerCase(),
-      count: instanceCount,
-    });
-  }
-
-  if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
-    tabs.push({
-      name: t('label.data-model'),
-      key: EntityTabs.DATA_Model,
-      count: dataModelCount,
-    });
-  }
-
-  tabs.push(
-    {
-      name: t('label.ingestion-plural'),
-      key: EntityTabs.INGESTIONS,
-      isHidden: !showIngestionTab,
-      count: ingestionCount,
-    },
-    {
-      name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
-      key: EntityTabs.CONNECTION,
-    }
-  );
-
-  return tabs.filter((tab) => !tab.isHidden);
-};
-
 export const getTestConnectionName = (connectionType: string) => {
   return `test-connection-${connectionType}-${cryptoRandomString({
     length: 8,
     type: 'alphanumeric',
   })}`;
+};
+
+export const getEntityTypeFromServiceCategory = (
+  serviceCategory: ServiceTypes
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return EntityType.DASHBOARD_SERVICE;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return EntityType.MESSAGING_SERVICE;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return EntityType.PIPELINE_SERVICE;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return EntityType.MLMODEL_SERVICE;
+    case ServiceCategory.METADATA_SERVICES:
+      return EntityType.METADATA_SERVICE;
+    case ServiceCategory.STORAGE_SERVICES:
+      return EntityType.STORAGE_SERVICE;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return EntityType.DATABASE_SERVICE;
+  }
+};
+
+export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
+  switch (serviceCategory) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return getEntityLink(SearchIndex.TOPIC, fqn);
+
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return getEntityLink(SearchIndex.DASHBOARD, fqn);
+
+    case ServiceCategory.PIPELINE_SERVICES:
+      return getEntityLink(SearchIndex.PIPELINE, fqn);
+
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return getEntityLink(SearchIndex.MLMODEL, fqn);
+
+    case ServiceCategory.STORAGE_SERVICES:
+      return getEntityLink(EntityType.CONTAINER, fqn);
+
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return `/database/${getEncodedFqn(fqn)}`;
+  }
 };

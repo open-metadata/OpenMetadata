@@ -14,7 +14,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   handleIngestionRetry,
   interceptURL,
@@ -281,14 +280,6 @@ describe('RedShift Ingestion', () => {
       .should('exist')
       .should('be.visible')
       .should('contain', DBT.dataQualityTest2);
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      REDSHIFT.serviceName,
-      API_SERVICE.databaseServices
-    );
   });
 
   it('delete created service', () => {

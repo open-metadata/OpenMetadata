@@ -25,8 +25,6 @@ import {
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -48,7 +46,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
-import { EntityAction, EntityType } from '../enums/entity.enum';
+import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -139,7 +137,7 @@ export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(fqn));
   }
 
   return path;
@@ -395,16 +393,6 @@ export const getLogEntityPath = (
   );
 };
 
-export const getLineageViewPath = (entity: EntityType, fqn: string) => {
-  let path = ROUTES.LINEAGE_FULL_SCREEN_VIEW;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
-
-  return path;
-};
-
 export const getGlossaryPathWithAction = (
   fqn: string,
   action: EntityAction
@@ -456,7 +444,7 @@ export const getGlossaryTermsVersionsPath = (
     ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
     : ROUTES.GLOSSARY_TERMS_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryTermsFQN)
+    .replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(glossaryTermsFQN))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   if (tab) {

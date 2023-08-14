@@ -61,7 +61,6 @@ import static org.openmetadata.service.util.TestUtils.validateAlphabeticalOrderi
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -91,6 +90,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
@@ -563,7 +563,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void patch_makeAdmin_as_nonAdmin_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_makeAdmin_as_nonAdmin_user_401(TestInfo test) throws HttpResponseException {
     // Ensure a non admin user can't make another user admin
     User user =
         createEntity(
@@ -574,7 +574,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void patch_teamAddition_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_teamAddition_200_ok(TestInfo test) throws HttpResponseException {
     // Admin can add user to a team by patching `teams` attribute
     EntityReference team1 =
         TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
@@ -1112,6 +1112,18 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a user term, carry it forward from the parent team
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // Create a user without domain and ensure it inherits domain from the parent
+    CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -1245,7 +1257,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public String getAllowedFields() {
     Set<String> allowedFields = Entity.getEntityFields(entityClass);
-    allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
+    of(USER_PROTECTED_FIELDS.split(",")).forEach(allowedFields::remove);
     return String.join(",", allowedFields);
   }
 

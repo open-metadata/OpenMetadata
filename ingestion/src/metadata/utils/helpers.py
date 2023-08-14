@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import itertools
 import re
+import shutil
 import sys
 from datetime import datetime, timedelta
 from functools import wraps
 from math import floor, log
+from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
@@ -438,7 +440,7 @@ def is_safe_sql_query(sql_query: str) -> bool:
 
 
 def get_database_name_for_lineage(
-    db_service_entity: DatabaseService, default_db_name: str
+    db_service_entity: DatabaseService, default_db_name: Optional[str]
 ) -> Optional[str]:
     # If the database service supports multiple db or
     # database service connection details are not available
@@ -455,3 +457,20 @@ def get_database_name_for_lineage(
         db_service_entity.connection.config.__dict__.get("databaseName")
         or DEFAULT_DATABASE
     )
+
+
+def delete_dir_content(directory: str) -> None:
+    location = Path(directory)
+    if location.is_dir():
+        logger.info("Location exists, cleaning it up")
+        shutil.rmtree(directory)
+
+
+def init_staging_dir(directory: str) -> None:
+    """
+    Prepare the the staging directory
+    """
+    delete_dir_content(directory=directory)
+    location = Path(directory)
+    logger.info(f"Creating the directory to store staging data in {location}")
+    location.mkdir(parents=True, exist_ok=True)

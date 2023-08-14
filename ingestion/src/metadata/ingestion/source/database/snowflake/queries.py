@@ -55,6 +55,7 @@ select TABLE_NAME from information_schema.tables
 where TABLE_SCHEMA = '{}' AND TABLE_TYPE = 'EXTERNAL TABLE'
 """
 
+
 SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' 
@@ -114,6 +115,10 @@ select TAG_NAME from snowflake.account_usage.tag_references limit 1
 
 SNOWFLAKE_TEST_GET_QUERIES = """
 SELECT query_text from snowflake.account_usage.query_history limit 1
+"""
+
+SNOWFLAKE_TEST_GET_TABLES = """
+SELECT TABLE_NAME FROM information_schema.tables LIMIT 1 
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"

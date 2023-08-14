@@ -16,9 +16,6 @@ import os
 from unittest import TestCase, mock
 from uuid import uuid4
 
-import boto3
-import botocore
-import moto
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
@@ -27,7 +24,6 @@ from metadata.generated.schema.entity.data.table import ColumnName, DataType, Ta
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler

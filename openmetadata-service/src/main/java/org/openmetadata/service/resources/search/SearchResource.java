@@ -14,9 +14,9 @@
 package org.openmetadata.service.resources.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMappingSchema;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.search.SearchIndexDefinition.getIndexMappingSchema;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,13 +50,12 @@ import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.elasticsearch.ElasticSearchRequest;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 
@@ -168,8 +167,8 @@ public class SearchResource {
       query = "*";
     }
 
-    ElasticSearchRequest request =
-        new ElasticSearchRequest.ElasticSearchRequestBuilder(query, size, index)
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
             .from(from)
             .queryFilter(queryFilter)
             .postFilter(postFilter)
@@ -234,8 +233,8 @@ public class SearchResource {
       query = "*";
     }
 
-    ElasticSearchRequest request =
-        new ElasticSearchRequest.ElasticSearchRequestBuilder(query, size, index)
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
             .fieldName(fieldName)
             .deleted(deleted)
             .fetchSource(fetchSource)
@@ -261,8 +260,26 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @DefaultValue("table_search_index") @QueryParam("index") String index,
       @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
-      @Parameter(description = "Pass after key for next set of result.") @DefaultValue("") @QueryParam("after")
-          String after,
+      @Parameter(description = "value for searching in aggregation") @DefaultValue("") @QueryParam("value")
+          String value,
+      @Parameter(
+              description =
+                  "Search Query Text, Pass *text* for substring match; "
+                      + "Pass without wildcards for exact match. <br/> "
+                      + "1. For listing all tables or topics pass q=* <br/>"
+                      + "2. For search tables or topics pass q=*search_term* <br/>"
+                      + "3. For searching field names such as search by column_name "
+                      + "pass q=column_names:address <br/>"
+                      + "4. For searching by tag names pass q=tags:user.email <br/>"
+                      + "5. When user selects a filter pass q=query_text AND tags:user.email "
+                      + "AND platform:MYSQL <br/>"
+                      + "6. Search with multiple values of same filter q=tags:user.email "
+                      + "AND tags:user.address <br/>"
+                      + " logic operators such as AND and OR must be in uppercase ",
+              required = true)
+          @DefaultValue("*")
+          @QueryParam("q")
+          String query,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
           @QueryParam("size")
@@ -270,7 +287,7 @@ public class SearchResource {
       @DefaultValue("false") @QueryParam("deleted") String deleted)
       throws IOException {
 
-    return searchClient.aggregate(index, fieldName, after);
+    return searchClient.aggregate(index, fieldName, value, query);
   }
 
   @GET
@@ -283,8 +300,7 @@ public class SearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "No Job Found")
       })
-  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
@@ -300,16 +316,14 @@ public class SearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Status not found")
       })
-  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     // Check if there is a running job for reindex for requested entity
     String jobRecord;
     jobRecord =
         dao.entityExtensionTimeSeriesDao()
-            .getLatestExtension(
-                FullyQualifiedName.buildHash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)
           .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))
@@ -331,8 +345,7 @@ public class SearchResource {
   public Response reindexJobWithId(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id)
-      throws IOException {
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
     // Only admins or bot can issue a reindex request
     authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
@@ -374,8 +387,7 @@ public class SearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Not found")
       })
-  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getAllJobs()).build();

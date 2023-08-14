@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.TokenInterface;
@@ -28,7 +27,7 @@ public class TokenRepository {
     return dao.getTokenDAO().getAllUserTokenWithType(userId, type);
   }
 
-  public void insertToken(TokenInterface tokenInterface) throws JsonProcessingException {
+  public void insertToken(TokenInterface tokenInterface) {
     dao.getTokenDAO().insert(JsonUtils.pojoToJson(tokenInterface));
   }
 

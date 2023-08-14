@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Edge } from 'components/EntityLineage/EntityLineage.interface';
+import { Edge } from 'components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
@@ -20,7 +20,6 @@ import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfi
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
-import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
 import {
   RawSuggestResponse,
@@ -282,11 +281,24 @@ export const getAdvancedFieldOptions = (
   });
 };
 
-export const getAdvancedFieldDefaultOptions = (
+/**
+ * Retrieves the aggregate field options based on the provided parameters.
+ *
+ * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
+ * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
+ * @param {string} value - The value to filter the aggregation on.
+ * @param {string} q - The search query.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
+ */
+export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
-  field: string
+  field: string,
+  value: string,
+  q: string
 ) => {
-  const params = { index, field };
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
+  const params = { index, field, value: withWildCardValue, q };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
@@ -307,14 +319,8 @@ export const getEntityCount = async (
   return response.data;
 };
 
-export const getAllEntityCount = async () => {
-  const response = await APIClient.get<EntitiesCount>('/system/entities/count');
-
-  return response.data;
-};
-
 export const fetchMarkdownFile = async (filePath: string) => {
-  let baseURL = '/';
+  let baseURL;
 
   try {
     const url = new URL(filePath);

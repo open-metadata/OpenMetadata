@@ -17,6 +17,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
+import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
@@ -37,7 +38,7 @@ import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -48,9 +49,8 @@ import {
 import { getEntityName } from 'utils/EntityUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestSuites = () => {
+export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
   const { tab = DataQualityPageTabs.TABLES } =
     useParams<{ tab: DataQualityPageTabs }>();
@@ -77,7 +77,9 @@ export const TestSuites = () => {
             <Link
               to={{
                 pathname: getTableTabPath(
-                  record.executableEntityReference?.fullyQualifiedName ?? '',
+                  encodeURIComponent(
+                    record.executableEntityReference?.fullyQualifiedName ?? ''
+                  ),
                   EntityTabs.PROFILER
                 ),
                 search: QueryString.stringify({
@@ -89,7 +91,9 @@ export const TestSuites = () => {
             </Link>
           ) : (
             <Link
-              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
+              to={getTestSuitePath(
+                encodeURIComponent(record.fullyQualifiedName ?? record.name)
+              )}>
               {getEntityName(record)}
             </Link>
           );
@@ -164,7 +168,7 @@ export const TestSuites = () => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, testSuitePermission]);
+  }, [testSuitePermission]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -192,22 +196,23 @@ export const TestSuites = () => {
         </Row>
       </Col>
 
+      <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
-        <SummaryPanel />
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          data-testid="test-suite-table"
-          dataSource={testSuites.data}
-          loading={isLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          size="small"
-        />
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Table
+            bordered
+            columns={columns}
+            data-testid="test-suite-table"
+            dataSource={testSuites.data}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            size="small"
+          />
+        )}
       </Col>
       <Col span={24}>
         {testSuites.paging.total > PAGE_SIZE && (

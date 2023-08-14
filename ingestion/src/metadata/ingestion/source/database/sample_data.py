@@ -14,6 +14,7 @@ Sample Data source ingestion
 # pylint: disable=too-many-lines,too-many-statements
 import json
 import random
+import string
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -33,6 +34,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createSearchIndex import (
+    CreateSearchIndexRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -76,6 +80,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -106,6 +111,7 @@ from metadata.parsers.schema_parsers import (
 )
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -456,6 +462,34 @@ class SampleDataSource(
             )
         )
 
+        self.storage_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/storage/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.search_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.search_service = self.metadata.get_service_or_create(
+            entity=SearchService,
+            config=WorkflowSource(**self.search_service_json),
+        )
+
+        self.search_indexes = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/searchIndexes.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -485,6 +519,7 @@ class SampleDataSource(
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
         yield from self.ingest_containers()
+        yield from self.ingest_search_indexes()
         yield from self.ingest_profiles()
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
@@ -704,6 +739,30 @@ class SampleDataSource(
                     topic=topic_entity,
                     sample_data=TopicSampleData(messages=topic["sampleData"]),
                 )
+
+    def ingest_search_indexes(self) -> Iterable[CreateSearchIndexRequest]:
+        """
+        Ingest Sample SearchIndexes
+        """
+        for search_index in self.search_indexes["searchIndexes"]:
+            search_index["service"] = EntityReference(
+                id=self.search_service.id, type="searchService"
+            )
+            create_search_index = CreateSearchIndexRequest(
+                name=search_index["name"],
+                description=search_index["description"],
+                displayName=search_index["displayName"],
+                tags=search_index["tags"],
+                fields=search_index["fields"],
+                service=self.search_service.fullyQualifiedName,
+            )
+
+            self.status.scanned(
+                f"SearchIndex Scanned: {create_search_index.name.__root__}"
+            )
+            yield create_search_index
+
+            # TODO: Add search index sample data
 
     def ingest_looker(self) -> Iterable[Entity]:
         """
@@ -1029,6 +1088,39 @@ class SampleDataSource(
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting Container [{container}]: {exc}")
+
+        # Create a very nested container structure:
+        try:
+            long_base_name = (
+                "".join(random.choice(string.ascii_letters) for _ in range(100))
+                + "{suffix}"
+            )
+            for base_name in ("deep_nested_container_{suffix}", long_base_name):
+                parent_container_fqns = []
+                # We cannot go deeper than this
+                for i in range(1, 6):
+                    parent_container: Container = (
+                        self.metadata.get_by_name(
+                            entity=Container,
+                            fqn=self.storage_service.fullyQualifiedName.__root__
+                            + FQN_SEPARATOR
+                            + FQN_SEPARATOR.join(parent_container_fqns),
+                        )
+                        if parent_container_fqns
+                        else None
+                    )
+                    name = base_name.format(suffix=i)
+                    parent_container_fqns.append(name)
+                    yield CreateContainerRequest(
+                        name=name,
+                        parent=EntityReference(id=parent_container.id, type="container")
+                        if parent_container
+                        else None,
+                        service=self.storage_service.fullyQualifiedName,
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error ingesting nested containers: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         """

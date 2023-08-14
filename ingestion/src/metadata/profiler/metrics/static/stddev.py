@@ -83,10 +83,10 @@ class StdDev(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return StdDevFn(column(self.col.name))
+            return StdDevFn(column(self.col.name, self.col.type))
 
         if is_concatenable(self.col.type):
-            return StdDevFn(LenFn(column(self.col.name)))
+            return StdDevFn(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"{self.col} has type {self.col.type}, which is not listed as quantifiable."

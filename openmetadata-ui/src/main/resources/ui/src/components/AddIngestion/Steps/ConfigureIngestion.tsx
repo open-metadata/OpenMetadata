@@ -95,6 +95,9 @@ const ConfigureIngestion = ({
     processPii,
     confidence,
     includeOwners,
+    parsingTimeoutLimit,
+    filterCondition,
+    viewParsingTimeoutLimit,
   } = useMemo(
     () => ({
       dataModelFilterPattern: data.dataModelFilterPattern,
@@ -143,6 +146,9 @@ const ConfigureIngestion = ({
       markDeletedMlModels: data.markDeletedMlModels,
       markDeletedPipelines: data.markDeletedPipelines,
       confidence: data.confidence,
+      parsingTimeoutLimit: data.parsingTimeoutLimit,
+      filterCondition: data.filterCondition,
+      viewParsingTimeoutLimit: data.viewParsingTimeoutLimit,
     }),
     [data]
   );
@@ -218,6 +224,14 @@ const ConfigureIngestion = ({
 
   const handleConfidenceScore = handleIntValue('confidence');
 
+  const handleParsingTimeoutLimit = handleIntValue('parsingTimeoutLimit');
+
+  const handleViewParsingTimeoutLimit = handleIntValue(
+    'viewParsingTimeoutLimit'
+  );
+
+  const handleFilterCondition = handleValueChange('filterCondition');
+
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
     onChange({
       profileSampleType: value,
@@ -252,6 +266,24 @@ const ConfigureIngestion = ({
       ],
     },
   ];
+
+  const filterConditionField: FieldProp = {
+    name: 'filterCondition',
+    label: t('label.filtering-condition'),
+    type: FieldTypes.TEXT,
+    required: false,
+    id: 'root/filterCondition',
+    hasSeparator: true,
+    formItemProps: {
+      initialValue: filterCondition,
+    },
+    props: {
+      'data-testid': 'filtering-condition',
+      value: filterCondition,
+      onChange: handleFilterCondition,
+    },
+  };
+
   const includeOwnersField: FieldProp = {
     name: 'includeOwners',
     label: t('label.include-owner'),
@@ -424,7 +456,6 @@ const ConfigureIngestion = ({
     helperText: t('message.query-log-duration-message'),
     hasSeparator: true,
     props: {
-      className: 'tw-form-inputs tw-form-inputs-padding',
       'data-testid': 'query-log-duration',
       value: queryLogDuration,
       onChange: handleQueryLogDuration,
@@ -443,7 +474,6 @@ const ConfigureIngestion = ({
     helperText: t('message.result-limit-message'),
     hasSeparator: true,
     props: {
-      className: 'tw-form-inputs tw-form-inputs-padding',
       'data-testid': 'result-limit',
       value: resultLimit,
       onChange: handleResultLimit,
@@ -563,6 +593,22 @@ const ConfigureIngestion = ({
           },
         ] as FieldProp[])
       : []),
+    {
+      name: 'viewParsingTimeoutLimit',
+      label: t('label.view-parsing-timeout-limit'),
+      type: FieldTypes.NUMBER,
+      required: false,
+      id: 'root/viewParsingTimeoutLimit',
+      hasSeparator: true,
+      formItemProps: {
+        initialValue: viewParsingTimeoutLimit,
+      },
+      props: {
+        'data-testid': 'dbt-view-parsing-timeout-limit',
+        value: viewParsingTimeoutLimit,
+        onChange: handleViewParsingTimeoutLimit,
+      },
+    },
   ];
 
   const dashboardMetadataFields: FieldProp[] = [
@@ -887,7 +933,6 @@ const ConfigureIngestion = ({
         helperText: t('message.stage-file-location-message'),
         hasSeparator: true,
         props: {
-          className: 'tw-form-inputs tw-form-inputs-padding',
           'data-testid': 'stage-file-location',
           value: stageFileLocation,
           onChange: handleStageFileLocation,
@@ -899,6 +944,7 @@ const ConfigureIngestion = ({
         },
       },
       rateLimitField,
+      filterConditionField,
       loggerLevelField,
     ];
 
@@ -910,6 +956,23 @@ const ConfigureIngestion = ({
       queryLogDurationField,
       rateLimitField,
       loggerLevelField,
+      filterConditionField,
+      {
+        name: 'parsingTimeoutLimit',
+        label: t('label.parsing-timeout-limit'),
+        type: FieldTypes.NUMBER,
+        required: false,
+        id: 'root/parsingTimeoutLimit',
+        hasSeparator: true,
+        formItemProps: {
+          initialValue: parsingTimeoutLimit,
+        },
+        props: {
+          'data-testid': 'dbt-parsing-timeout-limit',
+          value: parsingTimeoutLimit,
+          onChange: handleParsingTimeoutLimit,
+        },
+      },
     ];
 
     return generateFormFields(fields);
@@ -991,7 +1054,6 @@ const ConfigureIngestion = ({
         required: false,
         type: FieldTypes.NUMBER,
         props: {
-          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
           'data-testid': 'threadCount',
           placeholder: '5',
           value: threadCount,
@@ -1010,7 +1072,6 @@ const ConfigureIngestion = ({
         required: false,
         type: FieldTypes.NUMBER,
         props: {
-          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
           'data-testid': 'timeoutSeconds',
           placeholder: '43200',
           value: timeoutSeconds,

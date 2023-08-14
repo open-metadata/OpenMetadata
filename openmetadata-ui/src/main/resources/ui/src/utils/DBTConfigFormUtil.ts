@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
+import { ModifiedDBTConfigurationSource } from 'components/AddIngestion/addIngestion.interface';
 import {
   DbtConfigCloud,
   DbtConfigHttp,
@@ -30,7 +30,7 @@ import {
 import { isEmpty, isNil, isString } from 'lodash';
 
 export const getSourceTypeFromConfig = (
-  data?: ModifiedDbtConfig,
+  data?: ModifiedDBTConfigurationSource,
   defaultSource = DBT_SOURCES.local
 ): DbtSourceTypes => {
   let sourceType = defaultSource;
@@ -42,6 +42,12 @@ export const getSourceTypeFromConfig = (
         gcsType = isString(data.dbtSecurityConfig.gcpConfig)
           ? GCS_CONFIG.GCSCredentialsPath
           : GCS_CONFIG.GCSValues;
+      }
+      if (
+        !isNil(data.dbtSecurityConfig.clientId) ||
+        !isNil(data.dbtSecurityConfig.tenantId)
+      ) {
+        sourceType = DBT_SOURCES.azure;
       } else {
         sourceType = DBT_SOURCES.s3;
       }

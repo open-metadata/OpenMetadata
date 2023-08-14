@@ -14,7 +14,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
-import java.io.IOException;
 import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
@@ -24,7 +23,6 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ServiceEntityRepository<
@@ -42,6 +40,7 @@ public abstract class ServiceEntityRepository<
       Class<S> serviceConnectionClass,
       ServiceType serviceType) {
     this(collectionPath, service, dao, entityDAO, serviceConnectionClass, "", serviceType);
+    quoteFqn = true;
   }
 
   protected ServiceEntityRepository(
@@ -50,16 +49,24 @@ public abstract class ServiceEntityRepository<
       CollectionDAO dao,
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
-      String updatedFields,
+      String updateFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
   }
 
   @Override
-  public T setFields(T entity, EntityUtil.Fields fields) throws IOException {
+  public T setFields(T entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
+    return entity;
+  }
+
+  @Override
+  public T clearFields(T entity, EntityUtil.Fields fields) {
+    if (!fields.contains("pipelines")) {
+      entity.setPipelines(null);
+    }
     return entity;
   }
 
@@ -78,7 +85,7 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
-  public void storeEntity(T service, boolean update) throws IOException {
+  public void storeEntity(T service, boolean update) {
     store(service, update);
   }
 
@@ -87,10 +94,10 @@ public abstract class ServiceEntityRepository<
     // No relationships to store beyond what is stored in the super class
   }
 
-  public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) throws IOException {
+  public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) {
     T service = dao.findEntityById(serviceId);
     service.setTestConnectionResult(testConnectionResult);
-    dao.update(serviceId, FullyQualifiedName.buildHash(service.getFullyQualifiedName()), JsonUtils.pojoToJson(service));
+    dao.update(serviceId, service.getFullyQualifiedName(), JsonUtils.pojoToJson(service));
     return service;
   }
 
@@ -114,11 +121,11 @@ public abstract class ServiceEntityRepository<
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateConnection();
     }
 
-    private void updateConnection() throws IOException {
+    private void updateConnection() {
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
       String origJson = JsonUtils.pojoToJson(origConn);

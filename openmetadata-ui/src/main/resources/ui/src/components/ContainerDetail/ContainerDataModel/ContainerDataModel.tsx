@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -39,7 +39,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   isReadOnly,
   onUpdate,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }) => {
   const { t } = useTranslation();
@@ -94,12 +93,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
-          <Popover
-            destroyTooltipOnHide
-            content={getEntityName(record)}
-            trigger="hover">
+          <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
             <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Popover>
+          </Tooltip>
         ),
       },
       {
@@ -114,19 +110,18 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           record: Column
         ) => {
           return (
-            <Popover
+            <Tooltip
               destroyTooltipOnHide
-              content={toLower(dataTypeDisplay)}
               overlayInnerStyle={{
                 maxWidth: '420px',
                 overflowWrap: 'break-word',
                 textAlign: 'center',
               }}
-              trigger="hover">
+              title={toLower(dataTypeDisplay)}>
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay || record.dataType}
               </Typography.Text>
-            </Popover>
+            </Tooltip>
           );
         },
       },
@@ -142,7 +137,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             hasEditPermission={hasDescriptionEditAccess}
@@ -161,7 +155,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
@@ -183,7 +176,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
@@ -202,7 +194,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       isReadOnly,
       entityFqn,
       hasTagEditAccess,
-      entityFieldThreads,
       hasDescriptionEditAccess,
       editContainerColumnDescription,
       getEntityName,

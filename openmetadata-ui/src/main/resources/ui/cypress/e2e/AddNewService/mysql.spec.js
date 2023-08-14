@@ -13,7 +13,6 @@
 
 import {
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   mySqlConnectionInput,
   testServiceCreationAndIngestion,
@@ -27,7 +26,7 @@ import {
 } from '../../constants/constants';
 
 const serviceType = 'Mysql';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const serviceName = `${serviceType}.ct%test-${uuid()}`;
 const tableName = TEAM_ENTITY;
 const description = `This is ${tableName} description`;
 
@@ -66,14 +65,6 @@ describe('MySQL Ingestion', () => {
       description,
       SERVICE_TYPE.Database,
       'tables'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      serviceName,
-      API_SERVICE.databaseServices
     );
   });
 

@@ -30,7 +30,7 @@ import {
 } from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
+import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
 const VersionTable = ({
@@ -121,7 +121,6 @@ const VersionTable = ({
           <TagsViewer
             sizeCap={-1}
             tags={getFilterTags(tags ?? []).Classification}
-            type="border"
           />
         ),
       },
@@ -132,11 +131,7 @@ const VersionTable = ({
         accessor: 'tags',
         width: 272,
         render: (tags: Column['tags']) => (
-          <TagsViewer
-            sizeCap={-1}
-            tags={getFilterTags(tags ?? []).Glossary}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags ?? []).Glossary} />
         ),
       },
     ],

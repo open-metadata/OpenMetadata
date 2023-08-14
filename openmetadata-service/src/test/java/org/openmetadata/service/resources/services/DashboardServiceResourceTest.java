@@ -279,7 +279,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                     .withHostPort(new URI("http://localhost:8080"))
                     .withPassword("test")
                     .withUsername("admin"));
-    createDashboardService.withConnection(dashboardConnection);
+    createDashboardService.withConnection(dashboardConnection).withDomain(DOMAIN.getFullyQualifiedName());
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
     METABASE_REFERENCE = dashboardService.getEntityReference();

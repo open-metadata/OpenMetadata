@@ -59,6 +59,7 @@ import powerbi from '../assets/img/service-icon-power-bi.png';
 import prefect from '../assets/img/service-icon-prefect.png';
 import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
+import qlikSense from '../assets/img/service-icon-qlik-sense.png';
 import query from '../assets/img/service-icon-query.png';
 import quicksight from '../assets/img/service-icon-quicksight.png';
 import redash from '../assets/img/service-icon-redash.png';
@@ -171,6 +172,7 @@ export const GCS = gcs;
 export const MS_AZURE = msAzure;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
+export const QLIK_SENSE = qlikSense;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -278,6 +280,9 @@ export const COMMON_UI_SCHEMA = {
   connection: {
     ...DEF_UI_SCHEMA,
   },
+  metastoreConnection: {
+    ...DEF_UI_SCHEMA,
+  },
 };
 
 export const OPEN_METADATA = 'OpenMetadata';
@@ -350,6 +355,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.SapHana,
   PipelineServiceType.Spline,
   DatabaseServiceType.MongoDB,
+  DashboardServiceType.QlikSense,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -383,3 +389,13 @@ export const ADVANCED_PROPERTIES = [
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
+
+export const SERVICE_CATEGORIES = [
+  ServiceCategory.DATABASE_SERVICES,
+  ServiceCategory.MESSAGING_SERVICES,
+  ServiceCategory.DASHBOARD_SERVICES,
+  ServiceCategory.PIPELINE_SERVICES,
+  ServiceCategory.ML_MODEL_SERVICES,
+  ServiceCategory.METADATA_SERVICES,
+  ServiceCategory.STORAGE_SERVICES,
+];

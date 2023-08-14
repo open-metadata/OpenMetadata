@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Popover, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Divider, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
@@ -24,7 +24,6 @@ import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteM
 import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import TestCaseCommonTabContainer from 'components/TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
@@ -34,7 +33,7 @@ import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import {
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
@@ -50,6 +49,7 @@ import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
 } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 interface Props {
@@ -60,6 +60,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
+
   const { permissions } = usePermissionProvider();
   const history = useHistory();
 
@@ -179,10 +180,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     }
   };
 
-  const separator = (
-    <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
-  );
-
   const confirmDelete = (id: string, name: string) => {
     setDeleteSelection({
       id,
@@ -260,7 +257,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
             </Button>
           </Tooltip>
-          {separator}
+          <Divider type="vertical" />
           <Tooltip
             title={
               editPermission
@@ -328,17 +325,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 viewPermission ? name : t('message.no-permission-to-view')
               }>
               <a
-                className="link-text tw-mr-2"
+                className="link-text"
                 data-testid="airflow-tree-view"
                 href={`${airFlowEndPoint}`}
                 rel="noopener noreferrer"
                 target="_blank">
-                <Space>
+                <Space align="center">
                   {name}
-                  <ExternalLinkIcon
-                    className="tw-align-middle tw-ml-1"
-                    width={16}
-                  />
+                  <ExternalLinkIcon className="align-middle" width={16} />
                 </Space>
               </a>
             </Tooltip>
@@ -358,22 +352,17 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           return (
             <>
               {record?.airflowConfig.scheduleInterval ? (
-                <Popover
-                  content={
-                    <div>
-                      {cronstrue.toString(
-                        record.airflowConfig.scheduleInterval || '',
-                        {
-                          use24HourTimeFormat: true,
-                          verbose: true,
-                        }
-                      )}
-                    </div>
-                  }
+                <Tooltip
                   placement="bottom"
-                  trigger="hover">
+                  title={cronstrue.toString(
+                    record.airflowConfig.scheduleInterval || '',
+                    {
+                      use24HourTimeFormat: true,
+                      verbose: true,
+                    }
+                  )}>
                   <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </Popover>
+                </Tooltip>
               ) : (
                 <span>--</span>
               )}
@@ -402,7 +391,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 {record.enabled ? (
                   <Fragment>
                     {getTriggerDeployButton(record)}
-                    {separator}
+                    <Divider type="vertical" />
                     <Tooltip
                       title={
                         editPermission
@@ -442,7 +431,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     </Button>
                   </Tooltip>
                 )}
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -458,15 +447,15 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     onClick={() => {
                       history.push(
                         getTestSuiteIngestionPath(
-                          testSuiteFQN,
-                          record.fullyQualifiedName
+                          getEncodedFqn(testSuiteFQN),
+                          getEncodedFqn(record.fullyQualifiedName ?? '')
                         )
                       );
                     }}>
                     {t('label.edit')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     deletePermission
@@ -493,7 +482,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     )}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -513,29 +502,31 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     {t('label.kill')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     viewPermission
                       ? t('label.log-plural')
                       : t('message.no-permission-for-action')
                   }>
-                  <Button
-                    className="p-0"
-                    data-testid="logs"
-                    disabled={!viewPermission}
-                    href={getLogsViewerPath(
+                  <Link
+                    to={getLogsViewerPath(
                       EntityType.TEST_SUITE,
                       record.service?.name || '',
-                      record.fullyQualifiedName || ''
-                    )}
-                    size="small"
-                    type="link"
-                    onClick={() => {
-                      setSelectedPipeline(record);
-                    }}>
-                    {t('label.log-plural')}
-                  </Button>
+                      getEncodedFqn(record.fullyQualifiedName || '')
+                    )}>
+                    <Button
+                      className="p-0"
+                      data-testid="logs"
+                      disabled={!viewPermission}
+                      size="small"
+                      type="link"
+                      onClick={() => {
+                        setSelectedPipeline(record);
+                      }}>
+                      {t('label.log-plural')}
+                    </Button>
+                  </Link>
                 </Tooltip>
               </Space>
 
@@ -580,7 +571,9 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
+                history.push(
+                  getTestSuiteIngestionPath(getEncodedFqn(testSuiteFQN))
+                );
               }}>
               {t('label.add')}
             </Button>
@@ -605,41 +598,29 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   }
 
   return (
-    <TestCaseCommonTabContainer
-      buttonName={t('label.add-entity', {
-        entity: t('label.ingestion'),
-      })}
-      hasAccess={createPermission}
-      showButton={testSuitePipelines.length === 0}
-      onButtonClick={() => {
-        history.push(getTestSuiteIngestionPath(testSuiteFQN));
-      }}>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={pipelineColumns}
-          dataSource={testSuitePipelines.map((test) => ({
-            ...test,
-            key: test.name,
-          }))}
-          locale={{ emptyText: errorPlaceholder }}
-          pagination={false}
-          rowKey="name"
-          scroll={{ x: 1200 }}
-          size="small"
-        />
-        <EntityDeleteModal
-          entityName={deleteSelection.name}
-          entityType={t('label.ingestion-lowercase')}
-          loadingState={deleteSelection.state}
-          visible={isConfirmationModalOpen}
-          onCancel={handleCancelConfirmationModal}
-          onConfirm={() =>
-            handleDelete(deleteSelection.id, deleteSelection.name)
-          }
-        />
-      </Col>
-    </TestCaseCommonTabContainer>
+    <div className="m-t-md">
+      <Table
+        bordered
+        columns={pipelineColumns}
+        dataSource={testSuitePipelines.map((test) => ({
+          ...test,
+          key: test.name,
+        }))}
+        locale={{ emptyText: errorPlaceholder }}
+        pagination={false}
+        rowKey="name"
+        scroll={{ x: 1200 }}
+        size="small"
+      />
+      <EntityDeleteModal
+        entityName={deleteSelection.name}
+        entityType={t('label.ingestion-lowercase')}
+        loadingState={deleteSelection.state}
+        visible={isConfirmationModalOpen}
+        onCancel={handleCancelConfirmationModal}
+        onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}
+      />
+    </div>
   );
 };
 
