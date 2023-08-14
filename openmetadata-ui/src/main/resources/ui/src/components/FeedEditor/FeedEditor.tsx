@@ -18,7 +18,6 @@ import 'quill-mention';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
-  HTMLAttributes,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -36,6 +35,7 @@ import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import './FeedEditor.css';
+import { FeedEditorProp } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register('modules/emoji', Emoji);
@@ -44,16 +44,6 @@ const Delta = Quill.import('delta');
 const strikethrough = (_node: any, delta: typeof Delta) => {
   return delta.compose(new Delta().retain(delta.length(), { strike: true }));
 };
-
-interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
-  defaultValue?: string;
-  editorClass?: string;
-  className?: string;
-  placeHolder?: string;
-  onChangeHandler?: (value: string) => void;
-  onSave?: () => void;
-  focused?: boolean;
-}
 
 export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   (
@@ -108,16 +98,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           showDenotationChar: false,
           renderLoading: () => `${t('label.loading')}...`,
           renderItem: (item: Record<string, any>) => {
-            return `<div class="d-flex align-center flex-col">
-            ${
-              item.type
-                ? `<span class="text-grey-muted text-xs">${item.type}</span>`
-                : ''
+            if (item.type) {
+              return `<div class="d-flex flex-col">
+                  <span class="text-grey-muted text-xs">${item.type}</span>
+                  <span class="font-medium truncate w-56">${item.name}</span>
+              </div>`;
+            } else {
+              return `<div class="d-flex gap-2"> 
+              ${item.avatarEle}
+                <span class="d-flex items-center truncate w-56">${item.name}</span>
+              </div>`;
             }
-            <span class="${item.type ? 'font-medium' : 'w-56'} truncate">${
-              item.name
-            }</span>
-        </div>`;
           },
         },
         markdownOptions: {},

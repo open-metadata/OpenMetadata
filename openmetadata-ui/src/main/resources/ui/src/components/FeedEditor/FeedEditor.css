@@ -1072,3 +1072,21 @@ button.ql-emoji {
 .ap {
   text-indent: 0px;
 }
+
+.mention-avatar {
+  height: 24px;
+  width: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.mention-profile-image {
+  display: inline-block;
+  height: 24px;
+  width: 24px;
+}
+
+.mention-profile-image img {
+  width: 100%;
+  border-radius: 50%;
+}
