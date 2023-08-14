@@ -33,6 +33,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
   className,
   workflowName,
+  enableDebugLog,
   okText,
   cancelText,
   serviceCategory,
@@ -44,6 +45,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const [internalData, setInternalData] = useState<IngestionWorkflowData>({
     ...workflowData,
     name: workflowName,
+    enableDebugLog,
   });
 
   const schema = useMemo(

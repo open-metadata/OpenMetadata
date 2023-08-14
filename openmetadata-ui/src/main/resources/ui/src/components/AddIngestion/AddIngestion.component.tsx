@@ -291,6 +291,7 @@ const AddIngestion = ({
         {activeIngestionStep === 1 && (
           <IngestionWorkflowForm
             cancelText={t('label.cancel')}
+            enableDebugLog={data?.loggerLevel === LogLevels.Debug}
             okText={t('label.next')}
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
