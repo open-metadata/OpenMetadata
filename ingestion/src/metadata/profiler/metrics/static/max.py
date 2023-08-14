@@ -46,6 +46,8 @@ def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     col_type = element.clauses.clauses[0].type
     if isinstance(col_type, TIME):
+        # Mysql Sqlalchemy returns timedelta which is not supported pydantic type
+        # hence we profile the time by modifying it in seconds
         return f"MAX(TIME_TO_SEC({col}))"
     return f"MAX({col})"
 
