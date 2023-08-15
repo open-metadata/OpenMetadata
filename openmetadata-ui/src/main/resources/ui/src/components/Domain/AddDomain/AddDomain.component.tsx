@@ -10,38 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_MESSAGE } from 'constants/constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { Domain, DomainType } from 'generated/entity/domains/domain';
-import { Operation } from 'generated/entity/policies/policy';
-import { EntityReference } from 'generated/type/entityLineage';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Domain } from 'generated/entity/domains/domain';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { addDomains } from 'rest/domainAPI';
 import { getIsErrorMatch } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields, getField } from 'utils/formUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
 import { getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 
 const AddDomain = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm();
-  const { permissions } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const goToDomain = (name = '') => {
@@ -65,19 +53,6 @@ const AddDomain = () => {
       activeTitle: true,
     },
   ];
-
-  const createPermission = useMemo(
-    () =>
-      checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
-    [permissions]
-  );
-
-  const selectedOwner = Form.useWatch<EntityReference | undefined>(
-    'owner',
-    form
-  );
-
-  const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
 
   const onSave = useCallback(async (formData: Domain) => {
     const updatedExperts =
@@ -119,122 +94,6 @@ const AddDomain = () => {
     </div>
   );
 
-  const domainTypeArray = Object.keys(DomainType).map((key) => ({
-    key,
-    value: DomainType[key as keyof typeof DomainType],
-  }));
-
-  const formFields: FieldProp[] = [
-    {
-      name: 'name',
-      id: 'root/name',
-      label: t('label.name'),
-      required: true,
-      placeholder: t('label.name'),
-      type: FieldTypes.TEXT,
-      props: {
-        'data-testid': 'name',
-      },
-      rules: [
-        {
-          pattern: ENTITY_NAME_REGEX,
-          message: t('message.entity-name-validation'),
-        },
-        {
-          min: 1,
-          max: 128,
-          message: `${t('message.entity-maximum-size', {
-            entity: `${t('label.name')}`,
-            max: '128',
-          })}`,
-        },
-      ],
-    },
-    {
-      name: 'displayName',
-      id: 'root/displayName',
-      label: t('label.display-name'),
-      required: false,
-      placeholder: t('label.display-name'),
-      type: FieldTypes.TEXT,
-      props: {
-        'data-testid': 'display-name',
-      },
-    },
-    {
-      name: 'description',
-      required: true,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-        height: '170px',
-      },
-    },
-    {
-      name: 'domainType',
-      required: true,
-      label: t('label.domain-type'),
-      id: 'root/domainType',
-      type: FieldTypes.SELECT,
-      props: {
-        'data-testid': 'domainType',
-        options: domainTypeArray,
-      },
-    },
-  ];
-
-  const ownerField: FieldProp = {
-    name: 'owner',
-    id: 'root/owner',
-    required: false,
-    label: t('label.owner'),
-    type: FieldTypes.USER_TEAM_SELECT,
-    props: {
-      hasPermission: true,
-      children: (
-        <Button
-          data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-    },
-    formItemLayout: 'horizontal',
-    formItemProps: {
-      valuePropName: 'owner',
-      trigger: 'onUpdate',
-    },
-  };
-  const expertsField: FieldProp = {
-    name: 'experts',
-    id: 'root/experts',
-    required: false,
-    label: t('label.expert-plural'),
-    type: FieldTypes.USER_MULTI_SELECT,
-    props: {
-      hasPermission: true,
-      popoverProps: { placement: 'topLeft' },
-      children: (
-        <Button
-          data-testid="add-experts"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-    },
-    formItemLayout: 'horizontal',
-    formItemProps: {
-      valuePropName: 'selectedUsers',
-      trigger: 'onUpdate',
-      initialValue: [],
-    },
-  };
-
   return (
     <ResizablePanels
       firstPanel={{
@@ -249,62 +108,13 @@ const AddDomain = () => {
                 entity: t('label.domain'),
               })}
             </Typography.Title>
-            <div data-testid="add-domain">
-              <Form form={form} layout="vertical" onFinish={onSave}>
-                {generateFormFields(formFields)}
-                <div className="m-t-xss">
-                  {getField(ownerField)}
-                  {selectedOwner && (
-                    <div className="m-b-sm" data-testid="owner-container">
-                      <UserTag
-                        id={selectedOwner.id}
-                        name={getEntityName(selectedOwner)}
-                        size={UserTagSize.small}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="m-t-xss">
-                  {getField(expertsField)}
-                  {Boolean(expertsList.length) && (
-                    <Space
-                      wrap
-                      className="m-y-xs"
-                      data-testid="experts-container"
-                      size={[8, 8]}>
-                      {expertsList.map((d, index) => (
-                        <UserTag
-                          id={d.id}
-                          key={index}
-                          name={getEntityName(d)}
-                          size={UserTagSize.small}
-                        />
-                      ))}
-                    </Space>
-                  )}
-                </div>
-
-                <Space
-                  className="w-full justify-end"
-                  data-testid="cta-buttons"
-                  size={16}>
-                  <Button
-                    data-testid="cancel-domain"
-                    type="link"
-                    onClick={handleCancel}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    data-testid="save-domain"
-                    disabled={!createPermission}
-                    htmlType="submit"
-                    loading={isLoading}
-                    type="primary">
-                    {t('label.save')}
-                  </Button>
-                </Space>
-              </Form>
-            </div>
+            <AddDomainForm
+              formRef={form}
+              isFormInDialog={false}
+              loading={isLoading}
+              onCancel={handleCancel}
+              onSubmit={onSave}
+            />
           </div>
         ),
         minWidth: 700,

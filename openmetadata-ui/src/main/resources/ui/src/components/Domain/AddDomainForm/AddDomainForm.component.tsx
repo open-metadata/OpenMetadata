@@ -36,10 +36,12 @@ interface props {
   onCancel: () => void;
   onSubmit: (data: Domain) => Promise<void>;
   formRef: FormInstance<Domain>;
+  loading: boolean;
 }
 
 const AddDomainForm = ({
   isFormInDialog,
+  loading,
   onCancel,
   onSubmit,
   formRef: form,
@@ -229,6 +231,7 @@ const AddDomainForm = ({
                 data-testid="save-domain"
                 disabled={!createPermission}
                 htmlType="submit"
+                loading={loading}
                 type="primary">
                 {t('label.save')}
               </Button>

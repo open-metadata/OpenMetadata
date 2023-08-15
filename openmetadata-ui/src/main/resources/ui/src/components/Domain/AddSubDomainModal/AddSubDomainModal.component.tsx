@@ -57,6 +57,7 @@ const AddSubDomainModal = ({ open, onSubmit, onCancel }: props) => {
       <AddDomainForm
         isFormInDialog
         formRef={form}
+        loading={false}
         onCancel={onCancel}
         onSubmit={handleFormSubmit}
       />
