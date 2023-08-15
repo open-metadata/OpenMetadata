@@ -53,6 +53,7 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -369,16 +370,21 @@ public class ElasticSearchClientImpl implements SearchClient {
    */
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    String[] indexes =
-        new String[] {
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName,
-          ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName
-        };
-    SearchRequest searchRequest = new SearchRequest(indexes);
+    IndicesAliasesRequest request = new IndicesAliasesRequest();
+    IndicesAliasesRequest.AliasActions aliasAction =
+        IndicesAliasesRequest.AliasActions.add()
+            .indices(
+                ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
+                ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
+                ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
+                ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
+                ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName,
+                ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName)
+            .alias("sourceUrlSearchAlias");
+    request.addAliasAction(aliasAction);
+    client.indices().updateAliases(request, RequestOptions.DEFAULT);
+
+    SearchRequest searchRequest = new SearchRequest("sourceUrlSearchAlias");
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.wildcardQuery("sourceUrl", sourceUrl));
     searchRequest.source(searchSourceBuilder);
