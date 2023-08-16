@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space, Table as AntdTable, Typography } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
@@ -28,6 +29,7 @@ import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
 } from 'rest/tableAPI';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
@@ -42,6 +44,7 @@ import {
   SampleDataType,
 } from './sample.interface';
 import './SampleDataTable.style.less';
+
 const SampleDataTable = ({
   isTableDeleted,
   tableId,
@@ -199,11 +202,10 @@ const SampleDataTable = ({
           <Button
             danger
             data-testid="delete-sample-data"
+            icon={<Icon component={IconDelete} />}
             type="primary"
             onClick={handleDeleteModal}>
-            {t('label.delete-entity', {
-              entity: t('label.sample-data'),
-            })}
+            {t('label.delete')}
           </Button>
         )}
       </Space>
