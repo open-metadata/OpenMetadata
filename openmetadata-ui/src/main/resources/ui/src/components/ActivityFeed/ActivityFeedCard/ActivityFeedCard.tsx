@@ -163,7 +163,15 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
 
   return (
     <>
-      <div className={classNames(className)} ref={containerRef}>
+      <div
+        className={classNames(
+          className,
+          'bg-grey-1-hover m--x-sm p-x-sm m--t-xss py-2 m-b-xss rounded-4',
+          {
+            'bg-grey-1-hover': visible,
+          }
+        )}
+        ref={containerRef}>
         <Popover
           align={{ targetOffset: [0, -16] }}
           content={

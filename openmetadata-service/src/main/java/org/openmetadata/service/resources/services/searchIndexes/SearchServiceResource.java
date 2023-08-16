@@ -71,8 +71,7 @@ public class SearchServiceResource
 
   @Override
   public SearchService addHref(UriInfo uriInfo, SearchService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
-    Entity.withHref(uriInfo, service.getOwner());
+    super.addHref(uriInfo, service);
     Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }

@@ -136,25 +136,15 @@ public class TeamRepository extends EntityRepository<Team> {
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
     List<EntityReference> parents = team.getParents();
-    List<EntityReference> children = team.getChildren();
     List<EntityReference> policies = team.getPolicies();
 
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null)
-        .withDefaultRoles(null)
-        .withParents(null)
-        .withChildren(null)
-        .withPolicies(null)
-        .withInheritedRoles(null);
+    team.withUsers(null).withDefaultRoles(null).withParents(null).withPolicies(null).withInheritedRoles(null);
 
     store(team, update);
 
     // Restore the relationships
-    team.withUsers(users)
-        .withDefaultRoles(defaultRoles)
-        .withParents(parents)
-        .withChildren(children)
-        .withPolicies(policies);
+    team.withUsers(users).withDefaultRoles(defaultRoles).withParents(parents).withPolicies(policies);
   }
 
   @Override
