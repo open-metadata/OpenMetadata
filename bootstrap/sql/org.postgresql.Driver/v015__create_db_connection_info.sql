@@ -1,6 +1,6 @@
 -- column deleted not needed for entities that don't support soft delete
-ALTER TABLE query_entity DROP COLUMN deleted;
-ALTER TABLE event_subscription_entity DROP COLUMN deleted;
+ALTER TABLE query_entity DROP COLUMN IF EXISTS deleted;
+ALTER TABLE event_subscription_entity DROP COLUMN IF EXISTS deleted;
 
 -- create domain entity table
 CREATE TABLE IF NOT EXISTS domain_entity (
