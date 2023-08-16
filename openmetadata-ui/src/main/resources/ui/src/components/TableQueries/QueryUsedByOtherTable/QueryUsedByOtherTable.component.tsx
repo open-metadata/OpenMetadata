@@ -13,6 +13,7 @@
 import { Popover, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
+import Loader from 'components/Loader/Loader';
 import {
   getTableDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -20,8 +21,8 @@ import {
 } from 'constants/constants';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from 'constants/Query.constant';
 import { SearchIndex } from 'enums/search.enum';
-import { filter, slice } from 'lodash';
-import React, { useMemo } from 'react';
+import { filter, isArray, slice, uniqBy } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
@@ -40,10 +41,12 @@ const QueryUsedByOtherTable = ({
   onChange,
 }: QueryUsedByOtherTableProps) => {
   const { t } = useTranslation();
+  const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { topThreeTable, remainingTable } = useMemo(() => {
     const { queryUsedIn } = query;
     const filterTable =
-      queryUsedIn?.filter((table) => table.id !== tableId) || [];
+      queryUsedIn?.filter((table) => table.id !== tableId) ?? [];
     const data: QueryUsedByTable = {
       topThreeTable: [],
       remainingTable: [],
@@ -102,28 +105,14 @@ const QueryUsedByOtherTable = ({
     [topThreeTable, remainingTable]
   );
 
-  const { initialValue, defaultValue } = useMemo(() => {
-    const { queryUsedIn = [] } = query;
-
-    return queryUsedIn.reduce(
-      (acc, curr) => {
-        return {
-          initialValue: [
-            ...acc.initialValue,
-            {
-              label: getEntityName(curr),
-              value: curr.id,
-            },
-          ],
-          defaultValue: [...acc.defaultValue, curr.id],
-        };
-      },
-      { initialValue: [], defaultValue: [] } as {
-        initialValue: DefaultOptionType[];
-        defaultValue: string[];
-      }
-    );
-  }, [query]);
+  const handleOnChange = (
+    _: string[],
+    options: DefaultOptionType | DefaultOptionType[]
+  ) => {
+    if (isArray(options)) {
+      onChange(options);
+    }
+  };
 
   const fetchTableEntity = async (
     searchValue = ''
@@ -151,25 +140,57 @@ const QueryUsedByOtherTable = ({
     }
   };
 
+  const fetchInitialOptions = async () => {
+    setIsLoading(true);
+    try {
+      const options = await fetchTableEntity();
+      const selectedValue =
+        query.queryUsedIn?.map((table) => ({
+          label: getEntityName(table),
+          value: table.id,
+        })) ?? [];
+
+      setInitialOptions(uniqBy([...selectedValue, ...options], 'value'));
+    } catch (error) {
+      setInitialOptions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectList = useMemo(() => {
+    const { queryUsedIn = [] } = query;
+
+    const defaultValue = queryUsedIn.map((table) => table.id);
+
+    return isLoading ? (
+      <Loader size="small" />
+    ) : (
+      <AsyncSelect
+        api={fetchTableEntity}
+        className="w-min-15"
+        defaultValue={defaultValue}
+        mode="multiple"
+        options={initialOptions}
+        placeholder={t('label.please-select-entity', {
+          entity: t('label.query-used-in'),
+        })}
+        size="small"
+        onChange={handleOnChange}
+      />
+    );
+  }, [query, initialOptions, isLoading, fetchTableEntity, handleOnChange]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      fetchInitialOptions();
+    }
+  }, [isEditMode]);
+
   return (
     <Space className="m-b-0" data-testid="para-container">
       <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
-      {isEditMode ? (
-        <AsyncSelect
-          api={fetchTableEntity}
-          className="w-min-15"
-          defaultValue={defaultValue}
-          mode="multiple"
-          options={initialValue}
-          placeholder={t('label.please-select-entity', {
-            entity: t('label.query-used-in'),
-          })}
-          size="small"
-          onChange={onChange}
-        />
-      ) : (
-        tableNames
-      )}
+      {isEditMode ? selectList : tableNames}
     </Space>
   );
 };

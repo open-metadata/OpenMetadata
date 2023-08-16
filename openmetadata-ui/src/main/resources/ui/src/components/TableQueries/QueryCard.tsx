@@ -12,6 +12,7 @@
  */
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
@@ -65,12 +66,12 @@ const QueryCard: FC<QueryCardProp> = ({
     query: query.query,
     isLoading: false,
   });
-  const [selectedTable, setSelectedTable] = useState<string[]>();
+  const [selectedTable, setSelectedTable] = useState<DefaultOptionType[]>();
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
     const queryDate = getFormattedDateFromSeconds(
-      query.queryDate || 0,
+      query.queryDate ?? 0,
       QUERY_DATE_FORMAT
     );
 
@@ -107,14 +108,15 @@ const QueryCard: FC<QueryCardProp> = ({
       query: query.query !== sqlQuery.query ? sqlQuery.query : query.query,
       queryUsedIn: isUndefined(selectedTable)
         ? query.queryUsedIn
-        : selectedTable.map((tableId) => {
+        : selectedTable.map((option) => {
             const existingTable = query.queryUsedIn?.find(
-              (table) => table.id === tableId
+              (table) => table.id === option.value
             );
 
             return (
               existingTable ?? {
-                id: tableId,
+                id: (option.value as string) ?? '',
+                displayName: option.label as string,
                 type: EntityType.TABLE,
               }
             );

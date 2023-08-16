@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DefaultOptionType } from 'antd/lib/select';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { Query } from 'generated/entity/data/query';
@@ -53,7 +54,7 @@ export interface QueryUsedByOtherTableProps {
   query: Query;
   tableId?: string;
   isEditMode: boolean;
-  onChange: (value: string[]) => void;
+  onChange: (value: DefaultOptionType[]) => void;
 }
 
 export interface QueryFiltersProps {
