@@ -35,6 +35,7 @@ import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -59,7 +60,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
-    if (config.getAuthenticationConfiguration().getProvider().equals("ldap")
+    if (config.getAuthenticationConfiguration().getProvider().equals(AuthProvider.LDAP)
         && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
       ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
