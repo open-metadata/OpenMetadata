@@ -41,23 +41,9 @@ const mockAddIngestionProps: AddIngestionProps = {
   onFocus: jest.fn(),
 };
 
-jest.mock('./Steps/ConfigureIngestion', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onNext }) => (
-      <div onClick={onNext}>ConfigureIngestion.component</div>
-    ));
-});
-
 jest.mock('@rjsf/core', () => ({
   Form: jest.fn().mockImplementation(() => <div>RJSF_Form.component</div>),
 }));
-
-jest.mock('../common/DBTConfigFormBuilder/DBTConfigFormBuilder', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DBTConfigFormBuilder.component</div>);
-});
 
 jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
