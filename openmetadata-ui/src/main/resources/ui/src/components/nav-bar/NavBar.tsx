@@ -341,7 +341,10 @@ const NavBar = ({
             width={30}
           />
         </Link>
-        <div className="m-auto relative" ref={searchContainerRef}>
+        <div
+          className="m-auto relative"
+          data-testid="navbar-search-container"
+          ref={searchContainerRef}>
           <Popover
             content={
               !isTourRoute &&
