@@ -85,7 +85,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
 
   public String getMigrationsFilePath() {
     if (connectionType == ConnectionType.MYSQL) {
-      return Paths.get(dir.getAbsolutePath(),  "mysql").toString();
+      return Paths.get(dir.getAbsolutePath(), "mysql").toString();
     } else {
       return Paths.get(dir.getAbsolutePath(), "postgres").toString();
     }
