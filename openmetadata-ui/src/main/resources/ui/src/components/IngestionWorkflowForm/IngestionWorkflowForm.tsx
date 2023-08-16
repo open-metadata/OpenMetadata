@@ -21,6 +21,7 @@ import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemp
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from 'components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import {
+  INGESTION_DATA_INSIGHT_WORKFLOW_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_NAME_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -31,6 +32,7 @@ import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
 } from 'interface/service.interface';
+import { omit } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { transformErrors } from 'utils/formUtils';
 import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
@@ -61,9 +63,13 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     [pipeLineType, serviceCategory]
   );
 
+  const isDataInsightPipeline = pipeLineType === PipelineType.DataInsight;
+  const isElasticSearchPipeline =
+    pipeLineType === PipelineType.ElasticSearchReindex;
+
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
-    if (pipeLineType === PipelineType.ElasticSearchReindex) {
+    if (isElasticSearchPipeline) {
       commonSchema = {
         ...commonSchema,
         ...INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
@@ -72,6 +78,13 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
     if (operationType === FormSubmitType.EDIT) {
       commonSchema = { ...commonSchema, ...INGESTION_WORKFLOW_NAME_UI_SCHEMA };
+    }
+
+    if (isDataInsightPipeline) {
+      commonSchema = {
+        ...commonSchema,
+        ...INGESTION_DATA_INSIGHT_WORKFLOW_UI_SCHEMA,
+      };
     }
 
     return commonSchema;
@@ -89,7 +102,31 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   };
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
-    e.formData && onSubmit(e.formData);
+    if (e.formData) {
+      let formData = { ...e.formData };
+      if (isDataInsightPipeline) {
+        formData = {
+          ...omit(formData, [
+            'searchIndexMappingLanguage',
+            'batchSize',
+            'recreateIndex',
+          ]),
+        };
+      }
+      if (isElasticSearchPipeline) {
+        formData = {
+          ...omit(formData, [
+            'useSSL',
+            'verifyCerts',
+            'timeout',
+            'caCerts',
+            'useAwsCredentials',
+            'regionName',
+          ]),
+        };
+      }
+      onSubmit(formData);
+    }
   };
 
   return (

@@ -284,6 +284,12 @@ export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
   regionName: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
+export const INGESTION_DATA_INSIGHT_WORKFLOW_UI_SCHEMA = {
+  searchIndexMappingLanguage: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  batchSize: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  recreateIndex: { 'ui:widget': 'hidden', 'ui:hideError': true },
+};
+
 export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
   name: { 'ui:disabled': true },
 };
