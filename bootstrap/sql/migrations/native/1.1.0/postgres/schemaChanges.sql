@@ -1,7 +1,7 @@
 UPDATE query_entity SET json = jsonb_set(json::jsonb, '{fullyQualifiedName}', json#>'{name}') WHERE json#>'{fullyQualifiedName}' IS NULL;
 ALTER TABLE bot_entity DROP CONSTRAINT bot_entity_name_key, ADD COLUMN nameHash VARCHAR(256);
 ALTER TABLE chart_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(768), ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
-ALTER TABLE classification  DROP CONSTRAINT tag_category_name_key, ADD COLUMN nameHash VARCHAR(256);n
+ALTER TABLE classification  DROP CONSTRAINT tag_category_name_key, ADD COLUMN nameHash VARCHAR(256);
 ALTER TABLE storage_container_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(768), ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 ALTER TABLE dashboard_data_model_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(768), ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 ALTER TABLE dashboard_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(768), ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;

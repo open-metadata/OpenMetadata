@@ -33,8 +33,8 @@ done
 
 BOOTSTRAP_DIR=`dirname ${PRG}`
 CONFIG_FILE_PATH=${BOOTSTRAP_DIR}/../conf/openmetadata.yaml
-FLYWAY_SQL_ROOT_DIR="${BOOTSTRAP_DIR}/sql/flyway"
-NATIVE_SQL_ROOT_DIR="${BOOTSTRAP_DIR}/sql/native"
+FLYWAY_SQL_ROOT_DIR="${BOOTSTRAP_DIR}/sql/migrations/flyway"
+NATIVE_SQL_ROOT_DIR="${BOOTSTRAP_DIR}/sql/migrations/native"
 
 # Which java to use
 if [ -z "${JAVA_HOME}" ]; then
