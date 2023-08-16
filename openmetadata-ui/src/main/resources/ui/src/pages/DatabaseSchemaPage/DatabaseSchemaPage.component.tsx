@@ -89,7 +89,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
   );
@@ -132,7 +132,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const fetchDatabaseSchemaPermission = useCallback(async () => {
-    setIsLoading(true);
+    setIsPermissionsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE_SCHEMA,
@@ -142,7 +142,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsPermissionsLoading(false);
     }
   }, [databaseSchemaFQN]);
 
@@ -193,7 +193,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (err) {
       // Error
     } finally {
-      setIsLoading(false);
       setIsSchemaDetailsLoading(false);
     }
   }, [databaseSchemaFQN]);
@@ -436,6 +435,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   useEffect(() => {
+    fetchDatabaseSchemaPermission();
+  }, [databaseSchemaFQN]);
+
+  useEffect(() => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       getEntityFeedCount();
@@ -443,14 +446,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission, databaseSchemaFQN]);
 
   useEffect(() => {
-    if (databaseSchemaFQN) {
+    if (viewDatabaseSchemaPermission && databaseSchemaFQN) {
       getSchemaTables();
     }
-  }, [showDeletedTables, databaseSchemaFQN]);
-
-  useEffect(() => {
-    fetchDatabaseSchemaPermission();
-  }, [databaseSchemaFQN]);
+  }, [showDeletedTables, databaseSchemaFQN, viewDatabaseSchemaPermission]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {
@@ -558,7 +557,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
   ];
 
-  if (isLoading) {
+  if (isPermissionsLoading) {
     return <Loader />;
   }
 
@@ -572,7 +571,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
       })}>
-      {isEmpty(databaseSchema) ? (
+      {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)}
         </ErrorPlaceHolder>
