@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-import { Table } from 'generated/entity/data/table';
-
-export type DeleteUnion = Table;
 export interface DeleteWidgetModalProps {
   visible: boolean;
   onCancel: () => void;
