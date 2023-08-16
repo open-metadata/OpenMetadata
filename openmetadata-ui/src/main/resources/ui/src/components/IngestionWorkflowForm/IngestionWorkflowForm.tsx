@@ -30,7 +30,7 @@ import {
   IngestionWorkflowFormProps,
 } from 'interface/service.interface';
 import React, { FC, useMemo, useState } from 'react';
-import { customValidate, transformErrors } from 'utils/formUtils';
+import { transformErrors } from 'utils/formUtils';
 import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
@@ -91,7 +91,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       noHtml5Validate
       omitExtraData
       className={classNames('rjsf no-header', className)}
-      customValidate={customValidate}
       fields={customFields}
       formContext={{ handleFocus: onFocus }}
       formData={internalData}
