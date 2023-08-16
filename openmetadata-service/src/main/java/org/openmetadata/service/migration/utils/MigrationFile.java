@@ -14,7 +14,9 @@ import org.flywaydb.core.internal.parser.ParsingContext;
 import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
 import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
 import org.flywaydb.database.mysql.MySQLParser;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.util.EntityUtil;
 
 public class MigrationFile implements Comparable<MigrationFile> {
   public final int[] versionNumbers;
@@ -22,14 +24,17 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public final ConnectionType connectionType;
   public final File dir;
   public final String dbPackageName;
-  private List<String> schemaChanges;
-  private List<String> postDDLScripts;
+
+  private final MigrationDAO migrationDAO;
+  private final List<String> schemaChanges;
+  private final List<String> postDDLScripts;
   public final String DEFAULT_MIGRATION_PROCESS_CLASS = "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
-  public MigrationFile(File dir, ConnectionType connectionType) {
+  public MigrationFile(File dir, MigrationDAO migrationDAO, ConnectionType connectionType) {
     this.dir = dir;
     this.version = dir.getName();
     this.connectionType = connectionType;
+    this.migrationDAO = migrationDAO;
     this.dbPackageName = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
     versionNumbers = convertToNumber(version);
     schemaChanges = new ArrayList<>();
@@ -58,7 +63,10 @@ public class MigrationFile implements Comparable<MigrationFile> {
       try (SqlStatementIterator schemaChangesIterator =
           parser.parse(new FileSystemResource(null, getSchemaChangesFile(), StandardCharsets.UTF_8, true))) {
         while (schemaChangesIterator.hasNext()) {
-          schemaChanges.add(schemaChangesIterator.next().getSql());
+          String sqlStatement = schemaChangesIterator.next().getSql();
+          if (!checkIfQueryPreviouslyRan(sqlStatement)) {
+            schemaChanges.add(sqlStatement);
+          }
         }
       }
     }
@@ -66,7 +74,10 @@ public class MigrationFile implements Comparable<MigrationFile> {
       try (SqlStatementIterator schemaChangesIterator =
           parser.parse(new FileSystemResource(null, getPostDDLScriptFile(), StandardCharsets.UTF_8, true))) {
         while (schemaChangesIterator.hasNext()) {
-          postDDLScripts.add(schemaChangesIterator.next().getSql());
+          String sqlStatement = schemaChangesIterator.next().getSql();
+          if (!checkIfQueryPreviouslyRan(sqlStatement)) {
+            postDDLScripts.add(sqlStatement);
+          }
         }
       }
     }
@@ -138,5 +149,11 @@ public class MigrationFile implements Comparable<MigrationFile> {
 
   private String getVersionPackageName() {
     return "v" + Arrays.toString(versionNumbers);
+  }
+
+  private boolean checkIfQueryPreviouslyRan(String query) {
+    String checksum = EntityUtil.hash(query);
+    String sqlStatement = migrationDAO.checkIfQueryPreviouslyRan(checksum);
+    return sqlStatement != null;
   }
 }

@@ -26,6 +26,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   public void initialize(Handle handle) {
     this.handle = handle;
     this.collectionDAO = handle.attach(CollectionDAO.class);
+    this.migrationDAO = handle.attach(MigrationDAO.class);
   }
 
   @Override
@@ -55,7 +56,7 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public void runSchemaChanges() {
-    performSqlExecutionAndUpdate(handle, migrationFile.getSchemaChanges());
+    performSqlExecutionAndUpdate(handle, migrationDAO, migrationFile.getSchemaChanges(), migrationFile.version);
   }
 
   @Override
@@ -63,7 +64,7 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public void runPostDDLScripts() {
-    performSqlExecutionAndUpdate(handle, migrationFile.getPostDDLScripts());
+    performSqlExecutionAndUpdate(handle, migrationDAO, migrationFile.getPostDDLScripts(), migrationFile.version);
   }
 
   @Override

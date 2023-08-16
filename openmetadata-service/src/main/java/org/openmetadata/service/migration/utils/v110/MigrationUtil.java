@@ -387,12 +387,14 @@ public class MigrationUtil {
     LOG.debug("Ended Migration for Tag Usage");
   }
 
-  public static void performSqlExecutionAndUpdate(Handle handle, List<String> queryList) {
+  public static void performSqlExecutionAndUpdate(
+      Handle handle, MigrationDAO migrationDAO, List<String> queryList, String version) {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
     if (!nullOrEmpty(queryList)) {
       for (String sql : queryList) {
         try {
           handle.execute(sql);
+          migrationDAO.upsertServerMigrationSQL(version, sql, EntityUtil.hash(sql));
         } catch (Exception e) {
           LOG.error(String.format("Failed to run sql %s due to %s", sql, e));
           throw e;

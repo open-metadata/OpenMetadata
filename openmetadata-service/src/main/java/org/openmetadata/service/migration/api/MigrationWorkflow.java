@@ -17,7 +17,6 @@ public class MigrationWorkflow {
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
 
-  private final String nativeSQLScriptRootPath;
   private final boolean forceMigrations;
 
   public MigrationWorkflow(
@@ -25,11 +24,10 @@ public class MigrationWorkflow {
     this.jdbi = jdbi;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
     this.forceMigrations = forceMigrations;
-    this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
     // Sort Migration on the basis of version
     List<MigrationFile> availableMigrations =
         Arrays.stream(Objects.requireNonNull(new File(nativeSQLScriptRootPath).listFiles(File::isDirectory)))
-            .map(dir -> new MigrationFile(dir, connectionType))
+            .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
             .sorted()
             .collect(Collectors.toList());
     // Filter Migrations to Be Run
