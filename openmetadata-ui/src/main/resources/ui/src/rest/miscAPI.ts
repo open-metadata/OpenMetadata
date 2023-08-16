@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Edge } from 'components/EntityLineage/EntityLineage.interface';
+import { Edge } from 'components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
@@ -320,7 +320,7 @@ export const getEntityCount = async (
 };
 
 export const fetchMarkdownFile = async (filePath: string) => {
-  let baseURL = '/';
+  let baseURL;
 
   try {
     const url = new URL(filePath);

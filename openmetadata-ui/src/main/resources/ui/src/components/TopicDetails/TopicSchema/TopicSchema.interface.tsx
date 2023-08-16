@@ -13,7 +13,6 @@
 
 import { TableProps } from 'antd';
 import { ThreadType } from 'generated/api/feed/createThread';
-import { EntityFieldThreads } from 'interface/feed.interface';
 import { HTMLAttributes, ReactNode } from 'react';
 import { Field, Topic } from '../../../generated/entity/data/topic';
 
@@ -32,7 +31,6 @@ export interface TopicSchemaFieldsProps
   entityFqn: string;
   defaultExpandAllRows?: boolean;
   showSchemaDisplayTypeSwitch?: boolean;
-  entityFieldThreads: EntityFieldThreads[];
   onUpdate?: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }

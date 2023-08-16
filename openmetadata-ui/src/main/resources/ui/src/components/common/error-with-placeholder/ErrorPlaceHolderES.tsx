@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { ROUTES } from 'constants/constants';
 import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
   ERROR_PLACEHOLDER_TYPE,
 } from 'enums/common.enum';
-import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
@@ -82,7 +81,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
 
   const noRecordForES = useMemo(() => {
     return (
-      <div className="tw-text-center" data-testid="no-search-results">
+      <div className="text-center" data-testid="no-search-results">
         {isQuery ? (
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
         ) : ['glossaries', 'tags'].includes(tab) ? (
@@ -129,8 +128,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
     const errorText = errorMessage && index ? `find ${index} in` : 'access';
 
     return (
-      <div className="tw-mb-5" data-testid="es-error">
-        <div className="tw-mb-3 tw-text-center">
+      <div data-testid="es-error">
+        <div className="m-b-lg text-center">
           <p>
             <span>{t('message.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">
@@ -140,43 +139,45 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
 
           <p>{t('message.elasticsearch-setup')}</p>
         </div>
-        <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
+        <Row gutter={16}>
           {stepsData.map((data) => (
-            <Card
-              className="d-flex flex-col tw-justify-between tw-p-5"
-              key={uniqueId()}>
-              <div>
-                <div className="d-flex tw-mb-2">
-                  <div className="tw-rounded-full d-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
-                    {data.step}
+            <Col key={data.step} span={6}>
+              <Space
+                className="justify-between h-full border rounded-4 p-sm"
+                direction="vertical">
+                <div>
+                  <div className="d-flex m-b-xs">
+                    <div className="flex-center rounded-full h-10 w-10 border-2-primary text-primary text-lg font-bold">
+                      {data.step}
+                    </div>
                   </div>
+
+                  <h6
+                    className="text-base text-grey-body font-medium"
+                    data-testid="service-name">
+                    {data.title}
+                  </h6>
+
+                  <p className="text-grey-body text-sm m-b-lg">
+                    {data.description}
+                  </p>
                 </div>
 
-                <h6
-                  className="tw-text-base tw-text-grey-body tw-font-medium"
-                  data-testid="service-name">
-                  {data.title}
-                </h6>
-
-                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
-                  {data.description}
+                <p>
+                  <a href={data.link} rel="noopener noreferrer" target="_blank">
+                    {`${t('label.click-here')} >>`}
+                  </a>
                 </p>
-              </div>
-
-              <p>
-                <a href={data.link} rel="noopener noreferrer" target="_blank">
-                  {`${t('label.click-here')} >>`}
-                </a>
-              </p>
-            </Card>
+              </Space>
+            </Col>
           ))}
-        </div>
+        </Row>
       </div>
     );
   }, [errorMessage]);
 
   return (
-    <div className="tw-mt-10 tw-text-base tw-font-medium">
+    <div className="mt-12 text-base font-medium">
       {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
         ? noRecordForES
         : elasticSearchError}

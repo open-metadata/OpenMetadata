@@ -51,8 +51,8 @@ const AuthMechanism: FC<Props> = ({
 
     return (
       <>
-        <Space className="w-full tw-justify-between">
-          <Typography.Text className="tw-text-base">
+        <Space className="w-full justify-between">
+          <Typography.Text className="text-base">
             {t('label.om-jwt-token')}
           </Typography.Text>
           <Space>
@@ -82,7 +82,7 @@ const AuthMechanism: FC<Props> = ({
 
         {JWTToken ? (
           <>
-            <Space className="w-full tw-justify-between ant-space-authMechanism">
+            <Space className="w-full justify-between ant-space-authMechanism">
               <Input.Password
                 readOnly
                 autoComplete="off"
@@ -92,9 +92,7 @@ const AuthMechanism: FC<Props> = ({
               />
               <CopyToClipboardButton copyText={JWTToken} />
             </Space>
-            <p
-              className="text-grey-muted tw-mt-2 tw-italic"
-              data-testid="token-expiry">
+            <p className="text-grey-muted" data-testid="token-expiry">
               {JWTTokenExpiresAt ? (
                 isTokenExpired ? (
                   `Expired on ${tokenExpiryDate}.`
@@ -104,7 +102,7 @@ const AuthMechanism: FC<Props> = ({
               ) : (
                 <>
                   <SVGIcons alt="warning" icon="error" />
-                  <span className="tw-ml-1 tw-align-middle">
+                  <span className="align-middle">
                     {t('message.token-has-no-expiry')}
                   </span>
                 </>
@@ -112,9 +110,7 @@ const AuthMechanism: FC<Props> = ({
             </p>
           </>
         ) : (
-          <div
-            className="text-grey-muted tw-text-sm tw-mt-4"
-            data-testid="no-token">
+          <div className="text-grey-muted text-sm" data-testid="no-token">
             {t('message.no-token-available')}
           </div>
         )}
@@ -128,7 +124,7 @@ const AuthMechanism: FC<Props> = ({
 
     return (
       <>
-        <Space className="w-full tw-justify-between">
+        <Space className="w-full justify-between">
           <Typography.Text>{`${capitalize(ssoType)} SSO`}</Typography.Text>
           <Button
             disabled={!hasPermission}
@@ -143,7 +139,7 @@ const AuthMechanism: FC<Props> = ({
         <Space className="w-full" direction="vertical">
           <>
             <Typography.Text>{t('label.account-email')}</Typography.Text>
-            <Space className="w-full tw-justify-between ant-space-authMechanism">
+            <Space className="w-full justify-between ant-space-authMechanism">
               <Input
                 readOnly
                 data-testid="botUser-email"
@@ -156,7 +152,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.secretKey && (
             <>
               <Typography.Text>{t('label.secret-key')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
                   autoComplete="off"
@@ -170,7 +166,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.privateKey && (
             <>
               <Typography.Text>{t('label.private-key')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
                   autoComplete="off"
@@ -184,7 +180,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.clientSecret && (
             <>
               <Typography.Text>{t('label.client-secret')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
                   autoComplete="off"
@@ -198,7 +194,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.audience && (
             <>
               <Typography.Text>{t('label.audience')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input
                   readOnly
                   data-testid="audience"
@@ -211,7 +207,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.clientId && (
             <>
               <Typography.Text>{t('label.client-id')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input
                   readOnly
                   data-testid="clientId"
@@ -224,7 +220,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.email && (
             <>
               <Typography.Text>{t('label.email')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input readOnly data-testid="email" value={authConfig?.email} />
                 <CopyToClipboardButton copyText={authConfig?.email} />
               </Space>
@@ -233,7 +229,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.orgURL && (
             <>
               <Typography.Text>{t('label.org-url')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input
                   readOnly
                   data-testid="orgURL"
@@ -246,7 +242,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.scopes && (
             <>
               <Typography.Text>{t('label.scope-plural')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input
                   readOnly
                   data-testid="scopes"
@@ -261,7 +257,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.domain && (
             <>
               <Typography.Text>{t('label.domain')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input
                   readOnly
                   data-testid="domain"
@@ -274,7 +270,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.authority && (
             <>
               <Typography.Text>{t('label.authority')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input
                   readOnly
                   data-testid="authority"
@@ -287,7 +283,7 @@ const AuthMechanism: FC<Props> = ({
           {authConfig?.tokenEndpoint && (
             <>
               <Typography.Text>{t('label.token-end-point')}</Typography.Text>
-              <Space className="w-full tw-justify-between ant-space-authMechanism">
+              <Space className="w-full justify-between ant-space-authMechanism">
                 <Input
                   readOnly
                   data-testid="tokenEndpoint"

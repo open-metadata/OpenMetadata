@@ -55,7 +55,6 @@ import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -64,7 +63,6 @@ import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/dashboardServices")
@@ -77,15 +75,7 @@ public class DashboardServiceResource
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   static final String FIELDS = "owner,domain";
 
-  @Override
-  public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
-    Entity.withHref(uriInfo, service.getOwner());
-    return service;
-  }
-
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
-
     super(DashboardService.class, new DashboardServiceRepository(dao), authorizer, ServiceType.DASHBOARD);
   }
 

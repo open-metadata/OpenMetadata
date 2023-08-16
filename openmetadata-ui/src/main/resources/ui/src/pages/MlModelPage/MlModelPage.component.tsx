@@ -272,19 +272,14 @@ const MlModelPage = () => {
 
   if (isNil(mlModelDetail) || isEmpty(mlModelDetail)) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder className="mt-0-important">
         {getEntityMissingError('mlModel', mlModelFqn)}
       </ErrorPlaceHolder>
     );
   }
 
   if (!mlModelPermissions.ViewAll && !mlModelPermissions.ViewBasic) {
-    return (
-      <ErrorPlaceHolder
-        className="mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (

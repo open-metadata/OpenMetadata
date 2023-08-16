@@ -60,7 +60,6 @@ import org.openmetadata.service.jdbi3.MlModelRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/mlmodels")
@@ -76,12 +75,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
-    mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
-    Entity.withHref(uriInfo, mlmodel.getOwner());
+    super.addHref(uriInfo, mlmodel);
     Entity.withHref(uriInfo, mlmodel.getDashboard());
     Entity.withHref(uriInfo, mlmodel.getService());
-    Entity.withHref(uriInfo, mlmodel.getFollowers());
-    Entity.withHref(uriInfo, mlmodel.getDomain());
     return mlmodel;
   }
 

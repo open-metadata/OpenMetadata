@@ -130,10 +130,6 @@ jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../EntityList/EntityList', () => ({
-  EntityListWithAntd: jest.fn().mockReturnValue(<p>EntityList.component</p>),
-}));
-
 const mockFetchFeedHandler = jest.fn();
 const feedFilterHandler = jest.fn();
 const fetchData = jest.fn();

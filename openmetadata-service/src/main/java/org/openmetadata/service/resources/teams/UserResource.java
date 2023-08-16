@@ -163,12 +163,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
+    super.addHref(uriInfo, user);
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
-    Entity.withHref(uriInfo, user.getDomain());
     return user;
   }
 

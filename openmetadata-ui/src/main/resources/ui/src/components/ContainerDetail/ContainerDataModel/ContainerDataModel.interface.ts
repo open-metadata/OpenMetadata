@@ -12,7 +12,6 @@
  */
 import { ThreadType } from 'generated/api/feed/createThread';
 import { Container } from 'generated/entity/data/container';
-import { EntityFieldThreads } from 'interface/feed.interface';
 import { ReactNode } from 'react';
 
 export type CellRendered<T, K extends keyof T> = (
@@ -27,7 +26,6 @@ export interface ContainerDataModelProps {
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
-  entityFieldThreads: EntityFieldThreads[];
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (updatedDataModel: Container['dataModel']) => Promise<void>;
 }

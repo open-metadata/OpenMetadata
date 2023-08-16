@@ -487,9 +487,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @Override
   public Tag addHref(UriInfo uriInfo, Tag tag) {
+    super.addHref(uriInfo, tag);
     Entity.withHref(uriInfo, tag.getClassification());
     Entity.withHref(uriInfo, tag.getParent());
-    Entity.withHref(uriInfo, tag.getChildren());
     return tag;
   }
 

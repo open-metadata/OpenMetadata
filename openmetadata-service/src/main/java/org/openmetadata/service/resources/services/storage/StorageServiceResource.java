@@ -71,9 +71,8 @@ public class StorageServiceResource
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
+    super.addHref(uriInfo, service);
     Entity.withHref(uriInfo, service.getOwner());
-    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 

@@ -48,7 +48,7 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () =>
+jest.mock('components/Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
   jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 

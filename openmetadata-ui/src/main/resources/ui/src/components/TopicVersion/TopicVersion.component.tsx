@@ -18,7 +18,7 @@ import { CustomPropertyProps } from 'components/common/CustomPropertyTable/Custo
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
@@ -128,7 +128,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
                   <TopicSchemaFields
                     defaultExpandAllRows
                     isReadOnly
-                    entityFieldThreads={[]}
                     entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}

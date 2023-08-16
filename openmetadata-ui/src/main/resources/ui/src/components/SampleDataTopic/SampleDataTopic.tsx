@@ -12,7 +12,7 @@
  */
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { isUndefined } from 'lodash';
@@ -31,28 +31,28 @@ const MessageCard = ({ message }: { message: string }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div
-      className="bg-white tw-shadow tw-rounded tw-p-2 tw-mb-6 tw-border tw-border-main"
+    <Card
+      className="m-b-xlg"
       data-testid="message-card"
       onClick={() => setIsExpanded((pre) => !pre)}>
       <div className="d-flex">
-        <div className="tw-mr-3 tw-cursor-pointer">
+        <div className="cursor-pointer">
           {isExpanded ? (
-            <UpOutlined className="tw-text-xs" />
+            <UpOutlined className="text-xs" />
           ) : (
-            <DownOutlined className="tw-text-xs" />
+            <DownOutlined className="text-xs" />
           )}
         </div>
         {isExpanded ? (
           <div>
-            <button
-              className="tw-gh-tabs active tw--mt-4"
+            <Button
+              className="active"
               data-testid="value"
               id="sampleData-value">
               {t('label.value')}
-            </button>
+            </Button>
             <SchemaEditor
-              className="tw-mt-2"
+              className="m-t-xs"
               editorClass="topic-sample-data"
               options={{
                 styleActiveLine: false,
@@ -63,14 +63,14 @@ const MessageCard = ({ message }: { message: string }) => {
         ) : (
           <div>
             <p
-              className="tw-my-1 topic-sample-data-message"
+              className="m-y-xs topic-sample-data-message"
               style={{ color: '#450de2' }}>
               {message}
             </p>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -103,17 +103,9 @@ const SampleDataTopic: FC<{ topicId: string }> = ({ topicId }) => {
     return <Loader />;
   }
 
-  if (!isUndefined(data)) {
+  if (isUndefined(data)) {
     return (
-      <div className="tw-p-4 d-flex flex-col">
-        {data.messages?.map((message, i) => (
-          <MessageCard key={i} message={message} />
-        ))}
-      </div>
-    );
-  } else {
-    return (
-      <div data-testid="no-data">
+      <div className="m-t-xlg" data-testid="no-data">
         <ErrorPlaceHolder>
           <Typography.Paragraph>
             <Transi18next
@@ -135,6 +127,14 @@ const SampleDataTopic: FC<{ topicId: string }> = ({ topicId }) => {
       </div>
     );
   }
+
+  return (
+    <div className="d-flex flex-col p-md">
+      {data.messages?.map((message, i) => (
+        <MessageCard key={i} message={message} />
+      ))}
+    </div>
+  );
 };
 
 export default SampleDataTopic;

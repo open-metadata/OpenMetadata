@@ -70,11 +70,16 @@ const BotDetailsPage = () => {
   const fetchBotsData = async () => {
     try {
       setIsLoading(true);
-      const botResponse = await getBotByName(botsName);
+      const botResponse = await getBotByName(
+        botsName,
+        undefined,
+        'include=all'
+      );
 
       const botUserResponse = await getUserByName(
         botResponse.botUser.fullyQualifiedName || '',
-        'roles,profile'
+        'roles,profile',
+        'include=all'
       );
       setBotUserData(botUserResponse);
       setBotData(botResponse);
@@ -132,37 +137,6 @@ const BotDetailsPage = () => {
       });
   };
 
-  const getBotsDetailComponent = () => {
-    if (isError) {
-      return (
-        <ErrorPlaceHolder>
-          <Typography.Paragraph
-            className="text-base"
-            data-testid="error-message">
-            {t('message.no-entity-available-with-name', {
-              entity: t('label.bot-plural'),
-            })}{' '}
-            <span className="font-medium" data-testid="username">
-              {botsName}
-            </span>{' '}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      );
-    } else {
-      return (
-        <BotDetails
-          botData={botData}
-          botPermission={botPermission}
-          botUserData={botUserData}
-          revokeTokenHandler={revokeBotsToken}
-          updateBotsDetails={updateBotsDetails}
-          updateUserDetails={updateUserDetails}
-          onEmailChange={fetchBotsData}
-        />
-      );
-    }
-  };
-
   useEffect(() => {
     if (botPermission.ViewAll || botPermission.ViewBasic) {
       fetchBotsData();
@@ -173,20 +147,39 @@ const BotDetailsPage = () => {
     fetchBotPermission(botsName);
   }, [botsName]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        <Typography.Paragraph className="text-base" data-testid="error-message">
+          {t('message.no-entity-available-with-name', {
+            entity: t('label.bot-plural'),
+          })}{' '}
+          <span className="font-medium" data-testid="username">
+            {botsName}
+          </span>{' '}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!isAdminUser) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <>
-          {isAdminUser ? (
-            getBotsDetailComponent()
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
-        </>
-      )}
-    </>
+    <BotDetails
+      botData={botData}
+      botPermission={botPermission}
+      botUserData={botUserData}
+      revokeTokenHandler={revokeBotsToken}
+      updateBotsDetails={updateBotsDetails}
+      updateUserDetails={updateUserDetails}
+      onEmailChange={fetchBotsData}
+    />
   );
 };
 

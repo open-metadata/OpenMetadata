@@ -101,7 +101,7 @@ class ParquetDataFrameReader(DataFrameReader):
         storage_options = return_azure_storage_options(self.config_source)
         account_url = AZURE_PATH.format(
             bucket_name=bucket_name,
-            account_name=storage_options.get("account_name"),
+            account_name=self.config_source.securityConfig.accountName,
             key=key,
         )
         dataframe = pd.read_parquet(account_url, storage_options=storage_options)

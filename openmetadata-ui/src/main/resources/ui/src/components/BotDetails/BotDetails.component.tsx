@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Input, Row, Space, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { toLower } from 'lodash';
@@ -46,7 +48,6 @@ import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
 import { BotsDetailProps } from './BotDetails.interfaces';
 import './BotDetails.style.less';
-import DisplayNameComponent from './DisplayNameComponent/DisplayNameComponent.component';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -203,17 +204,63 @@ const BotDetails: FC<BotsDetailProps> = ({
                 />
 
                 <Space className="p-b-md" direction="vertical" size={8}>
-                  <DisplayNameComponent
-                    displayName={displayName}
-                    displayNamePermission={displayNamePermission}
-                    editAllPermission={editAllPermission}
-                    handleDisplayNameChange={handleDisplayNameChange}
-                    isDisplayNameEdit={isDisplayNameEdit}
-                    setIsDisplayNameEdit={(value: boolean) =>
-                      setIsDisplayNameEdit(value)
-                    }
-                    onDisplayNameChange={onDisplayNameChange}
-                  />
+                  <div className="mt-4 w-full d-flex">
+                    {isDisplayNameEdit ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          className="w-full"
+                          data-testid="displayName"
+                          id="displayName"
+                          name="displayName"
+                          placeholder={t('label.display-name')}
+                          value={displayName}
+                          onChange={onDisplayNameChange}
+                        />
+                        <div className="flex justify-end" data-testid="buttons">
+                          <Button
+                            className="text-sm mr-1"
+                            data-testid="cancel-displayName"
+                            icon={<CloseOutlined />}
+                            size="small"
+                            type="primary"
+                            onMouseDown={() => setIsDisplayNameEdit(false)}
+                          />
+
+                          <Button
+                            className="text-sm mr-1"
+                            data-testid="save-displayName"
+                            icon={<CheckOutlined />}
+                            size="small"
+                            type="primary"
+                            onClick={handleDisplayNameChange}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <Space>
+                        {displayName ? (
+                          <Typography.Title className="display-name" level={5}>
+                            {displayName}
+                          </Typography.Title>
+                        ) : (
+                          <Typography.Text className="text-grey-muted">
+                            {t('label.add-entity', {
+                              entity: t('label.display-name'),
+                            })}
+                          </Typography.Text>
+                        )}
+                        {(displayNamePermission || editAllPermission) && (
+                          <Button
+                            className="p-0"
+                            data-testid="edit-displayName"
+                            icon={<EditIcon width={16} />}
+                            type="text"
+                            onClick={() => setIsDisplayNameEdit(true)}
+                          />
+                        )}
+                      </Space>
+                    )}
+                  </div>
                   <Description
                     description={botData.description || ''}
                     entityName={getEntityName(botData)}

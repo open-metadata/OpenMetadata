@@ -315,10 +315,7 @@ const DataInsightPage = () => {
       return (
         <Row align="middle" className="w-full h-full" justify="center">
           <Col span={24}>
-            <ErrorPlaceHolder
-              className="m-0"
-              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-            />
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           </Col>
         </Row>
       );

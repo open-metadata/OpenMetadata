@@ -14,7 +14,6 @@
 import i18n from 'utils/i18next/LocalUtil';
 import { FormValidationRulesType } from '../../../enums/form.enum';
 import { FormValidationRules } from '../../../interface/FormUtils.interface';
-import { DropDownListItem } from '../../dropdown/types';
 import {
   DbtConfigCloudReq,
   DbtGCSCreds,
@@ -23,7 +22,7 @@ import {
 } from './DBTConfigForm.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
-export const DBTSources: Array<DropDownListItem> = [
+export const DBTSources: Array<{ label: string; value: string }> = [
   {
     label: i18n.t('label.local-config-source'),
     value: DBT_SOURCES.local,
@@ -50,7 +49,7 @@ export const DBTSources: Array<DropDownListItem> = [
   },
 ];
 
-export const GCSCreds: Array<DropDownListItem> = [
+export const GCSCreds: Array<{ label: string; value: string }> = [
   {
     label: i18n.t('label.gcs-credential-value'),
     value: GCS_CONFIG.GCSValues,
