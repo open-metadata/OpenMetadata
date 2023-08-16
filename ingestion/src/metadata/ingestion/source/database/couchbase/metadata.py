@@ -25,7 +25,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_nosql_source import CommonNoSQLSource
+from metadata.ingestion.source.database.common_nosql_source import (
+    SAMPLE_SIZE,
+    CommonNoSQLSource,
+)
+from metadata.ingestion.source.database.couchbase.queries import (
+    COUCHBASE_GET_DATA,
+    Couchbase_SQL_STATEMENT,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -65,7 +72,6 @@ class CouchbaseSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
-            # for bucket_name in self.get_database_names():
             database_name = self.context.database.name.__root__
             bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
@@ -101,5 +107,21 @@ class CouchbaseSource(CommonNoSQLSource):
         Method to get actual data available within table
         need to be overridden by sources
         """
-
+        database_name = self.context.database.name.__root__
+        query = Couchbase_SQL_STATEMENT.format(table_name=table_name)
+        result = self.couchbase.query(query)
+        for row in result.rows():
+            if len(row) > 0:
+                query_coln = COUCHBASE_GET_DATA.format(
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    SAMPLE_SIZE=SAMPLE_SIZE,
+                )
+                query_iter = self.couchbase.query(query_coln)
+                for data in query_iter.rows():
+                    keys = []
+                    keys.append(data)
+                    break
+            return keys
         return []

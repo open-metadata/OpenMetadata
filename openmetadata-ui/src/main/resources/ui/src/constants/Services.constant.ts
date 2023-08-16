@@ -358,6 +358,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
+  DatabaseServiceType.Couchbase,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

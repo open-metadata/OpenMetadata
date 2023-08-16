@@ -50,8 +50,8 @@ def get_connection(connection: CouchbaseConnection):
 
 def check_list_tables(client):
     """
-    Test ListTables under dynamodb
-    client.tables.all() passes even if wrong credentials are passed
+    Test ListTables under couchbase
+    client.get_all_bucket() passes even if wrong credentials are passed
     Having it iterate does the list call which can be used to test connection.
     """
 
