@@ -17,6 +17,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -49,6 +50,16 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
     return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
+  }
+
+  @Override
+  public void setFullyQualifiedName(TestSuite testSuite) {
+    if (testSuite.getExecutableEntityReference() != null) {
+      testSuite.setFullyQualifiedName(
+          FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
+    } else {
+      testSuite.setFullyQualifiedName(testSuite.getName());
+    }
   }
 
   private TestSummary getTestSummary(TestSuite entity) {
