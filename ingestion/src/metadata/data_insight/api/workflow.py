@@ -27,7 +27,6 @@ from typing import Optional, Union, cast
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.processor.entity_report_data_processor import (
     EntityReportDataProcessor,
@@ -59,10 +58,7 @@ from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import data_insight_logger, set_loggers_level
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
+from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
 from metadata.utils.workflow_output_handler import print_data_insight_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
