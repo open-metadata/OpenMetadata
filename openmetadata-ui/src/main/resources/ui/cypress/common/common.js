@@ -55,7 +55,7 @@ const checkTeamTypeOptions = () => {
 
 // intercepting URL with cy.intercept
 export const interceptURL = (method, url, alias, callback) => {
-  cy.intercept({ method: method, url: url, times: 1 }, callback).as(alias);
+  cy.intercept({ method: method, url: url }, callback).as(alias);
 };
 
 // waiting for response and validating the response status code
@@ -496,6 +496,8 @@ export const visitEntityDetailsPage = (
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
   verifyResponseStatusCode('@searchQuery', 200);
+
+  cy.get('[data-testid="navbar-search-container"]').invoke('show');
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
     if ($body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length) {
