@@ -13,7 +13,6 @@
 
 import { Space, Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
-import classNames from 'classnames';
 import { EntityDetails } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -112,12 +111,12 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
   const diff = diffWordsWithSpace(oldValue, newValue);
 
   return diff.map((part: Change) => {
+    const diffChangeText = part.added ? 'diff-added' : 'diff-removed';
+
     return (
       <span
-        className={classNames(
-          { 'diff-added': part.added },
-          { 'diff-removed': part.removed }
-        )}
+        className={diffChangeText}
+        data-testid={`${diffChangeText}-${part.value}`}
         key={part.value}>
         {part.value}
       </span>
