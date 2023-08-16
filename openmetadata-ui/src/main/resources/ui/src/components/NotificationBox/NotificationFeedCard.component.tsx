@@ -46,11 +46,11 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
       }>
       <List.Item.Meta
         avatar={<ProfilePicture id="" name={createdBy} width="32" />}
-        className="tw-m-0"
+        className="m-0"
         description={
           <Space direction="vertical" size={0}>
             <Typography.Paragraph
-              className="tw-m-0"
+              className="m-0"
               style={{ color: '#37352F', marginBottom: 0 }}>
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
@@ -58,7 +58,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   <span> {t('message.mentioned-you-on-the-lowercase')} </span>{' '}
                   <span>{entityType} </span>
                   <Link
-                    className="tw-truncate"
+                    className="truncate"
                     to={prepareFeedLink(entityType, entityFQN)}>
                     {entityDisplayName(entityType, entityFQN)}
                   </Link>

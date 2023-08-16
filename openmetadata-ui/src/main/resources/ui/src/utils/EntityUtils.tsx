@@ -18,7 +18,7 @@ import { DataAssetsWithoutServiceField } from 'components/DataAssets/DataAssetsH
 import {
   LeafNodes,
   LineagePos,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import {
   EntityUnion,
   EntityWithServices,
@@ -436,7 +436,7 @@ export const getEntityOverview = (
           name: i18next.t('label.server'),
           value: server || NO_DATA,
           url: server,
-          isLink: true,
+          isLink: Boolean(server),
           isExternal: true,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,

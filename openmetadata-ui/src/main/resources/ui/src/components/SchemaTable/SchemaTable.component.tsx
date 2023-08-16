@@ -55,7 +55,6 @@ const SchemaTable = ({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   joins,
-  entityFieldThreads,
   isReadOnly = false,
   onThreadLinkSelect,
   entityFqn,
@@ -254,7 +253,6 @@ const SchemaTable = ({
             fqn: record.fullyQualifiedName ?? '',
             field: record.description,
           }}
-          entityFieldThreads={entityFieldThreads}
           entityFqn={entityFqn}
           entityType={EntityType.TABLE}
           hasEditPermission={hasDescriptionEditAccess}
@@ -316,7 +314,6 @@ const SchemaTable = ({
         width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
@@ -338,7 +335,6 @@ const SchemaTable = ({
         width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
@@ -356,7 +352,6 @@ const SchemaTable = ({
     [
       entityFqn,
       isReadOnly,
-      entityFieldThreads,
       tableConstraints,
       hasTagEditAccess,
       handleUpdate,

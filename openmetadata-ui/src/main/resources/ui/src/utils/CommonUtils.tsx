@@ -73,7 +73,6 @@ import { PipelineType } from '../generated/entity/services/ingestionPipelines/in
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
@@ -228,7 +227,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
         clsBG,
         className
       )}>
@@ -338,15 +337,11 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   setRecentlyViewedData(recentlyViewed.data);
 };
 
-export const getActiveCatClass = (name: string, activeName = '') => {
-  return activeName === name ? 'activeCategory' : '';
-};
-
 export const errorMsg = (value: string) => {
   return (
-    <div className="tw-mt-1">
+    <div>
       <strong
-        className="tw-text-red-500 tw-text-xs tw-italic"
+        className="text-xs font-italic text-failure"
         data-testid="error-message">
         {value}
       </strong>
@@ -357,22 +352,9 @@ export const errorMsg = (value: string) => {
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
     {label}{' '}
-    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+    <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
-
-export const getSeparator = (
-  title: string | JSX.Element,
-  hrMarginTop = 'tw-mt-2.5'
-) => {
-  return (
-    <span className="d-flex tw-py-2 text-grey-muted">
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-    </span>
-  );
-};
 
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
@@ -534,10 +516,7 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
-  conversationCallback: (
-    value: React.SetStateAction<EntityFieldThreadCount[]>
-  ) => void,
-  entityCallback: (value: React.SetStateAction<number>) => void
+  conversationCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
   getFeedCount(
@@ -546,20 +525,7 @@ export const getFeedCounts = (
   )
     .then((res) => {
       if (res) {
-        conversationCallback(res.counts);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
-
-  // To get all thread count (task + conversation)
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        entityCallback(res.totalCount);
+        conversationCallback(res.totalCount);
       } else {
         throw t('server.entity-feed-fetch-error');
       }

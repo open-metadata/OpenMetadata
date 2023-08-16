@@ -70,11 +70,7 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityThreadLink,
-} from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -93,7 +89,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
   );
@@ -136,7 +132,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const fetchDatabaseSchemaPermission = useCallback(async () => {
-    setIsLoading(true);
+    setIsPermissionsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE_SCHEMA,
@@ -146,7 +142,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsPermissionsLoading(false);
     }
   }, [databaseSchemaFQN]);
 
@@ -197,7 +193,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (err) {
       // Error
     } finally {
-      setIsLoading(false);
       setIsSchemaDetailsLoading(false);
     }
   }, [databaseSchemaFQN]);
@@ -440,6 +435,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   useEffect(() => {
+    fetchDatabaseSchemaPermission();
+  }, [databaseSchemaFQN]);
+
+  useEffect(() => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       getEntityFeedCount();
@@ -447,14 +446,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission, databaseSchemaFQN]);
 
   useEffect(() => {
-    if (databaseSchemaFQN) {
+    if (viewDatabaseSchemaPermission && databaseSchemaFQN) {
       getSchemaTables();
     }
-  }, [showDeletedTables, databaseSchemaFQN]);
-
-  useEffect(() => {
-    fetchDatabaseSchemaPermission();
-  }, [databaseSchemaFQN]);
+  }, [showDeletedTables, databaseSchemaFQN, viewDatabaseSchemaPermission]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {
@@ -517,7 +512,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={databaseSchemaFQN}
-                entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -528,7 +522,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={databaseSchemaFQN}
-                entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -564,17 +557,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
   ];
 
-  if (isLoading) {
+  if (isPermissionsLoading) {
     return <Loader />;
   }
 
   if (!viewDatabaseSchemaPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (
@@ -583,7 +571,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
       })}>
-      {isEmpty(databaseSchema) ? (
+      {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)}
         </ErrorPlaceHolder>

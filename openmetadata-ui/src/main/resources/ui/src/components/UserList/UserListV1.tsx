@@ -130,7 +130,7 @@ const UserListV1: FC<UserListV1Props> = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center action-icons"
+            className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
               <Tooltip placement="bottom" title={t('label.restore')}>
@@ -181,7 +181,7 @@ const UserListV1: FC<UserListV1Props> = ({
   const errorPlaceHolder = useMemo(
     () => (
       <Row>
-        <Col className="w-full d-flex tw-justify-end">
+        <Col className="w-full d-flex justify-end">
           <span>
             <Switch
               checked={showDeletedUser}
@@ -219,7 +219,7 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <span>
             <Switch
               checked={showDeletedUser}

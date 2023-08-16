@@ -14,15 +14,13 @@
 import { Tooltip } from 'antd';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { entityUrlMap } from '../constants/Feeds.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/teams/user';
-import { EntityFieldThreads } from '../interface/feed.interface';
 import { getEntityFeedLink } from './EntityUtils';
-import { getThreadField } from './FeedUtils';
 
 const iconsProps = {
   height: 14,
@@ -32,22 +30,12 @@ const iconsProps = {
 };
 
 export const getFieldThreadElement = (
-  columnName: string,
-  columnField: string,
-  entityFieldThreads: EntityFieldThreads[],
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
   entityType?: string,
   entityFqn?: string,
   entityField?: string
 ) => {
-  let threadValue: EntityFieldThreads = {} as EntityFieldThreads;
-
-  entityFieldThreads?.forEach((thread) => {
-    const threadField = getThreadField(thread.entityField);
-    if (threadField[0] === columnName && threadField[1] === columnField) {
-      threadValue = thread;
-    }
-  });
+  const entityLink = getEntityFeedLink(entityType, entityFqn, entityField);
 
   return (
     <Tooltip
@@ -63,14 +51,8 @@ export const getFieldThreadElement = (
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          isEmpty(threadValue)
-            ? onThreadLinkSelect(
-                getEntityFeedLink(entityType, entityFqn, entityField)
-              )
-            : onThreadLinkSelect(
-                threadValue.entityLink,
-                ThreadType.Conversation
-              );
+
+          onThreadLinkSelect(entityLink);
         }}
       />
     </Tooltip>

@@ -115,6 +115,11 @@ const TeamsPage = () => {
     return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
   }, [activeTab, isGroupType]);
 
+  const hasViewPermission = useMemo(
+    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
+    [entityPermissions]
+  );
+
   const fetchPermissions = async (entityFqn: string) => {
     setIsPageLoading(true);
     try {
@@ -595,10 +600,7 @@ const TeamsPage = () => {
   }, [assets.currPage]);
 
   useEffect(() => {
-    if (
-      (entityPermissions.ViewAll || entityPermissions.ViewBasic) &&
-      currentFqn !== fqn
-    ) {
+    if (hasViewPermission && currentFqn !== fqn) {
       if (fqn) {
         fetchTeamBasicDetails(fqn, true);
       }
@@ -619,9 +621,7 @@ const TeamsPage = () => {
   }, [selectedTeam, currentTab]);
 
   useEffect(() => {
-    const hasPermission =
-      entityPermissions.ViewAll || entityPermissions.ViewBasic;
-    if (!isPageLoading && hasPermission && fqn) {
+    if (!isPageLoading && hasViewPermission && fqn) {
       fetchTeamAdvancedDetails(fqn);
       fetchAllTeamsBasicDetails(fqn);
     }
@@ -637,45 +637,48 @@ const TeamsPage = () => {
     return <Loader />;
   }
 
-  return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
-    <>
-      {isEmpty(selectedTeam) ? (
-        <ErrorPlaceHolder />
-      ) : (
-        <TeamDetailsV1
-          afterDeleteAction={afterDeleteAction}
-          assets={assets}
-          childTeams={allTeam}
-          currentTeam={selectedTeam}
-          currentTeamUserPage={currentUserPage}
-          currentTeamUsers={users}
-          descriptionHandler={descriptionHandler}
-          entityPermissions={entityPermissions}
-          handleAddTeam={handleAddTeam}
-          handleAddUser={addUsersToTeam}
-          handleCurrentUserPage={handleCurrentUserPage}
-          handleJoinTeamClick={handleJoinTeamClick}
-          handleLeaveTeamClick={handleLeaveTeamClick}
-          handleTeamUsersSearchAction={handleUsersSearchAction}
-          hasAccess={isAuthDisabled || isAdminUser}
-          isDescriptionEditable={isDescriptionEditable}
-          isFetchingAdvancedDetails={isFetchingAdvancedDetails}
-          isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
-          isTeamMemberLoading={isDataLoading}
-          parentTeams={parentTeams}
-          removeUserFromTeam={removeUserFromTeam}
-          showDeletedTeam={showDeletedTeam}
-          teamUserPaging={userPaging}
-          teamUserPagingHandler={userPagingHandler}
-          teamUsersSearchText={userSearchValue}
-          updateTeamHandler={updateTeamHandler}
-          onAssetsPaginate={handleAssetsPaginate}
-          onDescriptionUpdate={onDescriptionUpdate}
-          onShowDeletedTeamChange={toggleShowDeletedTeam}
-          onTeamExpand={fetchAllTeamsAdvancedDetails}
-        />
-      )}
+  if (!hasViewPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
+  if (isEmpty(selectedTeam)) {
+    return <ErrorPlaceHolder />;
+  }
+
+  return (
+    <>
+      <TeamDetailsV1
+        afterDeleteAction={afterDeleteAction}
+        assets={assets}
+        childTeams={allTeam}
+        currentTeam={selectedTeam}
+        currentTeamUserPage={currentUserPage}
+        currentTeamUsers={users}
+        descriptionHandler={descriptionHandler}
+        entityPermissions={entityPermissions}
+        handleAddTeam={handleAddTeam}
+        handleAddUser={addUsersToTeam}
+        handleCurrentUserPage={handleCurrentUserPage}
+        handleJoinTeamClick={handleJoinTeamClick}
+        handleLeaveTeamClick={handleLeaveTeamClick}
+        handleTeamUsersSearchAction={handleUsersSearchAction}
+        hasAccess={isAuthDisabled || isAdminUser}
+        isDescriptionEditable={isDescriptionEditable}
+        isFetchingAdvancedDetails={isFetchingAdvancedDetails}
+        isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
+        isTeamMemberLoading={isDataLoading}
+        parentTeams={parentTeams}
+        removeUserFromTeam={removeUserFromTeam}
+        showDeletedTeam={showDeletedTeam}
+        teamUserPaging={userPaging}
+        teamUserPagingHandler={userPagingHandler}
+        teamUsersSearchText={userSearchValue}
+        updateTeamHandler={updateTeamHandler}
+        onAssetsPaginate={handleAssetsPaginate}
+        onDescriptionUpdate={onDescriptionUpdate}
+        onShowDeletedTeamChange={toggleShowDeletedTeam}
+        onTeamExpand={fetchAllTeamsAdvancedDetails}
+      />
       <AddTeamForm
         isLoading={isLoading}
         visible={isAddingTeam}
@@ -683,8 +686,6 @@ const TeamsPage = () => {
         onSave={(data) => createNewTeam(data as Team)}
       />
     </>
-  ) : (
-    <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
   );
 };
 

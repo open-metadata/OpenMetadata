@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.SEARCH_SERVICE;
@@ -112,11 +111,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public SearchIndex setInheritedFields(SearchIndex searchIndex, Fields fields) {
     // If searchIndex does not have domain, then inherit it from parent messaging service
-    if (fields.contains(FIELD_DOMAIN) && searchIndex.getDomain() == null) {
-      SearchService service = Entity.getEntity(SEARCH_SERVICE, searchIndex.getService().getId(), "domain", ALL);
-      searchIndex.withDomain(service.getDomain());
-    }
-    return searchIndex;
+    SearchService service = Entity.getEntity(SEARCH_SERVICE, searchIndex.getService().getId(), "domain", ALL);
+    return inheritDomain(searchIndex, fields, service);
   }
 
   @Override

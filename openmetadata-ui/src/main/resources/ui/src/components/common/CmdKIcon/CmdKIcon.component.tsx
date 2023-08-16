@@ -19,7 +19,7 @@ import { NavigatorHelper } from '../../../utils/NavigatorUtils';
 
 const CmdKIcon = () => {
   return (
-    <div className="d-flex tw-items-center">
+    <div className="d-flex items-center">
       {NavigatorHelper.isMacOs() ? (
         <CmdButton
           style={{
