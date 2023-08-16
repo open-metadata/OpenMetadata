@@ -284,6 +284,10 @@ export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
   regionName: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
+export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
+  name: { 'ui:disabled': true },
+};
+
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [

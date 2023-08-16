@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FormSubmitType } from 'enums/form.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import {
   Pipeline,
@@ -118,6 +119,7 @@ export interface IngestionWorkflowFormProps {
   serviceCategory: ServiceCategory;
   workflowData: Pipeline;
   enableDebugLog: boolean;
+  operationType: FormSubmitType;
   className?: string;
   onCancel: () => void;
   onFocus: (fieldId: string) => void;
