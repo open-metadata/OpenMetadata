@@ -917,10 +917,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     const userOwnsService =
       AppState.userDetails.id === serviceDetails?.owner?.id;
 
-    const userInOwnerTeam =
+    const userInOwnerTeam = Boolean(
       AppState.userDetails.teams?.some(
         (team) => team.id === serviceDetails?.owner?.id
-      ) ?? false;
+      )
+    );
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
