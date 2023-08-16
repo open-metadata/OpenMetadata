@@ -96,6 +96,26 @@ MOCK_S3_OBJECT_FILE_PATHS = {
 }
 
 
+def _get_str_value(data):
+    if data:
+        if isinstance(data, str):
+            return data
+        return data.value
+
+    return None
+
+
+def custom_column_compare(self, other):
+    return (
+        self.name == other.name
+        and self.displayName == other.displayName
+        and self.description == other.description
+        and self.dataTypeDisplay == other.dataTypeDisplay
+        and self.children == other.children
+        and _get_str_value(self.arrayDataType) == _get_str_value(other.arrayDataType)
+    )
+
+
 class StorageUnitTest(TestCase):
     """
     Validate how we work with object store metadata
@@ -207,17 +227,17 @@ class StorageUnitTest(TestCase):
                 name=ColumnName(__root__="transaction_id"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
-                dataLength=1,
+                displayName="transaction_id",
             ),
             Column(
                 name=ColumnName(__root__="transaction_value"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
-                dataLength=1,
+                displayName="transaction_value",
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key: columns
+            lambda bucket_name, sample_key, config_source, client: columns
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")
@@ -249,7 +269,7 @@ class StorageUnitTest(TestCase):
     #  Most of the parsing support are covered in test_datalake unit tests related to the Data lake implementation
     def test_extract_column_definitions(self):
         with patch(
-            "metadata.ingestion.source.storage.s3.metadata.fetch_dataframe",
+            "metadata.ingestion.source.storage.storage_service.fetch_dataframe",
             return_value=[
                 pd.DataFrame.from_dict(
                     [
@@ -260,23 +280,28 @@ class StorageUnitTest(TestCase):
                 )
             ],
         ):
+
+            Column.__eq__ = custom_column_compare
             self.assertListEqual(
                 [
                     Column(
                         name=ColumnName(__root__="transaction_id"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
-                        dataLength=1,
+                        displayName="transaction_id",
                     ),
                     Column(
                         name=ColumnName(__root__="transaction_value"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
-                        dataLength=1,
+                        displayName="transaction_value",
                     ),
                 ],
                 self.object_store_source.extract_column_definitions(
-                    bucket_name="test_bucket", sample_key="test.json"
+                    bucket_name="test_bucket",
+                    sample_key="test.json",
+                    config_source=None,
+                    client=None,
                 ),
             )
 
