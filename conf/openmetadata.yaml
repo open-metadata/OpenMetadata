@@ -128,7 +128,8 @@ database:
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "./bootstrap/sql"
+  flywayPath: "./bootstrap/sql/migrations/flyway"
+  nativePath: "./bootstrap/sql/migrations/native"
 
 # Authorizer Configuration
 authorizerConfiguration:
