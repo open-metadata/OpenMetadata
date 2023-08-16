@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { ERROR_MESSAGE } from 'constants/constants';
-import { Domain } from 'generated/entity/domains/domain';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -25,6 +24,10 @@ import { getIsErrorMatch } from 'utils/CommonUtils';
 import { getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
+
+import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
+import { CreateDomain } from 'generated/api/domains/createDomain';
+import { DomainFormType } from '../DomainPage.interface';
 
 const AddDomain = () => {
   const { t } = useTranslation();
@@ -54,35 +57,31 @@ const AddDomain = () => {
     },
   ];
 
-  const onSave = useCallback(async (formData: Domain) => {
-    const updatedExperts =
-      formData.experts && formData.experts.map((item) => item.name);
-    const data = {
-      ...formData,
-      experts: updatedExperts,
-    };
-
-    setIsLoading(true);
-    try {
-      const res = await addDomains(data as Domain);
-      goToDomain(res.fullyQualifiedName ?? '');
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.domain'),
-              entityPlural: t('label.domain-lowercase-plural'),
-              name: data.name,
-            })
-          : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.domain-lowercase'),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const onSave = useCallback(
+    async (formData: CreateDomain | CreateDataProduct) => {
+      setIsLoading(true);
+      try {
+        const res = await addDomains(formData as CreateDomain);
+        goToDomain(res.fullyQualifiedName ?? '');
+      } catch (error) {
+        showErrorToast(
+          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+            ? t('server.entity-already-exist', {
+                entity: t('label.domain'),
+                entityPlural: t('label.domain-lowercase-plural'),
+                name: formData.name,
+              })
+            : (error as AxiosError),
+          t('server.add-entity-error', {
+            entity: t('label.domain-lowercase'),
+          })
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   const rightPanel = (
     <div data-testid="right-panel">
@@ -112,6 +111,7 @@ const AddDomain = () => {
               formRef={form}
               isFormInDialog={false}
               loading={isLoading}
+              type={DomainFormType.DOMAIN}
               onCancel={handleCancel}
               onSubmit={onSave}
             />

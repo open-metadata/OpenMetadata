@@ -12,66 +12,46 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Include } from 'generated/type/include';
-import { PagingResponse } from 'Models';
-
 import { Operation } from 'fast-json-patch';
-import { CreateDomain } from 'generated/api/domains/createDomain';
-import { Domain } from 'generated/entity/domains/domain';
+import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
+const BASE_URL = '/dataProducts';
 
-const BASE_URL = '/domains';
-
-export const getDomainList = async (params?: Params) => {
-  const response = await APIClient.get<PagingResponse<Domain[]>>(BASE_URL, {
-    params,
-  });
+export const addDataProducts = async (data: CreateDataProduct) => {
+  const response = await APIClient.post<
+    CreateDataProduct,
+    AxiosResponse<DataProduct>
+  >(BASE_URL, data);
 
   return response.data;
 };
 
-export const addDomains = async (data: CreateDomain) => {
-  const response = await APIClient.post<CreateDomain, AxiosResponse<Domain>>(
-    BASE_URL,
-    data
-  );
-
-  return response.data;
-};
-
-export const patchDomains = async (id: string, patch: Operation[]) => {
+export const patchDataProduct = async (id: string, patch: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<Domain>>(
-    `/domains/${id}`,
-    patch,
-    configOptions
-  );
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${id}`, patch, configOptions);
 
   return response.data;
 };
 
-export const getDomainByName = async (
+export const getDataProductByName = async (
   domainName: string,
   arrQueryFields: string | string[]
 ) => {
   const url = getURLWithQueryFields(
-    `/domains/name/${domainName}`,
+    `${BASE_URL}/name/${domainName}`,
     arrQueryFields
   );
 
-  const response = await APIClient.get<Domain>(url);
+  const response = await APIClient.get<DataProduct>(url);
 
   return response.data;
 };

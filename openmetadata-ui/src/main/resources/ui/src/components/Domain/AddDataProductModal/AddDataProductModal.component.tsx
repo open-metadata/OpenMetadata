@@ -24,17 +24,17 @@ interface props {
   open: boolean;
   data?: Domain;
   onCancel: () => void;
-  onSubmit: (data: CreateDomain) => Promise<void>;
+  onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
 }
 
-const AddSubDomainModal = ({ open, onSubmit, onCancel }: props) => {
+const AddDataProductModal = ({ open, onSubmit, onCancel }: props) => {
   const { t } = useTranslation();
   const [form] = useForm();
 
   const handleFormSubmit = async (
     formData: CreateDomain | CreateDataProduct
   ) => {
-    onSubmit(formData as CreateDomain);
+    onSubmit(formData);
   };
 
   return (
@@ -46,7 +46,7 @@ const AddSubDomainModal = ({ open, onSubmit, onCancel }: props) => {
           {t('label.cancel')}
         </Button>,
         <Button
-          data-testid="save-sub-domain"
+          data-testid="save-data-product"
           key="save-btn"
           type="primary"
           onClick={() => form.submit()}>
@@ -56,14 +56,14 @@ const AddSubDomainModal = ({ open, onSubmit, onCancel }: props) => {
       maskClosable={false}
       okText={t('label.submit')}
       open={open}
-      title={t('label.add-entity', { entity: t('label.sub-domain') })}
+      title={t('label.add-entity', { entity: t('label.data-product') })}
       width={750}
       onCancel={onCancel}>
       <AddDomainForm
         isFormInDialog
         formRef={form}
         loading={false}
-        type={DomainFormType.SUBDOMAIN}
+        type={DomainFormType.DATA_PRODUCT}
         onCancel={onCancel}
         onSubmit={handleFormSubmit}
       />
@@ -71,4 +71,4 @@ const AddSubDomainModal = ({ open, onSubmit, onCancel }: props) => {
   );
 };
 
-export default AddSubDomainModal;
+export default AddDataProductModal;

@@ -18,25 +18,25 @@ import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import {
-  Domain,
-  DomainType,
-  EntityReference,
-} from 'generated/entity/domains/domain';
+import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
+import { CreateDomain, DomainType } from 'generated/api/domains/createDomain';
 import { Operation } from 'generated/entity/policies/policy';
+import { EntityReference } from 'generated/entity/type';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { generateFormFields, getField } from 'utils/formUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
+import { DomainFormType } from '../DomainPage.interface';
 
 interface props {
   isFormInDialog: boolean;
   onCancel: () => void;
-  onSubmit: (data: Domain) => Promise<void>;
-  formRef: FormInstance<Domain>;
+  onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
+  formRef: FormInstance<CreateDomain | CreateDataProduct>;
   loading: boolean;
+  type: DomainFormType;
 }
 
 const AddDomainForm = ({
@@ -45,6 +45,7 @@ const AddDomainForm = ({
   onCancel,
   onSubmit,
   formRef: form,
+  type,
 }: props) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -103,7 +104,10 @@ const AddDomainForm = ({
         height: '170px',
       },
     },
-    {
+  ];
+
+  if (type === DomainFormType.DOMAIN) {
+    const domainTypeField: FieldProp = {
       name: 'domainType',
       required: true,
       label: t('label.domain-type'),
@@ -113,8 +117,10 @@ const AddDomainForm = ({
         'data-testid': 'domainType',
         options: domainTypeArray,
       },
-    },
-  ];
+    };
+
+    formFields.push(domainTypeField);
+  }
 
   const ownerField: FieldProp = {
     name: 'owner',
@@ -179,10 +185,18 @@ const AddDomainForm = ({
 
   const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
 
+  const handleFormSubmit = (formData: CreateDomain | CreateDataProduct) => {
+    const data = {
+      ...formData,
+      experts: expertsList.map((item) => item.name),
+    };
+    onSubmit(data as CreateDomain | CreateDataProduct);
+  };
+
   return (
     <>
       <div data-testid="add-domain">
-        <Form form={form} layout="vertical" onFinish={onSubmit}>
+        <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
           {generateFormFields(formFields)}
           <div className="m-t-xss">
             {getField(ownerField)}

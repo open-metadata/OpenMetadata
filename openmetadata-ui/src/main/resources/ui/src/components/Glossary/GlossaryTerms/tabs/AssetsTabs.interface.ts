@@ -10,15 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export enum DomainTabs {
-  DOCUMENTATION = 'documentation',
-  DATA_PRODUCTS = 'data_products',
-  ASSETS = 'assets',
-  SUBDOMAINS = 'subdomains',
-}
-
-export enum DomainFormType {
+export enum AssetsOfEntity {
+  GLOSSARY = 'GLOSSARY',
   DOMAIN = 'DOMAIN',
-  SUBDOMAIN = 'SUBDOMAIN',
-  DATA_PRODUCT = 'DATA_PRODUCT',
 }

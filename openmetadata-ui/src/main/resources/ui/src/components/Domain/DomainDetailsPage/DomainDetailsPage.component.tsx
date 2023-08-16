@@ -15,7 +15,9 @@ import { Button, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { AxiosError } from 'axios';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import { AssetsTabRef } from 'components/GlossaryTerms/tabs/AssetsTabs.component';
+import AssetsTabs, {
+  AssetsTabRef,
+} from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -26,6 +28,8 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
+import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
+import { CreateDomain } from 'generated/api/domains/createDomain';
 import { Domain } from 'generated/entity/domains/domain';
 import { noop } from 'lodash';
 import React, {
@@ -37,17 +41,19 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { addDataProducts } from 'rest/dataProductAPI';
 import { addDomains } from 'rest/domainAPI';
 import { getIsErrorMatch } from 'utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getDomainDetailsPath, getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import Fqn from '../../../utils/Fqn';
+import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
 import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
 import '../domain.less';
 import { DomainTabs } from '../DomainPage.interface';
+import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
 import DocumentationTab from '../DomainTabs/DocumentationTab/DocumentationTab.component';
-import DomainAssetsTabs from '../DomainTabs/DomainAssetsTab/DomainAssetsTabs.component';
 
 interface props {
   domain: Domain;
@@ -66,6 +72,7 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [showAddSubDomainModal, setShowAddSubDomainModal] = useState(false);
+  const [showAddDataProductModal, setShowAddDataProductModal] = useState(false);
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -109,17 +116,14 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
     },
   ];
 
-  const addSubDomain = useCallback(async (formData: Domain) => {
-    const updatedExperts =
-      formData.experts && formData.experts.map((item) => item.name);
+  const addSubDomain = useCallback(async (formData: CreateDomain) => {
     const data = {
       ...formData,
-      experts: updatedExperts,
       domain: fqn,
     };
 
     try {
-      await addDomains(data as Domain);
+      await addDomains(data as CreateDomain);
     } catch (error) {
       showErrorToast(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -138,10 +142,39 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
     }
   }, []);
 
+  const addDataProduct = useCallback(
+    async (formData: CreateDataProduct) => {
+      const data = {
+        ...formData,
+        domain: domain.name,
+      };
+
+      try {
+        await addDataProducts(data as CreateDataProduct);
+      } catch (error) {
+        showErrorToast(
+          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+            ? t('server.entity-already-exist', {
+                entity: t('label.sub-domain'),
+                entityPlural: t('label.sub-domain-lowercase-plural'),
+                name: data.name,
+              })
+            : (error as AxiosError),
+          t('server.add-entity-error', {
+            entity: t('label.sub-domain-lowercase'),
+          })
+        );
+      } finally {
+        setShowAddSubDomainModal(false);
+      }
+    },
+    [domain]
+  );
+
   const fetchDomainPermission = async () => {
     try {
       const response = await getEntityPermission(
-        ResourceEntity.GLOSSARY_TERM,
+        ResourceEntity.DOMAIN,
         domain.id as string
       );
       setDomainPermission(response);
@@ -155,6 +188,10 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
       history.push(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
+
+  const onAddDataProduct = useCallback(() => {
+    setShowAddDataProductModal(true);
+  }, []);
 
   const tabs = useMemo(() => {
     return [
@@ -176,7 +213,12 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
           />
         ),
         key: DomainTabs.DATA_PRODUCTS,
-        children: <></>,
+        children: (
+          <DataProductsTab
+            permissions={domainPermission}
+            onAddDataProduct={onAddDataProduct}
+          />
+        ),
       },
       {
         label: (
@@ -184,12 +226,11 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
         ),
         key: DomainTabs.ASSETS,
         children: (
-          <DomainAssetsTabs
-            isSummaryPanelOpen
+          <AssetsTabs
+            isSummaryPanelOpen={false}
             permissions={domainPermission}
             ref={assetTabRef}
             onAddAsset={noop}
-            onAssetClick={noop}
           />
         ),
       },
@@ -270,7 +311,14 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
       <AddSubDomainModal
         open={showAddSubDomainModal}
         onCancel={() => setShowAddSubDomainModal(false)}
-        onSubmit={(data: Domain) => addSubDomain(data)}
+        onSubmit={(data: CreateDomain) => addSubDomain(data)}
+      />
+      <AddDataProductModal
+        open={showAddDataProductModal}
+        onCancel={() => setShowAddDataProductModal(false)}
+        onSubmit={(data: CreateDomain | CreateDataProduct) =>
+          addDataProduct(data as CreateDataProduct)
+        }
       />
     </>
   );
