@@ -183,6 +183,26 @@ public class SearchResource {
   }
 
   @GET
+  @Path("/sourceUrl")
+  @Operation(
+      operationId = "searchEntitiesWithSourceUrl",
+      summary = "Search entities",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchBySourceUrl(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
+      throws IOException {
+
+    return searchClient.searchBySourceUrl(sourceUrl);
+  }
+
+  @GET
   @Path("/suggest")
   @Operation(
       operationId = "getSuggestedEntities",
