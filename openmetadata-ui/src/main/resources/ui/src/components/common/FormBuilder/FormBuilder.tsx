@@ -27,7 +27,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
-import { customValidate, transformErrors } from 'utils/formUtils';
+import { transformErrors } from 'utils/formUtils';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import Loader from '../../Loader/Loader';
@@ -114,7 +114,6 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
-      customValidate={customValidate}
       formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
