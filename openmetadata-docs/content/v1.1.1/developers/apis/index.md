@@ -242,3 +242,7 @@ DELETE http://localhost:8585/api/v1/users/6feb5287-f3c5-457f-86ae-95bcfb82e867
 ```
 200 OK
 ```
+
+OpenMetadata supports the following additional options in delete for some entities:
+* Some entities that have a lot of user generated metadata and deletion could cause permanent loss of valuable information. To prevent that, some entities such as `Table` allow a query param `hardDelete` which can be set to `true` or `false` (default value). When `hardDelete` is set to `false`, the entity is **soft-deleted**. It can be restored using the restore API corresponding to the entity. An entity can be hard-deleted by passing the query param `hardDelete` set to `true`. During hard-delete, the entity and all the relationships that it is part of are permanently deleted.
+* Some entities that are hierarchical support recursive delete (both soft and hard). For such entities, in delete operation, you can pass the query param `recursive` set to `true`. For example, recursively deleting a database service, will result in deletion of databases, database schemas, and tables under it. If an entity is recursively soft-deleted, it can be restored using restore API.
