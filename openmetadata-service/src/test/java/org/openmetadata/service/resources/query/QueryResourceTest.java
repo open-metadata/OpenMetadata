@@ -165,6 +165,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
     patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
     updatedQuery.setQuery("select * from table1");
     updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
     change = getChangeDescription(query.getVersion());

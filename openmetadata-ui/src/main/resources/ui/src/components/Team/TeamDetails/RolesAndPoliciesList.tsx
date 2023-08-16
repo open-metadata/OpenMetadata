@@ -64,7 +64,7 @@ const ListEntities = ({
 
           return (
             <Link
-              className="hover:tw-underline tw-cursor-pointer"
+              className="cursor-pointer"
               data-testid="entity-name"
               to={link}>
               {getEntityName(record)}

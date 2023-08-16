@@ -83,9 +83,7 @@ const NextPrevious: FC<Prop> = ({
   }, [currentPage]);
 
   return (
-    <div
-      className="tw-my-4 d-flex tw-justify-center tw-items-center tw-gap-2"
-      data-testid="pagination">
+    <div className="flex-center gap-3" data-testid="pagination">
       <Button
         ghost
         className="hover-button text-sm flex-center"
@@ -96,9 +94,7 @@ const NextPrevious: FC<Prop> = ({
         onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
       </Button>
-      <span
-        className="tw-px-2"
-        data-testid="page-indicator">{`${activePage}/${computeTotalPages(
+      <span data-testid="page-indicator">{`${activePage}/${computeTotalPages(
         pageSize,
         totalCount
       )} Page`}</span>
