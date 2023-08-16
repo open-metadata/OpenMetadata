@@ -26,7 +26,6 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.Entity.ROLE;
@@ -51,7 +50,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -67,12 +65,11 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.TeamResource;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
@@ -88,29 +85,33 @@ public class TeamRepository extends EntityRepository<Team> {
 
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
+    this.quoteFqn = true;
   }
 
   @Override
   public Team setFields(Team team, Fields fields) {
-    if (!fields.contains("profile")) {
-      team.setProfile(null); // Clear the profile attribute, if it was not requested
-    }
-    team.setUsers(fields.contains("users") ? getUsers(team) : null);
-    team.setOwns(fields.contains("owns") ? getOwns(team) : null);
-    team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : null);
-    team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? getInheritedRoles(team) : null);
-    team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
-    team.setParents(fields.contains(PARENTS_FIELD) ? getParents(team) : null);
-    team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
-    team.setPolicies(fields.contains("policies") ? getPolicies(team) : null);
-    team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : null);
-    team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : null);
+    team.setUsers(fields.contains("users") ? getUsers(team) : team.getUsers());
+    team.setOwns(fields.contains("owns") ? getOwns(team) : team.getOwns());
+    team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : team.getDefaultRoles());
+    team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? getInheritedRoles(team) : team.getInheritedRoles());
+    team.setParents(fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents());
+    team.setPolicies(fields.contains("policies") ? getPolicies(team) : team.getPolicies());
+    team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
+    team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
     return team;
   }
 
   @Override
-  public Team getByName(UriInfo uriInfo, String name, Fields fields) {
-    return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
+  public Team clearFields(Team team, Fields fields) {
+    team.setProfile(fields.contains("profile") ? team.getProfile() : null);
+    team.setUsers(fields.contains("users") ? team.getUsers() : null);
+    team.setOwns(fields.contains("owns") ? team.getOwns() : null);
+    team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? team.getDefaultRoles() : null);
+    team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? team.getInheritedRoles() : null);
+    team.setParents(fields.contains(PARENTS_FIELD) ? team.getParents() : null);
+    team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
+    team.setChildrenCount(fields.contains("childrenCount") ? team.getChildrenCount() : null);
+    return team.withUserCount(fields.contains("userCount") ? team.getUserCount() : null);
   }
 
   @Override
@@ -139,12 +140,14 @@ public class TeamRepository extends EntityRepository<Team> {
     List<EntityReference> policies = team.getPolicies();
 
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null).withDefaultRoles(null).withInheritedRoles(null);
+    team.withUsers(null)
+        .withDefaultRoles(null)
+        .withParents(null)
+        .withChildren(null)
+        .withPolicies(null)
+        .withInheritedRoles(null);
 
     store(team, update);
-    if (update) {
-      SubjectCache.invalidateTeam(team.getId());
-    }
 
     // Restore the relationships
     team.withUsers(users)
@@ -204,8 +207,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected void cleanup(Team team) {
-    // When a parent team is deleted, if the children team don't have a parent, set Organization as the parent
-    getParents(team);
+    // When a team is deleted, if the children team don't have another parent, set Organization as the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
       Team childTeam = dao.findEntityById(child.getId());
       getParents(childTeam);
@@ -215,7 +217,6 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
     super.cleanup(team);
-    SubjectCache.invalidateTeam(team.getId());
   }
 
   @Override
@@ -232,7 +233,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getInheritedRoles(Team team) {
-    return SubjectCache.getRolesForTeams(getParentsForInheritedRoles(team));
+    return SubjectContext.getRolesForTeams(getParentsForInheritedRoles(team));
   }
 
   private TeamHierarchy getTeamHierarchy(Team team) {
@@ -391,7 +392,12 @@ public class TeamRepository extends EntityRepository<Team> {
     return parents;
   }
 
-  private List<EntityReference> getChildren(UUID teamId) {
+  @Override
+  protected List<EntityReference> getChildren(Team team) {
+    return getChildren(team.getId());
+  }
+
+  protected List<EntityReference> getChildren(UUID teamId) {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
@@ -400,7 +406,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getChildrenCount(Team team) {
-    return getChildren(team.getId()).size();
+    return !nullOrEmpty(team.getChildren()) ? team.getChildren().size() : getChildren(team).size();
   }
 
   private List<EntityReference> getPolicies(Team team) {
@@ -619,7 +625,7 @@ public class TeamRepository extends EntityRepository<Team> {
           continue; // Parent is being created by CSV import
         }
         // Else the parent should already exist
-        if (!SubjectCache.isInTeam(team.getName(), parentRef)) {
+        if (!SubjectContext.isInTeam(team.getName(), parentRef)) {
           importFailure(
               printer, invalidTeam(4, team.getName(), importedTeam.getName(), parentRef.getName()), csvRecord);
           processRecord = false;

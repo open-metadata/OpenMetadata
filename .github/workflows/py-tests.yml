@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py-version: ['3.7', '3.8', '3.9', '3.10']
+        py-version: ['3.8', '3.9', '3.10']
     steps:
 
     - name: Wait for the labeler

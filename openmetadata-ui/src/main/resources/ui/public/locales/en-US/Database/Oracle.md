@@ -73,6 +73,7 @@ Connect with oracle by either passing service name or database schema name.
 
 - **Database Schema**: Using a database schema name when connecting to an Oracle database allows the user to access only the objects within that schema, rather than the entire database.
 - **Oracle Service Name**: Oracle Service Name is a unique identifier for a database instance or group of instances that perform a particular function.
+- **Oracle TNS Connection**: You can directly use the TNS connection string, e.g., `(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))`.
 $$
 
 $$section
@@ -85,6 +86,14 @@ $$section
 ### Database Schema $(id="databaseSchema")
 
 The name of the Database Schema available in Oracle that you want to connect with.
+$$
+
+$$section
+### Oracle TNS Connection $(id="oracleTNSConnection")
+
+TNS connection string you would set in `tnsnames.ora`, e.g., `(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))`.
+
+Note that if this is informed, we will ignore the `hostPort` property, so you should make sure that the `HOST` entry is present here.
 $$
 
 $$section

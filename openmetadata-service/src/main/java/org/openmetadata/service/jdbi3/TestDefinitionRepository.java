@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -22,7 +21,12 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) {
-    return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
+    return entity; // Nothing to set
+  }
+
+  @Override
+  public TestDefinition clearFields(TestDefinition entity, EntityUtil.Fields fields) {
+    return entity; // Nothing to set
   }
 
   @Override

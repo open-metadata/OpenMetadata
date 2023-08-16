@@ -24,9 +24,9 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -70,14 +70,14 @@ public class AlertsRuleEvaluator {
     EntityReference ownerReference = entity.getOwner();
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
-        User user = SubjectCache.getSubjectContext(ownerReference.getId()).getUser();
+        User user = Entity.getEntity(Entity.USER, ownerReference.getId(), "", Include.NON_DELETED);
         for (String name : ownerNameList) {
           if (user.getName().equals(name)) {
             return true;
           }
         }
       } else if (TEAM.equals(ownerReference.getType())) {
-        Team team = SubjectCache.getTeam(ownerReference.getId());
+        Team team = Entity.getEntity(Entity.TEAM, ownerReference.getId(), "", Include.NON_DELETED);
         for (String name : ownerNameList) {
           if (team.getName().equals(name)) {
             return true;

@@ -14,57 +14,24 @@ Module to define helper methods for datalake and to fetch data and metadata
 from different auths and different file systems.
 """
 
+from typing import List, Optional
 
-from enum import Enum
-from typing import Optional
-
-from metadata.ingestion.source.database.datalake.models import (
+from metadata.readers.dataframe.models import (
+    DatalakeColumnWrapper,
     DatalakeTableSchemaWrapper,
 )
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
-from metadata.utils.datalake.avro_dispatch import read_avro_dispatch
-from metadata.utils.datalake.csv_tsv_dispatch import (
-    read_csv_dispatch,
-    read_tsv_dispatch,
-)
-from metadata.utils.datalake.json_dispatch import read_json_dispatch
-from metadata.utils.datalake.parquet_dispatch import read_parquet_dispatch
+from metadata.readers.dataframe.reader_factory import SupportedTypes, get_reader
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 
-class FileFormatDispatchMap:
-    @classmethod
-    def fetch_dispatch(cls):
-        return {
-            SupportedTypes.CSV: read_csv_dispatch,
-            SupportedTypes.TSV: read_tsv_dispatch,
-            SupportedTypes.AVRO: read_avro_dispatch,
-            SupportedTypes.PARQUET: read_parquet_dispatch,
-            SupportedTypes.JSON: read_json_dispatch,
-            SupportedTypes.JSONGZ: read_json_dispatch,
-            SupportedTypes.JSONZIP: read_json_dispatch,
-        }
-
-
-class SupportedTypes(Enum):
-    CSV = "csv"
-    TSV = "tsv"
-    AVRO = "avro"
-    PARQUET = "parquet"
-    JSON = "json"
-    JSONGZ = "json.gz"
-    JSONZIP = "json.zip"
-
-    @property
-    def return_dispatch(self):
-        return FileFormatDispatchMap.fetch_dispatch().get(self)
-
-
 def fetch_dataframe(
-    config_source, client, file_fqn: DatalakeTableSchemaWrapper, **kwargs
-) -> Optional["DataFrame"]:
+    config_source,
+    client,
+    file_fqn: DatalakeTableSchemaWrapper,
+    **kwargs,
+) -> Optional[List["DataFrame"]]:
     """
     Method to get dataframe for profiling
     """
@@ -73,34 +40,25 @@ def fetch_dataframe(
     bucket_name: str = file_fqn.bucket_name
 
     try:
-        for supported_types_enum in SupportedTypes:
-            if key.endswith(supported_types_enum.value):
-                return supported_types_enum.return_dispatch(
-                    config_source,
-                    key=key,
-                    bucket_name=bucket_name,
+        for supported_type in SupportedTypes:
+            if key.endswith(supported_type.value):
+
+                df_reader = get_reader(
+                    type_=supported_type,
+                    config_source=config_source,
                     client=client,
-                    **kwargs,
                 )
+
+                df_wrapper: DatalakeColumnWrapper = df_reader.read(
+                    key=key, bucket_name=bucket_name, **kwargs
+                )
+                return df_wrapper.dataframes
+
     except Exception as err:
         logger.error(
-            f"Error fetching file {bucket_name}/{key} using {config_source.__class__.__name__} due to: {err}"
+            f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
         raise err
 
     return None
-
-
-def _get_root_col(col_name: str) -> str:
-    return col_name.split(COMPLEX_COLUMN_SEPARATOR)[1]
-
-
-def clean_dataframe(df):
-    all_complex_root_columns = set(
-        _get_root_col(col) for col in df if COMPLEX_COLUMN_SEPARATOR in col
-    )
-    for complex_col in all_complex_root_columns:
-        if complex_col in df.columns:
-            df = df.drop(complex_col, axis=1)
-    return df
