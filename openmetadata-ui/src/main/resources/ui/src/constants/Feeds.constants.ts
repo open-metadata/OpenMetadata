@@ -76,6 +76,8 @@ export enum EntityField {
   DATA_MODEL = 'dataModel',
   CONSTRAINT = 'constraint',
   TABLE_CONSTRAINTS = 'tableConstraints',
+  PARTITIONS = 'partitions',
+  REPLICATION_FACTOR = 'replicationFactor',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

@@ -25,4 +25,5 @@ export interface DataAssetsVersionHeaderProps {
   tierDisplayName: React.ReactNode;
   ownerRef: EntityReference | undefined;
   onVersionClick: () => void;
+  extraInfo?: React.ReactNode;
 }

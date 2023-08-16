@@ -190,7 +190,11 @@ export const getEntityVersionByField = (
   const oldField = getChangedEntityOldValue(fieldDiff);
   const newField = getChangedEntityNewValue(fieldDiff);
 
-  return getTextDiff(oldField ?? '', newField, fallbackText);
+  return getTextDiff(
+    toString(oldField) ?? '',
+    toString(newField),
+    toString(fallbackText)
+  );
 };
 
 export const getTagsDiff = (

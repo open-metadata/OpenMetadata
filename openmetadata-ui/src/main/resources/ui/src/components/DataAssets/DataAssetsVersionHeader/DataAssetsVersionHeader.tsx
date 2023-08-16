@@ -17,10 +17,35 @@ import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { isEmpty } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { stringToHTML } from 'utils/StringsUtils';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
+
+export const VersionExtraInfoLabel = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <Space align="center">
+      <Typography.Text className="self-center text-xs whitespace-nowrap">
+        {!isEmpty(label) && (
+          <span className="text-grey-muted">{`${label}: `}</span>
+        )}
+      </Typography.Text>
+
+      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+        {stringToHTML(value)}
+      </Typography.Text>
+    </Space>
+  </>
+);
 
 function DataAssetsVersionHeader({
   breadcrumbLinks,
@@ -32,6 +57,7 @@ function DataAssetsVersionHeader({
   tierDisplayName,
   ownerRef,
   onVersionClick,
+  extraInfo,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
 
@@ -79,6 +105,7 @@ function DataAssetsVersionHeader({
                   </span>
                 )}
               </Space>
+              {extraInfo}
             </div>
           </Col>
         </Row>
