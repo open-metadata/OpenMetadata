@@ -47,6 +47,23 @@ export const VersionExtraInfoLabel = ({
   </>
 );
 
+export const VersionExtraInfoLink = ({
+  value,
+  href,
+}: {
+  value: string;
+  href?: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <div className="d-flex items-center text-xs">
+      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+        {stringToHTML(value)}
+      </Typography.Link>
+    </div>
+  </>
+);
+
 function DataAssetsVersionHeader({
   breadcrumbLinks,
   version,

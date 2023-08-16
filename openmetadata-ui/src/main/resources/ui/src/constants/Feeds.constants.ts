@@ -78,6 +78,7 @@ export enum EntityField {
   TABLE_CONSTRAINTS = 'tableConstraints',
   PARTITIONS = 'partitions',
   REPLICATION_FACTOR = 'replicationFactor',
+  SOURCE_URL = 'sourceUrl',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';
