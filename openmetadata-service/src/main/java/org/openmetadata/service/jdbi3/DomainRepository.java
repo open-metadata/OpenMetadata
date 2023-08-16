@@ -14,6 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -30,14 +33,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
   public DomainRepository(CollectionDAO dao) {
-    super(
-        DomainResource.COLLECTION_PATH,
-        Entity.DOMAIN,
-        Domain.class,
-        dao.domainDAO(),
-        dao,
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+    super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
@@ -60,20 +56,31 @@ public class DomainRepository extends EntityRepository<Domain> {
   public void storeEntity(Domain entity, boolean update) {
     EntityReference parent = entity.getParent();
     List<EntityReference> children = entity.getChildren();
-    List<EntityReference> experts = entity.getExperts();
-    entity.withParent(null).withChildren(null).withExperts(null);
+    entity.withParent(null);
     store(entity, update);
-    entity.withParent(parent).withChildren(children).withExperts(experts);
+    entity.withParent(parent);
   }
 
   @Override
   public void storeRelationships(Domain entity) {
     if (entity.getParent() != null) {
-      addRelationship(entity.getParent().getId(), entity.getId(), Entity.DOMAIN, Entity.DOMAIN, Relationship.CONTAINS);
+      addRelationship(entity.getParent().getId(), entity.getId(), DOMAIN, DOMAIN, Relationship.CONTAINS);
     }
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
-      addRelationship(entity.getId(), expert.getId(), Entity.DOMAIN, Entity.USER, Relationship.EXPERT);
+      addRelationship(entity.getId(), expert.getId(), DOMAIN, Entity.USER, Relationship.EXPERT);
     }
+  }
+
+  @Override
+  public Domain setInheritedFields(Domain domain, Fields fields) {
+    // If subdomain does not have owner and experts, then inherit it from parent domain
+    EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
+    if (parentRef != null) {
+      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owner,experts", ALL);
+      inheritOwner(domain, fields, parent);
+      inheritExperts(domain, fields, parent);
+    }
+    return domain;
   }
 
   @Override
@@ -112,8 +119,8 @@ public class DomainRepository extends EntityRepository<Domain> {
       List<EntityReference> origExperts = listOrEmpty(original.getExperts());
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(
-          "experts",
-          Entity.DOMAIN,
+          FIELD_EXPERTS,
+          DOMAIN,
           original.getId(),
           Relationship.EXPERT,
           Entity.USER,

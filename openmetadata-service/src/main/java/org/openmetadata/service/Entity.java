@@ -72,9 +72,13 @@ public final class Entity {
   public static final String FIELD_DISPLAY_NAME = "displayName";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
+  public static final String FIELD_CHILDREN = "children";
+  public static final String FIELD_PARENT = "parent";
   public static final String FIELD_REVIEWERS = "reviewers";
+  public static final String FIELD_EXPERTS = "experts";
   public static final String FIELD_DOMAIN = "domain";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
+  public static final String FIELD_ASSETS = "assets";
 
   //
   // Service entities
@@ -86,6 +90,7 @@ public final class Entity {
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
+  public static final String SEARCH_SERVICE = "searchService";
   //
   // Data asset entities
   //
@@ -99,6 +104,7 @@ public final class Entity {
   public static final String CHART = "chart";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
+  public static final String SEARCH_INDEX = "searchIndex";
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";

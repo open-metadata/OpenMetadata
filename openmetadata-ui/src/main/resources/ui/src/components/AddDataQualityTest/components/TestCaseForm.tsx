@@ -308,7 +308,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       </Form.Item>
 
       <Form.Item noStyle>
-        <Space className="tw-w-full tw-justify-end" size={16}>
+        <Space className="w-full justify-end" size={16}>
           <Button onClick={onBack}>{t('label.back')}</Button>
           <Button data-testid="submit-test" htmlType="submit" type="primary">
             {t('label.submit')}

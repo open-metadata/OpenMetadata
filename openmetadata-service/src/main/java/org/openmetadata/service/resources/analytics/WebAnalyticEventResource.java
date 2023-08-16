@@ -43,7 +43,6 @@ import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -52,7 +51,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -65,13 +63,6 @@ import org.openmetadata.service.util.ResultList;
 public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
-
-  @Override
-  public WebAnalyticEvent addHref(UriInfo uriInfo, WebAnalyticEvent entity) {
-    entity.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, entity.getId()));
-    Entity.withHref(uriInfo, entity.getOwner());
-    return entity;
-  }
 
   public WebAnalyticEventResource(CollectionDAO dao, Authorizer authorizer) {
     super(WebAnalyticEvent.class, new WebAnalyticEventRepository(dao), authorizer);

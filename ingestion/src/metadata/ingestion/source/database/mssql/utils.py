@@ -166,7 +166,7 @@ def get_columns(
             identity_cols.c.is_identity,
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
-            extended_properties.c.value,
+            sql.cast(extended_properties.c.value, NVARCHAR(4000)).label("comment"),
         )
         .where(whereclause)
         .select_from(join)
@@ -192,7 +192,7 @@ def get_columns(
         is_identity = row[identity_cols.c.is_identity]
         identity_start = row[identity_cols.c.seed_value]
         identity_increment = row[identity_cols.c.increment_value]
-        comment = row[extended_properties.c.value]
+        comment = row["comment"]
 
         coltype = self.ischema_names.get(type_, None)
 

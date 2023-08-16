@@ -526,7 +526,7 @@ public class MigrationUtil {
     List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
 
     for (TestSuite testSuiteRecord : testSuites) {
-      TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId());
+      TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId(), Include.ALL);
       if (Boolean.FALSE.equals(temp.getExecutable())) {
         temp.setExecutable(false);
         testSuiteRepository.getDao().update(temp);

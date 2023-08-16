@@ -19,7 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -146,28 +145,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public Table setInheritedFields(Table table, Fields fields) {
-    DatabaseSchema schema = null;
-    UUID schemaId = table.getDatabaseSchema().getId();
-    // If table does not have owner, then inherit it from parent databaseSchema
-    if (fields.contains(FIELD_OWNER) && table.getOwner() == null) {
-      schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "owner,domain", ALL);
-      table.withOwner(schema.getOwner());
-    }
-
-    // If table does not have domain, then inherit it from parent databaseSchema
-    if (fields.contains(FIELD_DOMAIN) && table.getDomain() == null) {
-      if (schema == null) {
-        schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "domain", ALL);
-      }
-      table.withDomain(schema.getDomain());
-    }
-
+    DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner,domain", ALL);
+    inheritOwner(table, fields, schema);
+    inheritDomain(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
-    if (table.getRetentionPeriod() == null) {
-      schema = schema == null ? Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "", ALL) : schema;
-      table.withRetentionPeriod(schema.getRetentionPeriod());
-    }
-    return table;
+    return table.withRetentionPeriod(
+        table.getRetentionPeriod() == null ? schema.getRetentionPeriod() : table.getRetentionPeriod());
   }
 
   private void setDefaultFields(Table table) {

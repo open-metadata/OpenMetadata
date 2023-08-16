@@ -83,6 +83,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @Override
   public Role addHref(UriInfo uriInfo, Role role) {
+    super.addHref(uriInfo, role);
     Entity.withHref(uriInfo, role.getPolicies());
     Entity.withHref(uriInfo, role.getTeams());
     Entity.withHref(uriInfo, role.getUsers());

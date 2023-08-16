@@ -83,7 +83,7 @@ const FeedCardBodyV1 = ({
 
   return (
     <div className={classNames('feed-card-body', isEditPost ? '' : className)}>
-      <div className="feed-meesage">
+      <div className="feed-message">
         {!isUndefined(announcement) ? (
           <>
             <Row>

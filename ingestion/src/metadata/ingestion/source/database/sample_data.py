@@ -34,6 +34,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createSearchIndex import (
+    CreateSearchIndexRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -77,6 +80,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -458,6 +462,34 @@ class SampleDataSource(
             )
         )
 
+        self.storage_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/storage/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.search_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.search_service = self.metadata.get_service_or_create(
+            entity=SearchService,
+            config=WorkflowSource(**self.search_service_json),
+        )
+
+        self.search_indexes = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/searchIndexes.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -487,6 +519,7 @@ class SampleDataSource(
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
         yield from self.ingest_containers()
+        yield from self.ingest_search_indexes()
         yield from self.ingest_profiles()
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
@@ -706,6 +739,30 @@ class SampleDataSource(
                     topic=topic_entity,
                     sample_data=TopicSampleData(messages=topic["sampleData"]),
                 )
+
+    def ingest_search_indexes(self) -> Iterable[CreateSearchIndexRequest]:
+        """
+        Ingest Sample SearchIndexes
+        """
+        for search_index in self.search_indexes["searchIndexes"]:
+            search_index["service"] = EntityReference(
+                id=self.search_service.id, type="searchService"
+            )
+            create_search_index = CreateSearchIndexRequest(
+                name=search_index["name"],
+                description=search_index["description"],
+                displayName=search_index["displayName"],
+                tags=search_index["tags"],
+                fields=search_index["fields"],
+                service=self.search_service.fullyQualifiedName,
+            )
+
+            self.status.scanned(
+                f"SearchIndex Scanned: {create_search_index.name.__root__}"
+            )
+            yield create_search_index
+
+            # TODO: Add search index sample data
 
     def ingest_looker(self) -> Iterable[Entity]:
         """

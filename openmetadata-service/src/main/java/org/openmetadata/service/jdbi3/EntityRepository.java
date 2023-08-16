@@ -22,14 +22,17 @@ import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_CHILDREN;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
 import static org.openmetadata.service.Entity.USER;
@@ -681,9 +684,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : entity.getDomain());
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
-    entity.setChildren(fields.contains("children") ? getChildren(entity) : entity.getChildren());
-    entity.setExperts(fields.contains("experts") ? getExperts(entity) : entity.getExperts());
-    entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : entity.getReviewers());
+    entity.setChildren(fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
+    entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
+    entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
     setFields(entity, fields);
     return entity;
   }
@@ -695,9 +698,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
-    entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
-    entity.setExperts(fields.contains("experts") ? entity.getExperts() : null);
-    entity.setReviewers(fields.contains("reviewers") ? entity.getReviewers() : null);
+    entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
+    entity.setExperts(fields.contains(FIELD_EXPERTS) ? entity.getExperts() : null);
+    entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? entity.getReviewers() : null);
     clearFields(entity, fields);
     return entity;
   }
@@ -1032,6 +1035,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.withHref(null);
     EntityReference owner = entity.getOwner();
     entity.setOwner(null);
+    List<EntityReference> children = entity.getChildren();
+    entity.setChildren(null);
     List<TagLabel> tags = entity.getTags();
     entity.setTags(null);
     EntityReference domain = entity.getDomain();
@@ -1040,6 +1045,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setDataProducts(null);
     List<EntityReference> followers = entity.getFollowers();
     entity.setFollowers(null);
+    List<EntityReference> experts = entity.getExperts();
+    entity.setExperts(null);
 
     if (update) {
       dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
@@ -1052,10 +1059,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Restore the relationships
     entity.setOwner(owner);
+    entity.setChildren(children);
     entity.setTags(tags);
     entity.setDomain(domain);
     entity.setDataProducts(dataProducts);
     entity.setFollowers(followers);
+    entity.setExperts(experts);
   }
 
   protected void storeTimeSeries(
@@ -1340,8 +1349,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
     updater.update();
-    String change = updater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
-    return new PutResponse<>(Status.OK, updated, change);
+    return new PutResponse<>(Status.OK, updated, RestUtil.ENTITY_RESTORED);
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
@@ -1535,6 +1543,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public EntityReference getOwner(EntityReference ref) {
     return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+  }
+
+  public T inheritDomain(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_DOMAIN) && entity.getDomain() == null) {
+      entity.setDomain(parent.getDomain());
+    }
+    return entity;
+  }
+
+  public T inheritOwner(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_OWNER) && entity.getOwner() == null) {
+      entity.setOwner(parent.getOwner());
+    }
+    return entity;
+  }
+
+  public T inheritExperts(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts())) {
+      entity.setExperts(parent.getExperts());
+    }
+    return entity;
+  }
+
+  public T inheritReviewers(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(entity.getReviewers())) {
+      entity.setReviewers(parent.getReviewers());
+    }
+    return entity;
   }
 
   protected void populateOwner(EntityReference owner) {
@@ -1740,6 +1776,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateTags(updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
         updateDomain();
         updateDataProducts();
+        updateExperts();
         entitySpecificUpdate();
       }
 
@@ -1905,13 +1942,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       updateFromRelationships(
-          "dataProducts",
+          FIELD_DATA_PRODUCTS,
           DATA_PRODUCT,
           origDataProducts,
           updatedDataProducts,
           Relationship.HAS,
           entityType,
           original.getId());
+    }
+
+    private void updateExperts() {
+      List<EntityReference> origExperts = listOrEmpty(original.getExperts());
+      List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
+      updateToRelationships(
+          FIELD_EXPERTS,
+          Entity.DATA_PRODUCT,
+          original.getId(),
+          Relationship.EXPERT,
+          Entity.USER,
+          origExperts,
+          updatedExperts,
+          false);
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -2002,6 +2053,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         BiPredicate<K, K> typeMatch) {
       origList = listOrEmpty(origList);
       updatedList = listOrEmpty(updatedList);
+      List<K> updatedItems = new ArrayList<>();
+
       for (K stored : origList) {
         // If an entry in the original list is not in updated list, then it is deleted during update
         K u = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
@@ -2015,10 +2068,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         K stored = origList.stream().filter(c -> typeMatch.test(c, U)).findAny().orElse(null);
         if (stored == null) { // New entry added
           addedItems.add(U);
+        } else if (!typeMatch.test(stored, U)) {
+          updatedItems.add(U);
         }
       }
       if (!addedItems.isEmpty()) {
         fieldAdded(changeDescription, field, JsonUtils.pojoToJson(addedItems));
+      }
+      if (!updatedItems.isEmpty()) {
+        fieldUpdated(changeDescription, field, JsonUtils.pojoToJson(origList), JsonUtils.pojoToJson(updatedItems));
       }
       if (!deletedItems.isEmpty()) {
         fieldDeleted(changeDescription, field, JsonUtils.pojoToJson(deletedItems));

@@ -33,7 +33,6 @@ const MlModelFeaturesList = ({
   permissions,
   isDeleted,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }: MlModelFeaturesListProp) => {
   const { t } = useTranslation();
@@ -156,7 +155,6 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            entityFieldThreads={entityFieldThreads}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
@@ -182,7 +180,6 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            entityFieldThreads={entityFieldThreads}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
@@ -211,7 +208,6 @@ const MlModelFeaturesList = ({
                               fqn: feature.fullyQualifiedName ?? '',
                               field: feature.description,
                             }}
-                            entityFieldThreads={entityFieldThreads}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             hasEditPermission={

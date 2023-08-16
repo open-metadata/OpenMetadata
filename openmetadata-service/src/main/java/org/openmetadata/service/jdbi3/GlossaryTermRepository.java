@@ -17,10 +17,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -36,6 +33,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -84,45 +82,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public GlossaryTerm setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
-    Glossary glossary = null;
-    GlossaryTerm parentTerm = null;
-    if (fields.contains(FIELD_OWNER) && glossaryTerm.getOwner() == null) {
-      if (glossaryTerm.getParent() != null) {
-        parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("owner,reviewers,domain"));
-        glossaryTerm.setOwner(parentTerm.getOwner());
-      } else {
-        glossary = Entity.getEntity(glossaryTerm.getGlossary(), "owner,reviewers,domain", ALL);
-        glossaryTerm.setOwner(glossary.getOwner());
-      }
+    EntityInterface parent;
+    if (glossaryTerm.getParent() != null) {
+      parent = get(null, glossaryTerm.getParent().getId(), getFields("owner,reviewers,domain"));
+    } else {
+      parent = Entity.getEntity(glossaryTerm.getGlossary(), "owner,reviewers,domain", ALL);
     }
-
-    if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(glossaryTerm.getReviewers())) {
-      if (glossaryTerm.getParent() != null) {
-        if (parentTerm == null) {
-          parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("reviewers,domain"));
-        }
-        glossaryTerm.setReviewers(parentTerm.getReviewers());
-      } else {
-        if (glossary == null) {
-          glossary = Entity.getEntity(glossaryTerm.getGlossary(), "reviewers,domain", ALL);
-        }
-        glossaryTerm.setReviewers(glossary.getReviewers());
-      }
-    }
-
-    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(glossaryTerm.getDomain())) {
-      if (glossaryTerm.getParent() != null) {
-        if (parentTerm == null) {
-          parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("domain"));
-        }
-        glossaryTerm.setDomain(parentTerm.getDomain());
-      } else {
-        if (glossary == null) {
-          glossary = Entity.getEntity(glossaryTerm.getGlossary(), "domain", ALL);
-        }
-        glossaryTerm.setDomain(glossary.getDomain());
-      }
-    }
+    inheritOwner(glossaryTerm, fields, parent);
+    inheritDomain(glossaryTerm, fields, parent);
+    inheritReviewers(glossaryTerm, fields, parent);
     return glossaryTerm;
   }
 

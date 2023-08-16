@@ -40,6 +40,11 @@
         "type" : "string"
       },
       "default": null
+    },
+    "assets": {
+      "description": "Data assets collection that is part of this data product.",
+      "$ref" : "../../type/entityReferenceList.json",
+      "default": null
     }
   },
   "required": ["id", "name", "description", "domain"],

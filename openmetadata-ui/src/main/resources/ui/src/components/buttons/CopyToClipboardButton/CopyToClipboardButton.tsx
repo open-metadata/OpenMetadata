@@ -43,9 +43,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
       open={hasCopied}
       placement={position}
       title={
-        <span
-          className="tw-text-xs tw-font-medium tw-italic"
-          data-testid="copy-success">
+        <span className="text-xs font-medium" data-testid="copy-success">
           {t('message.copied-to-clipboard')}
         </span>
       }

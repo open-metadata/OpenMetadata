@@ -29,7 +29,7 @@ import {
 
 const ENTITIES = {
   table: {
-    ...SEARCH_ENTITY_TABLE.table_4,
+    ...SEARCH_ENTITY_TABLE.table_5,
     schema: 'shopify',
     database: 'ecommerce_db',
   },

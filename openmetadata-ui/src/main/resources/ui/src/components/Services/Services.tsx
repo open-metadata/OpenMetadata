@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
@@ -163,28 +163,27 @@ const Services = ({
                 <Col key={service.name} lg={8} xl={6}>
                   <Card className="w-full" size="small">
                     <div
-                      className="d-flex tw-justify-between text-grey-muted"
+                      className="d-flex justify-between text-grey-muted"
                       data-testid="service-card">
-                      <div className="d-flex flex-col tw-justify-between tw-truncate">
-                        <div>
+                      <Row gutter={[0, 6]}>
+                        <Col span={24}>
                           <Link
+                            className="no-underline"
                             to={getServiceDetailsPath(
                               encodeURIComponent(
                                 service.fullyQualifiedName ?? service.name
                               ),
                               serviceName
                             )}>
-                            <button>
-                              <h6
-                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                                data-testid={`service-name-${service.name}`}
-                                title={getEntityName(service)}>
-                                {getEntityName(service)}
-                              </h6>
-                            </button>
+                            <Typography.Text
+                              className="text-base text-grey-body font-medium truncate w-48"
+                              data-testid={`service-name-${service.name}`}
+                              title={getEntityName(service)}>
+                              {getEntityName(service)}
+                            </Typography.Text>
                           </Link>
                           <div
-                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                            className="p-t-xs text-grey-body break-all description-text"
                             data-testid="service-description">
                             {service.description ? (
                               <RichTextEditorPreviewer
@@ -198,19 +197,22 @@ const Services = ({
                             )}
                           </div>
                           {getOptionalFields(service, serviceName)}
-                        </div>
-                        <div className="" data-testid="service-type">
-                          <label className="tw-mb-0">{`${t(
-                            'label.type'
-                          )}:`}</label>
-                          <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                            {service.serviceType}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="d-flex flex-col tw-justify-between flex-none">
+                        </Col>
+                        <Col span={24}>
+                          <div className="m-b-xss" data-testid="service-type">
+                            <label className="m-b-0">{`${t(
+                              'label.type'
+                            )}:`}</label>
+                            <span className="font-normal m-l-xss text-grey-body">
+                              {service.serviceType}
+                            </span>
+                          </div>
+                        </Col>
+                      </Row>
+
+                      <div className="d-flex flex-col justify-between flex-none">
                         <div
-                          className="d-flex tw-justify-end"
+                          className="d-flex justify-end"
                           data-testid="service-icon">
                           {getServiceLogo(service.serviceType || '', 'h-7')}
                         </div>

@@ -70,11 +70,7 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityThreadLink,
-} from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -517,7 +513,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={databaseSchemaFQN}
-                entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -528,7 +523,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={databaseSchemaFQN}
-                entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -569,12 +563,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   if (!viewDatabaseSchemaPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (
