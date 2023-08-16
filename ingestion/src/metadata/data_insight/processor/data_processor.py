@@ -16,12 +16,12 @@ Processor class used to compute refined report data
 from __future__ import annotations
 
 import abc
+from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
 
 
 class DataProcessor(abc.ABC):
@@ -48,7 +48,7 @@ class DataProcessor(abc.ABC):
 
     def __init__(self, metadata: OpenMetadata):
         self.metadata = metadata
-        self.timestamp = get_beginning_of_day_timestamp_mill()
+        self.timestamp = datetime.now(timezone.utc).timestamp() * 1000
         self.processor_status = SourceStatus()
 
     @abc.abstractmethod

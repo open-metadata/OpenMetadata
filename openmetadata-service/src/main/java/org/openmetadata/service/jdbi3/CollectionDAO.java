@@ -3357,63 +3357,6 @@ public interface CollectionDAO {
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond);
 
-    /*
-     * Support selection report data filtering by keys in the JSON and timestamp
-     */
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json from entity_extension_time_series "
-                + "WHERE entityFQNHash = :entityFQNHash "
-                + "AND extension = :extension "
-                + "AND timestamp = :timestamp "
-                + "<mysqlCond>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json from entity_extension_time_series "
-                + "WHERE entityFQNHash = :entityFQNHash "
-                + "AND extension = :extension "
-                + "AND timestamp = :timestamp "
-                + "<psqlCond>",
-        connectionType = POSTGRES)
-    String getReportExtensionAtTimestampByKeyInternal(
-        @Bind("value") String value,
-        @Bind("reportDataType") String reportDataType,
-        @Bind("entityFQNHash") String entityFQNHash,
-        @Bind("extension") String extension,
-        @Bind("timestamp") Long timestamp,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("psqlCond") String psqlCond);
-
-    /*
-     * Support updating report data filtering by keys in the JSON and timestamp
-     */
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_extension_time_series SET json = :json "
-                + "WHERE entityFQNHash = :entityFQNHash "
-                + "AND extension = :extension "
-                + "AND timestamp = :timestamp "
-                + "<mysqlCond>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_extension_time_series SET json = (:json :: jsonb) "
-                + "WHERE entityFQNHash = :entityFQNHash "
-                + "AND extension = :extension "
-                + "AND timestamp = :timestamp "
-                + "<psqlCond>",
-        connectionType = POSTGRES)
-    void updateReportExtensionAtTimestampByKeyInternal(
-        @Bind("value") String value,
-        @Bind("reportDataType") String reportDataType,
-        @BindFQN("entityFQNHash") String entityFQNHash,
-        @Bind("extension") String extension,
-        @Bind("json") String json,
-        @Bind("timestamp") Long timestamp,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("psqlCond") String psqlCond);
-
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json from entity_extension_time_series "
