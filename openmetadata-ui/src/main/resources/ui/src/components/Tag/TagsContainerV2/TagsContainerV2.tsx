@@ -164,7 +164,7 @@ const TagsContainerV2 = ({
 
   const renderTags = useMemo(
     () => (
-      <Col>
+      <Col span={24}>
         <TagsViewer
           displayType={displayType}
           showNoDataPlaceholder={showNoDataPlaceholder}

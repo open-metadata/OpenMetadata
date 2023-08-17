@@ -14,10 +14,12 @@
 import {
   Badge,
   Button,
+  Col,
   Dropdown,
   Input,
   InputRef,
   Popover,
+  Row,
   Select,
   Space,
 } from 'antd';
@@ -430,7 +432,7 @@ const NavBar = ({
           </Popover>
         </div>
 
-        <Space size={24}>
+        <Space align="center" size={24}>
           <Dropdown
             destroyPopupOnHide
             className="cursor-pointer"
@@ -468,14 +470,20 @@ const NavBar = ({
             }}
             placement="bottomRight"
             trigger={['click']}>
-            <Space size={2}>
-              {upperCase((language || SupportedLocales.English).split('-')[0])}
-              <DropDownIcon className="m-y-xs" height={14} width={14} />
-            </Space>
+            <Row gutter={2}>
+              <Col>
+                {upperCase(
+                  (language || SupportedLocales.English).split('-')[0]
+                )}
+              </Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
           </Dropdown>
 
           <Dropdown
-            className="cursor-pointer"
+            className="cursor-pointer m-t-xss"
             menu={{ items: supportDropdown }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
