@@ -1049,13 +1049,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setFollowers(followers);
   }
 
-  protected void storeTimeSeries(
-      String fqn, String extension, String jsonSchema, String entityJson, Long timestamp, boolean update) {
-    if (update) {
-      daoCollection.entityExtensionTimeSeriesDao().update(fqn, extension, entityJson, timestamp);
-    } else {
-      daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
-    }
+  protected void storeTimeSeries(String fqn, String extension, String jsonSchema, String entityJson, Long timestamp) {
+    daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
   }
 
   protected void storeTimeSeriesWithOperation(
