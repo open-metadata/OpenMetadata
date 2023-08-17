@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <variable name="ROOT_LOG_LEVEL" value="${BOOTSTRAP_LOG_LEVEL:-INFO}" />
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>OFF</level>
@@ -9,7 +10,7 @@
             </pattern>
         </encoder>
     </appender>
-    <root level="INFO">
+    <root level="${BOOTSTRAP_LOG_LEVEL}">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>
