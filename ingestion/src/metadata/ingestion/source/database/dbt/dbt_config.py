@@ -214,7 +214,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         raise DBTConfigException(f"Error fetching dbt files from DBT Cloud: {exc}")
 
 
-def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict:
+def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
     """
     Method to group the objs by the dir
     """
