@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Divider, Space, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { EntityDetails } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { ExtraInfoLink } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { VersionExtraInfoLink } from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
@@ -768,11 +768,17 @@ export const getExtraInfoSourceUrl = (
   return (
     <>
       {isUndefined(changedEntityName) ? (
-        <ExtraInfoLink
-          href={pipelineDetails.sourceUrl ?? ''}
-          label=""
-          value={getEntityName(pipelineDetails)}
-        />
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <div className="d-flex items-center text-xs">
+            <Typography.Link
+              href={pipelineDetails.sourceUrl}
+              style={{ fontSize: '12px' }}>
+              {getEntityName(pipelineDetails)}{' '}
+            </Typography.Link>
+            <IconExternalLink className="m-l-xss " width={14} />{' '}
+          </div>
+        </>
       ) : (
         <VersionExtraInfoLink
           href={pipelineDetails.sourceUrl}
