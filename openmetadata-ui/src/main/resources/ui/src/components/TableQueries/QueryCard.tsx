@@ -65,7 +65,7 @@ const QueryCard: FC<QueryCardProp> = ({
     query: query.query,
     isLoading: false,
   });
-  const [selectedTable, setSelectedTable] = useState<DefaultOptionType[]>();
+  const [selectedTables, setSelectedTables] = useState<DefaultOptionType[]>();
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
@@ -105,9 +105,9 @@ const QueryCard: FC<QueryCardProp> = ({
     const updatedData = {
       ...query,
       query: query.query !== sqlQuery.query ? sqlQuery.query : query.query,
-      queryUsedIn: isUndefined(selectedTable)
+      queryUsedIn: isUndefined(selectedTables)
         ? query.queryUsedIn
-        : selectedTable.map((option) => {
+        : selectedTables.map((option) => {
             const existingTable = query.queryUsedIn?.find(
               (table) => table.id === option.value
             );
@@ -121,7 +121,7 @@ const QueryCard: FC<QueryCardProp> = ({
             );
           }),
     };
-    if (query.query !== sqlQuery.query || !isUndefined(selectedTable)) {
+    if (query.query !== sqlQuery.query || !isUndefined(selectedTables)) {
       await onQueryUpdate(updatedData, 'query');
     }
 
@@ -239,7 +239,7 @@ const QueryCard: FC<QueryCardProp> = ({
               <QueryUsedByOtherTable
                 isEditMode={isEditMode}
                 query={query}
-                onChange={(value) => setSelectedTable(value)}
+                onChange={(value) => setSelectedTables(value)}
               />
             </Col>
             <Col span={8}>

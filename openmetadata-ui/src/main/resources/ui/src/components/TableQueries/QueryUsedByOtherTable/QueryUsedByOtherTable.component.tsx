@@ -139,11 +139,11 @@ const QueryUsedByOtherTable = ({
     setIsLoading(true);
     try {
       const options = await fetchTableEntity();
-      const selectedValue =
-        query.queryUsedIn?.map((table) => ({
-          label: getEntityName(table),
-          value: table.id,
-        })) ?? [];
+      const { queryUsedIn = [] } = query;
+      const selectedValue = queryUsedIn.map((table) => ({
+        label: getEntityName(table),
+        value: table.id,
+      }));
 
       setInitialOptions(uniqBy([...selectedValue, ...options], 'value'));
     } catch (error) {
