@@ -169,6 +169,7 @@ const QueryUsedByOtherTable = ({
       <AsyncSelect
         api={fetchTableEntity}
         className="w-min-15"
+        data-testid="edit-query-used-in"
         defaultValue={defaultValue}
         mode="multiple"
         options={initialOptions}

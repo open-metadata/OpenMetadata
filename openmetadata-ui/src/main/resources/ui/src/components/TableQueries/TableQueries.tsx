@@ -257,6 +257,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     return (
       <div className="flex-center font-medium mt-24" data-testid="no-queries">
         <ErrorPlaceHolder
+          buttonId="add-query-btn"
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
           permission={permissions?.query.Create}
@@ -282,7 +283,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     </Col>
   ) : (
     tableQueries.data.map((query) => (
-      <Col key={query.id} span={24}>
+      <Col data-testid="query-card" key={query.id} span={24}>
         <QueryCard
           afterDeleteAction={fetchTableQuery}
           isExpanded={false}
