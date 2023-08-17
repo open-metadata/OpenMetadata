@@ -78,6 +78,9 @@ class UsageSource(QueryParserSource, ABC):
         else:
             yield from self.yield_table_queries()
 
+    def format_query(self, query: str) -> str:
+        return query.replace("\\n", "\n")
+
     def yield_table_queries(self):
         """
         Given an Engine, iterate over the day range and
@@ -103,7 +106,7 @@ class UsageSource(QueryParserSource, ABC):
                         try:
                             queries.append(
                                 TableQuery(
-                                    query=row["query_text"],
+                                    query=self.format_query(row["query_text"]),
                                     userName=row["user_name"],
                                     startTime=str(row["start_time"]),
                                     endTime=str(row["end_time"]),
