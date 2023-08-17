@@ -495,34 +495,37 @@ export const visitEntityDetailsPage = (
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  verifyResponseStatusCode('@searchQuery', 200);
+  cy.wait('@searchQuery').then(() => {
+    cy.wait(500);
+    cy.get('body').then(($body) => {
+      // checking if requested term is available in search suggestion
+      if (
+        $body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length
+      ) {
+        // if term is available in search suggestion, redirecting to entity details page
+        cy.get(`[data-testid="${id}"] [data-testid="data-name"]`)
+          .should('be.visible')
+          .first()
+          .click();
+      } else {
+        // if term is not available in search suggestion,
+        // hitting enter to search box so it will redirect to explore page
+        cy.get('body').click(1, 1);
+        cy.get('[data-testid="searchBox"]').type('{enter}');
+        verifyResponseStatusCode('@explorePageSearch', 200);
 
-  cy.get('[data-testid="navbar-search-container"]').invoke('show');
-  cy.get('body').then(($body) => {
-    // checking if requested term is available in search suggestion
-    if ($body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length) {
-      // if term is available in search suggestion, redirecting to entity details page
-      cy.get(`[data-testid="${id}"] [data-testid="data-name"]`)
-        .should('be.visible')
-        .first()
-        .click();
-    } else {
-      // if term is not available in search suggestion, hitting enter to search box so it will redirect to explore page
-      cy.get('body').click(1, 1);
-      cy.get('[data-testid="searchBox"]').type('{enter}');
-      verifyResponseStatusCode('@explorePageSearch', 200);
+        cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
+        cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
+        verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
-      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
-      verifyResponseStatusCode('@explorePageTabSearch', 200);
+        cy.get(`[data-testid="${id}"]`).scrollIntoView().click();
+      }
+    });
 
-      cy.get(`[data-testid="${id}"]`).scrollIntoView().click();
-    }
+    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.get('body').click(1, 1);
+    cy.get('[data-testid="searchBox"]').clear();
   });
-
-  verifyResponseStatusCode('@getEntityDetails', 200);
-  cy.get('body').click(1, 1);
-  cy.get('[data-testid="searchBox"]').clear();
 };
 
 // add new tag to entity and its table
