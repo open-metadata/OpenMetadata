@@ -57,17 +57,11 @@ describe('RedShift Ingestion', () => {
 
     const addIngestionInput = () => {
       // no schema or database filters
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
+
         .type('dbt_jaffle{enter}');
-      cy.get('[data-testid="toggle-button-include-views"]')
-        .should('be.visible')
-        .click();
+      cy.get('#root\\/includeViews').click();
     };
 
     testServiceCreationAndIngestion({
