@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
+import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,7 +59,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       testSuite.setFullyQualifiedName(
           FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
     } else {
-      testSuite.setFullyQualifiedName(testSuite.getName());
+      testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
   }
 
