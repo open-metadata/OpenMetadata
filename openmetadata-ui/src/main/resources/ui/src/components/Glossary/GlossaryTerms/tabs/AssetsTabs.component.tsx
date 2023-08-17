@@ -148,8 +148,6 @@ const AssetsTabs = forwardRef(
 
             find(counts, (count, key) => {
               if (count > 0) {
-                key;
-
                 const option = AssetsFilterOptions.find((el) => el.key === key);
                 if (option) {
                   setActiveFilter(option.value);

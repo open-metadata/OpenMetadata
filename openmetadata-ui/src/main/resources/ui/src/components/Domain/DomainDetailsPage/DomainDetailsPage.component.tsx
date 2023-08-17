@@ -14,10 +14,12 @@ import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { AxiosError } from 'axios';
+import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import AssetsTabs, {
   AssetsTabRef,
 } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -42,14 +44,12 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addDataProducts } from 'rest/dataProductAPI';
-import { addDomains } from 'rest/domainAPI';
 import { getIsErrorMatch } from 'utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getDomainDetailsPath, getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import Fqn from '../../../utils/Fqn';
 import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
-import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
 import '../domain.less';
 import { DomainTabs } from '../DomainPage.interface';
 import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
@@ -71,7 +71,7 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [showAddSubDomainModal, setShowAddSubDomainModal] = useState(false);
+  const [assetModalVisible, setAssetModelVisible] = useState(false);
   const [showAddDataProductModal, setShowAddDataProductModal] = useState(false);
 
   const breadcrumbs = useMemo(() => {
@@ -104,43 +104,14 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
     {
       label: t('label.asset-plural'),
       key: '1',
-    },
-    {
-      label: t('label.sub-domain-plural'),
-      key: '2',
-      onClick: () => setShowAddSubDomainModal(true),
+      onClick: () => setAssetModelVisible(true),
     },
     {
       label: t('label.data-product-plural'),
-      key: '3',
+      key: '2',
+      onClick: () => setShowAddDataProductModal(true),
     },
   ];
-
-  const addSubDomain = useCallback(async (formData: CreateDomain) => {
-    const data = {
-      ...formData,
-      domain: fqn,
-    };
-
-    try {
-      await addDomains(data as CreateDomain);
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.sub-domain'),
-              entityPlural: t('label.sub-domain-lowercase-plural'),
-              name: data.name,
-            })
-          : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.sub-domain-lowercase'),
-        })
-      );
-    } finally {
-      setShowAddSubDomainModal(false);
-    }
-  }, []);
 
   const addDataProduct = useCallback(
     async (formData: CreateDataProduct) => {
@@ -165,7 +136,7 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
           })
         );
       } finally {
-        setShowAddSubDomainModal(false);
+        setShowAddDataProductModal(false);
       }
     },
     [domain]
@@ -230,20 +201,9 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
             isSummaryPanelOpen={false}
             permissions={domainPermission}
             ref={assetTabRef}
-            onAddAsset={noop}
+            onAddAsset={() => setAssetModelVisible(true)}
           />
         ),
-      },
-      {
-        label: (
-          <TabsLabel
-            count={domain.children?.length ?? 0}
-            id={DomainTabs.SUBDOMAINS}
-            name={t('label.sub-domain-plural')}
-          />
-        ),
-        key: DomainTabs.SUBDOMAINS,
-        children: <></>,
       },
     ];
   }, [domain, domainPermission]);
@@ -308,17 +268,19 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
           />
         </Col>
       </Row>
-      <AddSubDomainModal
-        open={showAddSubDomainModal}
-        onCancel={() => setShowAddSubDomainModal(false)}
-        onSubmit={(data: CreateDomain) => addSubDomain(data)}
-      />
       <AddDataProductModal
         open={showAddDataProductModal}
         onCancel={() => setShowAddDataProductModal(false)}
         onSubmit={(data: CreateDomain | CreateDataProduct) =>
           addDataProduct(data as CreateDataProduct)
         }
+      />
+      <AssetSelectionModal
+        entityFqn={domainFqn}
+        open={assetModalVisible}
+        type={AssetsOfEntity.DOMAIN}
+        onCancel={() => setAssetModelVisible(false)}
+        onSave={noop}
       />
     </>
   );

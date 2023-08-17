@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
@@ -20,8 +21,9 @@ import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 
 export interface AssetSelectionModalProps {
-  glossaryFQN: string;
+  entityFqn: string;
   open: boolean;
+  type?: AssetsOfEntity;
   onCancel: () => void;
   onSave?: () => void;
 }
