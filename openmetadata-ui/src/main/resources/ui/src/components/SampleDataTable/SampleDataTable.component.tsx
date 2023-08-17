@@ -11,13 +11,22 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Space, Table as AntdTable, Typography } from 'antd';
+import {
+  Button,
+  Dropdown,
+  Space,
+  Table as AntdTable,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { LOADING_STATE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
@@ -30,6 +39,7 @@ import {
   getSampleDataByTableId,
 } from 'rest/tableAPI';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
@@ -57,6 +67,7 @@ const SampleDataTable = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [deleteState, setDeleteState] = useState(LOADING_STATE.INITIAL);
+  const [showActions, setShowActions] = useState(false);
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -146,6 +157,33 @@ const SampleDataTable = ({
     }
   };
 
+  const manageButtonContent: ItemType[] = [
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.delete-entity-type-action-description', {
+            entityType: t('label.sample-data'),
+          })}
+          icon={
+            <IconDelete
+              className="m-t-xss"
+              {...DROPDOWN_ICON_SIZE_PROPS}
+              name="Delete"
+            />
+          }
+          id="delete-button"
+          name={t('label.delete')}
+        />
+      ),
+      key: 'delete-button',
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        handleDeleteModal();
+      },
+    },
+  ];
+
   useEffect(() => {
     setIsLoading(true);
     if (!isTableDeleted && tableId && !isTourPage) {
@@ -199,14 +237,25 @@ const SampleDataTable = ({
       id="sampleDataDetails">
       <Space className="m-b-md justify-end w-full">
         {hasPermission && (
-          <Button
-            danger
-            data-testid="delete-sample-data"
-            icon={<Icon component={IconDelete} />}
-            type="primary"
-            onClick={handleDeleteModal}>
-            {t('label.delete')}
-          </Button>
+          <Dropdown
+            menu={{
+              items: manageButtonContent,
+            }}
+            open={showActions}
+            overlayClassName="manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={setShowActions}>
+            <Tooltip placement="right">
+              <Button
+                className="flex-center px-1.5"
+                data-testid="sample-data-manage-button"
+                onClick={() => setShowActions(true)}>
+                <IconDropdown className="anticon self-center " />
+              </Button>
+            </Tooltip>
+          </Dropdown>
         )}
       </Space>
 
