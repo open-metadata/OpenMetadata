@@ -115,12 +115,17 @@
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
             "analyzer": "om_analyzer",
-            "norms": false
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "tags": {
             "properties": {
@@ -131,7 +136,14 @@
                 "type": "keyword"
               },
               "description": {
-                "type": "text"
+                "type": "text",
+                "analyzer": "om_analyzer",
+                "fields": {
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "om_ngram"
+                  }
+                }
               },
               "source": {
                 "type": "keyword"
@@ -171,10 +183,18 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -209,10 +229,18 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -246,10 +274,18 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -293,10 +329,18 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -330,10 +374,18 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -392,7 +444,14 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "source": {
             "type": "keyword"
@@ -411,7 +470,14 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "source": {
             "type": "keyword"

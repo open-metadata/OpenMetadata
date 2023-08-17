@@ -86,6 +86,7 @@
       "updatedBy": {
         "type": "text"
       },
+      },
       "href": {
         "type": "text"
       },
@@ -289,11 +290,6 @@
             "type": "text"
           }
         }
-      },
-      "default": {
-        "description": "Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
-        "type": "boolean",
-        "default": false
       },
       "deleted": {
         "type": "text"
