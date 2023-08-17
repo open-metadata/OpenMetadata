@@ -62,7 +62,7 @@ class SagemakerSource(MlModelServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.sagemaker = self.connection.client
+        self.sagemaker = self.client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -91,7 +91,7 @@ class SagemakerSource(MlModelServiceSource):
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch models list - {err}")
 
-        for model in models:
+        for model in response["Models"]:
             try:
                 if filter_by_mlmodel(
                     self.source_config.mlModelFilterPattern,
