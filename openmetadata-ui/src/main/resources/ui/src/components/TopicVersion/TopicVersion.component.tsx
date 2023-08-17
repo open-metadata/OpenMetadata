@@ -119,7 +119,9 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
 
     return isEmpty(schemaTypeDiffText) ? undefined : (
-      <Tag>{stringToHTML(schemaTypeDiffText)}</Tag>
+      <Tag data-testid="schema-type-diff">
+        {stringToHTML(schemaTypeDiffText)}
+      </Tag>
     );
   }, [changeDescription, currentVersionData]);
 
