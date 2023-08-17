@@ -44,8 +44,7 @@
         }
       },
       "fullyQualifiedName": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+        "type": "text"
       },
       "displayName": {
         "type": "text",
@@ -232,7 +231,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
           },
           "deleted": {
             "type": "text"
@@ -279,7 +280,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
           },
           "deleted": {
             "type": "text"
@@ -316,7 +319,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
           },
           "deleted": {
             "type": "text"
@@ -375,7 +380,9 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
           },
           "source": {
             "type": "keyword"
@@ -394,7 +401,9 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
           },
           "source": {
             "type": "keyword"

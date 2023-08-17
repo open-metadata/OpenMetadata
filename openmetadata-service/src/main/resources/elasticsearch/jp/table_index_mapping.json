@@ -65,8 +65,7 @@
         }
       },
       "fullyQualifiedName": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+        "type": "text"
       },
       "displayName": {
         "type": "text",
@@ -128,7 +127,13 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer_jp"
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -142,7 +147,14 @@
                 "type": "keyword"
               },
               "description": {
-                "type": "text"
+                "type": "text",
+                "analyzer": "om_analyzer_jp",
+                "fields": {
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "om_ngram"
+                  }
+                }
               },
               "source": {
                 "type": "keyword"
@@ -185,7 +197,14 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -223,7 +242,14 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -260,7 +286,14 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -307,7 +340,14 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -344,7 +384,14 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"
@@ -403,7 +450,14 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "source": {
             "type": "keyword"
@@ -422,7 +476,14 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "source": {
             "type": "keyword"
