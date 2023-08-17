@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -16,6 +15,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   public static final String ENTITY_COUNT = "entityCount";
   public static final String DATA_ENTITY_COUNT = "data.entityCount";
   public static final String ENTITY_TYPE = "entityType";
+  public static final String SERVICE_NAME = "serviceName";
+  public static final String DATA_SERVICE_NAME = "data.serviceName";
   public static final String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
   public static final String DATA_COMPLETED_DESCRIPTIONS = "data.completedDescriptions";
   public static final String HAS_OWNER_FRACTION = "hasOwnerFraction";
@@ -68,12 +69,17 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
+  public DataInsightChart clearFields(DataInsightChart entity, EntityUtil.Fields fields) {
+    return entity;
+  }
+
+  @Override
   public void prepare(DataInsightChart entity) {
     /* Nothing to do */
   }
 
   @Override
-  public void storeEntity(DataInsightChart entity, boolean update) throws IOException {
+  public void storeEntity(DataInsightChart entity, boolean update) {
     store(entity, update);
   }
 

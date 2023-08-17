@@ -18,11 +18,15 @@
       "type": "string",
       "enum": [
         "S3",
+        "ADLS",
         "CustomStorage"
       ],
       "javaEnums": [
         {
           "name": "S3"
+        },
+        {
+          "name": "ADLS"
         },
         {
           "name": "CustomStorage"
@@ -42,6 +46,9 @@
           "oneOf": [
             {
               "$ref": "connections/storage/s3Connection.json"
+            },
+            {
+              "$ref": "connections/storage/adlsConection.json"
             },
             {
               "$ref": "connections/storage/customStorageConnection.json"

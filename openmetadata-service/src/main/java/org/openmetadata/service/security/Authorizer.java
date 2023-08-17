@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.security;
 
-import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import org.jdbi.v3.core.Jdbi;
@@ -36,11 +35,10 @@ public interface Authorizer {
 
   /** Returns a list of operations that the authenticated user (subject) can perform on a given resource */
   ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException;
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
 
   void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
-      throws IOException;
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext);
 
   void authorizeAdmin(SecurityContext securityContext);
 

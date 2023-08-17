@@ -126,7 +126,8 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this table.",
@@ -152,6 +153,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of topic.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "domain" : {
       "description": "Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",

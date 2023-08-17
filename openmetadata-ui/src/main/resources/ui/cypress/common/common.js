@@ -31,6 +31,10 @@ const ADMIN = 'admin';
 
 const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
 
+export const replaceAllSpacialCharWith_ = (text) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+};
+
 const isDatabaseService = (type) => type === 'database';
 
 export const checkServiceFieldSectionHighlighting = (field) => {
@@ -335,7 +339,9 @@ export const testServiceCreationAndIngestion = ({
 
   scheduleIngestion();
 
-  cy.contains(`${serviceName}_metadata`).should('be.visible');
+  cy.contains(`${replaceAllSpacialCharWith_(serviceName)}_metadata`).should(
+    'be.visible'
+  );
 
   // wait for ingestion to run
   cy.clock();
@@ -464,24 +470,13 @@ export const goToAddNewServicePage = (service_type) => {
   cy.get('[data-testid="service-category"]').should('be.visible');
 };
 
-/**
- * Search for entities through the search bar
- * @param {string} term Entity name
- */
-export const searchEntity = (term, suggestionOverly = true) => {
-  cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
-  cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
-  if (suggestionOverly) {
-    cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
-  }
-};
-
 export const visitEntityDetailsPage = (
   term,
   serviceName,
   entity,
   dataTestId,
-  entityType
+  entityType,
+  count = 0
 ) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
@@ -489,7 +484,11 @@ export const visitEntityDetailsPage = (
     `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
     'explorePageTabSearch'
   );
-  interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
+  interceptURL(
+    'GET',
+    `/api/v1/search/suggest?q=*&index=*`,
+    `searchQuery-${entity}-${count}`
+  );
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
   const id = dataTestId ?? `${serviceName}-${term}`;
 
@@ -501,8 +500,7 @@ export const visitEntityDetailsPage = (
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  verifyResponseStatusCode('@searchQuery', 200);
-  cy.get('[data-testid="suggestion-overlay"]').should('exist');
+  verifyResponseStatusCode(`@searchQuery-${entity}-${count}`, 200);
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
     if ($body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length) {
@@ -529,11 +527,6 @@ export const visitEntityDetailsPage = (
   });
 
   verifyResponseStatusCode('@getEntityDetails', 200);
-  cy.get('body').then(($body) => {
-    if ($body.find('[data-testid="suggestion-overlay"]').length) {
-      cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
-    }
-  });
   cy.get('body').click(1, 1);
   cy.get('[data-testid="searchBox"]').clear();
 };
@@ -887,7 +880,6 @@ export const updateOwner = () => {
     .should('exist')
     .invoke('text')
     .then((text) => {
-      cy.get('[data-testid="hiden-layer"]').should('exist').click();
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
       cy.get('[data-testid="edit-owner"]').click();
@@ -1035,14 +1027,10 @@ export const updateDescriptionForIngestedTables = (
 ) => {
   interceptURL(
     'GET',
-    `/api/v1/services/ingestionPipelines?fields=*&service=${serviceName}`,
+    `/api/v1/services/ingestionPipelines?fields=*&service=*`,
     'ingestionPipelines'
   );
-  interceptURL(
-    'GET',
-    `/api/v1/*?service=${serviceName}&fields=*`,
-    'serviceDetails'
-  );
+  interceptURL('GET', `/api/v1/*?service=*&fields=*`, 'serviceDetails');
   interceptURL(
     'GET',
     `/api/v1/system/config/pipeline-service-client`,
@@ -1088,7 +1076,11 @@ export const updateDescriptionForIngestedTables = (
     '/api/v1/services/ingestionPipelines/trigger/*',
     'checkRun'
   );
-  cy.get(`[data-row-key*="${serviceName}_metadata"] [data-testid="run"]`)
+  cy.get(
+    `[data-row-key*="${replaceAllSpacialCharWith_(
+      serviceName
+    )}_metadata"] [data-testid="run"]`
+  )
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@checkRun', 200);

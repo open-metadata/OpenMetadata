@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import React, { CSSProperties, FunctionComponent } from 'react';
-import './Loader.css';
+import './Loader.less';
 
 type Props = {
   size?: 'default' | 'small' | 'x-small';

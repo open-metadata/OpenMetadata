@@ -74,10 +74,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               debounce={200}
               id={`${name}_graph`}
               minHeight={300}>
-              <LineChart
-                className="tw-w-full"
-                data={data}
-                margin={{ left: 16 }}>
+              <LineChart className="w-full" data={data} margin={{ left: 16 }}>
                 <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                 <XAxis
                   dataKey="name"
@@ -117,10 +114,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <Row
-              align="middle"
-              className="tw-h-full tw-w-full"
-              justify="center">
+            <Row align="middle" className="h-full w-full" justify="center">
               <Col>
                 <ErrorPlaceHolder className="mt-0-important" />
               </Col>

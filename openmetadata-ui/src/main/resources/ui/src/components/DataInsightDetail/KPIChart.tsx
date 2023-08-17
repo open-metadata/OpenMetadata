@@ -268,10 +268,7 @@ const KPIChart: FC<Props> = ({
               {viewKPIPermission ? (
                 <EmptyGraphPlaceholder />
               ) : (
-                <ErrorPlaceHolder
-                  className="m-0"
-                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-                />
+                <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
               )}
             </Col>
           )}

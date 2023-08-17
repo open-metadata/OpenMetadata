@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -150,8 +149,7 @@ public class MigrationUtil {
   }
 
   public static <T extends EntityInterface> void readAndProcessEntity(
-      Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName, int limitParam)
-      throws IOException {
+      Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName, int limitParam) {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
     String nameHashColumn = dao.getNameHashColumn();
     if (dao instanceof CollectionDAO.TestSuiteDAO) {
@@ -407,7 +405,7 @@ public class MigrationUtil {
     }
   }
 
-  public static TestSuite getTestSuite(CollectionDAO dao, CreateTestSuite create, String user) throws IOException {
+  public static TestSuite getTestSuite(CollectionDAO dao, CreateTestSuite create, String user) {
     TestSuite testSuite =
         copy(new TestSuite(), create, user)
             .withDescription(create.getDescription())
@@ -528,7 +526,7 @@ public class MigrationUtil {
     List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
 
     for (TestSuite testSuiteRecord : testSuites) {
-      TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId());
+      TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId(), Include.ALL);
       if (Boolean.FALSE.equals(temp.getExecutable())) {
         temp.setExecutable(false);
         testSuiteRepository.getDao().update(temp);

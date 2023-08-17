@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Divider, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
@@ -49,6 +49,7 @@ import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
 } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 interface Props {
@@ -59,6 +60,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
+
   const { permissions } = usePermissionProvider();
   const history = useHistory();
 
@@ -178,10 +180,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     }
   };
 
-  const separator = (
-    <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
-  );
-
   const confirmDelete = (id: string, name: string) => {
     setDeleteSelection({
       id,
@@ -259,7 +257,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
             </Button>
           </Tooltip>
-          {separator}
+          <Divider type="vertical" />
           <Tooltip
             title={
               editPermission
@@ -327,17 +325,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 viewPermission ? name : t('message.no-permission-to-view')
               }>
               <a
-                className="link-text tw-mr-2"
+                className="link-text"
                 data-testid="airflow-tree-view"
                 href={`${airFlowEndPoint}`}
                 rel="noopener noreferrer"
                 target="_blank">
-                <Space>
+                <Space align="center">
                   {name}
-                  <ExternalLinkIcon
-                    className="tw-align-middle tw-ml-1"
-                    width={16}
-                  />
+                  <ExternalLinkIcon className="align-middle" width={16} />
                 </Space>
               </a>
             </Tooltip>
@@ -396,7 +391,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 {record.enabled ? (
                   <Fragment>
                     {getTriggerDeployButton(record)}
-                    {separator}
+                    <Divider type="vertical" />
                     <Tooltip
                       title={
                         editPermission
@@ -436,7 +431,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     </Button>
                   </Tooltip>
                 )}
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -452,15 +447,15 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     onClick={() => {
                       history.push(
                         getTestSuiteIngestionPath(
-                          testSuiteFQN,
-                          record.fullyQualifiedName
+                          getEncodedFqn(testSuiteFQN),
+                          getEncodedFqn(record.fullyQualifiedName ?? '')
                         )
                       );
                     }}>
                     {t('label.edit')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     deletePermission
@@ -487,7 +482,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     )}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -507,7 +502,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     {t('label.kill')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     viewPermission
@@ -518,7 +513,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     to={getLogsViewerPath(
                       EntityType.TEST_SUITE,
                       record.service?.name || '',
-                      record.fullyQualifiedName || ''
+                      getEncodedFqn(record.fullyQualifiedName || '')
                     )}>
                     <Button
                       className="p-0"
@@ -576,7 +571,9 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
+                history.push(
+                  getTestSuiteIngestionPath(getEncodedFqn(testSuiteFQN))
+                );
               }}>
               {t('label.add')}
             </Button>

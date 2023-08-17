@@ -13,7 +13,6 @@
 
 import { EntityType } from 'enums/entity.enum';
 import { ThreadType } from 'generated/entity/feed/thread';
-import { EntityFieldThreads } from 'interface/feed.interface';
 
 export interface TableDescriptionProps {
   index: number;
@@ -24,7 +23,6 @@ export interface TableDescriptionProps {
   entityFqn: string;
   entityType: EntityType;
   hasEditPermission: boolean;
-  entityFieldThreads: EntityFieldThreads[];
   isReadOnly?: boolean;
   onClick: () => void;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
