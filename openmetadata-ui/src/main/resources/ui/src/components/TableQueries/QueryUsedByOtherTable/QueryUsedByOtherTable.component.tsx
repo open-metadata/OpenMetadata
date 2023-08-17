@@ -21,7 +21,7 @@ import {
 } from 'constants/constants';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from 'constants/Query.constant';
 import { SearchIndex } from 'enums/search.enum';
-import { filter, isArray, slice, uniqBy } from 'lodash';
+import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -45,19 +45,18 @@ const QueryUsedByOtherTable = ({
   const [isLoading, setIsLoading] = useState(false);
   const { topThreeTable, remainingTable } = useMemo(() => {
     const { queryUsedIn } = query;
-    const filterTable =
-      queryUsedIn?.filter((table) => table.id !== tableId) ?? [];
+
     const data: QueryUsedByTable = {
       topThreeTable: [],
       remainingTable: [],
     };
 
-    if (filterTable.length) {
+    if (!isUndefined(queryUsedIn)) {
       // Slice 3 table to display upfront in UI
-      data.topThreeTable = slice(filterTable, 0, QUERY_USED_BY_TABLE_VIEW_CAP);
-      if (filterTable.length > QUERY_USED_BY_TABLE_VIEW_CAP) {
+      data.topThreeTable = slice(queryUsedIn, 0, QUERY_USED_BY_TABLE_VIEW_CAP);
+      if (queryUsedIn.length > QUERY_USED_BY_TABLE_VIEW_CAP) {
         // Slice remaining tables to show in "view more"
-        data.remainingTable = slice(filterTable, QUERY_USED_BY_TABLE_VIEW_CAP);
+        data.remainingTable = slice(queryUsedIn, QUERY_USED_BY_TABLE_VIEW_CAP);
       }
     }
 
@@ -127,14 +126,11 @@ const QueryUsedByOtherTable = ({
         '',
         SearchIndex.TABLE
       );
-      const options = data.hits.hits.map((value) => ({
+
+      return data.hits.hits.map((value) => ({
         label: getEntityName(value._source),
         value: value._source.id,
       }));
-
-      return tableId
-        ? filter(options, ({ value }) => value !== tableId)
-        : options;
     } catch (error) {
       return [];
     }
