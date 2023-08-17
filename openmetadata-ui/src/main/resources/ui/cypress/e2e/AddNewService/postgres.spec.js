@@ -157,7 +157,7 @@ describe('Postgres Ingestion', () => {
       .scrollIntoView()
       .contains('Usage Ingestion')
       .click();
-    cy.get('[data-testid="next-button"]')
+    cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();

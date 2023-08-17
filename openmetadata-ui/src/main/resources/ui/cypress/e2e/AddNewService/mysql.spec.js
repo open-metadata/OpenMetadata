@@ -41,7 +41,6 @@ describe('MySQL Ingestion', () => {
     const addIngestionInput = () => {
       cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-
         .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 

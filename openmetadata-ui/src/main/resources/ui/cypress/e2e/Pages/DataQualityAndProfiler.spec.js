@@ -71,10 +71,8 @@ describe('Data Quality and Profiler should work properly', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
         .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
