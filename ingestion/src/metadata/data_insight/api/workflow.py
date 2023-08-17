@@ -27,7 +27,6 @@ from typing import Optional, Union, cast
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.processor.entity_report_data_processor import (
     EntityReportDataProcessor,
@@ -59,10 +58,7 @@ from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import data_insight_logger, set_loggers_level
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
+from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
 from metadata.utils.workflow_output_handler import print_data_insight_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
@@ -169,49 +165,9 @@ class DataInsightWorkflow(WorkflowStatusMixin):
 
         return [kpi for kpi in kpis.entities if self._is_kpi_active(kpi)]
 
-    def _check_and_handle_existing_es_data(self, index: str) -> None:
-        """Handles scenarios where data has already been ingested for the execution data.
-        If we find some data for the execution date we should deleted those documents before
-        re indexing new documents.
-        """
-        gte = get_beginning_of_day_timestamp_mill()
-        lte = get_end_of_day_timestamp_mill()
-        query = {
-            "size": 1000,
-            "query": {
-                "range": {
-                    "timestamp": {
-                        "gte": gte,
-                        "lte": lte,
-                    }
-                }
-            },
-        }
-        data = self.es_sink.read_records(index, query)
-        try:
-            hit_total = data["hits"]["total"]["value"]
-            documents = data["hits"]["hits"]
-        except KeyError as exc:
-            logger.error(exc)
-        else:
-            if hit_total > 0:
-                body = [
-                    {"delete": {"_index": document["_index"], "_id": document["_id"]}}
-                    for document in documents
-                ]
-                try:
-                    self.es_sink.bulk_operation(body)
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Could not delete existing data - {exc}")
-                    raise RuntimeError
-            return None
-        return None
-
     def _execute_data_processor(self):
         """Data processor method to refine raw data into report data and ingest it in ES"""
         for report_data_type in ReportDataType:
-            has_checked_and_handled_existing_es_data = False
             logger.info(f"Processing data for report type {report_data_type}")
             try:
                 self.source = DataProcessor.create(
@@ -221,11 +177,6 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                     if hasattr(self, "sink"):
                         self.sink.write_record(record)
                     if hasattr(self, "es_sink"):
-                        if not has_checked_and_handled_existing_es_data:
-                            self._check_and_handle_existing_es_data(
-                                DataInsightEsIndex[record.data.__class__.__name__].value
-                            )
-                            has_checked_and_handled_existing_es_data = True
                         self.es_sink.write_record(record)
                     else:
                         logger.warning(
