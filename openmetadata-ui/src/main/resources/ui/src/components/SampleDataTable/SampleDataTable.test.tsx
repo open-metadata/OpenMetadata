@@ -76,14 +76,14 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const deleteButton = screen.getByTestId('delete-sample-data');
+    const deleteButton = screen.getByTestId('sample-data-manage-button');
     const table = screen.getByTestId('sample-data-table');
 
     expect(deleteButton).toBeInTheDocument();
     expect(table).toBeInTheDocument();
   });
 
-  it('Delete sample data button should not be present when not have permission', async () => {
+  it('Sample Data menu dropdown should not be present when not have permission', async () => {
     await act(async () => {
       render(
         <SampleDataTable
@@ -96,7 +96,9 @@ describe('Test SampleDataTable Component', () => {
       );
     });
 
-    expect(screen.queryByTestId('delete-sample-data')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sample-data-manage-button')
+    ).not.toBeInTheDocument();
   });
 
   it('Render Delete Modal when delete sample data button is clicked', async () => {
@@ -104,9 +106,13 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const deleteButton = screen.getByTestId('delete-sample-data');
+    const dropdown = screen.getByTestId('sample-data-manage-button');
 
-    expect(deleteButton).toBeInTheDocument();
+    expect(dropdown).toBeInTheDocument();
+
+    userEvent.click(dropdown);
+
+    const deleteButton = screen.getByTestId('delete-button-details-container');
 
     userEvent.click(deleteButton);
 
