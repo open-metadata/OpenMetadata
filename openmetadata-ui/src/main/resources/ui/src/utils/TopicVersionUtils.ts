@@ -225,14 +225,16 @@ export const getUpdatedMessageSchema = (
         schemaFields: formattedSchema,
       };
     } else {
-      const schemaFieldsDiff = getDiffByFieldName(
-        EntityField.SCHEMA_FIELDS,
-        changeDescription
-      );
       const changedEntity = changedEntityName
         ?.split(FQN_SEPARATOR_CHAR)
         .slice(2)
         .join(FQN_SEPARATOR_CHAR);
+
+      const schemaFieldsDiff = getDiffByFieldName(
+        changedEntityName ?? '',
+        changeDescription,
+        true
+      );
 
       clonedMessageSchema = getSchemasDiff(
         schemaFieldsDiff,
