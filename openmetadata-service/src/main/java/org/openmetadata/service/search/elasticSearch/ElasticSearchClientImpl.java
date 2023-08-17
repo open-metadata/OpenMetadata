@@ -252,6 +252,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
+      elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
       elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
