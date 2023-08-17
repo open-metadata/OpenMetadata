@@ -290,7 +290,6 @@ const TableQueries: FC<TableQueriesProp> = ({
           permission={queryPermissions}
           query={query}
           selectedId={selectedQuery?.id}
-          tableId={tableId}
           onQuerySelection={handleSelectedQuery}
           onQueryUpdate={handleQueryUpdate}
           onUpdateVote={updateVote}

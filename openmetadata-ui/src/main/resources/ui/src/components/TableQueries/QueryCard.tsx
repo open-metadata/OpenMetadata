@@ -44,7 +44,6 @@ const QueryCard: FC<QueryCardProp> = ({
   className,
   query,
   selectedId,
-  tableId,
   onQuerySelection,
   onQueryUpdate,
   permission,
@@ -240,7 +239,6 @@ const QueryCard: FC<QueryCardProp> = ({
               <QueryUsedByOtherTable
                 isEditMode={isEditMode}
                 query={query}
-                tableId={tableId}
                 onChange={(value) => setSelectedTable(value)}
               />
             </Col>

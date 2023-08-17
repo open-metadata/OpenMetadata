@@ -36,7 +36,6 @@ const { Text } = Typography;
 
 const QueryUsedByOtherTable = ({
   query,
-  tableId,
   isEditMode,
   onChange,
 }: QueryUsedByOtherTableProps) => {

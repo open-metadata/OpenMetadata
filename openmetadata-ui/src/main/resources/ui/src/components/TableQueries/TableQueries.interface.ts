@@ -37,7 +37,6 @@ export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   isExpanded: boolean;
   query: Query;
   selectedId?: string;
-  tableId?: string;
   permission: OperationPermission;
   onQuerySelection?: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
@@ -52,7 +51,6 @@ export type QueryUsedByTable = {
 
 export interface QueryUsedByOtherTableProps {
   query: Query;
-  tableId?: string;
   isEditMode: boolean;
   onChange: (value: DefaultOptionType[]) => void;
 }

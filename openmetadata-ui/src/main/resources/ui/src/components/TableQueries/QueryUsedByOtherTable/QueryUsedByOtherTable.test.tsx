@@ -23,7 +23,6 @@ import QueryUsedByOtherTable from './QueryUsedByOtherTable.component';
 
 const mockProps: QueryUsedByOtherTableProps = {
   query: MOCK_QUERIES[0] as Query,
-  tableId: MOCK_QUERIES[0].queryUsedIn[0].id,
   isEditMode: false,
   onChange: jest.fn(),
 };
@@ -51,22 +50,6 @@ describe('QueryUsedByOtherTable test', () => {
     expect(
       await screen.findByText('message.query-used-by-other-tables:')
     ).toBeInTheDocument();
-  });
-
-  it('Top 3 except current table should visible, with view more button', async () => {
-    const table1 = MOCK_QUERIES[0].queryUsedIn[1].name;
-    const table2 = MOCK_QUERIES[0].queryUsedIn[2].name;
-    const table3 = MOCK_QUERIES[0].queryUsedIn[3].name;
-    render(<QueryUsedByOtherTable {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const viewMore = await screen.findByTestId('show-more');
-
-    expect(await screen.findByText(table1)).toBeInTheDocument();
-    expect(await screen.findByText(table2)).toBeInTheDocument();
-    expect(await screen.findByText(table3)).toBeInTheDocument();
-    expect(viewMore.textContent).toEqual('5 label.more-lowercase');
   });
 
   it('If no queryUsedIn available, "--" should visible', async () => {
