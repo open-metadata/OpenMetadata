@@ -18,6 +18,7 @@ import databaseMetadataPipeline from 'jsons/ingestionSchemas/databaseServiceMeta
 import databaseProfilerPipeline from 'jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import databaseLineagePipeline from 'jsons/ingestionSchemas/databaseServiceQueryLineagePipeline.json';
 import databaseUsagePipeline from 'jsons/ingestionSchemas/databaseServiceQueryUsagePipeline.json';
+import dataInsightPipeline from 'jsons/ingestionSchemas/dataInsightPipeline.json';
 import dbtPipeline from 'jsons/ingestionSchemas/dbtPipeline.json';
 import messagingMetadataPipeline from 'jsons/ingestionSchemas/messagingServiceMetadataPipeline.json';
 import metadataToElasticSearchPipeline from 'jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
@@ -107,10 +108,16 @@ export const getSchemaByWorkflowType = (
       };
 
       break;
-    case WorkflowType.DataInsight:
+
     case WorkflowType.ElasticSearchReindex:
       schema = {
         ...metadataToElasticSearchPipeline,
+      };
+
+      break;
+    case WorkflowType.DataInsight:
+      schema = {
+        ...dataInsightPipeline,
       };
 
       break;

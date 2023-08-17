@@ -21,7 +21,6 @@ import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemp
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from 'components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import {
-  INGESTION_DATA_INSIGHT_WORKFLOW_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_NAME_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -63,7 +62,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     [pipeLineType, serviceCategory]
   );
 
-  const isDataInsightPipeline = pipeLineType === PipelineType.DataInsight;
   const isElasticSearchPipeline =
     pipeLineType === PipelineType.ElasticSearchReindex;
 
@@ -78,13 +76,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
     if (operationType === FormSubmitType.EDIT) {
       commonSchema = { ...commonSchema, ...INGESTION_WORKFLOW_NAME_UI_SCHEMA };
-    }
-
-    if (isDataInsightPipeline) {
-      commonSchema = {
-        ...commonSchema,
-        ...INGESTION_DATA_INSIGHT_WORKFLOW_UI_SCHEMA,
-      };
     }
 
     return commonSchema;
@@ -104,15 +95,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
       let formData = { ...e.formData };
-      if (isDataInsightPipeline) {
-        formData = {
-          ...omit(formData, [
-            'searchIndexMappingLanguage',
-            'batchSize',
-            'recreateIndex',
-          ]),
-        };
-      }
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
