@@ -63,6 +63,7 @@ from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.s3_utils import list_s3_objects
 
 logger = ingestion_logger()
 
@@ -235,15 +236,6 @@ class DatalakeSource(DatabaseServiceSource):
             database=self.context.database.fullyQualifiedName,
         )
 
-    def _list_s3_objects(self, **kwargs) -> Iterable:
-        try:
-            paginator = self.client.get_paginator("list_objects_v2")
-            for page in paginator.paginate(**kwargs):
-                yield from page.get("Contents", [])
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield s3 object: {exc}")
-
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
     ) -> Optional[Iterable[Tuple[str, str]]]:
@@ -297,7 +289,7 @@ class DatalakeSource(DatabaseServiceSource):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
-                for key in self._list_s3_objects(**kwargs):
+                for key in list_s3_objects(self.client, **kwargs):
                     table_name = self.standardize_table_name(bucket_name, key["Key"])
                     table_fqn = fqn.build(
                         self.metadata,
