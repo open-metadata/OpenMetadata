@@ -1,5 +1,15 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStoreException;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import javax.net.ssl.SSLContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -12,17 +22,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
 import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
 import org.openmetadata.service.util.SSLUtil;
-
-import javax.net.ssl.SSLContext;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyStoreException;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 @Slf4j
 public class IndexUtil {

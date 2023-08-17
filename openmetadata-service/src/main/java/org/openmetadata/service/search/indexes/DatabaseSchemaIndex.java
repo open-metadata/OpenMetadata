@@ -1,9 +1,8 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.Map;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.Map;
 
 public class DatabaseSchemaIndex {
   final DatabaseSchema databaseSchema;

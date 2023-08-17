@@ -992,7 +992,8 @@ public class ElasticSearchClientImpl implements SearchClient {
   @Override
   public void updateDatabase(ChangeEvent event) throws IOException {
     Database database = (Database) event.getEntity();
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(event.getEntityType());
+    SearchIndexDefinition.ElasticSearchIndexType indexType =
+        IndexUtil.getIndexMappingByEntityType(event.getEntityType());
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, database.getId().toString());
     DatabaseIndex databaseIndex;
     switch (event.getEventType()) {
@@ -1028,7 +1029,8 @@ public class ElasticSearchClientImpl implements SearchClient {
   @Override
   public void updateDatabaseSchema(ChangeEvent event) throws IOException {
     DatabaseSchema databaseSchema = (DatabaseSchema) event.getEntity();
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(event.getEntityType());
+    SearchIndexDefinition.ElasticSearchIndexType indexType =
+        IndexUtil.getIndexMappingByEntityType(event.getEntityType());
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, databaseSchema.getId().toString());
     DatabaseSchemaIndex databaseSchemaIndex;
     switch (event.getEventType()) {
@@ -1052,11 +1054,17 @@ public class ElasticSearchClientImpl implements SearchClient {
         break;
       case ENTITY_SOFT_DELETED:
         softDeleteOrRestoreChildren(
-            indexType.indexName, UpdateSearchEventsConstant.DATABASE_SCHEMA_ID, databaseSchema.getId().toString(), true);
+            indexType.indexName,
+            UpdateSearchEventsConstant.DATABASE_SCHEMA_ID,
+            databaseSchema.getId().toString(),
+            true);
         break;
       case ENTITY_RESTORED:
         softDeleteOrRestoreChildren(
-            indexType.indexName, UpdateSearchEventsConstant.DATABASE_SCHEMA_ID, databaseSchema.getId().toString(), false);
+            indexType.indexName,
+            UpdateSearchEventsConstant.DATABASE_SCHEMA_ID,
+            databaseSchema.getId().toString(),
+            false);
         break;
     }
   }
