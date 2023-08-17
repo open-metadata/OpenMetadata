@@ -1099,70 +1099,71 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
-export const addOwner = (ownerName, entity, isGlossaryPage) => {
-  cy.get('[data-testid="edit-owner"]').click();
+export const followAndOwnTheEntity = (termObj) => {
+  // search for the term and redirect to the respective entity tab
 
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
-  cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-
+  visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
+  // go to manage tab and search for logged in user and set the owner
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*${encodeURI(ownerName)}*`,
-    'searchOwner'
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
+    'getTeams'
   );
+  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
-  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
+  verifyResponseStatusCode('@getTeams', 200);
+  // Clicking on users tab
+  cy.get('.user-team-select-popover')
+    .contains('Users')
+    .should('exist')
+    .should('be.visible')
+    .click();
 
-  verifyResponseStatusCode('@searchOwner', 200);
+  cy.get('[data-testid="selectable-list"]')
+    .eq(1)
+    .should('exist')
+    .should('be.visible')
+    .find('[title="admin"]')
+    .should('be.visible')
+    .click();
 
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
+  cy.get('[data-testid="owner-link"]')
+    .scrollIntoView()
+    .invoke('text')
+    .then((text) => {
+      expect(text).equal('admin');
+    });
 
-  cy.get(`.ant-popover [title="${ownerName}"]`).click();
-  verifyResponseStatusCode('@patchOwner', 200);
-  if (isGlossaryPage) {
-    cy.get('[data-testid="glossary-owner-name"]').should('contain', ownerName);
-  } else {
-    cy.get('[data-testid="owner-link"]').should('contain', ownerName);
-  }
-};
+  interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
+  cy.get('[data-testid="follow-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  verifyResponseStatusCode('@waitAfterFollow', 200);
 
-export const removeOwner = (entity, isGlossaryPage) => {
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
+  cy.clickOnLogo();
 
-  cy.get('[data-testid="edit-owner"]').click();
+  cy.get('[data-testid="message-container"]')
+    .first()
+    .contains(`Followed ${termObj.entity.slice(0, -1)}`)
+    .should('be.visible');
 
-  cy.get('[data-testid="remove-owner"]').click();
-  verifyResponseStatusCode('@patchOwner', 200);
-  if (isGlossaryPage) {
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
-      'be.visible'
-    );
-  } else {
-    cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
-  }
-};
+  // checks newly generated feed for follow and setting owner
+  cy.get('[data-testid="message-container"]')
+    .eq(1)
+    .scrollIntoView()
+    .contains('Added owner: admin')
+    .should('be.visible');
 
-export const addTier = (tier, entity) => {
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTier');
+  // Check followed entity on mydata page
+  cy.get('[data-testid="following-data-container"]')
+    .find(`[data-testid="following-${termObj.displayName}"]`)
+    .should('be.visible');
 
-  interceptURL('GET', '/api/v1/tags?parent=Tier&limit=10', 'fetchTier');
-  cy.get('[data-testid="edit-tier"]').click();
-  verifyResponseStatusCode('@fetchTier', 200);
-  cy.get('[data-testid="radio-btn-Tier1"]').click({ waitForAnimations: true });
-  verifyResponseStatusCode('@patchTier', 200);
-  cy.get('[data-testid="radio-btn-Tier1"]').should('be.checked');
+  // Check owned entity
+  cy.get('[data-testid="my-data-container"]')
+    .find(`[data-testid="My data-${termObj.displayName}"]`)
+    .should('be.visible');
 
-  cy.clickOutside();
-  cy.get('[data-testid="Tier"]').should('contain', tier);
-};
-
-export const removeTier = (entity) => {
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTier');
-
-  cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="clear-tier"]').should('be.visible').click();
-
-  verifyResponseStatusCode('@patchTier', 200);
-  cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
+  cy.clickOnLogo();
 };
