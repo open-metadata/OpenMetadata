@@ -187,7 +187,7 @@ export const getTextDiff = (
 
 export const getEntityVersionByField = (
   changeDescription: ChangeDescription,
-  field: EntityField,
+  field: string,
   fallbackText?: string
 ) => {
   const fieldDiff = getDiffByFieldName(field, changeDescription, true);

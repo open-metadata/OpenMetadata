@@ -30,6 +30,7 @@ export interface TopicSchemaFieldsProps
   isReadOnly: boolean;
   entityFqn: string;
   isVersionView?: boolean;
+  schemaTypePlaceholder?: ReactNode;
   defaultExpandAllRows?: boolean;
   showSchemaDisplayTypeSwitch?: boolean;
   onUpdate?: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;

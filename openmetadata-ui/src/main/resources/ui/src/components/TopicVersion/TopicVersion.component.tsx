@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps, Tag } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -34,6 +34,7 @@ import { isEmpty, noop, toString } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { stringToHTML } from 'utils/StringsUtils';
 import { getUpdatedMessageSchema } from 'utils/TopicVersionUtils';
 import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
 import {
@@ -110,6 +111,18 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const schemaType = useMemo(() => {
+    const schemaTypeDiffText = getEntityVersionByField(
+      changeDescription,
+      'messageSchema.schemaType',
+      currentVersionData.displayName
+    );
+
+    return isEmpty(schemaTypeDiffText) ? undefined : (
+      <Tag>{stringToHTML(schemaTypeDiffText)}</Tag>
+    );
+  }, [changeDescription, currentVersionData]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -134,6 +147,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}
+                    schemaTypePlaceholder={schemaType}
                     onThreadLinkSelect={noop}
                   />
                 </Col>
@@ -181,7 +195,14 @@ const TopicVersion: FC<TopicVersionProp> = ({
         ),
       },
     ],
-    [description, messageSchemaDiff, currentVersionData, entityPermissions]
+    [
+      description,
+      messageSchemaDiff,
+      currentVersionData,
+      entityPermissions,
+      schemaType,
+      tags,
+    ]
   );
 
   const extraInfo = useMemo(() => {

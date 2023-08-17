@@ -64,6 +64,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   entityFqn,
   onThreadLinkSelect,
   isVersionView = false,
+  schemaTypePlaceholder,
 }) => {
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
@@ -279,7 +280,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <Typography.Text type="secondary">
             {t('label.schema')}
           </Typography.Text>
-          <Tag>{messageSchema?.schemaType ?? ''}</Tag>
+          {schemaTypePlaceholder ?? (
+            <Tag>{messageSchema?.schemaType ?? ''}</Tag>
+          )}
         </Space>
       </Col>
       {isEmpty(messageSchema?.schemaFields) &&
