@@ -13,9 +13,7 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.migration.api.MigrationWorkflow.validateMigrationsForServer;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
-import static org.openmetadata.service.util.TablesInitializer.getServerMigrationFiles;
 
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -86,9 +84,9 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.Migration;
-import org.openmetadata.service.migration.MigrationConfiguration;
-import org.openmetadata.service.migration.api.MigrationStep;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
@@ -162,7 +160,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
 
     // Validate flyway Migrations
-    validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
+    validateMigrations(jdbi, catalogConfig);
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
@@ -323,11 +321,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     super.initialize(bootstrap);
   }
 
-  private void validateMigrations(Jdbi jdbi, MigrationConfiguration conf) throws IOException {
+  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf) throws IOException {
     LOG.info("Validating Flyway migrations");
     Optional<String> lastMigrated = Migration.lastMigrated(jdbi);
-    String maxMigration = Migration.lastMigrationFile(conf);
-
+    String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
     if (lastMigrated.isEmpty()) {
       throw new IllegalStateException(
           "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
@@ -340,9 +337,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
 
-    LOG.info("Validating Server migrations");
-    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(DatasourceConfig.getConnectionType());
-    validateMigrationsForServer(jdbi, loadedMigrationFiles);
+    LOG.info("Validating native migrations");
+    ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
+    MigrationWorkflow migrationWorkflow =
+        new MigrationWorkflow(jdbi, conf.getMigrationConfiguration().getNativePath(), connectionType, false);
+    migrationWorkflow.validateMigrationsForServer();
   }
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {
