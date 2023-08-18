@@ -38,6 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -107,6 +108,11 @@ class MlflowSource(MlModelServiceSource):
 
         run = self.client.get_run(latest_version.run_id)
 
+        source_url = (
+            f"{clean_uri(self.service_connection.trackingUri)}/"
+            f"#/models/{model.name}"
+        )
+
         mlmodel_request = CreateMlModelRequest(
             name=model.name,
             description=model.description,
@@ -117,6 +123,7 @@ class MlflowSource(MlModelServiceSource):
             ),
             mlStore=self._get_ml_store(latest_version),
             service=self.context.mlmodel_service.fullyQualifiedName,
+            sourceUrl=source_url,
         )
         yield mlmodel_request
         self.register_record(mlmodel_request=mlmodel_request)

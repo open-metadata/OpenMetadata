@@ -194,6 +194,10 @@ class GlueSource(DatabaseServiceSource):
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
             database=self.context.database.fullyQualifiedName,
+            sourceUrl=self.get_source_url(
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            ),
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -272,6 +276,11 @@ class GlueSource(DatabaseServiceSource):
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
+                sourceUrl=self.get_source_url(
+                    table_name=table_name,
+                    schema_name=self.context.database_schema.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                ),
             )
             yield table_request
             self.register_record(table_request=table_request)
@@ -319,6 +328,38 @@ class GlueSource(DatabaseServiceSource):
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
+
+    def get_source_url(
+        self,
+        database_name: Optional[str],
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for dynamodb
+        """
+        try:
+            if schema_name:
+                base_url = (
+                    f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/"
+                    f"glue/home?region={self.service_connection.awsConfig.awsRegion}#/v2/data-catalog/"
+                )
+
+                schema_url = (
+                    f"{base_url}databases/view"
+                    f"/{schema_name}?catalogId={database_name}"
+                )
+                if not table_name:
+                    return schema_url
+                table_url = (
+                    f"{base_url}tables/view/{table_name}"
+                    f"?database={schema_name}&catalogId={database_name}&versionId=latest"
+                )
+                return table_url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
+        return None
 
     def close(self):
         pass
