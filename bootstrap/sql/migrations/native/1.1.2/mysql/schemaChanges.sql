@@ -45,7 +45,7 @@ ALTER TABLE report_entity MODIFY COLUMN fqnHash VARCHAR(768) COLLATE ascii_bin;
 ALTER TABLE storage_container_entity MODIFY COLUMN fqnHash VARCHAR(768) COLLATE ascii_bin;
 ALTER TABLE topic_entity MODIFY COLUMN fqnHash VARCHAR(768) COLLATE ascii_bin;
 
-
+-- queries to rename params to connectionOptions for trino
 UPDATE dbservice_entity
 SET json = JSON_SET(
         JSON_REMOVE(json, '$.connection.config.connectionOptions'),

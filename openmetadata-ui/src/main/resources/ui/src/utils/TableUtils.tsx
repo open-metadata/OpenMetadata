@@ -14,6 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
@@ -284,6 +285,13 @@ export const getEntityIcon = (indexType: string) => {
 
     case EntityType.DASHBOARD_DATA_MODEL:
       return <IconDataModel />;
+
+    case EntityType.TAG:
+      return <ClassificationIcon />;
+    case EntityType.GLOSSARY:
+      return <GlossaryIcon />;
+    case EntityType.GLOSSARY_TERM:
+      return <IconTerm />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

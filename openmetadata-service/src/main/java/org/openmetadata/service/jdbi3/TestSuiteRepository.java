@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
+import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -34,7 +36,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-    quoteFqn = true;
+    quoteFqn = false;
   }
 
   @Override
@@ -49,6 +51,16 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
     return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
+  }
+
+  @Override
+  public void setFullyQualifiedName(TestSuite testSuite) {
+    if (testSuite.getExecutableEntityReference() != null) {
+      testSuite.setFullyQualifiedName(
+          FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
+    } else {
+      testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
+    }
   }
 
   private TestSummary getTestSummary(TestSuite entity) {
