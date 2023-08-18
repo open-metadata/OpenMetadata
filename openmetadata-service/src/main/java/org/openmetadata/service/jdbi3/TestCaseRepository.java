@@ -202,22 +202,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
-    String storedTestCaseResult =
-        getExtensionAtTimestamp(
-            testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp());
-
     storeTimeSeries(
         testCase.getFullyQualifiedName(),
         TESTCASE_RESULT_EXTENSION,
         TEST_CASE_RESULT_FIELD,
         JsonUtils.pojoToJson(testCaseResult),
-        testCaseResult.getTimestamp(),
-        storedTestCaseResult != null);
+        testCaseResult.getTimestamp());
 
     setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, TEST_SUITE_FIELD));
     setTestSuiteSummary(testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
-    ChangeDescription change =
-        addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
+    ChangeDescription change = addTestCaseChangeDescription(testCase.getVersion(), testCaseResult);
     ChangeEvent changeEvent =
         getChangeEvent(updatedBy, withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
 
@@ -265,11 +259,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .update(testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
   }
 
-  private ChangeDescription addTestCaseChangeDescription(Double version, Object newValue, Object oldValue) {
-    FieldChange fieldChange =
-        new FieldChange().withName(TEST_CASE_RESULT_FIELD).withNewValue(newValue).withOldValue(oldValue);
+  private ChangeDescription addTestCaseChangeDescription(Double version, Object newValue) {
+    FieldChange fieldChange = new FieldChange().withName(TEST_CASE_RESULT_FIELD).withNewValue(newValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
-    change.getFieldsUpdated().add(fieldChange);
+    change.getFieldsAdded().add(fieldChange);
     return change;
   }
 
