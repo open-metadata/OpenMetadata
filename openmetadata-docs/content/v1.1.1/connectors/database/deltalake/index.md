@@ -8,14 +8,14 @@ slug: /connectors/database/deltalake
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+| :----------------- |:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
 | Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%}     |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |

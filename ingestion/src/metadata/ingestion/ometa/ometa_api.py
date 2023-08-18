@@ -589,6 +589,7 @@ class OpenMetadata(
         entity: Type[T],
         fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
+        nullable: bool = True,
     ) -> Optional[T]:
         """
         Return entity by name or None
@@ -598,6 +599,7 @@ class OpenMetadata(
             entity=entity,
             path=f"name/{quote(model_str(fqn), safe='')}",
             fields=fields,
+            nullable=nullable,
         )
 
     def get_by_id(
@@ -605,14 +607,24 @@ class OpenMetadata(
         entity: Type[T],
         entity_id: Union[str, basic.Uuid],
         fields: Optional[List[str]] = None,
+        nullable: bool = True,
     ) -> Optional[T]:
         """
         Return entity by ID or None
         """
-        return self._get(entity=entity, path=model_str(entity_id), fields=fields)
+        return self._get(
+            entity=entity,
+            path=model_str(entity_id),
+            fields=fields,
+            nullable=nullable,
+        )
 
     def _get(
-        self, entity: Type[T], path: str, fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        path: str,
+        fields: Optional[List[str]] = None,
+        nullable: bool = True,
     ) -> Optional[T]:
         """
         Generic GET operation for an entity
@@ -629,6 +641,12 @@ class OpenMetadata(
                 )
             return entity(**resp)
         except APIError as err:
+            # We can expect some GET calls to return us a None and manage it in following steps.
+            # No need to pollute the logs in these cases.
+            if err.code == 404 and nullable:
+                return None
+
+            # Any other API errors will be passed to the client
             logger.debug(traceback.format_exc())
             logger.debug(
                 "GET %s for %s. Error %s - %s",
@@ -637,7 +655,7 @@ class OpenMetadata(
                 err.status_code,
                 err,
             )
-            return None
+            raise err
 
     def get_entity_reference(
         self, entity: Type[T], fqn: str
