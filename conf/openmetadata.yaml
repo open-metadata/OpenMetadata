@@ -336,6 +336,13 @@ web:
     enabled: ${WEB_CONF_XSS_CSP_ENABLED:-false}
     policy: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
     reportOnlyPolicy: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
+  referrer-policy:
+    enabled: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_REFERRER_POLICY_OPTION:-"SAME_ORIGIN"}
+  permission-policy:
+    enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+    
 
 changeEventConfig:
   omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
