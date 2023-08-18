@@ -40,6 +40,7 @@ from metadata.ingestion.source.pipeline.dagster.models import (
     SolidHandle,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
@@ -99,6 +100,9 @@ class DagsterSource(PipelineServiceSource):
                         name=job.handleID,
                         displayName=job.handleID,
                         downstreamTasks=self._get_downstream_tasks(job=job),
+                        sourceUrl=self.get_source_url(
+                            pipeline_name=pipeline_name, task_name=job.handleID
+                        ),
                     )
                     task_list.append(task)
                 except Exception as exc:
@@ -131,6 +135,9 @@ class DagsterSource(PipelineServiceSource):
                     classification_name=DAGSTER_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
+                sourceUrl=self.get_source_url(
+                    pipeline_name=pipeline_details.name, task_name=None
+                ),
             )
             yield pipeline_request
             self.register_record(pipeline_request=pipeline_request)
@@ -138,7 +145,7 @@ class DagsterSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to yield pipeline for {pipeline_details}: {exc}")
 
-    def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
+    def yield_tag(self, *_, **__) -> Iterable[OMetaTagAndClassification]:
         yield from get_ometa_tag_and_classification(
             tags=[self.context.repository_name],
             classification_name=DAGSTER_TAG_CATEGORY,
@@ -181,7 +188,7 @@ class DagsterSource(PipelineServiceSource):
 
     def yield_pipeline_status(
         self, pipeline_details: DagsterPipeline
-    ) -> OMetaPipelineStatus:
+    ) -> Iterable[OMetaPipelineStatus]:
         """
         Yield the pipeline and task status
         """
@@ -232,6 +239,25 @@ class DagsterSource(PipelineServiceSource):
         """
 
         return pipeline_details.name
+
+    def get_source_url(
+        self, pipeline_name: str, task_name: Optional[str]
+    ) -> Optional[str]:
+        """
+        Method to get source url for pipelines and tasks for dagster
+        """
+        try:
+            url = (
+                f"{clean_uri(self.service_connection.host)}/locations/"
+                f"{self.context.repository_location}/jobs/{pipeline_name}/"
+            )
+            if task_name:
+                url = f"{url}{task_name}"
+            return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error to get pipeline url: {exc}")
+        return None
 
     def test_connection(self) -> None:
         pass
