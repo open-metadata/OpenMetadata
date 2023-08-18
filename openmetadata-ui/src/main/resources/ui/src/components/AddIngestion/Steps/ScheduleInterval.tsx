@@ -17,7 +17,7 @@ import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CronEditor from '../../common/CronEditor/CronEditor';
-import { ScheduleIntervalProps } from '../addIngestion.interface';
+import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 
 const ScheduleInterval = ({
   disabledCronChange,

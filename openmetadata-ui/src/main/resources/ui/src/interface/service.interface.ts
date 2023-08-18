@@ -114,12 +114,12 @@ export type IngestionWorkflowData = Pipeline & {
 export interface IngestionWorkflowFormProps {
   pipeLineType: PipelineType;
   workflowName: string;
-  okText: string;
-  cancelText: string;
   serviceCategory: ServiceCategory;
   workflowData: Pipeline;
   enableDebugLog: boolean;
   operationType: FormSubmitType;
+  cancelText?: string;
+  okText?: string;
   className?: string;
   onCancel: () => void;
   onFocus: (fieldId: string) => void;

@@ -17,7 +17,7 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import AddIngestion from './AddIngestion.component';
-import { AddIngestionProps } from './addIngestion.interface';
+import { AddIngestionProps } from './IngestionWorkflow.interface';
 
 const mockAddIngestionProps: AddIngestionProps = {
   activeIngestionStep: 1,

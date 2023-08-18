@@ -35,7 +35,7 @@ import {
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
-import { AddIngestionProps } from './addIngestion.interface';
+import { AddIngestionProps } from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
@@ -262,7 +262,6 @@ const AddIngestion = ({
       <div className="p-t-lg">
         {activeIngestionStep === 1 && (
           <IngestionWorkflowForm
-            cancelText={t('label.cancel')}
             enableDebugLog={data?.loggerLevel === LogLevels.Debug}
             okText={t('label.next')}
             operationType={status}

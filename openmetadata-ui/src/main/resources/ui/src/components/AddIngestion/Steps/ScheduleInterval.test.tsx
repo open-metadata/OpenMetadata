@@ -13,7 +13,7 @@
 
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
-import { ScheduleIntervalProps } from '../addIngestion.interface';
+import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 import ScheduleInterval from './ScheduleInterval';
 
 jest.mock('../../common/CronEditor/CronEditor', () => {

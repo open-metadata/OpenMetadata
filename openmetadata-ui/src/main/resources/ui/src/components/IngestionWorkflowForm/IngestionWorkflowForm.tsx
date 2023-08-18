@@ -33,6 +33,7 @@ import {
 } from 'interface/service.interface';
 import { isUndefined, omit, omitBy } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { transformErrors } from 'utils/formUtils';
 import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
 
@@ -55,6 +56,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     name: workflowName,
     enableDebugLog,
   });
+  const { t } = useTranslation();
 
   const schema = useMemo(
     () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
@@ -144,17 +146,17 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       onChange={handleOnChange}
       onFocus={onFocus}
       onSubmit={handleSubmit}>
-      <Space className="w-full justify-end">
+      <div className="d-flex w-full justify-end">
         <Space>
           <Button type="link" onClick={onCancel}>
-            {cancelText}
+            {cancelText ?? t('label.cancel')}
           </Button>
 
           <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText}
+            {okText ?? t('label.submit')}
           </Button>
         </Space>
-      </Space>
+      </div>
     </Form>
   );
 };
