@@ -303,6 +303,10 @@ class BigquerySource(CommonDbSourceService):
             name=schema_name,
             database=self.context.database.fullyQualifiedName,
             description=self.get_schema_description(schema_name),
+            sourceUrl=self.get_source_url(
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            ),
         )
 
         dataset_obj = self.client.get_dataset(schema_name)
@@ -467,15 +471,30 @@ class BigquerySource(CommonDbSourceService):
 
     def get_source_url(
         self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
         Method to get the source url for bigquery
         """
-        return (
-            f"https://console.cloud.google.com/bigquery?project={database_name}"
-            f"&ws=!1m5!1m4!4m3!1s{database_name}!2s{schema_name}!3s{table_name}"
-        )
+        try:
+            bigquery_host = "https://console.cloud.google.com/"
+            database_url = f"{bigquery_host}bigquery?project={database_name}"
+
+            schema_table_url = None
+            if schema_name:
+                schema_table_url = f"&ws=!1m4!1m3!3m2!1s{database_name}!2s{schema_name}"
+            if table_name:
+                schema_table_url = (
+                    f"&ws=!1m5!1m4!4m3!1s{database_name}"
+                    f"!2s{schema_name}!3s{table_name}"
+                )
+            if schema_table_url:
+                return f"{database_url}{schema_table_url}"
+            return database_url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url: {exc}")
+        return None
