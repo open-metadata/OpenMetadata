@@ -71,7 +71,7 @@ def test_connection(
         collection_manager.get_all_scopes()
 
     test_fn = {
-        "CheckAccess" : lambda:True,
+
         "GetDatabases": partial(test_get_databases, client, holder),
         "GetCollections": partial(test_get_collections, client, holder),
     }
