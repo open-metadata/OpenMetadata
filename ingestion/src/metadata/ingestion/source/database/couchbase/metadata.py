@@ -68,8 +68,7 @@ class CouchbaseSource(CommonNoSQLSource):
                     yield bucket_name.name
         except Exception as exp:
             logger.debug(f"Failed to fetch bucket name: {exp}")
-            logger.debug(traceback.format_exc())  
-        return None           
+            logger.debug(traceback.format_exc())
 
     def get_schema_name_list(self) -> List[str]:
         """
@@ -85,7 +84,9 @@ class CouchbaseSource(CommonNoSQLSource):
             }
             return [scopes.name for scopes in collection_manager.get_all_scopes()]
         except Exception as exp:
-            logger.debug(f"Failed to list scope for bucket names [{database_name}]: {exp}")
+            logger.debug(
+                f"Failed to list scope for bucket names [{database_name}]: {exp}"
+            )
             logger.debug(traceback.format_exc())
         return []
 
@@ -123,8 +124,6 @@ class CouchbaseSource(CommonNoSQLSource):
                     query_iter = self.couchbase.query(query_coln)
                     return list(query_iter.rows())
         except Exception as exp:
-            logger.debug(
-                f"Failed to list column names for table [{table_name}]: {exp}"
-            )
-            logger.debug(traceback.format_exc())        
+            logger.debug(f"Failed to list column names for table [{table_name}]: {exp}")
+            logger.debug(traceback.format_exc())
         return []
