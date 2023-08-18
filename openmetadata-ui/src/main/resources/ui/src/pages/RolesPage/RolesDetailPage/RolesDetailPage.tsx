@@ -86,11 +86,11 @@ const RolesDetailPage = () => {
         url: rolesPath,
       },
       {
-        name: fqn,
+        name: getEntityName(role),
         url: '',
       },
     ],
-    [fqn]
+    [role]
   );
 
   const fetchRolePermission = async () => {
@@ -276,7 +276,14 @@ const RolesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="roles-detail" data-testid="role-details">
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {getEntityName(role)}
+              </Typography.Title>
               <Description
+                className="m-b-md"
                 description={role.description || ''}
                 entityFqn={role.fullyQualifiedName}
                 entityName={getEntityName(role)}
