@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Card,
-  Collapse,
-  Popover,
-  Radio,
-  RadioChangeEvent,
-  Space,
-  Typography,
-} from 'antd';
+import { Card, Collapse, Popover, Radio, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
@@ -72,10 +64,6 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
     }
   };
 
-  const handleTierSelection = ({ target: { value } }: RadioChangeEvent) => {
-    updateTier?.(value as string);
-  };
-
   const clearTierSelection = () => {
     updateTier?.();
   };
@@ -100,17 +88,22 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               </Typography.Text>
             </Space>
           }>
-          <Radio.Group value={currentTier} onChange={handleTierSelection}>
+          <Radio.Group value={currentTier}>
             <Collapse
               accordion
               className="bg-white border-none"
+              collapsible="icon"
               defaultActiveKey={currentTier}
               expandIconPosition="end">
               {tierData.map((card) => (
                 <Panel
                   data-testid="card-list"
                   header={
-                    <div className="flex self-start">
+                    <div
+                      className="flex self-start cursor-pointer"
+                      onClick={() =>
+                        currentTier !== card.id && updateTier?.(card.id)
+                      }>
                       <Radio
                         className="radio-input"
                         data-testid={`radio-btn-${card.title}`}
@@ -127,11 +120,13 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
                     </div>
                   }
                   key={card.id}>
-                  <RichTextEditorPreviewer
-                    className="tier-card-description"
-                    enableSeeMoreVariant={false}
-                    markdown={card.data}
-                  />
+                  <div className="m-l-md">
+                    <RichTextEditorPreviewer
+                      className="tier-card-description"
+                      enableSeeMoreVariant={false}
+                      markdown={card.data}
+                    />
+                  </div>
                 </Panel>
               ))}
             </Collapse>
