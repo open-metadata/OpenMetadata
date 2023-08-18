@@ -13,13 +13,10 @@
 Source connection handler
 """
 from functools import partial
-
-# from functools import partial
 from typing import Optional
 
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
-from couchbase.exceptions import CouchbaseException
 from couchbase.options import ClusterOptions
 from pydantic import BaseModel
 
@@ -37,16 +34,12 @@ def get_connection(connection: CouchbaseConnection):
     """
     Create connection
     """
-    try:
-        auth = PasswordAuthenticator(
-            connection.username, connection.password.get_secret_value()
-        )
-        url = f"{connection.scheme.value}://" + connection.endpoint
-        couchbase_cluster = Cluster.connect(url, ClusterOptions(auth))
-        return couchbase_cluster
-    except CouchbaseException as error:
-        # Handle the exception if pass wrong crdentails
-        return error
+    auth = PasswordAuthenticator(
+        connection.username, connection.password.get_secret_value()
+    )
+    url = f"{connection.scheme.value}://{connection.hostport}"
+    couchbase_cluster = Cluster.connect(url, ClusterOptions(auth))
+    return couchbase_cluster
 
 
 def test_connection(
@@ -78,6 +71,7 @@ def test_connection(
         collection_manager.get_all_scopes()
 
     test_fn = {
+        "CheckAccess" : lambda:True,
         "GetDatabases": partial(test_get_databases, client, holder),
         "GetCollections": partial(test_get_collections, client, holder),
     }

@@ -88,7 +88,7 @@ This is a sample config for Couchbase:
 
 {% codeInfo srNumber=3 %}
 
-**endpoint**: If couchbase is hosted on cloud then the endpoint parameter specifies the connection string and if you are using couchbase server then the endpoint parameter specifies hostname of the Couchbase. This should be specified as a string in the format `hostname` or `xyz.cloud.couchbase.com`. E.g., `localhost`.
+**hostport**: If couchbase is hosted on cloud then the hostport parameter specifies the connection string and if you are using couchbase server then the hostport parameter specifies hostname of the Couchbase. This should be specified as a string in the format `hostname` or `xyz.cloud.couchbase.com`. E.g., `localhost`.
 
 {% /codeInfo %}
 
@@ -152,7 +152,7 @@ source:
         password: password
 ```
 ```yaml {% srNumber=3 %}
-        endpoint: localhost
+        hostport: localhost
 ```
 
 ```yaml {% srNumber=4 %}

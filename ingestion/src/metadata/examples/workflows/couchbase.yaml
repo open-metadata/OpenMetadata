@@ -7,7 +7,7 @@ source:
       bucket: bucket
       username: username
       password: password
-      endpoint: endpoint
+      hostport: hostport
   sourceConfig:
     config:
       type: DatabaseMetadata

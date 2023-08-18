@@ -59,12 +59,17 @@ class CouchbaseSource(CommonNoSQLSource):
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:
-        if self.service_connection.bucket:
-            yield self.service_connection.__dict__.get("bucket")
-        else:
-            buckets = self.couchbase.buckets()
-            for bucket_name in buckets.get_all_buckets():
-                yield bucket_name.name
+        try:
+            if self.service_connection.bucket:
+                yield self.service_connection.__dict__.get("bucket")
+            else:
+                buckets = self.couchbase.buckets()
+                for bucket_name in buckets.get_all_buckets():
+                    yield bucket_name.name
+        except Exception as exp:
+            logger.debug(f"Failed to fetch bucket name: {exp}")
+            logger.debug(traceback.format_exc())  
+        return None           
 
     def get_schema_name_list(self) -> List[str]:
         """
@@ -80,21 +85,20 @@ class CouchbaseSource(CommonNoSQLSource):
             }
             return [scopes.name for scopes in collection_manager.get_all_scopes()]
         except Exception as exp:
-            logger.debug(f"Failed to list database names: {exp}")
+            logger.debug(f"Failed to list scope for bucket names [{database_name}]: {exp}")
             logger.debug(traceback.format_exc())
         return []
 
     def get_table_name_list(self, schema_name: str) -> List[str]:
         """
         Method to get list of table names available within schema db
-        need to be overridden by sources
         """
         try:
             scope_object = self.context.scope_dict.get(schema_name)
             return [collection.name for collection in scope_object.collections]
         except Exception as exp:
             logger.debug(
-                f"Failed to list collection names for schema [{schema_name}]: {exp}"
+                f"Failed to list collection names for scope [{schema_name}]: {exp}"
             )
             logger.debug(traceback.format_exc())
         return []
@@ -104,17 +108,23 @@ class CouchbaseSource(CommonNoSQLSource):
         Method to get actual data available within table
         need to be overridden by sources
         """
-        database_name = self.context.database.name.__root__
-        query = COUCHBASE_SQL_STATEMENT.format(table_name=table_name)
-        result = self.couchbase.query(query)
-        for row in result.rows():
-            if len(row) > 0:
-                query_coln = COUCHBASE_GET_DATA.format(
-                    database_name=database_name,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    sample_size=SAMPLE_SIZE,
-                )
-                query_iter = self.couchbase.query(query_coln)
-                return list(query_iter.rows())
+        try:
+            database_name = self.context.database.name.__root__
+            query = COUCHBASE_SQL_STATEMENT.format(table_name=table_name)
+            result = self.couchbase.query(query)
+            for row in result.rows():
+                if len(row) > 0:
+                    query_coln = COUCHBASE_GET_DATA.format(
+                        database_name=database_name,
+                        schema_name=schema_name,
+                        table_name=table_name,
+                        sample_size=SAMPLE_SIZE,
+                    )
+                    query_iter = self.couchbase.query(query_coln)
+                    return list(query_iter.rows())
+        except Exception as exp:
+            logger.debug(
+                f"Failed to list column names for table [{table_name}]: {exp}"
+            )
+            logger.debug(traceback.format_exc())        
         return []

@@ -8,12 +8,6 @@ You can find further information on the Couchbase connector in the [here](https:
 ## Connection Details
 
 $$section
-### Couchbase Connection Details $(id="connectionDetails")
-
-Choose between Couchbase Connection Values to authenticate with your Couchbase cluster.
-$$
-
-$$section
 ### Username $(id="username")
 Username to connect to Couchbase..
 $$
@@ -24,7 +18,7 @@ Password to connect to Couchbase.
 $$
 
 $$section
-### Endpoint $(id="endpoint")
+### Hostport $(id="hostport")
 
 This parameter specifies the hostname/ endpoint of your client connection of the Couchbase instance. 
 

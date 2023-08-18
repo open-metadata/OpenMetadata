@@ -13,7 +13,7 @@
         "default": "Couchbase"
       },
       "couchbaseScheme": {
-        "description": "SQLAlchemy driver scheme options.",
+        "description": "Couchbase driver scheme options.",
         "type": "string",
         "enum": ["couchbase"],
         "default": "couchbase"
@@ -49,12 +49,12 @@
             "type": "string",
             "format": "password"
         },
-        "endpoint": {
-            "title": "Endpoint",
-            "description": "Endpoint of the Couchbase service.",
+        "hostport": {
+            "title": "Hostport",
+            "description": "Hostname of the Couchbase service.",
             "type": "string"
         }
     },
     "additionalProperties": false,
-    "required": ["endpoint", "username", "password"]
+    "required": ["hostport", "username", "password"]
 }
