@@ -876,3 +876,5 @@ export const getEntityDetailLink = (
 
   return path;
 };
+
+export const progressDataFormat = (percent: number) => <>{percent}%</>;

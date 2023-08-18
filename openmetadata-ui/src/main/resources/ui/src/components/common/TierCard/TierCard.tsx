@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Collapse, Popover, Radio, Space, Typography } from 'antd';
+import {
+  Card,
+  Collapse,
+  Popover,
+  Radio,
+  RadioChangeEvent,
+  Space,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
@@ -64,6 +72,10 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
     }
   };
 
+  const handleTierSelection = ({ target: { value } }: RadioChangeEvent) => {
+    updateTier?.(value as string);
+  };
+
   const clearTierSelection = () => {
     updateTier?.();
   };
@@ -88,7 +100,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               </Typography.Text>
             </Space>
           }>
-          <Radio.Group value={currentTier}>
+          <Radio.Group value={currentTier} onChange={handleTierSelection}>
             <Collapse
               accordion
               className="bg-white border-none"
@@ -99,16 +111,10 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
                 <Panel
                   data-testid="card-list"
                   header={
-                    <div
-                      className="flex self-start cursor-pointer"
-                      onClick={() =>
-                        currentTier !== card.id && updateTier?.(card.id)
-                      }>
-                      <Radio
-                        className="radio-input"
-                        data-testid={`radio-btn-${card.title}`}
-                        value={card.id}
-                      />
+                    <Radio
+                      className="radio-input"
+                      data-testid={`radio-btn-${card.title}`}
+                      value={card.id}>
                       <Space direction="vertical" size={0}>
                         <Typography.Paragraph className="m-b-0 font-regular text-grey-body">
                           {card.title}
@@ -117,7 +123,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
                           {card.description.replace(/\*/g, '')}
                         </Typography.Paragraph>
                       </Space>
-                    </div>
+                    </Radio>
                   }
                   key={card.id}>
                   <div className="m-l-md">

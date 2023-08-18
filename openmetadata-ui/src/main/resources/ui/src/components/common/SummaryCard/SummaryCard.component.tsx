@@ -13,8 +13,8 @@
 import { Progress, Skeleton, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
-import { formatNumberWithComma } from 'utils/CommonUtils';
+import React, { useMemo } from 'react';
+import { formatNumberWithComma, progressDataFormat } from 'utils/CommonUtils';
 import './summary-card.style.less';
 import { SummaryCardProps } from './SummaryCard.interface';
 
@@ -34,8 +34,6 @@ export const SummaryCard = ({
 
     return 0;
   }, [total, value]);
-
-  const progressFormat = useCallback((percent) => <>{percent}%</>, []);
 
   if (isLoading) {
     return (
@@ -68,7 +66,7 @@ export const SummaryCard = ({
         <Progress
           className={type}
           data-testid="progress-bar"
-          format={progressFormat}
+          format={(percent) => progressDataFormat(percent ?? 0)}
           percent={percent}
           type="circle"
           width={65}
