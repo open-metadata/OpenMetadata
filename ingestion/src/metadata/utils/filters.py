@@ -254,6 +254,7 @@ def filter_by_project(
     """
     return _filter(project_filter_pattern, project_name)
 
+
 def filter_by_search_index(
     search_index_filter_pattern: Optional[FilterPattern], search_index_name: str
 ) -> bool:
