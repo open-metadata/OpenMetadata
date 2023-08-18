@@ -73,3 +73,5 @@ def get_file_format_type(
     for supported_type in SupportedTypes:
         if key.endswith(supported_type.value):
             return supported_type.value
+
+    return None
