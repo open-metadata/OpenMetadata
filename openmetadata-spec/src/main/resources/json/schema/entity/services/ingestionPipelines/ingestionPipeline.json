@@ -74,7 +74,7 @@
         "retries": {
           "description": "Retry pipeline in case of failure.",
           "type": "integer",
-          "default": 0
+          "default": 3
         },
         "retryDelay": {
           "description": "Delay between retries in seconds.",
