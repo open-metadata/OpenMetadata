@@ -9,11 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MongoDB source methods.
+Couchbase source methods.
 """
 
 import traceback
-from typing import Dict, Iterable, List, Union
+from typing import Dict, Iterable, List
 
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
     CouchbaseConnection,
@@ -31,7 +31,7 @@ from metadata.ingestion.source.database.common_nosql_source import (
 )
 from metadata.ingestion.source.database.couchbase.queries import (
     COUCHBASE_GET_DATA,
-    Couchbase_SQL_STATEMENT,
+    COUCHBASE_SQL_STATEMENT,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -75,8 +75,10 @@ class CouchbaseSource(CommonNoSQLSource):
             database_name = self.context.database.name.__root__
             bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
-            self.context.scope_list = collection_manager.get_all_scopes()
-            return [scopes.name for scopes in self.context.scope_list]
+            self.context.scope_dict = {
+                scope.name: scope for scope in collection_manager.get_all_scopes()
+            }
+            return [scopes.name for scopes in collection_manager.get_all_scopes()]
         except Exception as exp:
             logger.debug(f"Failed to list database names: {exp}")
             logger.debug(traceback.format_exc())
@@ -88,11 +90,8 @@ class CouchbaseSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
-            scope_obj = None
-            for scope_obj in self.context.scope_list:
-                if scope_obj.name == schema_name:
-                    break
-            return [collection.name for collection in scope_obj.collections]
+            scope_object = self.context.scope_dict.get(schema_name)
+            return [collection.name for collection in scope_object.collections]
         except Exception as exp:
             logger.debug(
                 f"Failed to list collection names for schema [{schema_name}]: {exp}"
@@ -100,15 +99,13 @@ class CouchbaseSource(CommonNoSQLSource):
             logger.debug(traceback.format_exc())
         return []
 
-    def get_table_columns_dict(
-        self, schema_name: str, table_name: str
-    ) -> Union[List[Dict], Dict]:
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> List[Dict]:
         """
         Method to get actual data available within table
         need to be overridden by sources
         """
         database_name = self.context.database.name.__root__
-        query = Couchbase_SQL_STATEMENT.format(table_name=table_name)
+        query = COUCHBASE_SQL_STATEMENT.format(table_name=table_name)
         result = self.couchbase.query(query)
         for row in result.rows():
             if len(row) > 0:
@@ -116,12 +113,8 @@ class CouchbaseSource(CommonNoSQLSource):
                     database_name=database_name,
                     schema_name=schema_name,
                     table_name=table_name,
-                    SAMPLE_SIZE=SAMPLE_SIZE,
+                    sample_size=SAMPLE_SIZE,
                 )
                 query_iter = self.couchbase.query(query_coln)
-                for data in query_iter.rows():
-                    keys = []
-                    keys.append(data)
-                    break
-            return keys
+                return list(query_iter.rows())
         return []

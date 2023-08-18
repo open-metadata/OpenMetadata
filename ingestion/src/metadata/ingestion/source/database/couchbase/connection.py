@@ -19,6 +19,7 @@ from typing import Optional
 
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
+from couchbase.exceptions import CouchbaseException
 from couchbase.options import ClusterOptions
 from pydantic import BaseModel
 
@@ -43,21 +44,9 @@ def get_connection(connection: CouchbaseConnection):
         url = f"{connection.scheme.value}://" + connection.endpoint
         couchbase_cluster = Cluster.connect(url, ClusterOptions(auth))
         return couchbase_cluster
-    except Exception:
+    except CouchbaseException as error:
         # Handle the exception if pass wrong crdentails
-        return None
-
-
-def check_list_tables(client):
-    """
-    Test ListTables under couchbase
-    client.get_all_bucket() passes even if wrong credentials are passed
-    Having it iterate does the list call which can be used to test connection.
-    """
-
-    buckets = client.buckets()
-    for _ in buckets.get_all_buckets():
-        return True
+        return error
 
 
 def test_connection(
@@ -89,7 +78,6 @@ def test_connection(
         collection_manager.get_all_scopes()
 
     test_fn = {
-        "CheckAccess": partial(check_list_tables, client),
         "GetDatabases": partial(test_get_databases, client, holder),
         "GetCollections": partial(test_get_collections, client, holder),
     }

@@ -14,10 +14,10 @@ SQL Queries used during ingestion
 
 import textwrap
 
-Couchbase_SQL_STATEMENT = textwrap.dedent(
+COUCHBASE_SQL_STATEMENT = textwrap.dedent(
     """ SELECT * FROM system:indexes WHERE keyspace_id = '{table_name}' AND is_primary = TRUE """
 )
 
 COUCHBASE_GET_DATA = textwrap.dedent(
-    """ select crc.* from `{database_name}`.`{schema_name}`.`{table_name}` crc limit {SAMPLE_SIZE} """
+    """ select crc.* from `{database_name}`.`{schema_name}`.`{table_name}` crc limit {sample_size} """
 )

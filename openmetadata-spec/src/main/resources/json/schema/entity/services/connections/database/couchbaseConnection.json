@@ -28,7 +28,7 @@
       },
       "scheme": {
         "title": "Connection Scheme",
-        "description": "SQLAlchemy driver scheme options.",
+        "description": "Couchbase driver scheme options.",
         "$ref": "#/definitions/couchbaseScheme",
         "default": "couchbase"
       },

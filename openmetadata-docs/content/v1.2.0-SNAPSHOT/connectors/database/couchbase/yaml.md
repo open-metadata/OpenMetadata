@@ -144,8 +144,7 @@ source:
   serviceConnection:
     config:
       type: Couchbase
-      connectionDetails:
-```
+
 ```yaml {% srNumber=1 %}
         username: username
 ```
