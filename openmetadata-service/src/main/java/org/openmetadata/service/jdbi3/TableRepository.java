@@ -353,18 +353,12 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    String storedTableProfile =
-        getExtensionAtTimestamp(
-            table.getFullyQualifiedName(),
-            TABLE_PROFILE_EXTENSION,
-            createTableProfile.getTableProfile().getTimestamp());
     storeTimeSeries(
         table.getFullyQualifiedName(),
         TABLE_PROFILE_EXTENSION,
         "tableProfile",
         JsonUtils.pojoToJson(createTableProfile.getTableProfile()),
-        createTableProfile.getTableProfile().getTimestamp(),
-        storedTableProfile != null);
+        createTableProfile.getTableProfile().getTimestamp());
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
       // Validate all the columns
@@ -372,16 +366,12 @@ public class TableRepository extends EntityRepository<Table> {
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
-      String storedColumnProfile =
-          getExtensionAtTimestamp(
-              column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION, columnProfile.getTimestamp());
       storeTimeSeries(
           column.getFullyQualifiedName(),
           TABLE_COLUMN_PROFILE_EXTENSION,
           "columnProfile",
           JsonUtils.pojoToJson(columnProfile),
-          columnProfile.getTimestamp(),
-          storedColumnProfile != null);
+          columnProfile.getTimestamp());
     }
 
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
