@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
     FileFormat,
 )
+from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 
 
@@ -73,4 +74,7 @@ class S3ContainerDetails(BaseModel):
     parent: Optional[EntityReference] = Field(
         None,
         description="Reference to the parent container",
+    )
+    sourceUrl: Optional[basic.SourceUrl] = Field(
+        None, description="Source URL of the container."
     )

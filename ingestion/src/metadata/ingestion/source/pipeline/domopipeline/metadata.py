@@ -37,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -75,10 +76,12 @@ class DomopipelineSource(PipelineServiceSource):
     def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
         try:
             pipeline_name = pipeline_details["id"]
+            source_url = self.get_source_url(pipeline_id=pipeline_name)
             task = Task(
                 name=pipeline_name,
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
+                sourceUrl=source_url,
             )
 
             pipeline_request = CreatePipelineRequest(
@@ -88,6 +91,7 @@ class DomopipelineSource(PipelineServiceSource):
                 tasks=[task],
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 startDate=pipeline_details.get("created"),
+                sourceUrl=source_url,
             )
             yield pipeline_request
             self.register_record(pipeline_request=pipeline_request)
@@ -113,7 +117,7 @@ class DomopipelineSource(PipelineServiceSource):
     ) -> Optional[Iterable[AddLineageRequest]]:
         return
 
-    def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
+    def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
         pipeline_id = pipeline_details.get("id")
         if not pipeline_id:
             logger.debug(
@@ -157,4 +161,18 @@ class DomopipelineSource(PipelineServiceSource):
             logger.error(f"Wild error extracting status for {pipeline_id} - {err}")
             logger.debug(traceback.format_exc())
 
+        return None
+
+    def get_source_url(
+        self,
+        pipeline_id: str,
+    ) -> Optional[str]:
+        try:
+            return (
+                f"{clean_uri(self.service_connection.sandboxDomain)}/datacenter/dataflows/"
+                f"{pipeline_id}/details#history"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url for {pipeline_id}: {exc}")
         return None

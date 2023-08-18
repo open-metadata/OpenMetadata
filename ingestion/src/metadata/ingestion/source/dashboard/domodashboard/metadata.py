@@ -66,7 +66,7 @@ class DomodashboardSource(DashboardServiceSource):
         connection: DomoDashboardConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DomoDashboardConnection):
             raise InvalidSourceException(
-                f"Expected MetabaseConnection, but got {connection}"
+                f"Expected DomoDashboardConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -191,7 +191,7 @@ class DomodashboardSource(DashboardServiceSource):
 
     def yield_dashboard_chart(
         self, dashboard_details: DomoDashboardDetails
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Optional[CreateChartRequest]]:
         chart_ids = dashboard_details.cardIds
         chart_id_from_collection = self.get_chart_ids(dashboard_details.collectionIds)
         chart_ids.extend(chart_id_from_collection)

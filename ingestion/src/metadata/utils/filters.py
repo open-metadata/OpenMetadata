@@ -238,3 +238,18 @@ def filter_by_datamodel(
     :return: True for filtering, False otherwise
     """
     return _filter(datamodel_filter_pattern, datamodel_name)
+
+
+def filter_by_search_index(
+    search_index_filter_pattern: Optional[FilterPattern], search_index_name: str
+) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param search_index_filter_pattern: Model defining search index filtering logic
+    :param search_index_name: search index name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(search_index_filter_pattern, search_index_name)

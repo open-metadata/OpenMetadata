@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from 'antd';
+import { Button } from 'antd';
 import { FqnPart } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
@@ -160,32 +160,30 @@ export const getSuggestionElement = (
       : name;
 
   const retn = (
-    <Tooltip title={displayText}>
-      <Button
-        block
-        className="text-left truncate p-0"
-        data-testid={dataTestId}
-        icon={
-          <img
-            alt={serviceType}
-            className="m-r-sm"
-            height="16px"
-            src={serviceTypeLogo(serviceType)}
-            width="16px"
-          />
-        }
-        key={fqdn}
-        type="text">
-        <Link
-          className="text-sm"
-          data-testid="data-name"
-          id={fqdn.replace(/\./g, '')}
-          to={entityLink}
-          onClick={onClickHandler}>
-          {displayText}
-        </Link>
-      </Button>
-    </Tooltip>
+    <Button
+      block
+      className="text-left truncate p-0"
+      data-testid={dataTestId}
+      icon={
+        <img
+          alt={serviceType}
+          className="m-r-sm"
+          height="16px"
+          src={serviceTypeLogo(serviceType)}
+          width="16px"
+        />
+      }
+      key={fqdn}
+      type="text">
+      <Link
+        className="text-sm"
+        data-testid="data-name"
+        id={fqdn.replace(/\./g, '')}
+        to={entityLink}
+        onClick={onClickHandler}>
+        {displayText}
+      </Link>
+    </Button>
   );
 
   return retn;

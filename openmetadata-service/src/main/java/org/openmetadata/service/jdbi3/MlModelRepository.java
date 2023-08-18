@@ -40,7 +40,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -298,6 +297,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateMlStore(original, updated);
       updateServer(original, updated);
       updateTarget(original, updated);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {

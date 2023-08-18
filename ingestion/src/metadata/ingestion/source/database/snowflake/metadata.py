@@ -393,22 +393,30 @@ class SnowflakeSource(CommonDbSourceService):
 
     def get_source_url(
         self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
         Method to get the source url for snowflake
         """
-        account = self._get_current_account()
-        region_id = self._get_current_region()
-        region_name = self._clean_region_name(region_id)
-        if account and region_name:
-            tab_type = "view" if table_type == TableType.View else "table"
-            return (
-                f"https://app.snowflake.com/{region_name.lower()}/{account.lower()}/#/"
-                f"data/databases/{database_name}/schemas"
-                f"/{schema_name}/{tab_type}/{table_name}"
-            )
+        try:
+            account = self._get_current_account()
+            region_id = self._get_current_region()
+            region_name = self._clean_region_name(region_id)
+            if account and region_name:
+                tab_type = "view" if table_type == TableType.View else "table"
+                url = (
+                    f"https://app.snowflake.com/{region_name.lower()}"
+                    f"/{account.lower()}/#/data/databases/{database_name}"
+                )
+                if schema_name:
+                    url = f"{url}/schemas/{schema_name}"
+                    if table_name:
+                        url = f"{url}/{tab_type}/{table_name}"
+                return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
         return None

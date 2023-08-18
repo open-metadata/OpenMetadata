@@ -54,7 +54,7 @@ public final class Migration {
   /** Read the migrations path from the Catalog YAML config and return a list of all the files' versions. */
   private static List<String> getMigrationVersions(MigrationConfiguration conf) throws IOException {
     try (Stream<String> names =
-        Files.walk(Paths.get(conf.getPath()))
+        Files.walk(Paths.get(conf.getFlywayPath()))
             .filter(Files::isRegularFile)
             .map(Path::toFile)
             .map(File::getName)
