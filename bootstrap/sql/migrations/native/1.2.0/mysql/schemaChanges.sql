@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS search_index_entity (
     UNIQUE (fqnHash)
     );
 
--- We were hardcoding retries to 0. Since we are now using the IngestionPipeline to set them, keep existing ones to 0.
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REPLACE(json, '$.airflowConfig.retries', 0)
 WHERE JSON_EXTRACT(json, '$.airflowConfig.retries') IS NOT NULL;
