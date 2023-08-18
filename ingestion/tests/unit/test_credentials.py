@@ -15,7 +15,9 @@ from unittest import TestCase
 
 from pydantic import SecretStr
 
-from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+)
 from metadata.utils.credentials import (
     InvalidPrivateKeyException,
     build_google_credentials_dict,
@@ -49,7 +51,7 @@ BYaz18xB1znonY33RIkCQQDE3wAWxFrvr582J12qJkE4enmNhRJFdcSREDX54d/5
 VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 -----END RSA PRIVATE KEY-----"""
 
-        gcs_values = GCSValues(
+        gcp_values = GcpCredentialsValues(
             type="my_type",
             projectId=["project_id"],
             privateKeyId="private_key_id",
@@ -72,11 +74,11 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             "client_x509_cert_url": "http://localhost:1234",
         }
 
-        build_google_credentials_dict(gcs_values)
+        build_google_credentials_dict(gcp_values)
 
-        self.assertEqual(expected_dict, build_google_credentials_dict(gcs_values))
+        self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
 
-        gcs_values.privateKey = SecretStr("I don't think I am a proper Private Key")
+        gcp_values.privateKey = SecretStr("I don't think I am a proper Private Key")
 
         with self.assertRaises(InvalidPrivateKeyException):
-            build_google_credentials_dict(gcs_values)
+            build_google_credentials_dict(gcp_values)

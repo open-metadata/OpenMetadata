@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
   SERVICE_VIEW_CAP,
@@ -28,11 +30,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
-import {
-  getEntityName,
-  getServiceLogo,
-  showPagination,
-} from '../../utils/CommonUtils';
+import { getServiceLogo, showPagination } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {
@@ -43,7 +41,6 @@ import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageHeader from '../header/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
@@ -96,33 +93,58 @@ const Services = ({
         return PAGE_HEADERS.ML_MODELS_SERVICES;
       case ServiceCategory.PIPELINE_SERVICES:
         return PAGE_HEADERS.PIPELINES_SERVICES;
+      case ServiceCategory.STORAGE_SERVICES:
+        return PAGE_HEADERS.STORAGE_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
   }, [serviceName]);
 
+  const noDataPlaceholder = useMemo(
+    () =>
+      addServicePermission ? (
+        <ErrorPlaceHolder
+          className="mt-24"
+          doc={CONNECTORS_DOCS}
+          heading={servicesDisplayName[serviceName]}
+          permission={addServicePermission}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddServiceClick}
+        />
+      ) : (
+        <ErrorPlaceHolder
+          className="mt-24"
+          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        />
+      ),
+    [
+      addServicePermission,
+      servicesDisplayName,
+      serviceName,
+      addServicePermission,
+      handleAddServiceClick,
+    ]
+  );
+
   return (
-    <Row className="tw-justify-center" data-testid="services-container">
-      {serviceData.length ? (
-        <Fragment>
-          <Col span={24}>
-            <Space
-              className="w-full justify-between m-b-lg"
-              data-testid="header">
-              <PageHeader data={getServicePageHeader()} />
-              <Tooltip
-                placement="left"
-                title={
-                  addServicePermission
-                    ? t('label.add-entity', {
-                        entity: t('label.service'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
+    <Row className="justify-center" data-testid="services-container">
+      <Fragment>
+        <Col span={24}>
+          <Space className="w-full justify-between m-b-lg" data-testid="header">
+            <PageHeader data={getServicePageHeader()} />
+            <Tooltip
+              placement="left"
+              title={
+                addServicePermission
+                  ? t('label.add-entity', {
+                      entity: t('label.service'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
+              {(addServicePermission || isAuthDisabled) && (
                 <Button
                   className="m-b-xs"
                   data-testid="add-service-button"
-                  disabled={!addServicePermission && !isAuthDisabled}
                   size="middle"
                   type="primary"
                   onClick={handleAddServiceClick}>
@@ -130,39 +152,38 @@ const Services = ({
                     entity: t('label.service'),
                   })}
                 </Button>
-              </Tooltip>
-            </Space>
-          </Col>
+              )}
+            </Tooltip>
+          </Space>
+        </Col>
+        {serviceData.length ? (
           <Col span={24}>
             <Row data-testid="data-container" gutter={[16, 16]}>
-              {serviceData.map((service, index) => (
-                <Col key={index} lg={8} xl={6}>
-                  <Card
-                    size="small"
-                    style={{ ...leftPanelAntCardStyle, height: '100%' }}>
+              {serviceData.map((service) => (
+                <Col key={service.name} lg={8} xl={6}>
+                  <Card className="w-full" size="small">
                     <div
-                      className="tw-flex tw-justify-between tw-text-grey-muted"
+                      className="d-flex justify-between text-grey-muted"
                       data-testid="service-card">
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
-                        <div>
+                      <Row gutter={[0, 6]}>
+                        <Col span={24}>
                           <Link
+                            className="no-underline"
                             to={getServiceDetailsPath(
-                              service.name,
+                              encodeURIComponent(
+                                service.fullyQualifiedName ?? service.name
+                              ),
                               serviceName
                             )}>
-                            <button>
-                              <h6
-                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                                data-testid={`service-name-${getEntityName(
-                                  service
-                                )}`}
-                                title={getEntityName(service)}>
-                                {getEntityName(service)}
-                              </h6>
-                            </button>
+                            <Typography.Text
+                              className="text-base text-grey-body font-medium truncate w-48"
+                              data-testid={`service-name-${service.name}`}
+                              title={getEntityName(service)}>
+                              {getEntityName(service)}
+                            </Typography.Text>
                           </Link>
                           <div
-                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                            className="p-t-xs text-grey-body break-all description-text"
                             data-testid="service-description">
                             {service.description ? (
                               <RichTextEditorPreviewer
@@ -170,25 +191,28 @@ const Services = ({
                                 markdown={service.description}
                               />
                             ) : (
-                              <span className="tw-no-description">
+                              <span className="text-grey-muted">
                                 {t('label.no-description')}
                               </span>
                             )}
                           </div>
                           {getOptionalFields(service, serviceName)}
-                        </div>
-                        <div className="" data-testid="service-type">
-                          <label className="tw-mb-0">{`${t(
-                            'label.type'
-                          )}:`}</label>
-                          <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                            {service.serviceType}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                        </Col>
+                        <Col span={24}>
+                          <div className="m-b-xss" data-testid="service-type">
+                            <label className="m-b-0">{`${t(
+                              'label.type'
+                            )}:`}</label>
+                            <span className="font-normal m-l-xss text-grey-body">
+                              {service.serviceType}
+                            </span>
+                          </div>
+                        </Col>
+                      </Row>
+
+                      <div className="d-flex flex-col justify-between flex-none">
                         <div
-                          className="tw-flex tw-justify-end"
+                          className="d-flex justify-end"
                           data-testid="service-icon">
                           {getServiceLogo(service.serviceType || '', 'h-7')}
                         </div>
@@ -199,49 +223,20 @@ const Services = ({
               ))}
             </Row>
           </Col>
+        ) : (
+          <Col span={24}>{noDataPlaceholder}</Col>
+        )}
 
-          {showPagination(paging) && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={SERVICE_VIEW_CAP}
-              paging={paging}
-              pagingHandler={onPageChange}
-              totalCount={paging.total}
-            />
-          )}
-        </Fragment>
-      ) : (
-        <Col span={24}>
-          <ErrorPlaceHolder
-            buttons={
-              <Tooltip
-                placement="left"
-                title={
-                  addServicePermission
-                    ? t('label.add-entity', {
-                        entity: t('label.service'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  ghost
-                  data-testid="add-service-button"
-                  disabled={!addServicePermission}
-                  size="small"
-                  type="primary"
-                  onClick={handleAddServiceClick}>
-                  {t('label.add-new-entity', {
-                    entity: servicesDisplayName[serviceName],
-                  })}
-                </Button>
-              </Tooltip>
-            }
-            doc={CONNECTORS_DOCS}
-            heading={servicesDisplayName[serviceName]}
-            type="ADD_DATA"
+        {showPagination(paging) && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={SERVICE_VIEW_CAP}
+            paging={paging}
+            pagingHandler={onPageChange}
+            totalCount={paging.total}
           />
-        </Col>
-      )}
+        )}
+      </Fragment>
     </Row>
   );
 };

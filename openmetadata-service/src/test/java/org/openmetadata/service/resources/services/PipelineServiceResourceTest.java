@@ -34,15 +34,18 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
-import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline;
@@ -51,7 +54,6 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -131,7 +133,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             .withConfig(
                 new AirflowConnection()
                     .withHostPort(new URI("http://my-server:1234"))
-                    .withConnection(MYSQL_DATABASE_CONNECTION));
+                    .withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
     update.withConnection(updatedConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
@@ -142,7 +144,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     assertNotNull(
         JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
             .getHostPort());
-    assertNull(
+    assertNotNull(
         JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
             .getConnection());
   }
@@ -164,12 +166,11 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     // Create Pipeline Service
     CreatePipelineService create = createRequest(test);
     PipelineService service = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    EntityReference serviceRef = service.getEntityReference();
 
     // Add an IngestionPipeline to the service
     IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
     CreateIngestionPipeline createIngestionPipeline =
-        ingestionPipelineResourceTest.createRequest(test).withService(serviceRef);
+        ingestionPipelineResourceTest.createRequest(test).withService(service.getEntityReference());
 
     PipelineServiceMetadataPipeline pipelineServiceMetadataPipeline =
         new PipelineServiceMetadataPipeline()
@@ -188,6 +189,31 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     // Delete the pipeline service and ensure ingestion pipeline is deleted
     deleteEntity(updatedService.getId(), true, true, ADMIN_AUTH_HEADERS);
     ingestionPipelineResourceTest.assertEntityDeleted(ingestionPipeline.getId(), true);
+  }
+
+  @Test
+  void put_testConnectionResult_200(TestInfo test) throws IOException {
+    PipelineService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    // By default, we have no result logged in
+    assertNull(service.getTestConnectionResult());
+    PipelineService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    // Validate that the data got properly stored
+    assertNotNull(updatedService.getTestConnectionResult());
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(updatedService.getConnection(), service.getConnection());
+    // Check that the stored data is also correct
+    PipelineService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(stored.getTestConnectionResult());
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(stored.getConnection(), service.getConnection());
+  }
+
+  public PipelineService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(serviceId).path("/testConnectionResult");
+    return TestUtils.put(target, testConnectionResult, PipelineService.class, OK, authHeaders);
   }
 
   @Override
@@ -266,20 +292,20 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     assertEquals(expectedAirflowConnection.getHostPort(), actualAirflowConnection.getHostPort());
     // Currently, just checking for MySQL as metadata db for Airflow
     // We need to get inside the general DatabaseConnection and fetch the MysqlConnection
-    DatabaseConnection expectedDatabaseConnection = (DatabaseConnection) expectedAirflowConnection.getConnection();
-    MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
+    MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedAirflowConnection.getConnection();
     // Use the database service tests utilities for the comparison
-    // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
-      DatabaseConnection actualDatabaseConnection =
-          JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
+    // only bot can see all connection parameters unmasked. Non bot users can see the connection
+    // but passwords will be masked
+    if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
       MysqlConnection actualMysqlConnection =
-          JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
-      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
+          JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
+      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, false);
     } else {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
-      assertNull(actualAirflowConnection.getConnection());
+      MysqlConnection actualMysqlConnection =
+          JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
+      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, true);
     }
   }
 }

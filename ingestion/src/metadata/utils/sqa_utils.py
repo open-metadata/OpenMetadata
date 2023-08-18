@@ -14,16 +14,25 @@ sqlalchemy utility functions
 """
 
 import traceback
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlalchemy
-from sqlalchemy import Column, and_, or_
+from sqlalchemy import Column, and_, func, or_
+from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.sql.expression import TextClause
+from sqlalchemy.sql.sqltypes import ARRAY, String
 
-from metadata.orm_profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
+from metadata.profiler.orm.functions.datetime import (
+    DateAddFn,
+    DatetimeAddFn,
+    TimestampAddFn,
+)
 from metadata.utils.logger import query_runner_logger
 
 logger = query_runner_logger()
+
 
 # pylint: disable=cell-var-from-loop
 def build_query_filter(
@@ -68,9 +77,61 @@ def build_query_filter(
     return and_(*list_of_filters)
 
 
+def get_integer_range_filter(
+    partition_field, integer_range_start, integer_range_end
+) -> Optional[BinaryExpression]:
+    """Get the query filter for integer range
+
+    Args:
+        partition_field (str): partition field
+        integer_range_start (int): integer range start
+        integer_range_end (int): integer range end
+
+    Returns:
+        Optional[BinaryExpression]
+    """
+    return build_query_filter(
+        [
+            (
+                partition_field,
+                "ge",
+                integer_range_start,
+            ),
+            (
+                partition_field,
+                "le",
+                integer_range_end,
+            ),
+        ],
+        False,
+    )
+
+
+def get_value_filter(partition_field, values) -> Optional[BinaryExpression]:
+    """Get the query filter for values
+
+    Args:
+        partition_field (str): partition field
+        values (list): list of values to partition by
+
+    Returns:
+        Optional[BinaryExpression]
+    """
+    return build_query_filter(
+        [
+            (
+                partition_field,
+                "in",
+                values,
+            )
+        ],
+        False,
+    )
+
+
 def dispatch_to_date_or_datetime(
     partition_interval: int,
-    partition_interval_unit: str,
+    partition_interval_unit: TextClause,
     type_,
 ):
     """Dispatch to date or datetime function based on the type
@@ -82,7 +143,9 @@ def dispatch_to_date_or_datetime(
     """
     if isinstance(type_, (sqlalchemy.DATE)):
         return DateAddFn(partition_interval, partition_interval_unit)
-    return DatetimeAddFn(partition_interval, partition_interval_unit)
+    if isinstance(type_, sqlalchemy.DATETIME):
+        return DatetimeAddFn(partition_interval, partition_interval_unit)
+    return TimestampAddFn(partition_interval, partition_interval_unit)
 
 
 def get_partition_col_type(partition_column_name: str, columns: List[Column]):
@@ -125,3 +188,53 @@ def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
         filter_ = None
 
     return filter_
+
+
+def handle_array(
+    query: Query, column: Column, table: Union[DeclarativeMeta, AliasedClass]
+) -> Query:
+    """Handle query for array. The curent implementation is
+    specific to BigQuery. This should be refactored in the future
+    to add a more generic support
+
+    Args:
+        query (Query): query object
+        column (Column): SQA Column object
+        table (Union[DeclarativeMeta, AliasedClass]): table or aliased
+    Returns:
+        Query: query object with the FROM clause set
+    """
+    # pylint: disable=protected-access
+    if not hasattr(column, "_is_array"):
+        return query.select_from(table)
+    if column._is_array:
+        return query.select_from(
+            table,
+            func.unnest(
+                # unnest expects an array. This type is not used anywhere else
+                Column(column._array_col, ARRAY(String))
+            ).alias(column._array_col),
+        )
+    return query.select_from(table)
+
+
+def is_array(kwargs: Dict) -> bool:
+    """Check if the kwargs has array.
+    If array True is returned, we'll pop the is_array kw
+    and keep the array_col kw
+
+    Args:
+        kwargs (Dict): kwargs
+
+    Returns:
+        bool: True if array, False otherwise
+    """
+    if kwargs.get("is_array"):
+        return kwargs.pop("is_array")
+
+    try:
+        kwargs.pop("is_array")
+        kwargs.pop("array_col")
+    except KeyError:
+        pass
+    return False

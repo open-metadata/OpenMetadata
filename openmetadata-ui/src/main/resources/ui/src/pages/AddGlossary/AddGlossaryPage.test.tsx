@@ -19,7 +19,11 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('components/AddGlossary/AddGlossary.component', () => {
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
+jest.mock('components/Glossary/AddGlossary/AddGlossary.component', () => {
   return jest.fn().mockReturnValue(<div>AddGlossary.component</div>);
 });
 

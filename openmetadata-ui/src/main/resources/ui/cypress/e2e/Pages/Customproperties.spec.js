@@ -23,7 +23,8 @@ import { ENTITIES, uuid } from '../../constants/constants';
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/users*', 'settingsPage');
+    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
+
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
@@ -52,17 +53,15 @@ describe('Custom Properties should work properly', () => {
         addCustomPropertiesForEntity(
           propertyName,
           entity,
-          'integer',
+          'Integer',
           entity.integerValue,
           entity.entityObj
         );
+
         // Navigating back to custom properties page
-        cy.get('[data-testid="appbar-item-settings"]')
-          .should('be.visible')
-          .click();
+        cy.get('[data-testid="appbar-item-settings"]').click();
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
-          .should('be.visible')
           .click();
 
         verifyResponseStatusCode('@getEntity', 200);
@@ -78,7 +77,6 @@ describe('Custom Properties should work properly', () => {
         // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
-          .should('be.visible')
           .click();
 
         verifyResponseStatusCode('@getEntity', 200);
@@ -126,7 +124,7 @@ describe('Custom Properties should work properly', () => {
         addCustomPropertiesForEntity(
           propertyName,
           entity,
-          'string',
+          'String',
           entity.stringValue,
           entity.entityObj
         );
@@ -202,10 +200,11 @@ describe('Custom Properties should work properly', () => {
         addCustomPropertiesForEntity(
           propertyName,
           entity,
-          'markdown',
+          'Markdown',
           entity.markdownValue,
           entity.entityObj
         );
+
         // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
           .should('be.visible')

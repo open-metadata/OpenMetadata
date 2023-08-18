@@ -1,12 +1,12 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.service.Entity.ALL_RESOURCES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -14,7 +14,6 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.Expression;
@@ -26,7 +25,6 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 public class CompiledRule extends Rule {
   private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
   @JsonIgnore private Expression expression;
-  @JsonIgnore @Getter private boolean resourceBased = false;
 
   public CompiledRule(Rule rule) {
     super();
@@ -55,9 +53,10 @@ public class CompiledRule extends Rule {
       return;
     }
     Expression expression = parseExpression(condition);
-    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, null, null);
+    RuleEvaluator ruleEvaluator = new RuleEvaluator();
+    StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     try {
-      expression.getValue(ruleEvaluator, clz);
+      expression.getValue(evaluationContext, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
@@ -71,13 +70,6 @@ public class CompiledRule extends Rule {
     }
     if (expression == null) {
       expression = parseExpression(getCondition());
-      List<String> resourceBasedFunctions = CollectionRegistry.getInstance().getResourceBasedFunctions();
-      for (String function : resourceBasedFunctions) {
-        if (getCondition().contains(function)) {
-          resourceBased = true;
-          break;
-        }
-      }
     }
     return expression;
   }
@@ -133,19 +125,19 @@ public class CompiledRule extends Rule {
     while (iterator.hasNext()) {
       MetadataOperation operation = iterator.next();
       if (matchOperation(operation) && matchExpression(policyContext, subjectContext, resourceContext)) {
-        LOG.info("operation {} allowed", operation);
+        LOG.debug("operation {} allowed", operation);
         iterator.remove();
       }
     }
   }
 
-  public void setPermission(Map<String, ResourcePermission> resourcePermissionMap, PolicyContext policyContext) {
+  public void evaluatePermission(Map<String, ResourcePermission> resourcePermissionMap, PolicyContext policyContext) {
     for (ResourcePermission resourcePermission : resourcePermissionMap.values()) {
-      setPermission(resourcePermission.getResource(), resourcePermission, policyContext);
+      evaluatePermission(resourcePermission.getResource(), resourcePermission, policyContext);
     }
   }
 
-  public void setPermission(String resource, ResourcePermission resourcePermission, PolicyContext policyContext) {
+  public void evaluatePermission(String resource, ResourcePermission resourcePermission, PolicyContext policyContext) {
     if (!matchResource(resource)) {
       return;
     }
@@ -163,7 +155,7 @@ public class CompiledRule extends Rule {
     }
   }
 
-  public void setPermission(
+  public void evaluatePermission(
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext,
       ResourcePermission resourcePermission,
@@ -189,7 +181,7 @@ public class CompiledRule extends Rule {
   }
 
   protected boolean matchResource(String resource) {
-    return (getResources().get(0).equalsIgnoreCase("all") || getResources().contains(resource));
+    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES) || getResources().contains(resource));
   }
 
   private boolean matchOperation(MetadataOperation operation) {
@@ -210,13 +202,13 @@ public class CompiledRule extends Rule {
 
   private boolean matchExpression(
       PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
-    Expression expression = getExpression();
-    if (expression == null) {
+    Expression expr = getExpression();
+    if (expr == null) {
       return true;
     }
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-    return Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+    return Boolean.TRUE.equals(expr.getValue(evaluationContext, Boolean.class));
   }
 
   public static boolean overrideAccess(Access newAccess, Access currentAccess) {

@@ -1,0 +1,121 @@
+{
+    "metadata": {
+        "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v7.json",
+        "dbt_version": "1.3.0",
+        "generated_at": "2023-01-17T19:05:57.859191Z",
+        "invocation_id": "0c4757bf-0a8f-4f24-a18a-4c2638bf7d8e",
+        "env": {},
+        "project_id": "06e5b98c2db46f8a72cc4f66410e9b3b",
+        "user_id": null,
+        "send_anonymous_usage_stats": true,
+        "adapter_type": "redshift"
+    },
+    "nodes": {
+        "test.jaffle_shop.unique_orders_order_id.fed79b3a6e": {
+            "test_metadata": {
+                "name": "unique",
+                "kwargs": {
+                    "column_name": "order_id",
+                    "model": "{{ get_where_subquery(ref('orders')) }}"
+                },
+                "namespace": null
+            },
+            "compiled": true,
+            "resource_type": "test",
+            "depends_on": {
+                "macros": [
+                    "macro.dbt.test_unique",
+                    "macro.dbt.get_where_subquery"
+                ],
+                "nodes": [
+                    "model.jaffle_shop.orders"
+                ]
+            },
+            "config": {
+                "enabled": true,
+                "alias": null,
+                "schema": "dbt_test__audit",
+                "database": null,
+                "tags": [],
+                "meta": {
+                    "test_suite_name": "DBT TEST SUITE",
+                    "test_suite_desciption": "Dbt test suite description"
+                },
+                "materialized": "test",
+                "severity": "ERROR",
+                "store_failures": null,
+                "where": null,
+                "limit": null,
+                "fail_calc": "count(*)",
+                "warn_if": "!= 0",
+                "error_if": "!= 0"
+            },
+            "database": "dev",
+            "schema": "dbt_jaffle_dbt_test__audit",
+            "fqn": [
+                "jaffle_shop",
+                "unique_orders_order_id"
+            ],
+            "unique_id": "test.jaffle_shop.unique_orders_order_id.fed79b3a6e",
+            "raw_code": "{{ test_unique(**_dbt_generic_test_kwargs) }}",
+            "language": "sql",
+            "package_name": "jaffle_shop",
+            "root_path": "/Users/onkarravgan/Desktop/project/jaffle_shop",
+            "path": "unique_orders_order_id.sql",
+            "original_file_path": "models/schema.yml",
+            "name": "unique_orders_order_id",
+            "alias": "unique_orders_order_id",
+            "checksum": {
+                "name": "none",
+                "checksum": ""
+            },
+            "tags": [],
+            "refs": [
+                [
+                    "orders"
+                ]
+            ],
+            "sources": [],
+            "metrics": [],
+            "description": "",
+            "columns": {},
+            "meta": {
+                "test_suite_name": "DBT TEST SUITE",
+                "test_suite_desciption": "Dbt test suite description"
+            },
+            "docs": {
+                "show": true,
+                "node_color": null
+            },
+            "patch_path": null,
+            "compiled_path": "target/compiled/jaffle_shop/models/schema.yml/unique_orders_order_id.sql",
+            "build_path": null,
+            "deferred": false,
+            "unrendered_config": {
+                "meta": {
+                    "test_suite_name": "DBT TEST SUITE",
+                    "test_suite_desciption": "Dbt test suite description"
+                }
+            },
+            "created_at": 1673982251.748683,
+            "compiled_code": "\n    \n    \n\nselect\n    order_id as unique_field,\n    count(*) as n_records\n\nfrom \"dev\".\"dbt_jaffle\".\"orders\"\nwhere order_id is not null\ngroup by order_id\nhaving count(*) > 1\n\n\n",
+            "extra_ctes_injected": true,
+            "extra_ctes": [],
+            "relation_name": null,
+            "column_name": "order_id",
+            "file_key_name": "models.orders"
+        }
+    },
+    "sources": {},
+    "macros": {
+       
+    },
+    "docs": {
+    },
+    "exposures": {},
+    "metrics": {},
+    "selectors": {},
+    "disabled": {},
+    "parent_map": {},
+    "child_map": {}
+}

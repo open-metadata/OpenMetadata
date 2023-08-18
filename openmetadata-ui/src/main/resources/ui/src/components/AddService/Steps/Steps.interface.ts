@@ -13,6 +13,7 @@
 
 import { DynamicFormFieldType } from 'Models';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { ServiceConfig } from '../AddService.interface';
 
 export type SelectServiceTypeProps = {
   showError: boolean;
@@ -26,21 +27,8 @@ export type SelectServiceTypeProps = {
 
 export type ConfigureServiceProps = {
   serviceName: string;
-  description: string;
-  showError: {
-    name: boolean;
-    duplicateName: boolean;
-    nameWithSpace: boolean;
-    delimit: boolean;
-    specialChar: boolean;
-    nameLength: boolean;
-    allowChar: boolean;
-  };
-  handleValidation: (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => void;
   onBack: () => void;
-  onNext: (description: string) => void;
+  onNext: (data: ServiceConfig) => void;
 };
 
 export type ConnectionDetailsProps = {
@@ -55,8 +43,7 @@ export type ConnectionDetailsProps = {
   account: string;
   brokers: string;
   schemaRegistry: string;
-  pipelineUrl: string;
-  dashboardUrl: string;
+  sourceUrl: string;
   env: string;
   apiVersion: string;
   server: string;

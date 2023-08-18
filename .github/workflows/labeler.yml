@@ -1,0 +1,25 @@
+name: Labeler
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+
+jobs:
+    pr-labels:
+        # Job to assign PR labels to teams
+        name: pr-labels
+        permissions:
+            contents: read
+            pull-requests: write
+        runs-on: ubuntu-latest
+        steps:
+            - name: Assign labels
+              uses: actions/labeler@v4
+              with:
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+                  configuration-path: .github/labeler.yml
+                  sync-labels: true

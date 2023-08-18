@@ -11,59 +11,267 @@
  *  limitations under the License.
  */
 
-@body-text-color: #37352f;
-@badge-color: #d5d8dc;
-@while-color: #ffffff;
+@import url('./../../../styles/variables.less');
 @border-radius: 6px;
-@primary-color: #7147e8;
+@border-color: #e8e8ed;
+@markdown-bg-color: #f8f8fa;
+@admonition-border-color: #afafc1;
 
 .markdown-parser {
   .toastui-editor-contents {
     font-size: 14px;
     h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0px !important;
+      border: none;
+      padding: 24px 0px 0px 0px;
+      color: @text-color;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 48px;
+      font-weight: 600;
+    }
+
     h2 {
-      border-bottom: 1px solid @badge-color;
+      font-size: 20px;
+      line-height: 32px;
+      font-weight: 600;
     }
 
-    blockquote {
-      padding: 0px 16px;
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
     }
 
-    code {
-      color: @body-text-color;
-      background-color: @badge-color;
+    h4 {
+      font-size: 16px;
+      font-weight: 600;
     }
 
-    pre {
-      background-color: @badge-color;
-      border-radius: @border-radius;
-      code {
-        background-color: transparent;
+    h5 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    section[data-highlighted='true'] {
+      background: @primary-color-hover;
+      color: @primary-color;
+      transition: ease-in-out;
+      border-left: 3px solid @primary-color;
+      padding-bottom: 12px !important;
+      margin-top: 12px;
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5 {
+        padding: 8px 0 0 !important;
+      }
+    }
+
+    a {
+      color: @primary-color;
+      text-decoration: none;
+      line-height: 24px;
+
+      &:hover {
+        text-decoration: underline;
       }
     }
 
     table {
-      width: 100%;
-      overflow: auto;
-      th {
-        background-color: @badge-color;
-        color: @body-text-color;
-        font-weight: bold;
-      }
+      border-collapse: collapse;
+      margin-left: 35px;
     }
 
-    p {
-      margin-top: 0px;
-      margin-bottom: 10px;
-      color: @body-text-color;
-      word-break: break-word;
-      &:last-child {
-        margin-bottom: 0px;
+    th,
+    td {
+      border: 1px solid @border-color;
+      margin: 0;
+      padding: 8px 16px;
+    }
+
+    th {
+      background: @markdown-bg-color;
+      color: @text-color;
+      font-weight: 500;
+    }
+
+    blockquote {
+      border-left: 4px solid @border-color;
+      padding-left: 16px;
+      margin-left: 25px;
+    }
+
+    strong {
+      font-weight: bold;
+    }
+
+    code {
+      white-space: break-spaces;
+      background: @markdown-bg-color;
+      color: @text-color;
+    }
+
+    pre {
+      margin: 0px;
+      padding: 0px;
+      background: transparent;
+      margin-top: 16px;
+      code {
+        display: block;
+        padding: 15px;
+        overflow: auto;
+        border-radius: 8px;
+        border-bottom: 2px solid @border-color;
       }
     }
 
     img {
       border-radius: @border-radius;
+      margin-top: 10px;
+      max-width: 100%;
+    }
+
+    li:not(:last-child) {
+      margin-bottom: 5px;
+    }
+
+    p {
+      margin-top: 10px;
+      margin-bottom: 0px;
+      color: @text-color;
+      word-break: break-word;
+      line-height: 20px;
+      &:first-child {
+        margin-top: 0px;
+      }
+      &:last-child {
+        margin-bottom: 0px;
+      }
+    }
+
+    ul {
+      list-style: disc !important;
+      li {
+        &::before {
+          content: none;
+        }
+      }
+    }
+
+    .task-list-item {
+      border-radius: 0.125rem;
+      border-width: 1px;
+      border-color: @text-color;
+    }
+    .task-list-item.checked {
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      &::before {
+        background-image: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27white%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M5.707 7.293a1 1 0 0 0-1.414 1.414l2 2a1 1 0 0 0 1.414 0l4-4a1 1 0 0 0-1.414-1.414L7 8.586 5.707 7.293z%27/%3e%3c/svg%3e');
+        background-color: @primary-color;
+      }
+    }
+    .admonition {
+      border-radius: 8px;
+      border-left: 8px solid @admonition-border-color;
+      padding: 1px 16px 1px 48px !important;
+      margin: 16px;
+      background-color: @markdown-bg-color;
+      position: relative;
+
+      &::before {
+        content: 'ℹ️';
+        position: absolute;
+        top: 16px;
+        left: 16px;
+      }
+      p {
+        margin-top: 16px;
+        margin-bottom: 16px;
+      }
+    }
+    .admonition_note {
+      &::before {
+        content: '📝';
+      }
+    }
+    .admonition_warning,
+    .admonition_caution {
+      background-color: #fff3dc;
+      border-left-color: @warning-color;
+      &::before {
+        content: '⚠️';
+      }
+    }
+    .admonition_tip,
+    .admonition_info {
+      background-color: #d1e9ff;
+      border-left-color: @info-color;
+    }
+    .admonition_tip {
+      &::before {
+        content: '💡';
+      }
+    }
+    .admonition_danger {
+      background-color: #ff4c3b33;
+      border-left-color: @error-color;
+
+      &::before {
+        content: '⚠️';
+      }
+    }
+    .code-copy-button {
+      position: absolute;
+      top: 16px;
+      right: 40px;
+      pointer-events: all;
+      cursor: pointer;
+      z-index: 1;
+      width: 16px;
+      opacity: 0;
+      padding: 8px;
+      background: @border-color;
+      border-radius: 4px;
+    }
+
+    .code-copy-message {
+      display: none;
+      position: absolute;
+      top: 16px;
+      right: 40px;
+      pointer-events: all;
+      cursor: pointer;
+      z-index: 2;
+      background: @border-color;
+      border-radius: 4px;
+      padding: 0px 4px;
+    }
+
+    .code-block {
+      &:hover .code-copy-button[data-copied='false'] {
+        opacity: 1;
+      }
+    }
+
+    .code-copy-message[data-copied='true'] {
+      display: inline-block;
+    }
+    .code-copy-message[data-copied='false'] {
+      display: none;
+    }
+    .code-copy-button[data-copied='true'] {
+      opacity: 0;
     }
   }
 }
@@ -71,10 +279,10 @@
 .markdown-parser.white {
   .toastui-editor-contents {
     p {
-      color: @while-color;
+      color: @white;
     }
     ul li::before {
-      background-color: @while-color;
+      background-color: @white;
     }
   }
 }
@@ -90,5 +298,18 @@
   .ant-btn:focus,
   .ant-btn:hover {
     color: @primary-color;
+  }
+}
+
+.rich-text-editor-container.text-grey-muted {
+  .markdown-parser {
+    .toastui-editor-contents {
+      p {
+        color: @grey-4;
+      }
+      ul li::before {
+        background-color: @grey-4;
+      }
+    }
   }
 }

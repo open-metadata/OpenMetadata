@@ -17,7 +17,7 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
   "settings": {
-   "analysis": {
+    "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
@@ -34,6 +34,11 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2
         }
       },
       "filter": {
@@ -50,7 +55,7 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "type": "text"
       },
       "name": {
-        "type": "text",
+        "type": "keyword",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -62,9 +67,17 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "description": {
+      "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "description": {
+        "type": "text"
       },
       "version": {
         "type": "float"
@@ -81,9 +94,6 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "deleted": {
         "type": "text"
-      },
-      "deprecated": {
-        "type": "boolean"
       },
       "suggest": {
         "type": "completion",

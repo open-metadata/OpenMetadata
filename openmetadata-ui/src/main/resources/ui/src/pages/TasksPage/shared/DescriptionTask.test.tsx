@@ -21,7 +21,7 @@ import {
 import DescriptionTask from './DescriptionTask';
 
 const mockProps = {
-  taskDetail: {
+  taskThread: {
     id: '9542599e-f2f9-46d1-9fc0-d03620351a0d',
     type: 'Task',
     href: 'http://localhost:8585/api/v1/feed/9542599e-f2f9-46d1-9fc0-d03620351a0d',
@@ -61,8 +61,8 @@ const mockProps = {
   hasEditAccess: true,
   suggestion:
     'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to build our dim and fact tables',
-  currentDescription: '',
-  onSuggestionChange: jest.fn(),
+  value: '',
+  onChange: jest.fn(),
 };
 
 describe('Test Description Task Component', () => {
@@ -84,8 +84,8 @@ describe('Test Description Task Component', () => {
     render(
       <DescriptionTask
         {...mockProps}
-        taskDetail={{
-          ...mockProps.taskDetail,
+        taskThread={{
+          ...mockProps.taskThread,
           task: {
             id: 5,
             assignees: [
@@ -125,8 +125,8 @@ describe('Test Description Task Component', () => {
     render(
       <DescriptionTask
         {...mockProps}
-        taskDetail={{
-          ...mockProps.taskDetail,
+        taskThread={{
+          ...mockProps.taskThread,
           task: {
             id: 5,
             assignees: [

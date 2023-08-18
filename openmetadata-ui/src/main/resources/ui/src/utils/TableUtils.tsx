@@ -11,36 +11,51 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
+import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import classNames from 'classnames';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
-import { upperCase } from 'lodash';
+import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
-import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
-import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
+import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
+import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  DE_ACTIVE_COLOR,
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getDataModelDetailsPath,
   getEditWebhookPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTableTabPath,
+  getTagsDetailsPath,
   getTopicDetailsPath,
+  TEXT_BODY_COLOR,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import {
@@ -48,7 +63,6 @@ import {
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
-import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
@@ -56,34 +70,16 @@ import {
   sortTagsCaseInsensitive,
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
-import { ordinalize } from './StringsUtils';
+import { serviceTypeLogo } from './ServiceUtils';
+import { getDecodedFqn, ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
-
-export const getBadgeName = (tableType?: string) => {
-  switch (tableType) {
-    case 'QUERY':
-      return t('label.query-lowercase');
-    default:
-      return t('label.table-lowercase');
-  }
-};
-
-export const usageSeverity = (value: number): string => {
-  if (value > 75) {
-    return 'High';
-  } else if (value >= 25 && value <= 75) {
-    return 'Medium';
-  } else {
-    return 'Low';
-  }
-};
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
   const usagePercentile = `${
     isLiteral ? t('label.usage') : ''
-  } - ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
+  } ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
 
   return usagePercentile;
 };
@@ -120,58 +116,39 @@ export const getTagsWithoutTier = (
   );
 };
 
-export const getTierFromSearchTableTags = (tags: Array<string>): string => {
-  const tierTag = tags.find(
-    (item) =>
-      item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
-      !isNaN(parseInt(item.substring(9).trim()))
-  );
-
-  return tierTag || '';
-};
-
-export const getSearchTableTagsWithoutTier = (
-  tags: Array<string>
-): Array<string> => {
-  return tags.filter(
-    (item) =>
-      !item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
-      isNaN(parseInt(item.substring(9).trim()))
-  );
-};
-
 export const getConstraintIcon = (
   constraint = '',
   className = '',
-  width = '16px'
+  width = '16px',
+  isConstraintUpdated?: boolean
 ) => {
-  let title: string, icon: string;
+  let title: string, icon: SvgComponent;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = t('label.primary-key');
-        icon = Icons.KEY;
+        icon = IconKey;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = t('label.unique');
-        icon = Icons.UNIQUE;
+        icon = IconUnique;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = t('label.not-null');
-        icon = Icons.NOT_NULL;
+        icon = IconNotNull;
       }
 
       break;
     case ConstraintTypes.FOREIGN_KEY:
       {
         title = t('label.foreign-key');
-        icon = Icons.FOREGIN_KEY;
+        icon = IconForeignKey;
       }
 
       break;
@@ -185,7 +162,12 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <SVGIcons alt={title} icon={icon} width={width} />
+      <Icon
+        alt={title}
+        className={classNames({ 'diff-added': isConstraintUpdated })}
+        component={icon}
+        style={{ fontSize: width }}
+      />
     </Tooltip>
   );
 };
@@ -199,25 +181,26 @@ export const getEntityLink = (
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
-      return getTopicDetailsPath(fullyQualifiedName);
+      return getTopicDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
-      return getDashboardDetailsPath(fullyQualifiedName);
+      return getDashboardDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
-      return getPipelineDetailsPath(fullyQualifiedName);
+      return getPipelineDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE:
-      return getDatabaseDetailsPath(fullyQualifiedName);
+      return getDatabaseDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+      return getDatabaseSchemaDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
-      return getGlossaryPath(fullyQualifiedName);
+    case SearchIndex.GLOSSARY:
+      return getGlossaryPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
@@ -238,10 +221,43 @@ export const getEntityLink = (
     case SearchIndex.MLMODEL:
       return getMlModelPath(fullyQualifiedName);
 
+    case EntityType.CONTAINER:
+    case SearchIndex.CONTAINER:
+      return getContainerDetailPath(getDecodedFqn(fullyQualifiedName));
+    case SearchIndex.TAG:
+      return getTagsDetailsPath(fullyQualifiedName);
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
+
+    case EntityType.TEST_CASE:
+      return `${getTableTabPath(
+        getTableFQNFromColumnFQN(fullyQualifiedName),
+        EntityTabs.PROFILER
+      )}?activeTab=Data Quality`;
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      return getTableDetailsPath(fullyQualifiedName);
+      return getTableDetailsPath(getDecodedFqn(fullyQualifiedName));
+  }
+};
+
+export const getServiceIcon = (source: SourceType) => {
+  if (source.entityType === EntityType.GLOSSARY_TERM) {
+    return <GlossaryIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
+  } else if (source.entityType === EntityType.TAG) {
+    return (
+      <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+    );
+  } else {
+    return (
+      <img
+        alt="service-icon"
+        className="inline h-7"
+        src={serviceTypeLogo(source.serviceType || '')}
+      />
+    );
   }
 };
 
@@ -262,6 +278,20 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
       return <PipelineIcon />;
+
+    case SearchIndex.CONTAINER:
+    case EntityType.CONTAINER:
+      return <ContainerIcon />;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return <IconDataModel />;
+
+    case EntityType.TAG:
+      return <ClassificationIcon />;
+    case EntityType.GLOSSARY:
+      return <GlossaryIcon />;
+    case EntityType.GLOSSARY_TERM:
+      return <IconTerm />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -284,10 +314,11 @@ export const makeRow = (column: Column) => {
 
 export const makeData = (
   columns: Column[] = []
-): Array<Column & { subRows: Column[] | undefined }> => {
+): Array<Column & { id: string }> => {
   return columns.map((column) => ({
     ...makeRow(column),
-    subRows: column.children ? makeData(column.children) : undefined,
+    id: uniqueId(column.name),
+    children: column.children ? makeData(column.children) : undefined,
   }));
 };
 
@@ -353,42 +384,40 @@ export const getEntityFqnFromEntityLink = (
   return tableFqn;
 };
 
-export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
-  switch (status) {
-    case TestCaseStatus.Success:
-      return Icons.SUCCESS_BADGE;
-
-    case TestCaseStatus.Failed:
-      return Icons.FAIL_BADGE;
-
-    case TestCaseStatus.Aborted:
-      return Icons.PENDING_BADGE;
-
-    default:
-      return '';
-  }
-};
-
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <>
-          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+        <div className="d-inline-block items-center">
+          {isDraggable && (
+            <SVGIcons
+              alt="icon"
+              className="m-r-xs drag-icon"
+              height={8}
+              icon={Icons.DRAG}
+              width={8}
+            />
+          )}
           <Icon
-            className="mr-1"
-            component={expanded ? DropDownIcon : RightArrowIcon}
+            className="m-r-xs"
+            component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            size={16}
+            style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
-        </>
+        </div>
       ) : (
         isDraggable && (
           <>
-            <Icon className="drag-icon" component={DragIcon} />
+            <SVGIcons
+              alt="icon"
+              className="m-r-xs drag-icon"
+              height={8}
+              icon={Icons.DRAG}
+              width={8}
+            />
             <div className="expand-cell-empty-icon-container" />
           </>
         )
@@ -403,7 +432,8 @@ export const prepareConstraintIcon = (
   columnConstraint?: string,
   tableConstraints?: TableConstraint[],
   iconClassName?: string,
-  iconWidth?: string
+  iconWidth?: string,
+  isConstraintUpdated?: boolean
 ) => {
   // get the table constraint for column
   const tableConstraint = tableConstraints?.find((constraint) =>
@@ -412,14 +442,19 @@ export const prepareConstraintIcon = (
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    ? getConstraintIcon(
+        columnConstraint,
+        iconClassName || 'm-r-xs',
+        iconWidth,
+        isConstraintUpdated
+      )
     : null;
 
   // prepare table constraint element
   const tableConstraintEl = tableConstraint
     ? getConstraintIcon(
         tableConstraint.constraintType,
-        iconClassName || 'tw-mr-2',
+        iconClassName || 'm-r-xs',
         iconWidth
       )
     : null;

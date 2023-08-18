@@ -13,14 +13,24 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { Include } from 'generated/type/include';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+
+export type ListDataModelParams = {
+  service?: string;
+  fields?: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+  limit?: number;
+};
 
 export const getDashboardVersions = async (id: string) => {
   const url = `/dashboards/${id}/versions`;
@@ -38,19 +48,22 @@ export const getDashboardVersion = async (id: string, version: string) => {
 };
 
 export const getDashboards = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/dashboards`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`/dashboards`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -125,6 +138,17 @@ export const restoreDashboard = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<Dashboard>
   >('/dashboards/restore', { id });
+
+  return response.data;
+};
+
+export const getDataModels = async (params?: ListDataModelParams) => {
+  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
+    `/dashboard/datamodels`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

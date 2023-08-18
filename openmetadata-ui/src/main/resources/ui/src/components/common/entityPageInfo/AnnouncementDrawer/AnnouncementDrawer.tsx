@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Space, Typography } from 'antd';
+import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { uniqueId } from 'lodash';
@@ -38,6 +38,7 @@ interface Props {
   entityFQN: string;
   entityName: string;
   onClose: () => void;
+  createPermission?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -46,6 +47,7 @@ const AnnouncementDrawer: FC<Props> = ({
   entityFQN,
   entityType,
   entityName,
+  createPermission,
 }) => {
   const { t } = useTranslation();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
@@ -58,10 +60,10 @@ const AnnouncementDrawer: FC<Props> = ({
 
   const title = (
     <Space
-      className="tw-justify-between"
+      className="justify-between"
       data-testid="title"
       style={{ width: '100%' }}>
-      <Typography.Text className="tw-font-medium">
+      <Typography.Text className="font-medium">
         {t('label.announcement-on-entity', { entity: entityName })}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
@@ -115,23 +117,31 @@ const AnnouncementDrawer: FC<Props> = ({
           title={title}
           width={576}
           onClose={onClose}>
-          <div className="tw-flex tw-justify-end">
-            <Button
-              data-testid="add-announcement"
-              type="primary"
-              onClick={() => setIsAnnouncement(true)}>
-              {t('label.add-entity', { entity: t('label.announcement') })}
-            </Button>
+          <div className="d-flex justify-end">
+            <Tooltip
+              title={!createPermission && t('message.no-permission-to-view')}>
+              <Button
+                data-testid="add-announcement"
+                disabled={!createPermission}
+                type="primary"
+                onClick={() => setIsAnnouncement(true)}>
+                {t('label.add-entity', { entity: t('label.announcement') })}
+              </Button>
+            </Tooltip>
           </div>
 
           <ActivityThreadPanelBody
-            className="tw-p-0"
+            className="p-0"
             createThread={createThread}
             deletePostHandler={deletePostHandler}
+            editAnnouncementPermission={createPermission}
             key={uniqueId()}
             postFeedHandler={postFeedHandler}
             showHeader={false}
-            threadLink={getEntityFeedLink(entityType, entityFQN)}
+            threadLink={getEntityFeedLink(
+              entityType,
+              encodeURIComponent(entityFQN)
+            )}
             threadType={ThreadType.Announcement}
             updateThreadHandler={updateThreadHandler}
           />

@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
@@ -30,8 +30,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.quicksight.models import DataSourceResp
@@ -52,12 +51,14 @@ class QuicksightSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata: OpenMetadata
-    status: SourceStatus
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
+        self.aws_region = (
+            self.config.serviceConnection.__root__.config.awsConfig.awsRegion
+        )
         self.default_args = {
             "AwsAccountId": self.aws_account_id,
             "MaxResults": QUICKSIGHT_MAXRESULTS,
@@ -130,27 +131,24 @@ class QuicksightSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        self.dashboard_url = self.client.get_dashboard_embed_url(
-            AwsAccountId=self.aws_account_id,
-            DashboardId=dashboard_details["DashboardId"],
-            IdentityType=self.config.serviceConnection.__root__.config.identityType.value,
-            Namespace=self.config.serviceConnection.__root__.config.namespace
-            or "default",
-        )["EmbedUrl"]
-
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details["DashboardId"],
-            dashboardUrl=self.dashboard_url,
+            sourceUrl=self.dashboard_url,
             displayName=dashboard_details["Name"],
-            description=dashboard_details["Version"].get("Description", ""),
+            description=dashboard_details["Version"].get("Description"),
             charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_name=chart.name.__root__,
+                )
                 for chart in self.context.charts
             ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_chart(
         self, dashboard_details: Any
@@ -174,16 +172,16 @@ class QuicksightSource(DashboardServiceSource):
                     self.status.filter(chart["Name"], "Chart Pattern not allowed")
                     continue
 
+                self.dashboard_url = (
+                    f"https://{self.aws_region}.quicksight.aws.amazon.com/sn/dashboards"
+                    f'/{dashboard_details.get("DashboardId")}'
+                )
                 yield CreateChartRequest(
                     name=chart["SheetId"],
                     displayName=chart["Name"],
-                    description="",
                     chartType=ChartType.Other.value,
-                    chartUrl=f"{self.dashboard_url}/sheets/{chart['SheetId']}",
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    sourceUrl=self.dashboard_url,
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart["Name"])
             except Exception as exc:

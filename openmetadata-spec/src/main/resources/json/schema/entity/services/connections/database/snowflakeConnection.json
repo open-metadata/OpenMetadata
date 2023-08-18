@@ -80,6 +80,18 @@
       "type": "string",
       "format": "password"
     },
+    "includeTransientTables": {
+      "title": "Include Transient Tables",
+      "description": "Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.",
+      "type": "boolean",
+      "default": false
+    },
+    "clientSessionKeepAlive": {
+      "title": "Client Session Keep Alive",
+      "description": "Optional configuration for ingestion to keep the client session active in case the ingestion process runs for longer durations.",
+      "type": "boolean",
+      "default": false
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

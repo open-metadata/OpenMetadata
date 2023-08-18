@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.system;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -9,8 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
-import java.util.List;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Objects;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -29,8 +28,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
@@ -40,12 +39,11 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/system")
-@Api(value = "Util collection", tags = "Util collection")
+@Tag(name = "System", description = "APIs related to System configuration and settings.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "system")
@@ -54,6 +52,7 @@ public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/util";
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
+  private OpenMetadataApplicationConfig applicationConfig;
 
   public SystemResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "SystemRepository must not be null");
@@ -62,51 +61,20 @@ public class SystemResource {
   }
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    initSettings();
-  }
-
-  private void initSettings() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/settings/settingsData.json$");
-    if (jsonDataFiles.size() != 1) {
-      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
-      return;
-    }
-    String jsonDataFile = jsonDataFiles.get(0);
-    try {
-      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
-      List<Settings> settings = JsonUtils.readObjects(json, Settings.class);
-      settings.forEach(
-          (setting) -> {
-            try {
-              Settings storedSettings = systemRepository.getConfigWithKey(setting.getConfigType().toString());
-              if (storedSettings == null) {
-                // Only in case a config doesn't exist in DB we insert it
-                systemRepository.createNewSetting(setting);
-              }
-            } catch (Exception ex) {
-              LOG.debug("Fetching from DB failed ", ex);
-            }
-          });
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the {} from file {}", "filters", jsonDataFile, e);
-    }
+  public void initialize(OpenMetadataApplicationConfig config) {
+    this.applicationConfig = config;
   }
 
   public static class SettingsList extends ResultList<Settings> {
-    @SuppressWarnings("unused")
-    public SettingsList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
   @Path("/settings")
   @Operation(
       operationId = "listSettings",
-      summary = "List All Settings",
-      tags = "system",
-      description = "Get a List of all OpenMetadata Settings",
+      summary = "List all settings",
+      description = "Get a list of all OpenMetadata settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -122,8 +90,7 @@ public class SystemResource {
   @Path("/settings/{name}")
   @Operation(
       operationId = "getSetting",
-      summary = "Get a Setting",
-      tags = "system",
+      summary = "Get a setting",
       description = "Get a OpenMetadata Settings",
       responses = {
         @ApiResponse(
@@ -144,9 +111,8 @@ public class SystemResource {
   @Path("/settings")
   @Operation(
       operationId = "createOrUpdate",
-      summary = "Update Setting",
-      tags = "system",
-      description = "Update Existing Settings",
+      summary = "Update setting",
+      description = "Update existing settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -163,8 +129,7 @@ public class SystemResource {
   @Path("/settings/{settingName}")
   @Operation(
       operationId = "patchSetting",
-      summary = "Patch a Setting",
-      tags = "system",
+      summary = "Patch a setting",
       description = "Update an existing Setting using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -186,13 +151,36 @@ public class SystemResource {
     return systemRepository.patchSetting(settingName, patch);
   }
 
+  @PUT
+  @Path("/restore/default/email")
+  @Operation(
+      operationId = "restoreEmailSettingToDefault",
+      summary = "Restore Email to Default setting",
+      description = "Restore Email to Default settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Settings.class)))
+      })
+  public Response restoreDefaultEmailSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the setting", schema = @Schema(type = "string")) @PathParam("settingName")
+          String name) {
+    authorizer.authorizeAdmin(securityContext);
+    return systemRepository.createOrUpdate(
+        new Settings()
+            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+            .withConfigValue(applicationConfig.getSmtpSettings()));
+  }
+
   @GET
   @Path("/entities/count")
   @Operation(
       operationId = "listEntitiesCount",
-      summary = "List All Entities Counts",
-      tags = "system",
-      description = "Get a List of all Entities Count",
+      summary = "List all entities counts",
+      description = "Get a list of all entities count",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -215,9 +203,8 @@ public class SystemResource {
   @Path("/services/count")
   @Operation(
       operationId = "listServicesCount",
-      summary = "List All Services Counts",
-      tags = "system",
-      description = "Get a List of all Entities Count",
+      summary = "List all services counts",
+      description = "Get a list of all entities count",
       responses = {
         @ApiResponse(
             responseCode = "200",

@@ -11,12 +11,18 @@
 """
 Table related pydantic definitions
 """
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableConstraint
 
 
-class DeleteTable(BaseModel):
-    """Entity Reference of a table to be deleted"""
+class OMetaTableConstraints(BaseModel):
+    """
+    Model to club table with its constraints
+    """
 
     table: Table
+    foreign_constraints: Optional[List[Dict]]
+    constraints: Optional[List[TableConstraint]]

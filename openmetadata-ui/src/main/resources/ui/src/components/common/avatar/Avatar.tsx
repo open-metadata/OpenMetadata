@@ -35,10 +35,7 @@ const Avatar = ({
 
   return (
     <div
-      className={classNames(
-        'tw-flex tw-flex-shrink-0 tw-justify-center tw-items-center tw-align-middle',
-        className
-      )}
+      className={classNames('flex-center flex-shrink align-middle', className)}
       data-testid="avatar"
       style={{
         height: `${height || width}px`,

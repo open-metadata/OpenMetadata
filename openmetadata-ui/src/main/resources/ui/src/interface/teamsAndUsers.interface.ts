@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
 import { AssetsDataType, FormErrorData } from 'Models';
 import { EntityType } from '../enums/entity.enum';
@@ -94,23 +96,26 @@ export interface TeamDetailsProp {
   teams?: Team[];
   assets: AssetsDataType;
   currentTeamUsers: User[];
-  teamUserPagin: Paging;
+  teamUserPaging: Paging;
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
   isTeamMemberLoading: number;
   hasAccess: boolean;
+  isFetchingAdvancedDetails: boolean;
+  isFetchingAllTeamAdvancedDetails: boolean;
+  entityPermissions: OperationPermission;
   handleAddTeam: (value: boolean) => void;
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => Promise<void>;
   handleTeamUsersSearchAction: (text: string) => void;
   updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
   handleCurrentUserPage: (value?: number) => void;
-  teamUserPaginHandler: (
+  teamUserPagingHandler: (
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  handleAddUser: (data: boolean) => void;
+  handleAddUser: (data: Array<EntityReference>) => void;
   afterDeleteAction: () => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
@@ -118,7 +123,7 @@ export interface TeamDetailsProp {
   childTeams: Team[];
   showDeletedTeam: boolean;
   onAssetsPaginate: (page: string | number) => void;
-  onShowDeletedTeamChange: (checked: boolean) => void;
+  onShowDeletedTeamChange: () => void;
   parentTeams: Team[];
   onTeamExpand: (
     loading?: boolean,
@@ -133,13 +138,11 @@ export interface AddAttribute {
 }
 
 export interface PlaceholderProps {
-  title?: string;
-  disabled?: boolean;
-  label?: string;
+  permission?: boolean;
   onClick?: () => void;
   heading?: string;
-  description?: React.ReactNode;
   button?: React.ReactNode;
-  datatestid?: string;
   doc?: string;
+  type?: ERROR_PLACEHOLDER_TYPE;
+  children?: React.ReactNode;
 }

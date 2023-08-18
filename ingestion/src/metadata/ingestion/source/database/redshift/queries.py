@@ -72,15 +72,13 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         q.endtime AS end_time,
         datediff(second,q.starttime,q.endtime) AS duration,
         q.aborted AS aborted
-    FROM scans AS s
-        INNER JOIN queries AS q
+    FROM queries AS q
+        LEFT JOIN scans AS s
           ON s.query = q.query
         INNER JOIN full_queries AS fq
-          ON s.query = fq.query
+          ON q.query = fq.query
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
-    WHERE
-        {db_filters}
     ORDER BY q.endtime DESC
 """
 )
@@ -216,3 +214,63 @@ REDSHIFT_TABLE_COMMENTS = """
       AND n.nspname <> 'pg_catalog'
     ORDER BY "schema", "table_name";
 """
+
+REDSHIFT_GET_DATABASE_NAMES = """
+SELECT datname FROM pg_database
+"""
+
+REDSHIFT_TEST_GET_QUERIES = """
+(select 1 from pg_catalog.svv_table_info limit 1)
+UNION
+(select 1 from pg_catalog.stl_querytext limit 1)
+UNION
+(select 1 from pg_catalog.stl_query limit 1)
+"""
+
+
+REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
+
+
+# Redshift views definitions only contains the select query
+# hence we are appending "create view <schema>.<table> as " to select query
+# to generate the column level lineage
+REDSHIFT_GET_ALL_RELATIONS = """
+    SELECT
+        c.relkind,
+        n.oid as "schema_oid",
+        n.nspname as "schema",
+        c.oid as "rel_oid",
+        c.relname,
+        CASE c.reldiststyle
+        WHEN 0 THEN 'EVEN' WHEN 1 THEN 'KEY' WHEN 8 THEN 'ALL' END
+        AS "diststyle",
+        c.relowner AS "owner_id",
+        u.usename AS "owner_name",
+        TRIM(TRAILING ';' FROM 
+        'create view ' || n.nspname || '.' || c.relname || ' as ' ||pg_catalog.pg_get_viewdef(c.oid, true))
+        AS "view_definition",
+        pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
+    FROM pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
+    WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
+        AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
+    UNION
+    SELECT
+        'r' AS "relkind",
+        s.esoid AS "schema_oid",
+        s.schemaname AS "schema",
+        null AS "rel_oid",
+        t.tablename AS "relname",
+        null AS "diststyle",
+        s.esowner AS "owner_id",
+        u.usename AS "owner_name",
+        null AS "view_definition",
+        null AS "privileges"
+    FROM
+        svv_external_tables t
+        JOIN svv_external_schemas s ON s.schemaname = t.schemaname
+        JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
+    where 1 {schema_clause} {table_clause}
+    ORDER BY "relkind", "schema_oid", "schema";
+    """

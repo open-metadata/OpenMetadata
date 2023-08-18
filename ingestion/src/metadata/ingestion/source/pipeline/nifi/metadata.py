@@ -28,10 +28,10 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifiConnecti
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -114,7 +114,7 @@ class NifiSource(PipelineServiceSource):
                 Task(
                     name=processor.id_,
                     displayName=processor.name,
-                    taskUrl=processor.uri.replace(self.service_connection.hostPort, ""),
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{processor.uri}",
                     taskType=processor.type_,
                     downstreamTasks=self._get_downstream_tasks_from(
                         source_id=processor.id_,
@@ -138,17 +138,15 @@ class NifiSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from Nifi
         :return: Create Pipeline request with tasks
         """
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details.id_,
             displayName=pipeline_details.name,
-            pipelineUrl=pipeline_details.uri.replace(
-                self.service_connection.hostPort, ""
-            ),
+            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{pipeline_details.uri}",
             tasks=self._get_tasks_from_details(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: NifiPipelineDetails

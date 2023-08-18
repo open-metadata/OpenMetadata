@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.feeds;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,13 +21,13 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -56,7 +55,6 @@ import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
@@ -65,23 +63,22 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/feed")
-@Api(value = "Feeds collection", tags = "Feeds collection")
+@Tag(name = "Feeds", description = "Feeds API supports `Activity Feeds` and `Conversation Threads`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "feeds")
@@ -103,28 +100,22 @@ public class FeedResource {
   public FeedResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = new FeedRepository(dao);
+    Entity.setFeedRepository(this.dao);
     this.authorizer = authorizer;
   }
 
   static class ThreadList extends ResultList<Thread> {
-    @SuppressWarnings("unused") // Used for deserialization
-    ThreadList() {}
+    /* Required for serde */
   }
 
   public static class PostList extends ResultList<Post> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public PostList() {}
-
-    public PostList(List<Post> listPosts) {
-      super(listPosts);
-    }
+    /* Required for serde */
   }
 
   @GET
   @Operation(
       operationId = "listThreads",
       summary = "List threads",
-      tags = "feeds",
       description = "Get a list of threads, optionally filtered by `entityLink`.",
       responses = {
         @ApiResponse(
@@ -155,7 +146,7 @@ public class FeedResource {
           @QueryParam("after")
           String after,
       @Parameter(
-              description = "Filter threads by entity link",
+              description = "Filter threads by entity link of entity about which this thread is created",
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink,
@@ -164,7 +155,7 @@ public class FeedResource {
                   "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'. This filter cannot be combined with the entityLink filter.",
               schema = @Schema(type = "string"))
           @QueryParam("userId")
-          String userId,
+          UUID userId,
       @Parameter(
               description =
                   "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
@@ -192,40 +183,22 @@ public class FeedResource {
                   "Whether to filter results by announcements that are currently active. This filter will take effect only when type is set to Announcement",
               schema = @Schema(type = "boolean"))
           @QueryParam("activeAnnouncement")
-          Boolean activeAnnouncement)
-      throws IOException {
+          Boolean activeAnnouncement) {
     RestUtil.validateCursors(before, after);
+    FeedFilter filter =
+        FeedFilter.builder()
+            .threadType(threadType)
+            .taskStatus(taskStatus)
+            .activeAnnouncement(activeAnnouncement)
+            .resolved(resolved)
+            .filterType(filterType)
+            .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
+            .before(before)
+            .after(after)
+            .build();
 
-    ResultList<Thread> threads;
-    if (before != null) { // Reverse paging
-      threads =
-          dao.list(
-              entityLink,
-              limitPosts,
-              userId,
-              filterType,
-              limitParam,
-              before,
-              resolved,
-              PaginationType.BEFORE,
-              threadType,
-              taskStatus,
-              activeAnnouncement);
-    } else { // Forward paging or first page
-      threads =
-          dao.list(
-              entityLink,
-              limitPosts,
-              userId,
-              filterType,
-              limitParam,
-              after,
-              resolved,
-              PaginationType.AFTER,
-              threadType,
-              taskStatus,
-              activeAnnouncement);
-    }
+    String userIdStr = userId != null ? userId.toString() : null;
+    ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userIdStr, limitParam);
     addHref(uriInfo, threads.getData());
     return threads;
   }
@@ -234,9 +207,8 @@ public class FeedResource {
   @Path("/{id}")
   @Operation(
       operationId = "getThreadByID",
-      summary = "Get a thread",
-      tags = "feeds",
-      description = "Get a thread by `id`.",
+      summary = "Get a thread by Id",
+      description = "Get a thread by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -248,8 +220,7 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the Thread", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(description = "Type of the Entity", schema = @Schema(type = "string")) @PathParam("entityType")
-          String entityType)
-      throws IOException {
+          String entityType) {
     return addHref(uriInfo, dao.get(id));
   }
 
@@ -257,9 +228,8 @@ public class FeedResource {
   @Path("/tasks/{id}")
   @Operation(
       operationId = "getTaskByID",
-      summary = "Get a task thread by task id",
-      tags = "feeds",
-      description = "Get a task thread by `task id`.",
+      summary = "Get a task thread by task Id",
+      description = "Get a task thread by `task Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -269,8 +239,7 @@ public class FeedResource {
       })
   public Thread getTask(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException {
+      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id) {
     return addHref(uriInfo, dao.getTask(Integer.parseInt(id)));
   }
 
@@ -279,7 +248,6 @@ public class FeedResource {
   @Operation(
       operationId = "resolveTask",
       summary = "Resolve a task",
-      tags = "feeds",
       description = "Resolve a task.",
       responses = {
         @ApiResponse(
@@ -292,10 +260,9 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Valid ResolveTask resolveTask)
-      throws IOException {
+      @Valid ResolveTask resolveTask) {
     Thread task = dao.getTask(Integer.parseInt(id));
-    checkPermissionsForResolveTask(task, securityContext);
+    dao.checkPermissionsForResolveTask(task, false, securityContext);
     return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
   }
 
@@ -304,7 +271,6 @@ public class FeedResource {
   @Operation(
       operationId = "closeTask",
       summary = "Close a task",
-      tags = "feeds",
       description = "Close a task without making any changes to the entity.",
       responses = {
         @ApiResponse(
@@ -317,57 +283,17 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Valid CloseTask closeTask)
-      throws IOException {
+      @Valid CloseTask closeTask) {
     Thread task = dao.getTask(Integer.parseInt(id));
-    checkPermissionsForResolveTask(task, securityContext);
+    dao.checkPermissionsForResolveTask(task, true, securityContext);
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask).toResponse();
-  }
-
-  private void checkPermissionsForResolveTask(Thread thread, SecurityContext securityContext) throws IOException {
-    if (thread.getType().equals(ThreadType.Task)) {
-      TaskDetails taskDetails = thread.getTask();
-      List<EntityReference> assignees = taskDetails.getAssignees();
-      String createdBy = thread.getCreatedBy();
-      // Validate about data entity is valid
-      EntityLink about = EntityLink.parse(thread.getAbout());
-      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-
-      // Get owner for the addressed to Entity
-      EntityReference owner = Entity.getOwner(aboutRef);
-
-      String userName = securityContext.getUserPrincipal().getName();
-      User loggedInUser = dao.findUserByName(userName);
-      List<EntityReference> teams = loggedInUser.getTeams();
-      List<String> teamNames = new ArrayList<>();
-      if (teams != null) {
-        teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
-      }
-
-      // check if logged in user satisfies any of the following
-      // - Creator of the task
-      // - logged-in user or the teams they belong to were assigned the task
-      // - logged-in user or the teams they belong to, owns the entity that the task is about
-      List<String> finalTeamNames = teamNames;
-      if (createdBy.equals(userName)
-          || assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))
-          || assignees.stream().anyMatch(assignee -> finalTeamNames.contains(assignee.getName()))
-          || owner.getName().equals(userName)
-          || teamNames.contains(owner.getName())) {
-        // don't throw any exception
-      } else {
-        // Only admins or bots can close or resolve task other than the above-mentioned users
-        authorizer.authorizeAdmin(securityContext);
-      }
-    }
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
       operationId = "patchThread",
-      summary = "Update a thread by `id`.",
-      tags = "feeds",
+      summary = "Update a thread by `Id`.",
       description = "Update an existing thread using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -383,8 +309,7 @@ public class FeedResource {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     PatchResponse<Thread> response =
         dao.patchThread(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return response.toResponse();
@@ -394,8 +319,7 @@ public class FeedResource {
   @Path("/count")
   @Operation(
       operationId = "countThreads",
-      summary = "count of threads",
-      tags = "feeds",
+      summary = "Count of threads",
       description = "Get a count of threads, optionally filtered by `entityLink` for each of the entities.",
       responses = {
         @ApiResponse(
@@ -426,14 +350,14 @@ public class FeedResource {
           @DefaultValue("false")
           @QueryParam("isResolved")
           Boolean isResolved) {
-    return dao.getThreadsCount(entityLink, threadType, taskStatus, isResolved);
+    FeedFilter filter = FeedFilter.builder().threadType(threadType).taskStatus(taskStatus).resolved(isResolved).build();
+    return dao.getThreadsCount(filter, entityLink);
   }
 
   @POST
   @Operation(
       operationId = "createThread",
       summary = "Create a thread",
-      tags = "feeds",
       description = "Create a new thread. A thread is created about a data asset when a user posts the first post.",
       responses = {
         @ApiResponse(
@@ -443,8 +367,7 @@ public class FeedResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createThread(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create) {
     Thread thread = getThread(securityContext, create);
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();
@@ -455,7 +378,6 @@ public class FeedResource {
   @Operation(
       operationId = "addPostToThread",
       summary = "Add post to a thread",
-      tags = "feeds",
       description = "Add a post to an existing thread.",
       responses = {
         @ApiResponse(
@@ -479,8 +401,7 @@ public class FeedResource {
   @Path("/{threadId}/posts/{postId}")
   @Operation(
       operationId = "patchPostOfThread",
-      summary = "Update post of a thread by `id`.",
-      tags = "feeds",
+      summary = "Update post of a thread by `Id`.",
       description = "Update a post of an existing thread using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"),
       responses = {
@@ -502,8 +423,7 @@ public class FeedResource {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
@@ -516,8 +436,7 @@ public class FeedResource {
   @Path("/{threadId}")
   @Operation(
       operationId = "deleteThread",
-      summary = "Delete a thread",
-      tags = "feeds",
+      summary = "Delete a thread by Id",
       description = "Delete an existing thread and all its relationships.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -528,13 +447,12 @@ public class FeedResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "ThreadId of the thread to be deleted", schema = @Schema(type = "string"))
           @PathParam("threadId")
-          String threadId)
-      throws IOException {
+          String threadId) {
     // validate and get the thread
     Thread thread = dao.get(threadId);
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new ThreadResourceContext(dao.getOwnerReference(thread.getCreatedBy()));
+    ResourceContextInterface resourceContext = new ThreadResourceContext(thread.getCreatedBy());
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteThread(thread, securityContext.getUserPrincipal().getName()).toResponse();
   }
@@ -544,7 +462,6 @@ public class FeedResource {
   @Operation(
       operationId = "deletePostFromThread",
       summary = "Delete a post from its thread",
-      tags = "feeds",
       description = "Delete a post from an existing thread.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -566,7 +483,7 @@ public class FeedResource {
     // delete post only if the admin/bot/author tries to delete it
     // TODO fix this
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerReference(post.getFrom()));
+    ResourceContextInterface resourceContext = new PostResourceContext(post.getFrom());
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
@@ -576,7 +493,6 @@ public class FeedResource {
   @Operation(
       operationId = "getAllPostOfThread",
       summary = "Get all the posts of a thread",
-      tags = "feeds",
       description = "Get all the posts of an existing thread.",
       responses = {
         @ApiResponse(
@@ -584,11 +500,10 @@ public class FeedResource {
             description = "The posts of the given thread.",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = PostList.class))),
       })
-  public PostList getPosts(
+  public ResultList<Post> getPosts(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException {
-    return new PostList(dao.listPosts(id));
+      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id) {
+    return new ResultList<>(dao.listPosts(id));
   }
 
   private Thread getThread(SecurityContext securityContext, CreateThread create) {

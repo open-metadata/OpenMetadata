@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import { RuleObject } from 'antd/lib/form';
+import { SubscriptionType } from 'generated/events/eventSubscription';
 import i18next from 'i18next';
 import { startCase } from 'lodash';
 import React from 'react';
@@ -21,20 +22,18 @@ import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
-import { AlertActionType } from '../../generated/alerts/alertAction';
-import { AlertTriggerType } from '../../generated/alerts/alerts';
 
-export const getAlertsActionTypeIcon = (type?: AlertActionType) => {
+export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
-    case AlertActionType.SlackWebhook:
+    case SubscriptionType.SlackWebhook:
       return <SlackIcon height={16} width={16} />;
-    case AlertActionType.MSTeamsWebhook:
+    case SubscriptionType.MSTeamsWebhook:
       return <MSTeamsIcon height={16} width={16} />;
-    case AlertActionType.Email:
+    case SubscriptionType.Email:
       return <MailIcon height={16} width={16} />;
-    case AlertActionType.ActivityFeed:
+    case SubscriptionType.ActivityFeed:
       return <AllActivityIcon height={16} width={16} />;
-    case AlertActionType.GenericWebhook:
+    case SubscriptionType.GenericWebhook:
     default:
       return <WebhookIcon height={16} width={16} />;
   }
@@ -59,7 +58,9 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchIngestionPipelineState':
       return i18next.t('label.pipeline-state');
     case 'matchAnySource':
+      return i18next.t('label.source-match');
     case 'matchAnyEntityId':
+      return i18next.t('label.entity-id-match');
     default:
       return '';
   }
@@ -81,15 +82,6 @@ export const StyledCard = ({
       </Typography.Text>
     </div>
   );
-};
-
-export const getDisplayNameForTriggerType = (type: AlertTriggerType) => {
-  switch (type) {
-    case AlertTriggerType.AllDataAssets:
-      return i18next.t('label.all-data-asset-plural');
-    case AlertTriggerType.SpecificDataAsset:
-      return i18next.t('label.specific-data-asset-plural');
-  }
 };
 
 /**
@@ -116,21 +108,23 @@ export const listLengthValidator =
   };
 
 export const getAlertActionTypeDisplayName = (
-  alertActionType: AlertActionType
+  alertActionType: SubscriptionType
 ) => {
   switch (alertActionType) {
-    case AlertActionType.ActivityFeed:
+    case SubscriptionType.ActivityFeed:
       return i18next.t('label.activity-feed-plural');
-    case AlertActionType.Email:
+    case SubscriptionType.Email:
       return i18next.t('label.email');
-    case AlertActionType.GenericWebhook:
+    case SubscriptionType.GenericWebhook:
       return i18next.t('label.webhook');
-    case AlertActionType.SlackWebhook:
+    case SubscriptionType.SlackWebhook:
       return i18next.t('label.slack');
-    case AlertActionType.MSTeamsWebhook:
+    case SubscriptionType.MSTeamsWebhook:
       return i18next.t('label.ms-team-plural');
-    case AlertActionType.GChatWebhook:
+    case SubscriptionType.GChatWebhook:
       return i18next.t('label.g-chat');
+    default:
+      return '';
   }
 };
 
@@ -146,3 +140,4 @@ export const getDisplayNameForEntities = (entity: string) => {
 };
 
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
+export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;

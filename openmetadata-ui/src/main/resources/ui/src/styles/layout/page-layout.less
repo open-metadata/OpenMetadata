@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+@import (reference) '~antd/dist/antd.less';
+
 .page-layout-v1-vertical-scroll {
-  // 64 header + ( 16 + 16 )spacing Y
-  height: calc(100vh - 96px);
+  height: calc(100vh - 64px);
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 .page-layout-v1-left-panel {
-  border: 1px rgb(221, 227, 234) solid;
-  border-radius: 4px;
-  box-shadow: 1px 1px 8px rgb(0 0 0 / 6%);
+  border: @global-border;
+  border-radius: @border-radius-base;
 }
 
 .left-panel-card {
@@ -42,4 +43,10 @@
 .page-layout-v1-vertical-scroll::-webkit-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.header-center {
+  width: 700px;
+  margin: 16px auto 0 auto;
+  padding: 0;
 }

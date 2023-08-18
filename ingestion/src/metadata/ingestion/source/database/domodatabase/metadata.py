@@ -14,7 +14,7 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -40,13 +40,18 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.domodatabase.models import (
+    OutputDataset,
+    Owner,
+    SchemaColumn,
+    User,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -59,16 +64,17 @@ class DomodatabaseSource(DatabaseServiceSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = SQLSourceStatus()
         self.domo_client = get_connection(self.service_connection)
+        self.connection_obj = self.domo_client
         self.client = DomoClient(self.service_connection)
-        super().__init__()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -81,16 +87,13 @@ class DomodatabaseSource(DatabaseServiceSource):
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:
-        database_name = "default"
+        database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -102,7 +105,7 @@ class DomodatabaseSource(DatabaseServiceSource):
     ) -> Iterable[CreateDatabaseSchemaRequest]:
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -135,11 +138,21 @@ class DomodatabaseSource(DatabaseServiceSource):
                     continue
                 yield table_id, TableType.Regular
         except Exception as exc:
+            error = f"Unexpected exception for schema name [{schema_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception for schema name [{schema_name}]: {exc}"
-            )
-            self.status.failures.append(f"{self.config.serviceName}.{table_id}")
+            logger.warning(error)
+            self.status.failed(schema_name, error, traceback.format_exc())
+
+    def get_owners(self, owner: Owner) -> Optional[EntityReference]:
+        try:
+            owner_details = User(**self.domo_client.users_get(owner.id))
+            if owner_details.email:
+                user = self.metadata.get_user_by_email(owner_details.email)
+                if user:
+                    return EntityReference(id=user.id.__root__, type="user")
+        except Exception as exc:
+            logger.warning(f"Error while getting details of user {owner.name} - {exc}")
+        return None
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -147,51 +160,67 @@ class DomodatabaseSource(DatabaseServiceSource):
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
-            table_object = self.domo_client.datasets.get(table_id)
-            columns = self.get_columns(table_object=table_object["schema"]["columns"])
+            table_object = OutputDataset(**self.domo_client.datasets.get(table_id))
+            columns = (
+                self.get_columns(table_object.schemas.columns)
+                if table_object.columns
+                else []
+            )
             table_request = CreateTableRequest(
-                name=table_object["name"],
-                displayName=table_object["name"],
+                name=table_object.name,
+                displayName=table_object.name,
                 tableType=table_type,
-                description=table_object.get("description"),
+                description=table_object.description,
                 columns=columns,
+                owner=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                sourceUrl=self.get_source_url(
+                    table_name=table_id,
                 ),
             )
             yield table_request
             self.register_record(table_request=table_request)
         except Exception as exc:
+            error = f"Unexpected exception for table [{table_id}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception for table [{table_id}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_id}")
+            logger.warning(error)
+            self.status.failed(table_id, error, traceback.format_exc())
 
-    def get_columns(self, table_object):
+    def get_columns(self, table_object: List[SchemaColumn]):
         row_order = 1
         columns = []
         for column in table_object:
             columns.append(
                 Column(
-                    name=column["name"],
-                    description=column.get("description", ""),
-                    dataType=column["type"],
+                    name=column.name,
+                    description=column.description,
+                    dataType=column.type,
                     ordinalPosition=row_order,
                 )
             )
             row_order += 1
         return columns
 
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.domo_client)
-
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
+
+    def get_source_url(
+        self,
+        table_name: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for domodatabase
+        """
+        try:
+            return f"{clean_uri(self.service_connection.sandboxDomain)}/datasources/{table_name}/details/overview"
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url for {table_name}: {exc}")
+        return None
 
     def standardize_table_name(  # pylint: disable=unused-argument
         self, schema: str, table: str

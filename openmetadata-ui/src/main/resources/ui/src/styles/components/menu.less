@@ -13,11 +13,9 @@
 
 @import url('../variables.less');
 
-@background-color: #ffffff;
 @left-panel-border-color: rgb(229, 231, 235);
 @box-shadow-color: rgba(0, 0, 0, 0.06);
 @icon-color: #515151;
-@group-title-color: #76746f;
 
 .custom-menu.ant-menu-root.ant-menu-inline {
   background: @white;
@@ -28,10 +26,6 @@
     right: unset;
   }
 
-  .ant-menu-item-group:not(:first-child) {
-    border-top: 1px solid @box-shadow-color;
-  }
-
   .ant-menu-item-group-title {
     font-size: 12px;
     padding: 12px 16px;
@@ -39,7 +33,7 @@
   }
 
   .ant-menu-item-icon + span {
-    margin-left: 16px;
+    margin-left: 8px;
   }
 
   .ant-menu-item {
@@ -59,6 +53,16 @@
   .ant-menu-item-selected {
     .ant-menu-title-content {
       font-weight: 600;
+      .ant-badge {
+        color: @primary-color;
+      }
+    }
+  }
+  .ant-menu-item-active {
+    .ant-menu-title-content {
+      .ant-badge {
+        color: @primary-color;
+      }
     }
   }
 

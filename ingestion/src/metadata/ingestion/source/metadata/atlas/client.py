@@ -26,7 +26,6 @@ class AtlasClient:
     """
 
     def __init__(self, config: AtlasConnection, raw_data: bool = False):
-
         self.config = config
         self.auth_token = generate_http_basic_token(
             config.username, config.password.get_secret_value()

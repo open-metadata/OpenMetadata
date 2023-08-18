@@ -14,7 +14,9 @@
 import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import PageHeader from 'components/header/PageHeader.component';
+import Loader from 'components/Loader/Loader';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -26,8 +28,8 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
+import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -121,23 +123,26 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.data-insight-top-viewed-entity-summary')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.most-viewed-data-assets')}
-          </Typography.Text>
-        </>
+        <PageHeader
+          data={{
+            header: t('label.data-insight-top-viewed-entity-summary'),
+            subHeader: t('message.most-viewed-data-assets'),
+          }}
+        />
       }>
-      <Table
-        className="data-insight-table-wrapper"
-        columns={columns}
-        dataSource={mostViewedEntities}
-        loading={{ spinning: isLoading, indicator: <Loader /> }}
-        pagination={false}
-        size="small"
-      />
+      {isLoading ? (
+        <Loader />
+      ) : isEmpty(mostViewedEntities) ? (
+        <EmptyGraphPlaceholder />
+      ) : (
+        <Table
+          className="data-insight-table-wrapper"
+          columns={columns}
+          dataSource={mostViewedEntities}
+          pagination={false}
+          size="small"
+        />
+      )}
     </Card>
   );
 };

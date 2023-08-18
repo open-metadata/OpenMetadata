@@ -35,7 +35,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952802,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/d2f093d4-0ca8-42b8-8721-1c2a59951b59',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/d2f093d4-0ca8-42b8-8721-1c2a59951b59',
     deleted: false,
   },
   {
@@ -81,7 +81,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952821,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/fbad142d-16d5-479d-bed3-67bb5fd4104d',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/fbad142d-16d5-479d-bed3-67bb5fd4104d',
     deleted: false,
   },
   {
@@ -111,7 +111,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952805,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/9217560a-3fed-4c0d-85fa-d7c699feefac',
+    href: 'http://localhost:8585/api/v1/dataIanalytics/dataInsights/chartsnsight/9217560a-3fed-4c0d-85fa-d7c699feefac',
     deleted: false,
   },
   {
@@ -141,7 +141,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952798,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/73d9b934-7664-4e84-8a7e-7fa00fe03f5f',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/73d9b934-7664-4e84-8a7e-7fa00fe03f5f',
     deleted: false,
   },
   {
@@ -182,7 +182,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952816,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/7dc794d3-1881-408c-92fc-6182aa453bc8',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/7dc794d3-1881-408c-92fc-6182aa453bc8',
     deleted: false,
   },
   {
@@ -223,7 +223,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952825,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/d712533a-ea8c-409f-a9e3-3f68d06d7864',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/d712533a-ea8c-409f-a9e3-3f68d06d7864',
     deleted: false,
   },
   {
@@ -259,7 +259,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952786,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/71d7f330-40d1-4c9e-b843-b5b62ff2efcd',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/71d7f330-40d1-4c9e-b843-b5b62ff2efcd',
     deleted: false,
   },
   {
@@ -295,7 +295,7 @@ export const KPI_CHARTS = [
     version: 0.1,
     updatedAt: 1670231952810,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/dataInsight/d3eff37a-1196-4e4a-bc6a-5a81bb6504b5',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/d3eff37a-1196-4e4a-bc6a-5a81bb6504b5',
     deleted: false,
   },
 ];
@@ -317,7 +317,7 @@ export const KPI_LIST = [
         'Display the percentage of entities with description by type.',
       displayName: 'Percentage of Entities With Description',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/dataInsight/7dc794d3-1881-408c-92fc-6182aa453bc8',
+      href: 'http://localhost:8585/api/v1/dataInsanalytics/dataInsights/chartsight/7dc794d3-1881-408c-92fc-6182aa453bc8',
     },
     targetDefinition: [
       {
@@ -367,7 +367,7 @@ export const KPI_DATA = {
     description: 'Display the percentage of entities with description by type.',
     displayName: 'Percentage of Entities With Description',
     deleted: false,
-    href: 'http://localhost:8585/api/v1/dataInsight/7dc794d3-1881-408c-92fc-6182aa453bc8',
+    href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/7dc794d3-1881-408c-92fc-6182aa453bc8',
   },
   targetDefinition: [
     {
@@ -439,6 +439,6 @@ export const DESCRIPTION_CHART = {
   version: 0.1,
   updatedAt: 1670231952816,
   updatedBy: 'admin',
-  href: 'http://localhost:8585/api/v1/dataInsight/7dc794d3-1881-408c-92fc-6182aa453bc8',
+  href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/7dc794d3-1881-408c-92fc-6182aa453bc8',
   deleted: false,
 };

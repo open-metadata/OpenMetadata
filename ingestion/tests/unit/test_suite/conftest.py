@@ -22,6 +22,9 @@ import pytest
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
+    SQATestSuiteInterface,
+)
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -29,7 +32,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 
 Base = declarative_base()
 
@@ -39,6 +41,7 @@ ENTITY_LINK_FNAME = "<#E::table::service.db.users::columns::first name>"
 ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
 ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
 ENTITY_LINK_USER = "<#E::table::service.db.users>"
+ENTITY_LINK_INSERTED_DATE = "<#E::table::service.db.users::columns::inserted_date>"
 
 TABLE = Table(
     id=uuid4(),
@@ -333,7 +336,7 @@ def test_case_column_values_missing_count_to_be_equal():
 
 
 @pytest.fixture
-def test_case_column_values_missing_count_to_be_equal_missing_valuesl():
+def test_case_column_values_missing_count_to_be_equal_missing_values():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
         name=TEST_CASE_NAME,
@@ -544,6 +547,55 @@ def test_case_table_custom_sql_query_success():
 
 
 @pytest.fixture
+def test_case_table_custom_sql_query_with_threshold_success():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression", value="SELECT COUNT(*) FROM users WHERE age > 30"
+            ),
+            TestCaseParameterValue(
+                name="strategy",
+                value="COUNT",
+            ),
+            TestCaseParameterValue(
+                name="threshold",
+                value="20",
+            ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_custom_sql_unsafe_query_aborted():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression",
+                value="DELETE FROM airflow_task_instance WHERE dag_id = 'test_dag_id'",
+            ),
+            TestCaseParameterValue(
+                name="strategy",
+                value="COUNT",
+            ),
+            TestCaseParameterValue(
+                name="threshold",
+                value="20",
+            ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_row_count_to_be_between():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
@@ -585,5 +637,61 @@ def test_case_table_row_inserted_count_to_be_between():
             TestCaseParameterValue(name="columnName", value="inserted_date"),
             TestCaseParameterValue(name="rangeType", value="DAY"),
             TestCaseParameterValue(name="rangeInterval", value="1"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_failed_dl():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="age > 30"),
+        ],
+    )
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_success_dl():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="age < 0"),
+        ],
+    )
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_date():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_INSERTED_DATE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValue", value="1625127852000"),
+            TestCaseParameterValue(name="maxValue", value="1625127852000"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_datetime():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_INSERTED_DATE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValue", value="1625127852000"),
+            TestCaseParameterValue(name="maxValue", value="1625171052000"),
         ],
     )  # type: ignore

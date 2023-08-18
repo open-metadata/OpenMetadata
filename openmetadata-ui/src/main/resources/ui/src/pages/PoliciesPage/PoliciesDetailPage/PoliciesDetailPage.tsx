@@ -25,6 +25,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import Description from 'components/common/description/Description';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -36,6 +37,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -48,6 +50,7 @@ import {
   patchRole,
 } from 'rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -56,7 +59,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAddPolicyRulePath,
@@ -101,11 +103,11 @@ const PoliciesDetailPage = () => {
         url: policiesPath,
       },
       {
-        name: fqn,
+        name: getEntityName(policy),
         url: '',
       },
     ],
-    [fqn]
+    [policy]
   );
 
   const fetchPolicyPermission = async () => {
@@ -271,11 +273,7 @@ const PoliciesDetailPage = () => {
                         );
                       }}>
                       <Space align="center">
-                        <SVGIcons
-                          alt={t('label.edit')}
-                          icon={Icons.EDIT}
-                          width="16px"
-                        />
+                        <EditIcon width="16px" />
                         {t('label.edit')}
                       </Space>
                     </Button>
@@ -370,7 +368,14 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {getEntityName(policy)}
+              </Typography.Title>
               <Description
+                className="m-b-md"
                 description={policy.description || ''}
                 entityFqn={policy.fullyQualifiedName}
                 entityName={getEntityName(policy)}
@@ -385,11 +390,9 @@ const PoliciesDetailPage = () => {
               />
 
               <Tabs defaultActiveKey="rules">
-                <TabPane key="rules" tab={t('label.rules')}>
+                <TabPane key="rules" tab={t('label.rule-plural')}>
                   {isEmpty(policy.rules) ? (
-                    <ErrorPlaceHolder>
-                      <p>{t('message.no-rule-found')}</p>
-                    </ErrorPlaceHolder>
+                    <ErrorPlaceHolder />
                   ) : (
                     <Space
                       className="w-full tabpane-space"
@@ -534,15 +537,14 @@ const PoliciesDetailPage = () => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-permission-to-view')}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
       {selectedEntity && (
         <Modal
           centered
           closable={false}
           confirmLoading={isloadingOnSave}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

@@ -13,6 +13,7 @@
 
 import {
   act,
+  findAllByTestId,
   findByTestId,
   findByText,
   queryByTestId,
@@ -34,10 +35,18 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
+  entityFqn: 'topic.fqn',
+  onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('../../../utils/TagsUtils', () => ({
-  fetchTagsAndGlossaryTerms: jest.fn().mockReturnValue([]),
+jest.mock('utils/TagsUtils', () => ({
+  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('utils/GlossaryUtils', () => ({
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
 jest.mock('../../../utils/TopicSchema.utils', () => ({
@@ -62,14 +71,28 @@ jest.mock(
   })
 );
 
-jest.mock('components/Tag/TagsContainer/tags-container', () =>
+jest.mock('components/TableTags/TableTags.component', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="tag-container">Tag Container</div>)
+    .mockImplementation(() => (
+      <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
 );
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>)
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
+    ))
+);
+
+jest.mock('components/schema-editor/SchemaEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="schema-editor">SchemaEditor</div>
+    ))
 );
 
 describe('Topic Schema', () => {
@@ -89,12 +112,12 @@ describe('Topic Schema', () => {
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
     const description = await findByText(row1, 'Description Preview');
-    const tags = await findByTestId(row1, 'tag-container');
+    const tagsContainer = await findAllByTestId(row1, 'table-tag-container');
 
     expect(name).toBeInTheDocument();
     expect(dataType).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(tags).toBeInTheDocument();
+    expect(tagsContainer).toHaveLength(2);
   });
 
   it('Should render the children on click of expand icon', async () => {

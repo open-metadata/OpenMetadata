@@ -12,6 +12,7 @@
  */
 
 import { Button, Popover, Space } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,7 @@ interface Props {
   isThread?: boolean;
   threadId?: string;
   postId?: string;
+  editAnnouncementPermission?: boolean;
   reactions: Post['reactions'];
   onReactionSelect: (
     reactionType: ReactionType,
@@ -52,6 +54,8 @@ const PopoverContent: FC<Props> = ({
   onReactionSelect,
   onPopoverHide,
   onEdit,
+  isAnnouncement,
+  editAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
   // get current user details
@@ -76,10 +80,13 @@ const PopoverContent: FC<Props> = ({
     return Boolean(baseCheck && (isAuthor || currentUser?.isAdmin));
   }, [threadId, postId, onConfirmation, isAuthor, currentUser]);
 
-  const editCheck = useMemo(
-    () => isAuthor || currentUser?.isAdmin,
-    [isAuthor, currentUser]
-  );
+  const editCheck = useMemo(() => {
+    if (isAnnouncement) {
+      return editAnnouncementPermission;
+    } else {
+      return isAuthor || currentUser?.isAdmin;
+    }
+  }, [isAuthor, currentUser, isAnnouncement, editAnnouncementPermission]);
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -170,7 +177,7 @@ const PopoverContent: FC<Props> = ({
         zIndex={9999}
         onOpenChange={handleVisibleChange}>
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="add-reactions"
           size="small"
           type="text"
@@ -188,7 +195,7 @@ const PopoverContent: FC<Props> = ({
 
       {(onReply || isThread) && (
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="add-reply"
           size="small"
           type="text"
@@ -204,23 +211,18 @@ const PopoverContent: FC<Props> = ({
 
       {editCheck && (
         <Button
-          className="tw-p-0"
+          className="p-0 flex-center"
           data-testid="edit-message"
+          icon={<EditIcon width="18px" />}
           size="small"
           type="text"
-          onClick={handleEdit}>
-          <SVGIcons
-            alt="edit"
-            icon={Icons.EDIT}
-            title={t('label.edit')}
-            width="18px"
-          />
-        </Button>
+          onClick={handleEdit}
+        />
       )}
 
       {deleteButtonCheck ? (
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="delete-message"
           type="text"
           onClick={handleDelete}>

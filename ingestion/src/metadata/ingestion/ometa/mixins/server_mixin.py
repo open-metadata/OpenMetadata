@@ -13,7 +13,7 @@ Mixin class containing Server and client specific methods
 
 To be used by OpenMetadata class
 """
-from metadata.__version__ import get_client_version, get_version_from_string
+from metadata.__version__ import get_client_version, get_server_version_from_string
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
@@ -50,9 +50,10 @@ class OMetaServerMixin:
             raw_version = self.client.get("/system/version")["version"]
         except KeyError:
             raise VersionNotFoundException(
-                "Cannot Find Version at api/v1/system/version"
+                "Cannot Find Version at api/v1/system/version."
+                + " If running the server in DEV mode locally, make sure to `mvn clean install`."
             )
-        return get_version_from_string(raw_version)
+        return get_server_version_from_string(raw_version)
 
     def validate_versions(self) -> None:
         """
@@ -64,7 +65,9 @@ class OMetaServerMixin:
         server_version = self.get_server_version()
         client_version = get_client_version()
 
-        if server_version != client_version:
+        # Server version will be 0.13.2, vs 0.13.2.X from the client.
+        # If the server version is contained in the client version, then we're good to go
+        if server_version not in client_version:
             raise VersionMismatchException(
                 f"Server version is {server_version} vs. Client version {client_version}. Both should match."
             )

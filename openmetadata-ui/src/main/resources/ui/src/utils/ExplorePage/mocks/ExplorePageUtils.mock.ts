@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-export const mockAdvancedSearchQueryFilters = {
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from 'pages/explore/ExplorePage.interface';
+
+export const mockAdvancedSearchQueryFilters: QueryFilterInterface = {
   query: {
     bool: {
       must: [
@@ -29,7 +34,7 @@ export const mockAdvancedSearchQueryFilters = {
   },
 };
 
-export const mockESQueryFilters = {
+export const mockESQueryFilters: QueryFilterInterface = {
   query: {
     bool: {
       must: [
@@ -39,7 +44,7 @@ export const mockESQueryFilters = {
   },
 };
 
-export const mockCombinedQueryFilterValue = {
+export const mockCombinedQueryFilterValue: QueryFilterInterface = {
   query: {
     bool: {
       must: [
@@ -58,7 +63,7 @@ export const mockCombinedQueryFilterValue = {
   },
 };
 
-export const mockCombinedMustFieldArray = [
+export const mockCombinedMustFieldArray: QueryFieldInterface[] = [
   { bool: { should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }] } },
   { bool: { must: [{ term: { 'owner.type': 'team' } }] } },
   {
@@ -71,6 +76,6 @@ export const mockCombinedMustFieldArray = [
   },
 ];
 
-export const mockQueryFilterArray = [
+export const mockQueryFilterArray: QueryFieldInterface[] = [
   { bool: { should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }] } },
 ];

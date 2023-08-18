@@ -30,7 +30,7 @@ public class CsvUtilTest {
     List<String> actualRecord = new ArrayList<>();
 
     // Add string
-    expectedRecord.add("");
+    expectedRecord.add(null);
     assertEquals(expectedRecord, CsvUtil.addField(actualRecord, (String) null));
 
     expectedRecord.add("abc");
@@ -44,7 +44,7 @@ public class CsvUtilTest {
     assertEquals(expectedRecord, CsvUtil.addFieldList(actualRecord, listOf("def", "ghi")));
 
     // Add entity reference
-    expectedRecord.add("");
+    expectedRecord.add(null);
     assertEquals(expectedRecord, CsvUtil.addEntityReference(actualRecord, null)); // Null entity reference
 
     expectedRecord.add("fqn");
@@ -52,7 +52,7 @@ public class CsvUtilTest {
         expectedRecord, CsvUtil.addEntityReference(actualRecord, new EntityReference().withFullyQualifiedName("fqn")));
 
     // Add entity references
-    expectedRecord.add("");
+    expectedRecord.add(null);
     assertEquals(expectedRecord, CsvUtil.addEntityReferences(actualRecord, null)); // Null entity references
 
     expectedRecord.add("fqn1;fqn2");
@@ -62,7 +62,7 @@ public class CsvUtilTest {
     assertEquals(expectedRecord, CsvUtil.addEntityReferences(actualRecord, refs));
 
     // Add tag labels
-    expectedRecord.add("");
+    expectedRecord.add(null);
     assertEquals(expectedRecord, CsvUtil.addTagLabels(actualRecord, null)); // Null entity references
 
     expectedRecord.add("t1;t2");

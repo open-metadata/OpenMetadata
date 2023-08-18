@@ -45,7 +45,7 @@ const mockOptions = [
 
 const mockProps = {
   options: mockOptions,
-  assignees: mockOptions,
+  value: mockOptions,
   onSearch: jest.fn(),
   onChange: jest.fn(),
 };
@@ -60,12 +60,12 @@ describe('Test assignees component', () => {
 
     const container = await screen.findByRole('combobox');
 
-    fireEvent.change(container, { target: { value: 'a' } });
+    fireEvent.change(container, { target: { value: 'adam_matthews2' } });
 
-    const options = await screen.findAllByTestId('assignee-option');
+    const options = await screen.findByTestId(`assignee-option-adam_matthews2`);
 
     expect(container).toBeInTheDocument();
 
-    expect(options).toHaveLength(mockOptions.length);
+    expect(options).toBeInTheDocument();
   });
 });

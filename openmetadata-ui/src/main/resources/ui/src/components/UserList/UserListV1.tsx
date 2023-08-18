@@ -14,11 +14,16 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -26,9 +31,6 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
-import { getEntityName } from '../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -100,16 +102,16 @@ const UserListV1: FC<UserListV1Props> = ({
       if (data) {
         afterDeleteAction();
         showSuccessToast(
-          jsonData['api-success-messages']['user-restored-success']
+          t('message.entity-restored-success', { entity: t('label.user') })
         );
         setShowReactiveModal(false);
       } else {
-        throw jsonData['api-error-messages']['update-user-error'];
+        throw t('server.entity-updating-error', { entity: t('label.user') });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-user-error']
+        t('server.entity-updating-error', { entity: t('label.user') })
       );
     } finally {
       setIsLoading(false);
@@ -128,19 +130,18 @@ const UserListV1: FC<UserListV1Props> = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center action-icons"
+            className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
               <Tooltip placement="bottom" title={t('label.restore')}>
                 <Button
                   icon={
-                    <SVGIcons
-                      alt={t('label.restore')}
-                      className="tw-w-4 tw-mb-2.5"
+                    <IconRestore
                       data-testid={`restore-user-btn-${
                         record.displayName || record.name
                       }`}
-                      icon={Icons.RESTORE}
+                      name={t('label.restore')}
+                      width="16px"
                     />
                   }
                   type="text"
@@ -151,21 +152,19 @@ const UserListV1: FC<UserListV1Props> = ({
                 />
               </Tooltip>
             )}
-            <Tooltip
-              placement="bottom"
-              title={isAdminUser ? t('label.delete') : ADMIN_ONLY_ACTION}>
+            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
               <Button
                 disabled={!isAdminUser}
                 icon={
-                  <SVGIcons
-                    alt="Delete"
-                    className="tw-w-4 tw-mb-2.5"
+                  <IconDelete
                     data-testid={`delete-user-btn-${
                       record.displayName || record.name
                     }`}
-                    icon={Icons.DELETE}
+                    name={t('label.delete')}
+                    width="16px"
                   />
                 }
+                size="small"
                 type="text"
                 onClick={() => {
                   setSelectedUser(record);
@@ -179,82 +178,73 @@ const UserListV1: FC<UserListV1Props> = ({
     ];
   }, [showRestore]);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => (type: string) => {
-      return (
-        <Row>
-          <Col className="w-full tw-flex tw-justify-end">
-            <span>
-              <Switch
-                checked={showDeletedUser}
-                size="small"
-                onClick={onShowDeletedUserChange}
-              />
-              <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
-            </span>
-          </Col>
-          <Col span={24}>
-            <ErrorPlaceHolder
-              buttons={
-                <Button
-                  ghost
-                  data-testid="add-user"
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddNewUser}>
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              }
-              heading="User"
-              type={type}
+  const errorPlaceHolder = useMemo(
+    () => (
+      <Row>
+        <Col className="w-full d-flex justify-end">
+          <span>
+            <Switch
+              checked={showDeletedUser}
+              data-testid="show-deleted"
+              onClick={onShowDeletedUserChange}
             />
-          </Col>
-        </Row>
-      );
-    },
-    []
+            <span className="m-l-xs">{t('label.deleted')}</span>
+          </span>
+        </Col>
+        <Col className="mt-24" span={24}>
+          <ErrorPlaceHolder
+            heading={t('label.user')}
+            permission={isAdminUser}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={handleAddNewUser}
+          />
+        </Col>
+      </Row>
+    ),
+    [isAdminUser, showDeletedUser]
   );
 
   if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
-    return fetchErrorPlaceHolder('ADD_DATA');
+    return errorPlaceHolder;
   }
 
   return (
-    <Row className="user-listing" gutter={[16, 16]}>
+    <Row
+      className="user-listing"
+      data-testid="user-list-v1-component"
+      gutter={[16, 16]}>
       <Col span={12}>
         <PageHeader
           data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
         />
       </Col>
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <span>
             <Switch
               checked={showDeletedUser}
+              data-testid="show-deleted"
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
+            <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
-          <Tooltip
-            title={
-              isAdminUser
-                ? t('label.add-entity', { entity: t('label.user') })
-                : t('message.admin-only-action')
-            }>
+
+          {isAdminUser && (
             <Button
               data-testid="add-user"
-              disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
               {t('label.add-entity', { entity: t('label.user') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={8}>
         <Searchbar
           removeMargin
-          placeholder="Search for user..."
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user'),
+          })}...`}
           searchValue={searchTerm}
           typingInterval={500}
           onSearch={onSearch}
@@ -262,19 +252,23 @@ const UserListV1: FC<UserListV1Props> = ({
       </Col>
 
       <Col span={24}>
-        <Table
-          bordered
-          className="user-list-table"
-          columns={columns}
-          dataSource={data}
-          loading={{
-            spinning: isDataLoading,
-            indicator: <Loader size="small" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
+        {isDataLoading ? (
+          <Loader />
+        ) : (
+          <Table
+            bordered
+            className="user-list-table"
+            columns={columns}
+            data-testid="user-list-table"
+            dataSource={data}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        )}
       </Col>
       <Col span={24}>
         {paging.total > PAGE_SIZE_MEDIUM && (
@@ -296,6 +290,7 @@ const UserListV1: FC<UserListV1Props> = ({
         className="reactive-modal"
         closable={false}
         confirmLoading={isLoading}
+        maskClosable={false}
         okText={t('label.restore')}
         open={showReactiveModal}
         title={t('label.restore-entity', {

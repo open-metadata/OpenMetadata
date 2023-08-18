@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,17 +17,17 @@ import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MA
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
+import software.amazon.awssdk.services.secretsmanager.model.DeleteSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 public class AWSSecretsManager extends AWSBasedSecretsManager {
-
-  private static AWSSecretsManager INSTANCE = null;
-
+  private static AWSSecretsManager instance = null;
   private SecretsManagerClient secretsClient;
 
   private AWSSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
@@ -73,9 +73,17 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();
   }
 
+  @Override
+  protected void deleteSecretInternal(String secretName) {
+    DeleteSecretRequest deleteSecretRequest = DeleteSecretRequest.builder().secretId(secretName).build();
+    this.secretsClient.deleteSecret(deleteSecretRequest);
+  }
+
   public static AWSSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(config, clusterPrefix);
-    return INSTANCE;
+    if (instance == null) {
+      instance = new AWSSecretsManager(config, clusterPrefix);
+    }
+    return instance;
   }
 
   @VisibleForTesting

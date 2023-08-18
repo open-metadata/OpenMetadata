@@ -28,10 +28,8 @@ from metadata.generated.schema.analytics.reportDataType.entityReportData import 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import (
-    EntityReference,
-    EntityReferenceList,
-)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
 TEAM = Team(id=uuid.uuid4(), href="http://foo", name="marketing", fullyQualifiedName="marketing")  # type: ignore
 USER = User(
@@ -85,39 +83,43 @@ class EntityReportProcessorTest(unittest.TestCase):
             mocked_om (_type_):
         """
         data = {
-            "Chart": {
-                "None": {
+            "DashboardService": {
+                "Chart": {
                     "None": {
-                        "missingOwner": 12,
-                        "completedDescriptions": 12,
-                        "hasOwner": 0,
-                        "missingDescriptions": 0,
+                        "None": {
+                            "missingOwner": 12,
+                            "completedDescriptions": 12,
+                            "hasOwner": 0,
+                            "missingDescriptions": 0,
+                        },
+                        "Tier.Tier1": {
+                            "missingOwner": 5,
+                            "completedDescriptions": 1,
+                            "hasOwner": 3,
+                            "missingDescriptions": 8,
+                        },
                     },
-                    "Tier.Tier1": {
-                        "missingOwner": 5,
-                        "completedDescriptions": 1,
-                        "hasOwner": 3,
-                        "missingDescriptions": 8,
+                    "Marketing": {
+                        "Tier.Tier1": {
+                            "missingOwner": 0,
+                            "completedDescriptions": 0,
+                            "hasOwner": 7,
+                            "missingDescriptions": 5,
+                        }
                     },
-                },
-                "Marketing": {
-                    "Tier.Tier1": {
-                        "missingOwner": 0,
-                        "completedDescriptions": 0,
-                        "hasOwner": 7,
-                        "missingDescriptions": 5,
-                    }
                 },
             },
-            "Table": {
-                "None": {
+            "TableService": {
+                "Table": {
                     "None": {
-                        "missingOwner": 12,
-                        "completedDescriptions": 12,
-                        "hasOwner": 0,
-                        "missingDescriptions": 0,
+                        "None": {
+                            "missingOwner": 12,
+                            "completedDescriptions": 12,
+                            "hasOwner": 0,
+                            "missingDescriptions": 0,
+                        }
                     }
-                }
+                },
             },
         }
 
@@ -127,6 +129,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
+                    serviceName="DashboardService",
                     team=None,
                     entityTier=None,
                     missingOwner=12,
@@ -140,6 +143,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
+                    serviceName="DashboardService",
                     team=None,
                     entityTier="Tier.Tier1",
                     missingOwner=5,
@@ -153,6 +157,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
+                    serviceName="DashboardService",
                     team="Marketing",
                     entityTier="Tier.Tier1",
                     missingOwner=0,
@@ -166,6 +171,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Table",
+                    serviceName="TableService",
                     team=None,
                     entityTier=None,
                     missingOwner=12,

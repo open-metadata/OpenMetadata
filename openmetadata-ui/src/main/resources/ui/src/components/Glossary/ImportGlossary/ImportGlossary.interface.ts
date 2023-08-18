@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface GlossaryCSVRecord {
+export type GlossaryCSVRecord = {
   status?: string;
   details?: string;
   parent?: string;
@@ -21,4 +21,4 @@ export interface GlossaryCSVRecord {
   relatedTerms?: string;
   references?: string;
   tags?: string;
-}
+};

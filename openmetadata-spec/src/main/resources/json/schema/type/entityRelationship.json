@@ -29,7 +29,9 @@
         "appliedTo",
         "relatedTo",
         "reviews",
-        "reactedTo"
+        "reactedTo",
+        "voted",
+        "expert"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -49,7 +51,9 @@
         { "name": "APPLIED_TO" },
         { "name": "RELATED_TO" },
         { "name": "REVIEWS" },
-        { "name": "REACTED_TO" }
+        { "name": "REACTED_TO" },
+        { "name": "VOTED" },
+        { "name": "EXPERT" }
       ]
     }
   },

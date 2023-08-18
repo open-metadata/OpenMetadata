@@ -14,15 +14,13 @@
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
-import jsonData from '../../jsons/en';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './reset-password.style.less';
 import { getUserNameAndToken } from './reset-password.utils';
@@ -64,10 +62,7 @@ const ResetPassword = () => {
       await handleResetPassword(ResetRequest);
       history.push(ROUTES.SIGNIN);
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
   };
 
@@ -84,7 +79,7 @@ const ResetPassword = () => {
             <Alert
               showIcon
               description="Please re-initiate email verification process"
-              message="Email Verification Token Expired"
+              message={t('message.email-verification-token-expired')}
               type="error"
             />
           </div>
@@ -102,7 +97,7 @@ const ResetPassword = () => {
           style={{ maxWidth: '450px' }}>
           <Row gutter={[16, 24]}>
             <Col className="text-center" span={24}>
-              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+              <BrandImage className="m-auto" height="auto" width={152} />
             </Col>
 
             <Col className="mt-12 text-center" span={24}>
@@ -119,31 +114,37 @@ const ResetPassword = () => {
                 validateMessages={VALIDATION_MESSAGES}
                 onFinish={handleSubmit}>
                 <Form.Item
-                  label="New Password"
+                  label={t('label.new-password')}
                   name="password"
                   rules={[
                     {
                       required: true,
-                      message: 'Password is required',
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.password'),
+                      }),
                     },
                     {
                       pattern: passwordRegex,
-                      message:
-                        'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character',
+                      message: t('message.password-pattern-error'),
                     },
                   ]}>
                   <Input.Password
+                    autoComplete="off"
                     className="w-full"
-                    placeholder="Enter new password"
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.new-password'),
+                    })}
                   />
                 </Form.Item>
                 <Form.Item
-                  label="Confirm New Password"
+                  label={t('label.confirm-new-password')}
                   name="confirmPassword"
                   rules={[
                     {
                       required: true,
-                      message: 'Confirm password is required',
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.confirm-new-password'),
+                      }),
                     },
                     {
                       validator: (_, value) => {
@@ -151,13 +152,14 @@ const ResetPassword = () => {
                           return Promise.resolve();
                         }
 
-                        return Promise.reject("Password doesn't match");
+                        return Promise.reject(t('label.password-not-match'));
                       },
                     },
                   ]}>
                   <Input.Password
+                    autoComplete="off"
                     className="w-full"
-                    placeholder="Re-enter New Password"
+                    placeholder={t('label.re-enter-new-password')}
                   />
                 </Form.Item>
 

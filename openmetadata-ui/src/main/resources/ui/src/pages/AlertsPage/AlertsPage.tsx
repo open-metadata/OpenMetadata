@@ -10,38 +10,47 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { AxiosError } from 'axios';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
-import { isNil } from 'lodash';
+import { ALERTS_DOCS } from 'constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { EntityType } from 'enums/entity.enum';
+import {
+  EventSubscription,
+  ProviderType,
+} from 'generated/events/eventSubscription';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getAllAlerts } from 'rest/alertsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
-import { Alerts, ProviderType } from '../../generated/alerts/alerts';
 import { Paging } from '../../generated/type/paging';
-import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsPage = () => {
-  const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
-  const [alerts, setAlerts] = useState<Alerts[]>([]);
+  const history = useHistory();
+  const [loading, setLoading] = useState(true);
+  const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [alertsPaging, setAlertsPaging] = useState<Paging>({
     total: 0,
   } as Paging);
   const [currentPage, setCurrentPage] = useState(0);
-  const [selectedAlert, setSelectedAlert] = useState<Alerts>();
+  const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
 
   const fetchAlerts = useCallback(async (after?: string) => {
     setLoading(true);
@@ -64,8 +73,13 @@ const AlertsPage = () => {
   }, []);
 
   const handleAlertDelete = useCallback(async () => {
-    fetchAlerts();
-  }, []);
+    try {
+      setSelectedAlert(undefined);
+      fetchAlerts();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [fetchAlerts]);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
     if (after) {
@@ -81,36 +95,49 @@ const AlertsPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (name: string, record: Alerts) => {
+        render: (name: string, record: EventSubscription) => {
           return <Link to={`alert/${record.id}`}>{name}</Link>;
         },
       },
       {
         title: t('label.trigger'),
-        dataIndex: ['triggerConfig', 'type'],
+        dataIndex: ['filteringRules', 'resources'],
         width: '200px',
-        key: 'triggerConfig.type',
-        render: getDisplayNameForTriggerType,
+        key: 'FilteringRules.resources',
+        render: (resources: string[]) => {
+          return resources?.join(', ') || '--';
+        },
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         flex: true,
         key: 'description',
+        render: (description: string) =>
+          isEmpty(description) ? (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </Typography.Text>
+          ) : (
+            description
+          ),
       },
       {
         title: t('label.action-plural'),
         dataIndex: 'id',
         width: 120,
         key: 'id',
-        render: (id: string, record: Alerts) => {
+        render: (id: string, record: EventSubscription) => {
           return (
-            <>
+            <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
                 <Link to={`edit-alert/${id}`}>
                   <Button
+                    className="d-inline-flex items-center justify-center"
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<SVGIcons className="w-4" icon={Icons.EDIT} />}
+                    icon={<EditIcon width={16} />}
                     type="text"
                   />
                 </Link>
@@ -124,7 +151,7 @@ const AlertsPage = () => {
                   onClick={() => setSelectedAlert(record)}
                 />
               </Tooltip>
-            </>
+            </div>
           );
         },
       },
@@ -158,15 +185,37 @@ const AlertsPage = () => {
           </div>
         </Col>
         <Col span={24}>
-          <Table
-            bordered
-            columns={columns}
-            dataSource={alerts}
-            loading={{ spinning: loading, indicator: <Loader /> }}
-            pagination={false}
-            rowKey="id"
-            size="middle"
-          />
+          {loading ? (
+            <Loader />
+          ) : (
+            <Table
+              bordered
+              columns={columns}
+              dataSource={alerts}
+              locale={{
+                emptyText: !loading && (
+                  <ErrorPlaceHolder
+                    permission
+                    className="p-y-md"
+                    doc={ALERTS_DOCS}
+                    heading={t('label.alert')}
+                    type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                    onClick={() =>
+                      history.push(
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.NOTIFICATIONS,
+                          GlobalSettingOptions.ADD_ALERTS
+                        )
+                      )
+                    }
+                  />
+                ),
+              }}
+              pagination={false}
+              rowKey="id"
+              size="middle"
+            />
+          )}
         </Col>
         <Col span={24}>
           {Boolean(
@@ -184,9 +233,9 @@ const AlertsPage = () => {
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}
-            entityId={selectedAlert?.id || ''}
-            entityName={selectedAlert?.name || ''}
-            entityType={EntityType.ALERT}
+            entityId={selectedAlert?.id ?? ''}
+            entityName={getEntityName(selectedAlert)}
+            entityType={EntityType.SUBSCRIPTION}
             visible={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);

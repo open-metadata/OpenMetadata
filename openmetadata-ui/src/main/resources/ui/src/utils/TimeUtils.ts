@@ -174,11 +174,21 @@ export const getPastDatesTimeStampFromCurrentDate = (pastDayCount: number) =>
  * Get the current date and time in seconds.
  */
 export const getCurrentDateTimeStamp = () => DateTime.now().toUnixInteger();
+/**
+ * Get the current UTC date and time in seconds.
+ */
+export const getCurrentUTCDateTimeStamp = () => DateTime.now().toUnixInteger();
 
 /**
  * Get the current date and time in milliseconds.
  */
 export const getCurrentDateTimeMillis = () => DateTime.now().toMillis();
+
+/**
+ * Get the current UTC date and time in milliseconds.
+ */
+export const getCurrentUTCDateTimeMillis = () =>
+  DateTime.now().toUTC().toMillis();
 
 /**
  * It returns the number of milliseconds since the Unix Epoch for a date that is pastDayCount days before
@@ -196,7 +206,10 @@ export const getPastDaysDateTimeMillis = (days: number) =>
 export const getFormattedDateFromSeconds = (
   timeStamp: number,
   format?: string
-) => DateTime.fromSeconds(timeStamp || 0).toFormat(format || 'dd/MMM HH:mm');
+) =>
+  DateTime.fromSeconds(timeStamp || 0)
+    .toUTC()
+    .toFormat(format || 'dd/MMM HH:mm');
 /**
  * It takes a timestamp in milliseconds and returns a formatted date string
  * @param {number} timeStamp - The timeStamp in milliseconds.
@@ -205,7 +218,10 @@ export const getFormattedDateFromSeconds = (
 export const getFormattedDateFromMilliSeconds = (
   timeStamp: number,
   format?: string
-) => DateTime.fromMillis(timeStamp || 0).toFormat(format || 'dd/MMM');
+) =>
+  DateTime.fromMillis(timeStamp || 0)
+    .toUTC()
+    .toFormat(format || 'dd/MMM');
 
 /**
  * It takes a timestamp in milliseconds and returns a formatted date like 'Oct 14, 1983, 9:30 AM'.

@@ -14,6 +14,7 @@ ElasticSearch reindex DAG function builder
 from airflow import DAG
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
+    GetServiceException,
     build_dag,
     metadata_ingestion_workflow,
 )
@@ -36,11 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    SourceConfig,
-    WorkflowConfig,
-)
-from metadata.generated.schema.type.basic import ComponentConfig
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -60,36 +57,18 @@ def build_es_reindex_workflow_config(
         entity=MetadataService, fqn=ingestion_pipeline.service.fullyQualifiedName
     )
     if not openmetadata_service:
-        raise ValueError(
-            "Could not retrieve the OpenMetadata service! This should not happen."
-        )
+        raise GetServiceException(service_type="metadata", service_name="OpenMetadata")
 
-    om_service_elasticsearch_dict = {
-        key: value
-        for key, value in openmetadata_service.connection.config.elasticsSearch.config.dict().items()
-        if value
-    }
-
-    ingestion_pipeline_elasticsearch_source_config = {
-        key: value
-        for key, value in ingestion_pipeline.sourceConfig.config.dict().items()
-        if value and key != "type"
-    }
+    sink = Sink(type="metadata-rest", config={})
 
     workflow_config = OpenMetadataWorkflowConfig(
         source=WorkflowSource(
             type="metadata_elasticsearch",
             serviceName=ingestion_pipeline.service.fullyQualifiedName,
             serviceConnection=MetadataConnection(config=MetadataESConnection()),
-            sourceConfig=SourceConfig(),
+            sourceConfig=ingestion_pipeline.sourceConfig,
         ),
-        sink=Sink(
-            type="elasticsearch",
-            config=ComponentConfig(
-                **om_service_elasticsearch_dict,
-                **ingestion_pipeline_elasticsearch_source_config,
-            ),
-        ),
+        sink=sink,
         workflowConfig=WorkflowConfig(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,

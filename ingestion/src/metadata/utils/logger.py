@@ -34,6 +34,7 @@ class Loggers(Enum):
     OMETA = "OMetaAPI"
     CLI = "Metadata"
     PROFILER = "Profiler"
+    PII = "PII"
     INGESTION = "Ingestion"
     UTILS = "Utils"
     GREAT_EXPECTATIONS = "GreatExpectations"
@@ -82,6 +83,14 @@ def profiler_logger():
     """
 
     return logging.getLogger(Loggers.PROFILER.value)
+
+
+def pii_logger():
+    """
+    Method to get the PROFILER logger
+    """
+
+    return logging.getLogger(Loggers.PII.value)
 
 
 def test_suite_logger():

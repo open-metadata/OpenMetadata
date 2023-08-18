@@ -11,25 +11,39 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { CheckOutlined } from '@ant-design/icons';
+import { Button, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
+import CustomNodeV1 from 'components/Entity/EntityLineage/CustomNodeV1.component';
 import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
   EdgeData,
   EdgeTypeEnum,
+  EntityReferenceChild,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
   ModifiedColumn,
+  NodeIndexMap,
   SelectedEdge,
   SelectedNode,
-} from 'components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import {
+  cloneDeep,
+  isEmpty,
+  isEqual,
+  isNil,
+  isUndefined,
+  lowerCase,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -42,8 +56,22 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { SECONDARY_COLOR } from '../constants/constants';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import {
+  getContainerDetailPath,
+  getDashboardDetailsPath,
+  getDataModelDetailsPath,
+  getMlModelPath,
+  getPipelineDetailsPath,
+  getTableTabPath,
+  getTopicDetailsPath,
+  INFO_COLOR,
+} from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
@@ -66,15 +94,15 @@ import {
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
-  getEntityName,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { isLeafNode } from './EntityUtils';
-import { getEncodedFqn } from './StringsUtils';
-import SVGIcons from './SvgUtils';
+import { getEntityName } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
+import { showErrorToast } from './ToastUtils';
+
+export const MAX_LINEAGE_LENGTH = 20;
 
 export const getHeaderLabel = (
   name = '',
@@ -85,19 +113,27 @@ export const getHeaderLabel = (
   return (
     <Fragment>
       {isMainNode ? (
-        <span
-          className="tw-break-words description-text tw-self-center tw-font-medium"
-          data-testid="lineage-entity">
+        <Typography.Text
+          className="description-text text-left text-md font-medium w-68"
+          data-testid="lineage-entity"
+          ellipsis={{ tooltip: true }}>
           {name || prepareLabel(type, fqn, false)}
-        </span>
+        </Typography.Text>
       ) : (
-        <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
-          data-testid="lineage-entity">
-          <Link to={getEntityLink(type, fqn)}>
-            {name || prepareLabel(type, fqn, false)}
+        <Typography.Title
+          ellipsis
+          className="m-b-0 text-base"
+          level={5}
+          title={name || prepareLabel(type, fqn, false)}>
+          <Link className="" to={getEntityLink(type, fqn)}>
+            <Button
+              className="text-base font-semibold p-0"
+              data-testid="link-button"
+              type="link">
+              {name || prepareLabel(type, fqn, false)}
+            </Button>
           </Link>
-        </span>
+        </Typography.Title>
       )}
     </Fragment>
   );
@@ -128,7 +164,10 @@ export const dragHandle = (event: ReactMouseEvent) => {
   event.stopPropagation();
 };
 
-const getNodeType = (entityLineage: EntityLineage, id: string) => {
+const getNodeType = (
+  entityLineage: EntityLineage,
+  id: string
+): EntityLineageNodeType => {
   const upStreamEdges = entityLineage.upstreamEdges || [];
   const downStreamEdges = entityLineage.downstreamEdges || [];
 
@@ -198,7 +237,6 @@ export const getLineageData = (
     ...(entityLineage.downstreamEdges || []),
     ...(entityLineage.upstreamEdges || []),
   ];
-
   const lineageEdgesV1: Edge[] = [];
   const mainNode = entityLineage['entity'];
 
@@ -206,10 +244,14 @@ export const getLineageData = (
     const sourceType = nodes.find((n) => edge.fromEntity === n.id);
     const targetType = nodes.find((n) => edge.toEntity === n.id);
 
+    if (isUndefined(sourceType) || isUndefined(targetType)) {
+      return;
+    }
+
     if (!isUndefined(edge.lineageDetails)) {
       edge.lineageDetails.columnsLineage?.forEach((e) => {
         const toColumn = e.toColumn || '';
-        if (e.fromColumns && e.fromColumns.length > 0) {
+        if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
           e.fromColumns.forEach((fromColumn) => {
             lineageEdgesV1.push({
               id: `column-${fromColumn}-${toColumn}-edge-${edge.fromEntity}-${edge.toEntity}`,
@@ -269,14 +311,20 @@ export const getLineageData = (
   });
 
   const makeNode = (node: EntityReference) => {
-    const type = getNodeType(entityLineage, node.id);
+    let type = node.type as EntityLineageNodeType;
+    if (type !== EntityLineageNodeType.LOAD_MORE) {
+      type = getNodeType(entityLineage, node.id);
+    }
     const cols: { [key: string]: ModifiedColumn } = {};
     columns[node.id]?.forEach((col) => {
       cols[col.fullyQualifiedName || col.name] = {
         ...col,
-        type: isEditMode
-          ? EntityLineageNodeType.DEFAULT
-          : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
+        type:
+          type === EntityLineageNodeType.LOAD_MORE
+            ? type
+            : isEditMode
+            ? EntityLineageNodeType.DEFAULT
+            : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
       };
     });
 
@@ -284,83 +332,24 @@ export const getLineageData = (
       id: `${node.id}`,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      type: isEditMode ? EntityLineageNodeType.DEFAULT : type,
-      className: 'leaf-node',
+      type:
+        type === EntityLineageNodeType.LOAD_MORE || !isEditMode
+          ? type
+          : EntityLineageNodeType.DEFAULT,
+      className: '',
       data: {
-        label: (
-          <div className="tw-flex">
-            {type === EntityLineageNodeType.INPUT && (
-              <div
-                className="tw-pr-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(
-                      {
-                        ...node,
-                        fullyQualifiedName: getEncodedFqn(
-                          node.fullyQualifiedName ?? ''
-                        ),
-                      },
-                      'from'
-                    );
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <LeftOutlined className="tw-text-primary tw-mr-2" />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-
-            <LineageNodeLabel
-              isExpanded={isExpanded}
-              node={node}
-              onNodeExpand={onNodeExpand}
-            />
-
-            {type === EntityLineageNodeType.OUTPUT && (
-              <div
-                className="tw-pl-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(
-                      {
-                        ...node,
-                        fullyQualifiedName: getEncodedFqn(
-                          node.fullyQualifiedName ?? ''
-                        ),
-                      },
-                      'to'
-                    );
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <RightOutlined className="tw-text-primary tw-ml-2" />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-          </div>
-        ),
         entityType: node.type,
+        lineageLeafNodes: lineageLeafNodes,
         removeNodeHandler,
         isEditMode,
         isExpanded,
         columns: cols,
         handleColumnClick,
+        onNodeExpand,
         node,
+        isNodeLoading,
+        loadNodeHandler,
+        onSelect,
       },
       position: {
         x: x,
@@ -378,30 +367,24 @@ export const getLineageData = (
         : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
     };
   });
-
+  const mainNodeType = getNodeType(entityLineage, mainNode.id);
   const lineageData = [
     {
       id: `${mainNode.id}`,
       sourcePosition: 'right',
       targetPosition: 'left',
-      type: getNodeType(entityLineage, mainNode.id),
-      className: `leaf-node core`,
+      type: mainNodeType,
+      className: `core`,
       data: {
-        label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            node={mainNode}
-            onNodeExpand={onNodeExpand}
-          />
-        ),
         isEditMode,
         removeNodeHandler,
         handleColumnClick,
+        onNodeExpand,
         columns: mainCols,
         isExpanded,
         node: mainNode,
       },
-      position: { x: x, y: y },
+      position: { x, y },
     },
   ];
 
@@ -410,42 +393,9 @@ export const getLineageData = (
   return { node: lineageData, edge: lineageEdgesV1 };
 };
 
-export const getDataLabel = (
-  displayName?: string,
-  fqn = '',
-  isTextOnly = false,
-  type?: string
-) => {
-  const databaseName = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
-  const schemaName = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
-
-  let label = '';
-  if (displayName) {
-    label = displayName;
-  } else {
-    label = prepareLabel(type as string, fqn);
-  }
-
-  if (isTextOnly) {
-    return label;
-  } else {
-    return (
-      <span
-        className="tw-break-words tw-self-center w-72"
-        data-testid="lineage-entity">
-        {type === 'table'
-          ? databaseName && schemaName
-            ? `${databaseName}${FQN_SEPARATOR_CHAR}${schemaName}${FQN_SEPARATOR_CHAR}${label}`
-            : label
-          : label}
-      </span>
-    );
-  }
-};
-
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+    <div className="m-t-md m-l-md global-border rounded-4 flex-center p-8 font-medium">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>
@@ -453,16 +403,18 @@ export const getDeletedLineagePlaceholder = () => {
   );
 };
 
-const dagreGraph = new dagre.graphlib.Graph();
-dagreGraph.setDefaultEdgeLabel(() => ({}));
-
 export const getLayoutedElements = (
   elements: CustomElement,
   direction = EntityLineageDirection.LEFT_RIGHT
 ) => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
   const { node, edge } = elements;
   const isHorizontal = direction === EntityLineageDirection.LEFT_RIGHT;
   dagreGraph.setGraph({ rankdir: direction });
+
+  const nodeIds = node.map((item) => item.id);
 
   node.forEach((el) => {
     const isExpanded = el.data.isExpanded;
@@ -472,8 +424,16 @@ export const getLayoutedElements = (
     });
   });
 
+  const edgesRequired: Edge[] = [];
+
   edge.forEach((el) => {
-    dagreGraph.setEdge(el.source, el.target);
+    if (
+      nodeIds.indexOf(el.source) !== -1 &&
+      nodeIds.indexOf(el.target) !== -1
+    ) {
+      edgesRequired.push(el);
+      dagreGraph.setEdge(el.source, el.target);
+    }
   });
 
   dagre.layout(dagreGraph);
@@ -492,7 +452,7 @@ export const getLayoutedElements = (
     return el;
   });
 
-  return { node: uNode, edge };
+  return { node: uNode, edge: edgesRequired };
 };
 
 export const getModalBodyText = (selectedEdge: SelectedEdge) => {
@@ -540,21 +500,6 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
   });
 
   return uniqueElements;
-};
-
-/**
- *
- * @param onClick - callback
- * @returns - Button element with attach callback
- */
-export const getNodeRemoveButton = (onClick: () => void) => {
-  return (
-    <button
-      className="tw-absolute tw--top-3.5 tw--right-3 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-      onClick={() => onClick()}>
-      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-    </button>
-  );
 };
 
 export const getSelectedEdgeArr = (
@@ -1114,6 +1059,324 @@ export const getEdgeStyle = (value: boolean) => {
   return {
     opacity: value ? 1 : 0.25,
     strokeWidth: value ? 2 : 1,
-    stroke: value ? SECONDARY_COLOR : undefined,
+    stroke: value ? INFO_COLOR : undefined,
   };
+};
+
+export const getChildMap = (obj: EntityLineage) => {
+  const nodeSet = new Set<string>();
+  nodeSet.add(obj.entity.id);
+  const newData = cloneDeep(obj);
+  newData.downstreamEdges = removeDuplicates(newData.downstreamEdges || []);
+  newData.upstreamEdges = removeDuplicates(newData.upstreamEdges || []);
+
+  const childMap: EntityReferenceChild[] = getLineageChildParents(
+    newData,
+    nodeSet,
+    obj.entity.id,
+    false
+  );
+
+  const parentsMap: EntityReferenceChild[] = getLineageChildParents(
+    newData,
+    nodeSet,
+    obj.entity.id,
+    true
+  );
+
+  const map: EntityReferenceChild = {
+    ...obj.entity,
+    children: childMap,
+    parents: parentsMap,
+  };
+
+  return map;
+};
+
+export const getPaginatedChildMap = (
+  obj: EntityLineage,
+  map: EntityReferenceChild | undefined,
+  pagination_data: Record<string, NodeIndexMap>,
+  maxLineageLength: number
+) => {
+  const nodes = [];
+  const edges: EntityLineageEdge[] = [];
+  nodes.push(obj.entity);
+  if (map) {
+    flattenObj(
+      obj,
+      map,
+      true,
+      obj.entity.id,
+      nodes,
+      edges,
+      pagination_data,
+      maxLineageLength
+    );
+    flattenObj(
+      obj,
+      map,
+      false,
+      obj.entity.id,
+      nodes,
+      edges,
+      pagination_data,
+      maxLineageLength
+    );
+  }
+
+  return { nodes, edges };
+};
+
+export const flattenObj = (
+  entityObj: EntityLineage,
+  childMapObj: EntityReferenceChild,
+  downwards: boolean,
+  id: string,
+  nodes: EntityReference[],
+  edges: EntityLineageEdge[],
+  pagination_data: Record<string, NodeIndexMap>,
+  maxLineageLength = 50
+) => {
+  const children = downwards ? childMapObj.children : childMapObj.parents;
+  if (!children) {
+    return;
+  }
+  const startIndex =
+    pagination_data[id]?.[downwards ? 'downstream' : 'upstream'][0] ?? 0;
+  const hasMoreThanLimit = children.length > startIndex + maxLineageLength;
+  const endIndex = startIndex + maxLineageLength;
+
+  children.slice(0, endIndex).forEach((item) => {
+    if (item) {
+      flattenObj(
+        entityObj,
+        item,
+        downwards,
+        item.id,
+        nodes,
+        edges,
+        pagination_data,
+        maxLineageLength
+      );
+      nodes.push(item);
+    }
+  });
+
+  if (hasMoreThanLimit) {
+    const newNodeId = `loadmore_${uniqueId('node_')}_${id}_${startIndex}`;
+    const childrenLength = children.length - endIndex;
+
+    const newNode = {
+      description: 'Demo description',
+      displayName: 'Load More',
+      id: newNodeId,
+      type: EntityLineageNodeType.LOAD_MORE,
+      pagination_data: {
+        index: endIndex,
+        parentId: id,
+        childrenLength,
+      },
+      edgeType: downwards ? EdgeTypeEnum.DOWN_STREAM : EdgeTypeEnum.UP_STREAM,
+    };
+    nodes.push(newNode);
+    const newEdge: EntityLineageEdge = {
+      fromEntity: downwards ? id : newNodeId,
+      toEntity: downwards ? newNodeId : id,
+    };
+    edges.push(newEdge);
+  }
+};
+
+export const getLineageChildParents = (
+  obj: EntityLineage,
+  nodeSet: Set<string>,
+  id: string,
+  isParent = false,
+  index = 0
+) => {
+  const edges = isParent ? obj.upstreamEdges || [] : obj.downstreamEdges || [];
+  const filtered = edges.filter((edge) => {
+    return isParent ? edge.toEntity === id : edge.fromEntity === id;
+  });
+
+  return filtered.reduce((childMap: EntityReferenceChild[], edge, i) => {
+    const node = obj.nodes?.find((node) => {
+      return isParent ? node.id === edge.fromEntity : node.id === edge.toEntity;
+    });
+
+    if (node && !nodeSet.has(node.id)) {
+      nodeSet.add(node.id);
+      const childNodes = getLineageChildParents(
+        obj,
+        nodeSet,
+        node.id,
+        isParent,
+        i
+      );
+      const lineage: EntityReferenceChild = { ...node, pageIndex: index + i };
+
+      if (isParent) {
+        lineage.parents = childNodes;
+      } else {
+        lineage.children = childNodes;
+      }
+
+      childMap.push(lineage);
+    }
+
+    return childMap;
+  }, []);
+};
+
+export const removeDuplicates = (arr: EntityLineageEdge[]) => {
+  return uniqWith(arr, isEqual);
+};
+
+export const nodeTypes = {
+  output: CustomNodeV1,
+  input: CustomNodeV1,
+  default: CustomNodeV1,
+  'load-more': CustomNodeV1,
+};
+
+export const customEdges = { buttonedge: CustomEdge };
+
+export const getNewNodes = ({
+  nodes,
+  downstreamEdges,
+  upstreamEdges,
+}: EntityLineage) => {
+  return nodes?.filter(
+    (n) =>
+      !isUndefined(downstreamEdges?.find((d) => d.toEntity === n.id)) ||
+      !isUndefined(upstreamEdges?.find((u) => u.fromEntity === n.id))
+  );
+};
+
+export const findNodeById = (
+  id: string,
+  items: EntityReferenceChild[] = [],
+  path: EntityReferenceChild[] = []
+): EntityReferenceChild[] | undefined => {
+  for (const [index, item] of items.entries()) {
+    item.pageIndex = index;
+    if (item.id === id) {
+      // Return the path to the item, including the item itself
+      return [...path, item];
+    }
+    const found = findNodeById(id, item.children, [...path, item]);
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
+export const addLineageHandler = async (edge: AddLineage): Promise<void> => {
+  try {
+    await addLineage(edge);
+  } catch (err) {
+    showErrorToast(
+      err as AxiosError,
+      t('server.add-entity-error', {
+        entity: t('label.lineage'),
+      })
+    );
+
+    throw err;
+  }
+};
+
+export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
+  try {
+    await deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    );
+  } catch (err) {
+    showErrorToast(
+      err as AxiosError,
+      t('server.delete-entity-error', {
+        entity: t('label.edge-lowercase'),
+      })
+    );
+
+    throw err;
+  }
+};
+
+export const getParamByEntityType = (entityType: EntityType): string => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return 'datasetFQN';
+    case EntityType.TOPIC:
+      return 'topicFQN';
+    case EntityType.PIPELINE:
+      return 'pipelineFQN';
+    case EntityType.MLMODEL:
+      return 'mlModelFqn';
+    case EntityType.DASHBOARD:
+      return 'dashboardFQN';
+    case EntityType.DATABASE:
+      return 'databaseFQN';
+    case EntityType.DATABASE_SCHEMA:
+      return 'databaseSchemaFQN';
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return 'dashboardDataModelFQN';
+    default:
+      return 'entityFQN';
+  }
+};
+
+export const getEntityLineagePath = (
+  entityType: EntityType,
+  entityFQN: string
+): string => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return getTableTabPath(entityFQN, 'lineage');
+
+    case EntityType.TOPIC:
+      return getTopicDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.DASHBOARD:
+      return getDashboardDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.PIPELINE:
+      return getPipelineDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.MLMODEL:
+      return getMlModelPath(entityFQN, 'lineage');
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.CONTAINER:
+      return getContainerDetailPath(entityFQN, 'lineage');
+
+    default:
+      return '';
+  }
+};
+
+// Nodes Icons
+export const getEntityNodeIcon = (label: string) => {
+  switch (lowerCase(label)) {
+    case EntityType.TABLE:
+      return TableIcon;
+    case EntityType.DASHBOARD:
+      return DashboardIcon;
+    case EntityType.TOPIC:
+      return TopicIcon;
+    case EntityType.PIPELINE:
+      return PipelineIcon;
+    case EntityType.MLMODEL:
+      return MlModelIcon;
+    default:
+      return TableIcon;
+  }
 };

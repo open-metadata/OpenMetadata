@@ -1,8 +1,10 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -82,11 +84,13 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  void test_getParent() {
-    assertEquals("a.b.c", FullyQualifiedName.getParent("a.b.c.d"));
-    assertEquals("a.b", FullyQualifiedName.getParent("a.b.c"));
-    assertEquals("a", FullyQualifiedName.getParent("a.b"));
-    assertNull(FullyQualifiedName.getParent("a"));
+  void test_getParentFQN() {
+    assertEquals("a.b.c", FullyQualifiedName.getParentFQN("a.b.c.d"));
+    assertEquals("\"a.b\"", FullyQualifiedName.getParentFQN("\"a.b\".c"));
+    assertEquals("a", FullyQualifiedName.getParentFQN("a.b"));
+    assertEquals("a", FullyQualifiedName.getParentFQN("a.\"b.c\""));
+    assertEquals("a.\"b.c\"", FullyQualifiedName.getParentFQN("a.\"b.c\".d"));
+    assertNull(FullyQualifiedName.getParentFQN("a"));
   }
 
   @Test
@@ -95,5 +99,14 @@ class FullyQualifiedNameTest {
     assertEquals("a", FullyQualifiedName.getRoot("a.b.c"));
     assertEquals("a", FullyQualifiedName.getRoot("a.b"));
     assertNull(FullyQualifiedName.getRoot("a"));
+  }
+
+  @Test
+  void test_isParent() {
+    assertTrue(FullyQualifiedName.isParent("a.b.c", "a.b"));
+    assertTrue(FullyQualifiedName.isParent("a.b.c", "a"));
+    assertFalse(FullyQualifiedName.isParent("a", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b.c", "a.b.c"));
   }
 }

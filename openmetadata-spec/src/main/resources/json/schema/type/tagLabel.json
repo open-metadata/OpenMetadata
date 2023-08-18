@@ -12,8 +12,8 @@
     },
     "TagSource": {
       "type": "string",
-      "default": "Tag",
-      "enum": ["Tag", "Glossary"]
+      "default": "Classification",
+      "enum": ["Classification", "Glossary"]
     }
   },
   "properties": {

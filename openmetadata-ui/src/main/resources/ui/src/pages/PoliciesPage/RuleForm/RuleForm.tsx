@@ -24,7 +24,8 @@ import {
   getPolicyResources,
   validateRuleCondition,
 } from 'rest/rolesAPIV1';
-import { allowedNameRegEx } from '../../../constants/regex.constants';
+import { ALL_TYPE_RESOURCE_LIST } from 'utils/PermissionsUtils';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   Effect,
   Operation,
@@ -63,12 +64,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
    */
   const resourcesOptions = useMemo(() => {
     const resources = policyResources.filter(
-      (resource) => resource.name !== 'all'
+      (resource) => !ALL_TYPE_RESOURCE_LIST.includes(resource.name || '')
     );
     const option = [
       {
         title: 'All',
-        value: 'all',
+        value: 'All',
         key: 'all',
         children: resources.map((resource) => ({
           title: startCase(resource.name),
@@ -85,9 +86,16 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
    * Derive the operations from selected resources
    */
   const operationOptions = useMemo(() => {
-    const selectedResources = policyResources.filter((resource) =>
-      ruleData.resources?.includes(resource.name || '')
-    );
+    const selectedResources = policyResources.filter((resource) => {
+      // if resource is all then check for both case lower and upper
+      if (ALL_TYPE_RESOURCE_LIST.includes(resource.name || '')) {
+        return ALL_TYPE_RESOURCE_LIST.some((val) =>
+          ruleData.resources?.includes(val)
+        );
+      }
+
+      return ruleData.resources?.includes(resource.name || '');
+    });
     const operations = selectedResources
       .reduce(
         (prev: Operation[], curr: ResourceDescriptor) =>
@@ -200,20 +208,15 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             required: true,
             max: 128,
             min: 1,
-            message: t('label.field-required', { field: t('label.rule-name') }),
+            message: `${t('message.entity-size-in-between', {
+              entity: `${t('label.name')}`,
+              max: '128',
+              min: '1',
+            })}`,
           },
           {
-            validator: (_, value) => {
-              if (allowedNameRegEx.test(value)) {
-                return Promise.reject(
-                  t('message.field-text-is-invalid', {
-                    fieldText: t('label.rule-name'),
-                  })
-                );
-              }
-
-              return Promise.resolve();
-            },
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
           },
         ]}>
         <Input
@@ -250,6 +253,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
+          autoClearSearchValue={false}
           className="w-full"
           data-testid="resources"
           placeholder={t('label.select-field', {
@@ -278,9 +282,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
+          autoClearSearchValue={false}
           className="w-full"
           data-testid="operations"
-          placeholder="Select Operations"
+          placeholder={t('label.select-field', {
+            field: t('label.operation-plural'),
+          })}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
           onChange={(values: Operation[]) => {

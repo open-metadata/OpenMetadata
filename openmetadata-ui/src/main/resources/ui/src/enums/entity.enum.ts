@@ -12,9 +12,9 @@
  */
 
 export enum EntityType {
-  DATASET = 'dataset',
   TABLE = 'table',
   TOPIC = 'topic',
+  CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
@@ -27,6 +27,7 @@ export enum EntityType {
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',
+  STORAGE_SERVICE = 'storageService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -36,9 +37,17 @@ export enum EntityType {
   ROLE = 'role',
   POLICY = 'policy',
   TEST_SUITE = 'testSuite',
+  TEST_CASE = 'testCase',
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   ALERT = 'alert',
+  CONTAINER = 'container',
+  TAG = 'tag',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  SUBSCRIPTION = 'subscription',
+  USER_NAME = 'username',
+  CHART = 'chart',
+  SAMPLE_DATA = 'sampleData',
 }
 
 export enum AssetsType {
@@ -47,6 +56,7 @@ export enum AssetsType {
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   MLMODEL = 'mlmodel',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum ChangeType {
@@ -65,6 +75,7 @@ export enum EntityLineageNodeType {
   OUTPUT = 'output',
   DEFAULT = 'default',
   NOT_CONNECTED = 'not-connected',
+  LOAD_MORE = 'load-more',
 }
 
 export enum TabSpecificField {
@@ -88,6 +99,9 @@ export enum TabSpecificField {
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
   EXECUTIONS = 'executions',
+  SCHEDULE_INTERVAL = 'scheduleInterval',
+  TESTSUITE = 'testSuite',
+  VIEW_DEFINITION = 'viewDefinition',
 }
 
 export enum FqnPart {
@@ -97,6 +111,7 @@ export enum FqnPart {
   Table,
   Column,
   NestedColumn,
+  Topic,
 }
 
 export enum EntityInfo {
@@ -111,8 +126,44 @@ export enum EntityInfo {
   SERVER = 'Server',
   DASHBOARD = 'Dashboard',
   PARTITIONS = 'Partitions',
+  PARTITIONED = 'partitioned',
   REPLICATION_FACTOR = 'Replication Factor',
   RETENTION_SIZE = 'Retention Size',
   CLEAN_UP_POLICIES = 'Clean-up Policies',
   MAX_MESSAGE_SIZE = 'Max Message Size',
+  SIZE = 'size',
+  NUMBER_OF_OBJECTS = 'number-of-object-plural',
+  DATA_MODEL_TYPE = 'data-model-type',
+  QUERIES = 'queries',
+}
+
+export enum EntityTabs {
+  SCHEMA = 'schema',
+  ACTIVITY_FEED = 'activity_feed',
+  SAMPLE_DATA = 'sample_data',
+  TABLE_QUERIES = 'table_queries',
+  PROFILER = 'profiler',
+  LINEAGE = 'lineage',
+  DBT = 'dbt',
+  VIEW_DEFINITION = 'view_definition',
+  CUSTOM_PROPERTIES = 'custom_properties',
+  MODEL = 'model',
+  FEATURES = 'features',
+  TASKS = 'tasks',
+  CONFIG = 'config',
+  DETAILS = 'details',
+  CHILDREN = 'children',
+  EXECUTIONS = 'executions',
+  TABLE = 'table',
+  TEST_CASES = 'test-cases',
+  PIPELINE = 'pipeline',
+  DATA_Model = 'data-model',
+  INGESTIONS = 'ingestions',
+  CONNECTION = 'connection',
+  SQL = 'sql',
+}
+
+export enum EntityAction {
+  EXPORT = 'export',
+  IMPORT = 'import',
 }

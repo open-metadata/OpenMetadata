@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceMetadataPipeline",
   "description": "DatabaseService Metadata Pipeline Configuration.",
+  "type": "object",
   "javaType": "org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline",
   "definitions": {
     "databaseMetadataConfigType": {
@@ -19,12 +20,12 @@
       "default": "DatabaseMetadata"
     },
     "markDeletedTables": {
-      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
+      "description": "This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply solely to the schema that is currently being ingested via the pipeline. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted.",
       "type": "boolean",
       "default": true
     },
     "markAllDeletedTables": {
-      "description": "Optional configuration to mark all deleted tables to the filtered schema",
+      "description": "This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply to all the schemas available in the data source. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted. Do not enable this option when you have multiple metadata ingestion pipelines. Also make sure to enable the markDeletedTables option for this to work.",
       "type": "boolean",
       "default": false
     },
@@ -39,7 +40,7 @@
       "default": true
     },
     "includeTags": {
-      "description": "Optional configuration to turn off fetching metadata for tags.",
+      "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",
       "default": true
     },
@@ -47,6 +48,11 @@
       "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
       "type": "boolean",
       "default": false
+    },
+    "viewParsingTimeoutLimit": {
+      "description": "Configuration to set the timeout for parsing view query in seconds.",
+      "type": "integer",
+      "default": "300"
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",

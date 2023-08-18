@@ -14,7 +14,10 @@ Validate Server Mixin version methods
 
 from unittest import TestCase
 
-from metadata.__version__ import get_version_from_string
+from metadata.__version__ import (
+    get_client_version_from_string,
+    get_server_version_from_string,
+)
 
 
 class OMetaVersionTest(TestCase):
@@ -26,8 +29,26 @@ class OMetaVersionTest(TestCase):
         """
         We should be able to parse regular version responses
         """
-        self.assertEqual("0.11.0", get_version_from_string("0.11.0.dev0"))
-        self.assertEqual("0.11.0", get_version_from_string("0.11.0"))
-        self.assertEqual("1111.11.111", get_version_from_string("1111.11.111"))
-        self.assertEqual("1111.11.111", get_version_from_string("1111.11.111-SNAPSHOT"))
-        self.assertEqual("0.11.1", get_version_from_string("0.11.1.0.0.1.patch"))
+        self.assertEqual("0.11.0", get_server_version_from_string("0.11.0.dev0"))
+        self.assertEqual("0.11.0", get_server_version_from_string("0.11.0"))
+        self.assertEqual("1111.11.111", get_server_version_from_string("1111.11.111"))
+        self.assertEqual(
+            "1111.11.111", get_server_version_from_string("1111.11.111-SNAPSHOT")
+        )
+        self.assertEqual("0.11.1", get_server_version_from_string("0.11.1.0.0.1.patch"))
+
+    def test_get_client_version_from_string(self):
+        """
+        We should be able to parse regular version responses
+        """
+        self.assertEqual("0.13.2.5", get_client_version_from_string("0.13.2.5.dev0"))
+        self.assertEqual("0.11.0.1", get_client_version_from_string("0.11.0.1"))
+        self.assertEqual(
+            "1111.11.111.1", get_client_version_from_string("1111.11.111.1")
+        )
+        self.assertEqual(
+            "1111.11.111.2", get_client_version_from_string("1111.11.111.2-SNAPSHOT")
+        )
+        self.assertEqual(
+            "0.11.1.0", get_client_version_from_string("0.11.1.0.0.1.patch")
+        )

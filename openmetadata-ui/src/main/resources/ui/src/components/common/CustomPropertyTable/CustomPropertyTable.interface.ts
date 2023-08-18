@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Container } from 'generated/entity/data/container';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -18,11 +19,18 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 
-export type EntityDetails = Table & Topic & Dashboard & Pipeline & Mlmodel;
+export type EntityDetails = Table &
+  Topic &
+  Dashboard &
+  Pipeline &
+  Mlmodel &
+  Container;
 
 export interface CustomPropertyProps {
+  isVersionView?: boolean;
   entityDetails: EntityDetails;
   entityType: EntityType;
-  handleExtensionUpdate: (updatedTable: EntityDetails) => Promise<void>;
+  handleExtensionUpdate?: (updatedTable: EntityDetails) => Promise<void>;
   hasEditAccess: boolean;
+  className?: string;
 }

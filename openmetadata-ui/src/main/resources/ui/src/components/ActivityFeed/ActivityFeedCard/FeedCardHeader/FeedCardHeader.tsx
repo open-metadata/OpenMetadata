@@ -13,7 +13,7 @@
 
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, toString } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -43,21 +43,22 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   entityField,
   isEntityFeed,
   feedType,
-  taskDetails,
+  task,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
   const onTitleClickHandler = (name: string) => {
     history.push(getUserPath(name));
   };
+  const { task: taskDetails } = task;
 
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
 
   const getFeedLinkElement = entityCheck && (
-    <span className="tw-font-normal" data-testid="headerText">
-      <span className="tw-mx-1">{t('label.posted-on-lowercase')}</span>
+    <span data-testid="headerText">
+      <span className="m-x-xss">{t('label.posted-on-lowercase')}</span>
       {isEntityFeed ? (
-        <span className="tw-heading" data-testid="headerText-entityField">
+        <span className="font-medium" data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
         </span>
       ) : (
@@ -65,7 +66,6 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           <span data-testid="entityType">{entityType} </span>
           <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
             <Link
-              className="tw-break-all"
               data-testid="entitylink"
               to={prepareFeedLink(entityType, entityFQN)}>
               <span>{entityDisplayName(entityType, entityFQN)}</span>
@@ -77,28 +77,27 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   );
 
   const getTaskLinkElement = entityCheck && (
-    <span className="tw-font-normal">
-      <span className="tw-mx-1">{t('label.created-a-task-lowercase')}</span>
+    <span>
+      <span>{t('label.created-a-task-lowercase')}</span>
       <Link
         data-testid="tasklink"
-        to={getTaskDetailPath(toString(taskDetails?.id)).pathname}
+        to={getTaskDetailPath(task)}
         onClick={(e) => e.stopPropagation()}>
         <span>
           {`#${taskDetails?.id} `}
           {taskDetails?.type}
         </span>
       </Link>
-      <span className="tw-mx-1">{t('label.for-lowercase')}</span>
+      <span>{t('label.for-lowercase')}</span>
       {isEntityFeed ? (
-        <span className="tw-heading" data-testid="headerText-entityField">
+        <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
         </span>
       ) : (
         <>
-          <span className="tw-pr-1">{entityType}</span>
+          <span>{entityType}</span>
           <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
             <Link
-              className="tw-break-all"
               data-testid="entitylink"
               to={prepareFeedLink(entityType, entityFQN)}
               onClick={(e) => e.stopPropagation()}>
@@ -111,11 +110,10 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   );
 
   const getAnnouncementLinkElement = entityCheck && (
-    <span className="tw-mx-1">
+    <span>
       {t('message.made-announcement-for-entity', { entity: entityType })}{' '}
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
         <Link
-          className="tw-break-all"
           data-testid="entitylink"
           to={prepareFeedLink(entityType, entityFQN)}>
           {entityDisplayName(entityType, entityFQN)}
@@ -125,10 +123,10 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   );
 
   return (
-    <div className={classNames('tw-inline-block', className)}>
+    <div className={classNames('d-inline-block', className)}>
       <UserPopOverCard userName={createdBy}>
         <span
-          className="thread-author tw-cursor-pointer"
+          className="thread-author cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             onTitleClickHandler(createdBy);
@@ -143,9 +141,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
       {timeStamp && (
         <Tooltip
-          className="tw-text-grey-muted"
+          className="text-grey-muted"
           title={getDateTimeFromMilliSeconds(timeStamp)}>
-          <span data-testid="timestamp">
+          <span className="feed-header-timestamp" data-testid="timestamp">
             {' - ' + getDayTimeByTimeStamp(timeStamp)}
           </span>
         </Tooltip>

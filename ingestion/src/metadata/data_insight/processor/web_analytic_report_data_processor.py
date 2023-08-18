@@ -102,7 +102,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
         while True:
             event = yield refined_data
-            split_url = [url for url in event.eventData.url.split("/") if url]  # type: ignore
+            split_url = [url for url in event.eventData.url.__root__.split("/") if url]  # type: ignore
 
             if not split_url or split_url[0] not in ENTITIES:
                 continue
@@ -118,9 +118,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 # if we've seen the entity previously but were not able to get
                 # the URL we'll try again from the new event.
                 try:
-                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
-                        1
-                    )
+                    entity_href = re.search(
+                        re_pattern, event.eventData.fullUrl.__root__
+                    ).group(1)
                     refined_data[entity_obj.fqn]["entityHref"] = entity_href
                 except IndexError:
                     logger.debug(f"Could not find entity Href for {entity_obj.fqn}")
@@ -131,6 +131,11 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     fqn=entity_obj.fqn,
                     fields=["*"],
                 )
+
+                if not entity:
+                    # If a user visits an entity and then deletes this entity, we will try to get the entity
+                    # object as we will have a reference to it in the web analytics events.
+                    continue
 
                 try:
                     tags = (
@@ -161,11 +166,20 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     )
 
                 try:
-                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
-                        1
-                    )
+                    entity_href = re.search(
+                        re_pattern, event.eventData.fullUrl.__root__
+                    ).group(1)
                 except IndexError:
                     entity_href = None
+
+                if (
+                    owner_id is not None
+                    and event.eventData is not None
+                    and owner_id == str(event.eventData.userId.__root__)
+                ):  # type: ignore
+                    # we won't count views if the owner is the one visiting
+                    # the entity
+                    continue
 
                 refined_data[split_url[1]] = {
                     "entityType": ENTITIES[entity_type].__name__,
@@ -180,6 +194,8 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
             else:
                 refined_data[split_url[1]]["views"] += 1
+
+            self.processor_status.scanned(ENTITIES[entity_type].__name__)
 
     def refine(self):
         """Aggregates data. It will return a dictionary of the following shape
@@ -310,6 +326,8 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
                 if timestamp > user_data["lastSession"]:
                     user_data["lastSession"] = timestamp
+
+            self.processor_status.scanned(user_id)
 
     def fetch_data(self) -> Iterable[WebAnalyticEventData]:
         if CACHED_EVENTS:

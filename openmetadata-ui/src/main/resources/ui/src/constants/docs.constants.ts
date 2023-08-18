@@ -18,7 +18,7 @@ export const DATA_QUALITY_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality';
 
 export const GLOSSARIES_DOCS =
-  'https://docs.open-metadata.org/openmetadata/glossaries';
+  'https://docs.open-metadata.org/features/glossaries';
 
 export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
 
@@ -28,7 +28,7 @@ export const WORKFLOWS_METADATA_DOCS =
 export const BOTS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
 
-export const TEAMS_DOCS = 'https://docs.open-metadata.org/openmetadata/users';
+export const TEAMS_DOCS = 'https://docs.open-metadata.org/features/users';
 
 export const WEBHOOK_DOCS =
   'https://docs.open-metadata.org/developers/webhooks';
@@ -41,3 +41,35 @@ export const POLICY_DOCS =
 
 export const ROLE_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role';
+
+export const DATA_INSIGHT_DOCS =
+  'https://docs.open-metadata.org/features/data-insight';
+
+export const INGESTION_DOCS =
+  'https://docs.open-metadata.org/connectors/ingestion/workflows';
+
+export const USAGE_DOCS =
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/usage';
+
+export const LOCAL_DEPLOYMENT =
+  'https://docs.open-metadata.org/quick-start/local-deployment';
+
+export const OMD_SLACK_LINK =
+  'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
+
+export const DATA_INSIGHTS_PIPELINE_DOCS =
+  'https://docs.open-metadata.org/features/data-insight#data-insights';
+
+export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection';
+
+export const ALERTS_DOCS =
+  'https://docs.open-metadata.org/features/alerts-notifications';
+
+export const TAGS_DOCS =
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
+
+export const AIRFLOW_DOCS = 'https://docs.open-metadata.org/deployment/airflow';
+
+export const CUSTOM_LOGO_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-logo';

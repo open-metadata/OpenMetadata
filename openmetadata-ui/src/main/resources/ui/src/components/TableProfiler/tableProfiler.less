@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 @succesColor: #28a745;
 @failedColor: #cb2431;
 @abortedColor: #efae2f;
 @grayColor: #dde3ea;
-@primary-color: #7147e8;
-@primary-color-lite: #7147e833;
 
 .table-profiler-container {
   .overall-summery-card:not(:first-child) {
@@ -39,15 +39,25 @@
     padding-left: 16px;
   }
 
-  .ant-menu-inline {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  .data-quality-left-panel,
+  .data-quality-content-panel {
+    height: calc(100vh - 236px);
+  }
+
+  .data-quality-left-panel {
+    border-right: @global-border;
+    // need to add !important as in AntD menu padding is given inline
+    padding-right: 1px !important;
+  }
+  .data-quality-content-panel {
+    overflow: scroll;
   }
 }
-.profiler-setting-sql-editor {
-  border: 1px solid @grayColor;
-  border-radius: 2px;
+.sql-editor-container {
   .CodeMirror {
-    height: 200px;
+    .CodeMirror-foldgutter {
+      width: 2em;
+    }
   }
 }
 .include-columns-add-button.ant-btn-icon-only.ant-btn-sm {

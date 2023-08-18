@@ -14,7 +14,11 @@ package org.openmetadata.service.monitoring;
 
 import org.openmetadata.schema.monitoring.EventMonitorProvider;
 
-public class EventMonitorFactory {
+public final class EventMonitorFactory {
+
+  private EventMonitorFactory() {
+    /* Cannot be constructed. */
+  }
 
   public static EventMonitor createEventMonitor(EventMonitorConfiguration config, String clusterName) {
 

@@ -1,0 +1,116 @@
+{
+    "metadata": {
+        "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v8.json",
+        "dbt_version": "1.3.0",
+        "generated_at": "2023-01-17T19:05:57.859191Z",
+        "invocation_id": "0c4757bf-0a8f-4f24-a18a-4c2638bf7d8e",
+        "env": {},
+        "project_id": "06e5b98c2db46f8a72cc4f66410e9b3b",
+        "user_id": null,
+        "send_anonymous_usage_stats": true,
+        "adapter_type": "redshift"
+    },
+    "nodes": {
+        "model.jaffle_shop.customers_null_db": {
+            "compiled": true,
+            "resource_type": "model",
+            "depends_on": {
+                "macros": [],
+                "nodes": [
+                    "seed.jaffle_shop.raw_customers"
+                ]
+            },
+            "config": {
+                "enabled": true,
+                "alias": null,
+                "schema": null,
+                "database": null,
+                "tags": [],
+                "meta": {},
+                "materialized": "view",
+                "incremental_strategy": null,
+                "persist_docs": {},
+                "quoting": {},
+                "column_types": {},
+                "full_refresh": null,
+                "unique_key": null,
+                "on_schema_change": "ignore",
+                "grants": {},
+                "packages": [],
+                "docs": {
+                    "show": true,
+                    "node_color": null
+                },
+                "post-hook": [],
+                "pre-hook": []
+            },
+            "database": "None",
+            "schema": "dbt_jaffle",
+            "fqn": [
+                "jaffle_shop",
+                "staging",
+                "customers_null_db"
+            ],
+            "unique_id": "model.jaffle_shop.customers_null_db",
+            "raw_code": "sample customers_null_db raw_code",
+            "language": "sql",
+            "package_name": "jaffle_shop",
+            "path": "staging/customers_null_db.sql",
+            "original_file_path": "sample/customers_null_db/root/path/models/staging/customers_null_db.sql",
+            "name": "customers_null_db",
+            "alias": "customers_null_db",
+            "checksum": {
+                "name": "sha256",
+                "checksum": "6f18a29204dad1de6dbb0c288144c4990742e0a1e065c3b2a67b5f98334c22ba"
+            },
+            "tags": [],
+            "refs": [
+                [
+                    "raw_customers"
+                ]
+            ],
+            "sources": [],
+            "metrics": [],
+            "description": "",
+            "columns": {
+                "customer_id": {
+                    "name": "customer_id",
+                    "description": "This is a unique identifier for an customer",
+                    "meta": {},
+                    "data_type": null,
+                    "quote": null,
+                    "tags": []
+                }
+            },
+            "meta": {},
+            "docs": {
+                "show": true,
+                "node_color": null
+            },
+            "patch_path": "jaffle_shop://models/staging/schema.yml",
+            "compiled_path": "target/compiled/jaffle_shop/models/staging/customers_null_db.sql",
+            "build_path": null,
+            "deferred": false,
+            "unrendered_config": {
+                "materialized": "view"
+            },
+            "created_at": 1673978228.757611,
+            "compiled_code": "sample customers_null_db compiled code",
+            "extra_ctes_injected": true,
+            "extra_ctes": [],
+            "relation_name": "\"dev\".\"dbt_jaffle\".\"customers_null_db\""
+        }
+    },
+    "sources": {},
+    "macros": {
+       
+    },
+    "docs": {
+    },
+    "exposures": {},
+    "metrics": {},
+    "selectors": {},
+    "disabled": {},
+    "parent_map": {},
+    "child_map": {}
+}

@@ -50,7 +50,7 @@ jest.mock('./DiffView', () => ({
 }));
 
 const mockProps = {
-  description: 'description',
+  value: 'description',
   suggestion: 'suggestion',
   markdownRef: { current: undefined },
   placeHolder: '',

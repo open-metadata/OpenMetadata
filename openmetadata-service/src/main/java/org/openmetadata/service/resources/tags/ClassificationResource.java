@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.tags;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,7 +21,8 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -62,16 +63,23 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/classifications")
-@Api(value = "Classification resources collection", tags = "Classification resources collection")
+@Tag(
+    name = "Classifications",
+    description =
+        "These APIs are related to `Classification` and `Tags`. A `Classification` "
+            + "entity "
+            + "contains hierarchical"
+            + " terms called `Tags` used "
+            + "for categorizing and classifying data assets and other entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "classifications", order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
 public class ClassificationResource extends EntityResource<Classification, ClassificationRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
+  static final String FIELDS = "usageCount,termCount";
 
   static class ClassificationList extends ResultList<Classification> {
-    @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    ClassificationList() {}
+    /* Required for serde */
   }
 
   public ClassificationResource(CollectionDAO collectionDAO, Authorizer authorizer) {
@@ -79,14 +87,16 @@ public class ClassificationResource extends EntityResource<Classification, Class
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
   }
 
-  @SuppressWarnings("unused") // Method used by reflection
-  static final String FIELDS = "usageCount,termCount";
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageCount,termCount", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
 
   @GET
   @Operation(
       operationId = "listClassifications",
       summary = "List classifications",
-      tags = "classification",
       description = "Get a list of classifications.",
       responses = {
         @ApiResponse(
@@ -103,6 +113,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter Disabled Classifications") @QueryParam("disabled") String disabled,
       @Parameter(description = "Limit the number classifications returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -120,8 +131,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -130,8 +140,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "getClassificationByID",
-      summary = "Get a classification",
-      tags = "classification",
+      summary = "Get a classification by id",
       description = "Get a classification by `id`",
       responses = {
         @ApiResponse(
@@ -155,8 +164,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -164,8 +172,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("name/{name}")
   @Operation(
       operationId = "getClassificationByName",
-      summary = "Get a classification",
-      tags = "classification",
+      summary = "Get a classification by name",
       description =
           "Get a classification identified by name. The response includes classification information along "
               + "with the entire hierarchy of all the children tags.",
@@ -192,8 +199,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -202,7 +208,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "listAllClassificationVersion",
       summary = "List classification versions",
-      tags = "glossaries",
       description = "Get a list of all the versions of a classification identified by `id`",
       responses = {
         @ApiResponse(
@@ -213,8 +218,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -223,7 +227,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "getSpecificClassificationVersion",
       summary = "Get a version of the classification",
-      tags = "glossaries",
       description = "Get a version of the classification by given `id`",
       responses = {
         @ApiResponse(
@@ -243,8 +246,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               description = "classification version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -252,7 +254,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "createClassification",
       summary = "Create a classification",
-      tags = "classification",
       description =
           "Create a new classification. The request can include the children tags to be created along "
               + "with the classification.",
@@ -265,8 +266,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create) {
     Classification category = getClassification(create, securityContext);
     return create(uriInfo, securityContext, category);
   }
@@ -275,11 +275,9 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "createOrUpdateClassification",
       summary = "Update a classification",
-      tags = "classification",
       description = "Update an existing category identify by category name")
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create) {
     Classification category = getClassification(create, securityContext);
     return createOrUpdate(uriInfo, securityContext, category);
   }
@@ -288,8 +286,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "patchClassification",
-      summary = "Update a Classification",
-      tags = "classification",
+      summary = "Update a classification",
       description = "Update an existing classification using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -305,8 +302,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -314,8 +310,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "deleteClassification",
-      summary = "Delete classification",
-      tags = "classification",
+      summary = "Delete classification by id",
       description = "Delete a classification and all the tags under it.")
   public Response delete(
       @Context UriInfo uriInfo,
@@ -328,8 +323,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -337,8 +331,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteClassificationByName",
-      summary = "Delete classification",
-      tags = "classification",
+      summary = "Delete classification by name",
       description = "Delete a classification by `name` and all the tags under it.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -352,8 +345,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the classification", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -361,8 +353,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/restore")
   @Operation(
       operationId = "restoreClassification",
-      summary = "Restore a soft deleted classification.",
-      tags = "classification",
+      summary = "Restore a soft deleted classification",
       description = "Restore a soft deleted classification.",
       responses = {
         @ApiResponse(
@@ -371,14 +362,8 @@ public class ClassificationResource extends EntityResource<Classification, Class
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Response restore(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  public Classification addHref(UriInfo uriInfo, Classification category) {
-    return category;
   }
 
   public static Classification getClassification(CreateClassification create, SecurityContext securityContext) {

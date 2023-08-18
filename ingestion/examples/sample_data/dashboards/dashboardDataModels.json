@@ -1,0 +1,101 @@
+{
+  "datamodels": [
+    {
+      "id": "e093dd27-390e-4360-8efd-e4d63ec167a9",
+      "name": "103",
+      "displayName": "Vaccine Candidates per Phase",
+      "fullyQualifiedName": "sample_superset.model.103",
+      "description": "Data of Vaccine Candidates per Phase",
+      "version": 0.1,
+      "updatedAt": 1638354087591,
+      "dataModelType":  "SupersetDataModel",
+      "serviceType": "Superset",
+      "sql":  "SELECT CASE\n           WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n           WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n           WHEN stage_of_development = 'Phase I/II'\n                or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n           WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n           WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n       END AS clinical_stage,\n       COUNT(*) AS count\nFROM covid_vaccines\nGROUP BY CASE\n             WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n             WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n             WHEN stage_of_development = 'Phase I/II'\n                  or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n             WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n             WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n         END\nORDER BY count DESC\nLIMIT 10000\nOFFSET 0;\n",
+      "columns": [
+        {
+          "name": "0. Pre-clinical",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Vaccine Candidates in phase: 'Pre-clinical'",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "2. Phase II or Combined I/II",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Vaccine Candidates in phase: 'Phase II or Combined I/II'",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "1. Phase I",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Vaccine Candidates in phase: 'Phase I'",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "3. Phase III",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Vaccine Candidates in phase: 'Phase III'",
+          "tags": [],
+          "ordinalPosition": 4
+        },
+        {
+          "name": "4. Authorized",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Vaccine Candidates in phase: 'Authorize'",
+          "tags": [],
+          "ordinalPosition": 5
+        }
+      ],
+      "tags": [],
+      "followers": []
+    },
+    {
+      "id": "5bab1ca3-7a22-4f21-9b34-e2c44dee1af6",
+      "name": "73",
+      "displayName": "Vaccine Candidates per Country",
+      "fullyQualifiedName": "sample_superset.model.73",
+      "description": "Data of Vaccine Candidates per Country",
+      "version": 0.1,
+      "updatedAt": 1638354087591,
+      "dataModelType":  "SupersetDataModel",
+      "serviceType": "Superset",
+      "sql":  "SELECT country_name AS country_name,\n       COUNT(*) AS count,\n       count(country_name) AS \"COUNT(Country_Name)\"\nFROM covid_vaccines\nGROUP BY country_name\nLIMIT 10000\nOFFSET 0;",
+      "columns": [
+        {
+          "name": "country_name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "varchar",
+          "dataLength": 256,
+          "description": "Name of the country.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "count",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Total number of vaccine candidates per country.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "COUNT(Country_Name)",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Total number of vaccine candidates.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ],
+      "tags": [],
+      "followers": []
+    }
+  ]
+}

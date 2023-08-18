@@ -32,8 +32,8 @@ describe('ExplorePageUtils test', () => {
     // Here unknown will not allow us to directly access the properties
     // That is why I first did typecast it into QueryFilterInterface type to access the properties.
     const combinedQueryFilterObject = getCombinedQueryFilterObject(
-      mockESQueryFilters as unknown as QueryFilterInterface,
-      mockAdvancedSearchQueryFilters as unknown as QueryFilterInterface
+      mockESQueryFilters as QueryFilterInterface,
+      mockAdvancedSearchQueryFilters as QueryFilterInterface
     );
 
     expect(combinedQueryFilterObject).toEqual(mockCombinedQueryFilterValue);
@@ -42,8 +42,7 @@ describe('ExplorePageUtils test', () => {
   it('Function getCombinedFields should return the value in the correct field given in the input', () => {
     const combinedMustFieldArray = getCombinedFields(
       QueryFilterFieldsEnum.MUST,
-      mockESQueryFilters as unknown as QueryFilterInterface,
-      mockAdvancedSearchQueryFilters as unknown as QueryFilterInterface
+      [mockESQueryFilters, mockAdvancedSearchQueryFilters]
     );
 
     expect(combinedMustFieldArray).toEqual(mockCombinedMustFieldArray);
@@ -51,17 +50,19 @@ describe('ExplorePageUtils test', () => {
 
   it('Function getQueryFiltersArray should return the array for non empty input array', () => {
     const queryFilterArray = getQueryFiltersArray(
-      mockESQueryFilters.query.bool.must as unknown as QueryFilterInterface[]
+      QueryFilterFieldsEnum.MUST,
+      mockESQueryFilters
     );
 
     expect(queryFilterArray).toEqual(mockQueryFilterArray);
   });
 
   it('Function getQueryFiltersArray should return an empty array for undefined or empty array input', () => {
-    const queryFilterArrayUndefined = getQueryFiltersArray(undefined);
-    const queryFilterArrayEmpty = getQueryFiltersArray([]);
+    const queryFilterArrayEmpty = getQueryFiltersArray(
+      QueryFilterFieldsEnum.MUST,
+      {} as QueryFilterInterface
+    );
 
-    expect(queryFilterArrayUndefined).toEqual([]);
     expect(queryFilterArrayEmpty).toEqual([]);
   });
 });

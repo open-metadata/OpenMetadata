@@ -43,33 +43,9 @@
       "default": "bigquery.googleapis.com"
     },
     "credentials": {
-      "title": "GCS Credentials",
-      "description": "GCS Credentials",
-      "$ref": "../../../../security/credentials/gcsCredentials.json"
-    },
-    "classificationName": {
-      "title": "Classification Name",
-      "description": "Custom OpenMetadata Classification name for BigQuery policy tags.",
-      "type": "string",
-      "default": "BigqueryPolicyTags"
-    },
-    "partitionQueryDuration": {
-      "title": "Partition Query Duration",
-      "description": "Duration for partitioning BigQuery tables.",
-      "type": "integer",
-      "default": 1
-    },
-    "partitionQuery": {
-      "title": "Partition Query",
-      "description": "Partitioning query for BigQuery tables.",
-      "type": "string",
-      "default": "select * from {}.{} WHERE {} = \"{}\" LIMIT 1000"
-    },
-    "partitionField": {
-      "title": "Partition Field",
-      "description": "Column name on which the BigQuery table will be partitioned.",
-      "type": "string",
-      "default": "_PARTITIONTIME"
+      "title": "GCP Credentials",
+      "description": "GCP Credentials",
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",
@@ -116,6 +92,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
     },
     "supportsQueryComment": {
       "title": "Supports Query Comment",

@@ -12,12 +12,22 @@
 """
 Source connection handler
 """
+
+from typing import Optional
+
 from pydomo import Domo
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DomoDashboardConnection) -> Domo:
@@ -36,12 +46,26 @@ def get_connection(connection: DomoDashboardConnection) -> Domo:
         raise SourceConnectionException(msg)
 
 
-def test_connection(domo: Domo) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    domo: Domo,
+    service_connection: DomoDashboardConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        domo.page_list()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {domo}: {exc}."
-        raise SourceConnectionException(msg)
+
+    def custom_executor():
+        result = domo.page_list()
+        return list(result)
+
+    test_fn = {"GetDashboards": custom_executor}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

@@ -29,12 +29,12 @@ import javax.ws.rs.client.WebTarget;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.api.configuration.ApplicationConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.airflow.AirflowConfigurationForAPI;
+import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.util.TestUtils;
@@ -81,17 +81,19 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void get_airflow_configs_200_OK() throws IOException {
-    WebTarget target = getConfigResource("airflow");
-    AirflowConfigurationForAPI auth = TestUtils.get(target, AirflowConfigurationForAPI.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAirflowConfiguration().getApiEndpoint(), auth.getApiEndpoint());
+    WebTarget target = getConfigResource("pipeline-service-client");
+    PipelineServiceAPIClientConfig auth =
+        TestUtils.get(target, PipelineServiceAPIClientConfig.class, TEST_AUTH_HEADERS);
+    assertEquals(config.getPipelineServiceClientConfiguration().getApiEndpoint(), auth.getApiEndpoint());
   }
 
   @Test
-  void get_slack_chat_configs_200_OK() throws IOException {
-    WebTarget target = getConfigResource("slackChat");
-    SlackChatConfiguration slackChatConfiguration =
-        TestUtils.get(target, SlackChatConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getSlackChatConfiguration().getSlackUrl(), slackChatConfiguration.getSlackUrl());
+  void get_application_configs_200_OK() throws IOException {
+    WebTarget target = getConfigResource("applicationConfig");
+    ApplicationConfiguration applicationConfiguration =
+        TestUtils.get(target, ApplicationConfiguration.class, TEST_AUTH_HEADERS);
+    assertEquals(config.getApplicationConfiguration().getLogoConfig(), applicationConfiguration.getLogoConfig());
+    assertEquals(config.getApplicationConfiguration().getLoginConfig(), applicationConfiguration.getLoginConfig());
   }
 
   @Test

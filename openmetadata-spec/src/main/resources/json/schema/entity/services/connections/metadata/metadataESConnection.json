@@ -9,7 +9,9 @@
     "metadataESType": {
       "description": "Metadata to Elastic Search type",
       "type": "string",
-      "enum": ["MetadataES"],
+      "enum": [
+        "MetadataES"
+      ],
       "default": "MetadataES"
     }
   },
@@ -19,75 +21,48 @@
       "$ref": "#/definitions/metadataESType",
       "default": "MetadataES"
     },
-    "includeTopics": {
-      "description": "Include Topics for Indexing",
-      "type": "boolean",
-      "default": "true"
+    "entities": {
+      "title": "Entities",
+      "description": "List of entities that you need to reindex",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "table",
+        "topic",
+        "dashboard",
+        "pipeline",
+        "mlmodel",
+        "user",
+        "team",
+        "glossaryTerm",
+        "tag",
+        "entityReportData",
+        "webAnalyticEntityViewReportData",
+        "webAnalyticUserActivityReportData",
+        "container",
+        "query"
+      ],
+      "uniqueItems": true
     },
-    "includeTables": {
-      "description": "Include Tables for Indexing",
-      "type": "boolean",
-      "default": "true"
-    },
-    "includeDashboards": {
-      "description": "Include Dashboards for Indexing",
-      "type": "boolean",
-      "default": "true"
-    },
-    "includePipelines": {
-      "description": "Include Pipelines for Indexing",
-      "type": "boolean",
-      "default": "true"
-    },
-    "includeMlModels": {
-      "description": "Include MlModels for Indexing",
-      "type": "boolean",
-      "default": "true"
-    },
-    "includeUsers": {
-      "description": "Include Users for Indexing",
-      "type": "boolean",
-      "default": "true"
-    },
-    "includeTeams": {
-      "description": "Include Teams for Indexing",
-      "type": "boolean",
-      "default": "true"
-    },
-    "includeGlossaryTerms": {
-      "description": "Include Glossary Terms for Indexing",
-      "type": "boolean",
-      "default": "true"
-    },
-    "includePolicy": {
-      "description": "Include Tags for Policy",
+    "recreateIndex": {
+      "title": "Recreate Indexes",
       "type": "boolean",
       "default": true
     },
-    "includeMessagingServices": {
-      "description": "Include Messaging Services for Indexing",
-      "type": "boolean",
-      "default": true
+    "runMode": {
+      "$ref": "../../../../system/eventPublisherJob.json#/definitions/runMode"
     },
-    "includeDatabaseServices": {
-      "description": "Include Database Services for Indexing",
-      "type": "boolean",
-      "default": true
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
     },
-    "includePipelineServices": {
-      "description": "Include Pipeline Services for Indexing",
-      "type": "boolean",
-      "default": true
-    },
-    "includeTags": {
-      "description": "Include Tags for Indexing",
-      "type": "boolean",
-      "default": true
-    },
-    "limitRecords": {
-      "description": "Limit the number of records for Indexing.",
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Maximum number of events sentx in a batch (Default 10).",
       "type": "integer",
-      "default": "1000"
+      "default": 100
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

@@ -17,7 +17,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-
 import { TeamType } from '../../generated/entity/teams/team';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -27,12 +26,20 @@ import {
 } from '../../utils/RouterUtils';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AddAlertPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddAlertPage/AddAlertPage'))
+);
+
+const ImportTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/teams/ImportTeamsPage/ImportTeamsPage'))
+);
+const AddDataInsightReportAlert = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
+  )
 );
 
 const AlertDetailsPage = withSuspenseFallback(
@@ -42,6 +49,11 @@ const AlertDetailsPage = withSuspenseFallback(
 const AlertsActivityFeedPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
+  )
+);
+const AlertDataInsightReportPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/AlertDataInsightReportPage/AlertDataInsightReportPage')
   )
 );
 
@@ -93,6 +105,28 @@ const ElasticSearchIndexPage = withSuspenseFallback(
   )
 );
 
+const DataInsightsSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        'pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
+      )
+  )
+);
+
+const EmailConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component')
+  )
+);
+const CustomLogoConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage')
+  )
+);
+
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -101,12 +135,30 @@ const GlobalSettingRouter = () => {
       <Route exact path={getSettingPath()}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
-      <Route
+      <AdminProtectedRoute
         exact
         component={TeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ImportTeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true,
           true
         )}
       />
@@ -180,10 +232,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.BOT,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
@@ -195,8 +244,38 @@ const GlobalSettingRouter = () => {
         component={ElasticSearchIndexPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
-          GlobalSettingOptions.ELASTIC_SEARCH
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.SEARCH,
+          true
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={DataInsightsSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.DATA_INSIGHT
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EmailConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.EMAIL
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomLogoConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOM_LOGO
         )}
       />
 
@@ -256,14 +335,39 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.ACTIVITY_FEED
         )}
       />
+      <AdminProtectedRoute
+        exact
+        component={AddDataInsightReportAlert}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ADD_DATA_INSIGHT_REPORT_ALERT
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddDataInsightReportAlert}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.EDIT_DATA_INSIGHT_REPORT_ALERT,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AlertDataInsightReportPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.DATA_INSIGHT_REPORT_ALERT
+        )}
+      />
 
       <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TYPE,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}

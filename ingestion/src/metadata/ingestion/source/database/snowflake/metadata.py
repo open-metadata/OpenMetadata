@@ -18,16 +18,15 @@ from typing import Iterable, List, Optional, Tuple
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
-from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -40,96 +39,51 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
+from metadata.ingestion.source.database.snowflake.constants import (
+    SNOWFLAKE_REGION_ID_MAP,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
-    SNOWFLAKE_GET_COMMENTS,
-    SNOWFLAKE_GET_TABLE_NAMES,
-    SNOWFLAKE_GET_VIEW_NAMES,
+    SNOWFLAKE_GET_CURRENT_ACCOUNT,
+    SNOWFLAKE_GET_CURRENT_REGION,
+    SNOWFLAKE_GET_DATABASE_COMMENTS,
+    SNOWFLAKE_GET_DATABASES,
+    SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_SESSION_TAG_QUERY,
+)
+from metadata.ingestion.source.database.snowflake.utils import (
+    _current_database_schema,
+    get_columns,
+    get_foreign_keys,
+    get_pk_constraint,
+    get_schema_columns,
+    get_table_comment,
+    get_table_names,
+    get_table_names_reflection,
+    get_unique_constraints,
+    get_view_definition,
+    get_view_names,
+    normalize_names,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import (
-    get_all_table_comments,
-    get_table_comment_wrapper,
-)
+from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
-GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
-ischema_names["GEOGRAPHY"] = GEOGRAPHY
+ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
+ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
 
 logger = ingestion_logger()
 
 
 SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
-
-
-def get_table_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
-    cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
-    result = [self.normalize_name(row[0]) for row in cursor]
-    return result
-
-
-def get_view_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
-    cursor = connection.execute(SNOWFLAKE_GET_VIEW_NAMES.format(schema))
-    result = [self.normalize_name(row[0]) for row in cursor]
-    return result
-
-
-@reflection.cache
-def get_view_definition(  # pylint: disable=unused-argument
-    self, connection, view_name, schema=None, **kw
-):
-    """
-    Gets the view definition
-    """
-    schema = schema or self.default_schema_name
-    if schema:
-        cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
-            f"LIKE '{view_name}' IN {schema}"
-        )
-    else:
-        cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS " f"LIKE '{view_name}'"
-        )
-    n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
-    try:
-        ret = cursor.fetchone()
-        if ret:
-            return ret[n2i["text"]]
-    except Exception:
-        pass
-    return None
-
-
-@reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_comment_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=SNOWFLAKE_GET_COMMENTS,
-    )
-
-
-@reflection.cache
-def get_unique_constraints(  # pylint: disable=unused-argument
-    self, connection, table_name, schema=None, **kw
-):
-    return []
-
-
-def normalize_names(self, name):  # pylint: disable=unused-argument
-    return name
-
-
 SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
@@ -137,6 +91,16 @@ SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
+SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
+    get_schema_columns
+)
+Inspector.get_table_names = get_table_names_reflection
+SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
+    _current_database_schema
+)
+SnowflakeDialect.get_pk_constraint = get_pk_constraint
+SnowflakeDialect.get_foreign_keys = get_foreign_keys
+SnowflakeDialect.get_columns = get_columns
 
 
 class SnowflakeSource(CommonDbSourceService):
@@ -146,8 +110,10 @@ class SnowflakeSource(CommonDbSourceService):
     """
 
     def __init__(self, config, metadata_config):
-        self.partition_details = {}
         super().__init__(config, metadata_config)
+        self.partition_details = {}
+        self.schema_desc_map = {}
+        self.database_desc_map = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -179,15 +145,42 @@ class SnowflakeSource(CommonDbSourceService):
                     f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
                 ] = row.CLUSTERING_KEY
 
+    def set_schema_description_map(self) -> None:
+        results = self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS).all()
+        for row in results:
+            self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
+
+    def set_database_description_map(self) -> None:
+        if not self.database_desc_map:
+            results = self.engine.execute(SNOWFLAKE_GET_DATABASE_COMMENTS).all()
+            for row in results:
+                self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get(
+            (self.context.database.name.__root__, schema_name)
+        )
+
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        """
+        return self.database_desc_map.get(database_name)
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()
             self.set_partition_details()
+            self.set_schema_description_map()
+            self.set_database_description_map()
             yield configured_db
         else:
-            results = self.connection.execute("SHOW DATABASES")
+            results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
             for res in results:
                 row = list(res)
                 new_database = row[1]
@@ -211,6 +204,8 @@ class SnowflakeSource(CommonDbSourceService):
                     self.set_inspector(database_name=new_database)
                     self.set_session_query_tag()
                     self.set_partition_details()
+                    self.set_schema_description_map()
+                    self.set_database_description_map()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -311,17 +306,117 @@ class SnowflakeSource(CommonDbSourceService):
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield OMetaTagAndClassification(
-                    fqn=fqn._build(  # pylint: disable=protected-access
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn._build(  # pylint: disable=protected-access
                         self.context.database_service.name.__root__, *fqn_elements
                     ),
-                    classification_request=CreateClassificationRequest(
-                        name=row[0],
-                        description="SNOWFLAKE TAG NAME",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=row[0],
-                        name=row[1],
-                        description="SNOWFLAKE TAG VALUE",
-                    ),
+                    tags=[row[1]],
+                    classification_name=row[0],
+                    tag_description="SNOWFLAKE TAG VALUE",
+                    classification_desciption="SNOWFLAKE TAG NAME",
                 )
+
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+        table_list = [
+            TableNameAndType(name=table_name)
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name,
+            )
+        ]
+
+        table_list.extend(
+            [
+                TableNameAndType(name=table_name, type_=TableType.External)
+                for table_name in self.inspector.get_table_names(
+                    schema=schema_name, external_tables=True
+                )
+            ]
+        )
+
+        if self.service_connection.includeTransientTables:
+            table_list.extend(
+                [
+                    TableNameAndType(name=table_name, type_=TableType.Transient)
+                    for table_name in self.inspector.get_table_names(
+                        schema=schema_name,
+                        include_transient_tables=True,
+                    )
+                ]
+            )
+
+        return table_list
+
+    def _get_current_region(self) -> Optional[str]:
+        try:
+            res = self.engine.execute(SNOWFLAKE_GET_CURRENT_REGION).one()
+            if res:
+                return res.REGION
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch current region due to: {exc}")
+        return None
+
+    def _get_current_account(self) -> Optional[str]:
+        try:
+            res = self.engine.execute(SNOWFLAKE_GET_CURRENT_ACCOUNT).one()
+            if res:
+                return res.ACCOUNT
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch current account due to: {exc}")
+        return None
+
+    def _clean_region_name(self, region_id: Optional[str]) -> Optional[str]:
+        """
+        Region id can be a vanilla id like "AWS_US_WEST_2"
+        and in case of multi region group it can be like "PUBLIC.AWS_US_WEST_2"
+        in such cases this method will extract vanilla region id and return the
+        region name from constant map SNOWFLAKE_REGION_ID_MAP
+
+        for more info checkout this doc:
+            https://docs.snowflake.com/en/sql-reference/functions/current_region
+        """
+        if region_id:
+            clean_region_id = region_id.split(".")[-1]
+            return SNOWFLAKE_REGION_ID_MAP.get(clean_region_id.lower())
+        return None
+
+    def get_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for snowflake
+        """
+        try:
+            account = self._get_current_account()
+            region_id = self._get_current_region()
+            region_name = self._clean_region_name(region_id)
+            if account and region_name:
+                tab_type = "view" if table_type == TableType.View else "table"
+                url = (
+                    f"https://app.snowflake.com/{region_name.lower()}"
+                    f"/{account.lower()}/#/data/databases/{database_name}"
+                )
+                if schema_name:
+                    url = f"{url}/schemas/{schema_name}"
+                    if table_name:
+                        url = f"{url}/{tab_type}/{table_name}"
+                return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
+        return None

@@ -1,0 +1,100 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/search/elasticSearchConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearch Connection",
+  "description": "ElasticSearch Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.search.ElasticSearchConnection",
+  "definitions": {
+    "elasticSearchType": {
+      "description": "ElasticSearch service type",
+      "type": "string",
+      "enum": ["ElasticSearch"],
+      "default": "ElasticSearch"
+    },
+    "connectionScheme": {
+      "description": "ElasticSearch Connection Scheme",
+      "type": "string",
+      "enum": ["http", "https"],
+      "default": "http"
+    },
+    "basicAuthentication": {
+      "properties": {
+        "username": {
+          "description": "Elastic Search Username for Login",
+          "type": "string"
+        },
+        "password": {
+          "description": "Elastic Search Password for Login",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["username","password"],
+      "type": "object"
+    },
+    "apiAuthentication": {
+      "type": "object",
+      "properties": {
+        "apiKeyId": {
+          "description": "Elastic Search API Key ID for API Authentication",
+          "type": "string"
+        },
+        "apiKey": {
+          "description": "Elastic Search API Key for API Authentication",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["apiKeyId","apiKey"]
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "ElasticSearch Type",
+      "description": "ElasticSearch Type",
+      "$ref": "#/definitions/elasticSearchType",
+      "default": "ElasticSearch"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the ElasticSearch service.",
+      "type": "string"
+    },
+    "scheme": {
+      "description": "Http/Https connection scheme",
+      "type": "string",
+      "$ref": "#/definitions/connectionScheme",
+      "default": "http"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/basicAuthentication"
+        },
+        {
+          "$ref": "#/definitions/apiAuthentication"
+        }
+      ]
+    },
+    "connectionTimeoutSecs": {
+      "description": "Connection Timeout in Seconds",
+      "type": "integer",
+      "default": 30
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort"
+  ]
+}

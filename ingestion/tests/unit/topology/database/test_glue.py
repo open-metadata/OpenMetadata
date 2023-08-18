@@ -1,4 +1,20 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Test Glue using the topology
+"""
+
 import json
+from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -16,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.glue.metadata import GlueSource
+from metadata.ingestion.source.database.glue.models import DatabasePage, TablePage
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
@@ -36,8 +53,7 @@ mock_glue_config = {
                     "awsRegion": "us-east-2",
                     "endPointURL": "https://endpoint.com/",
                 },
-                "storageServiceName": "storage_name",
-            }
+            },
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },
@@ -52,6 +68,13 @@ mock_glue_config = {
         }
     },
 }
+
+MOCK_CUSTOM_DB_NAME = "NEW_DB"
+
+mock_glue_config_db_test = deepcopy(mock_glue_config)
+mock_glue_config_db_test["source"]["serviceConnection"]["config"][
+    "databaseName"
+] = MOCK_CUSTOM_DB_NAME
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
@@ -118,14 +141,27 @@ class GlueUnitTest(TestCase):
         self.glue_source.context.__dict__["database"] = MOCK_DATABASE
         self.glue_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
         self.glue_source._get_glue_database_and_schemas = lambda: [
-            mock_data.get("mock_database_paginator")
+            DatabasePage(**mock_data.get("mock_database_paginator"))
         ]
         self.glue_source._get_glue_tables = lambda: [
-            mock_data.get("mock_table_paginator")
+            TablePage(**mock_data.get("mock_table_paginator"))
         ]
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.glue_source.get_database_names())
+
+    @patch(
+        "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection"
+    )
+    def test_custom_db_name(self, test_connection):
+        test_connection.return_value = False
+        glue_source_new = GlueSource.create(
+            mock_glue_config_db_test["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.assertEqual(
+            list(glue_source_new.get_database_names()), [MOCK_CUSTOM_DB_NAME]
+        )
 
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(

@@ -12,50 +12,44 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { startCase } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
+import classNames from 'classnames';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
+import { ExplorePageTabs } from 'enums/Explore.enum';
+import { TagLabel } from 'generated/type/tagLabel';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getDashboardDetailsPath } from '../../../../constants/constants';
+import { getTagValue } from 'utils/CommonUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from 'utils/EntityUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
-import { getEntityName } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface MlModelSummaryProps {
   entityDetails: Mlmodel;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
 
-interface BasicMlModelInfo {
-  algorithm: string;
-  target?: string;
-  server?: ReactNode;
-  dashboard?: ReactNode;
-}
-
-function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
+function MlModelSummary({
+  entityDetails,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
+  isLoading,
+}: MlModelSummaryProps) {
   const { t } = useTranslation();
 
-  const basicMlModelInfo: BasicMlModelInfo = useMemo(
-    () => ({
-      algorithm: entityDetails.algorithm,
-      target: entityDetails.target,
-      server: entityDetails.server ? (
-        <a href={entityDetails.server}>{entityDetails.server}</a>
-      ) : undefined,
-      dashboard: entityDetails.dashboard ? (
-        <Link
-          to={getDashboardDetailsPath(
-            entityDetails.dashboard?.fullyQualifiedName as string
-          )}>
-          {getEntityName(entityDetails.dashboard)}
-        </Link>
-      ) : undefined,
-    }),
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.MLMODELS, entityDetails),
     [entityDetails]
   );
 
@@ -68,55 +62,118 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
     [entityDetails]
   );
 
-  return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.MLMODEL}
-            source={entityDetails}
-          />
-        </Col>
-        <Col span={24}>
-          <Row>
-            {Object.keys(basicMlModelInfo).map((fieldName) => {
-              const value =
-                basicMlModelInfo[fieldName as keyof BasicMlModelInfo];
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
 
-              return (
-                <Col key={fieldName} span={24}>
-                  <Row gutter={16}>
-                    <Col
-                      className="text-gray"
-                      data-testid={`${fieldName}-label`}
-                      span={10}>
-                      {startCase(fieldName)}
-                    </Col>
-                    <Col data-testid={`${fieldName}-value`} span={12}>
-                      {value ? value : '-'}
-                    </Col>
-                  </Row>
-                </Col>
-              );
-            })}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="section-header"
-            data-testid="features-header">
-            {t('label.feature-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList formattedEntityData={formattedFeaturesData} />
-        </Col>
-      </Row>
-    </>
+  return (
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row gutter={[0, 4]}>
+              {entityInfo.map((info) => {
+                const isOwner = info.name === t('label.owner');
+
+                return info.visible?.includes(componentType) ? (
+                  <Col key={info.name} span={24}>
+                    <Row
+                      className={classNames('', {
+                        'p-b-md': isOwner,
+                      })}
+                      gutter={[16, 32]}>
+                      {!isOwner ? (
+                        <Col data-testid={`${info.name}-label`} span={8}>
+                          <Typography.Text className="text-grey-muted">
+                            {info.name}
+                          </Typography.Text>
+                        </Col>
+                      ) : null}
+                      <Col data-testid={`${info.name}-value`} span={16}>
+                        {info.isLink ? (
+                          <Link
+                            className="d-flex items-center"
+                            target={info.isExternal ? '_blank' : '_self'}
+                            to={{ pathname: info.url }}>
+                            {info.value}
+                            {info.isExternal ? (
+                              <IconExternalLink
+                                className="m-l-xss"
+                                width={12}
+                              />
+                            ) : null}
+                          </Link>
+                        ) : (
+                          <Typography.Text
+                            className={classNames('text-grey-muted', {
+                              'text-grey-body': !isOwner,
+                            })}>
+                            {info.value}
+                          </Typography.Text>
+                        )}
+                      </Col>
+                    </Row>
+                  </Col>
+                ) : null;
+              })}
+            </Row>
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
+
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : (
+          <>
+            <Row className="m-md" gutter={[0, 8]}>
+              <Col span={24}>
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="profiler-header">
+                  {t('label.tag-plural')}
+                </Typography.Text>
+              </Col>
+
+              <Col className="flex-grow" span={24}>
+                {entityDetails.tags && entityDetails.tags.length > 0 ? (
+                  <TagsViewer
+                    sizeCap={2}
+                    tags={(entityDetails.tags || []).map((tag) =>
+                      getTagValue(tag)
+                    )}
+                  />
+                ) : (
+                  <Typography.Text className="text-grey-body">
+                    {t('label.no-tags-added')}
+                  </Typography.Text>
+                )}
+              </Col>
+            </Row>
+            <Divider className="m-y-xs" />
+          </>
+        )}
+
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
+              data-testid="features-header">
+              {t('label.feature-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedFeaturesData} />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

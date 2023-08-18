@@ -22,6 +22,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -30,6 +31,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getRoleByName, patchRole } from 'rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
 import { getUserByName, updateUserDetail } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -37,7 +39,6 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -85,11 +86,11 @@ const RolesDetailPage = () => {
         url: rolesPath,
       },
       {
-        name: fqn,
+        name: getEntityName(role),
         url: '',
       },
     ],
-    [fqn]
+    [role]
   );
 
   const fetchRolePermission = async () => {
@@ -256,17 +257,17 @@ const RolesDetailPage = () => {
       {rolePermission.ViewAll || rolePermission.ViewBasic ? (
         <>
           {isEmpty(role) ? (
-            <ErrorPlaceHolder dataTestId="no-data">
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <div className="text-center">
                 <p>
                   {t('message.no-entity-found-for-name', {
-                    entity: t('label.role-lowercase'),
+                    entity: t('label.role'),
                     name: fqn,
                   })}
                 </p>
                 <Button
+                  ghost
                   className="m-t-sm"
-                  size="small"
                   type="primary"
                   onClick={() => history.push(rolesPath)}>
                   {t('label.go-back')}
@@ -275,7 +276,14 @@ const RolesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="roles-detail" data-testid="role-details">
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {getEntityName(role)}
+              </Typography.Title>
               <Description
+                className="m-b-md"
                 description={role.description || ''}
                 entityFqn={role.fullyQualifiedName}
                 entityName={getEntityName(role)}
@@ -335,7 +343,7 @@ const RolesDetailPage = () => {
                     }
                   />
                 </TabPane>
-                <TabPane key="users" tab={t('label.users')}>
+                <TabPane key="users" tab={t('label.user-plural')}>
                   <RolesDetailPageList
                     hasAccess={rolePermission.EditAll}
                     list={role.users ?? []}
@@ -350,15 +358,14 @@ const RolesDetailPage = () => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-permission-to-view')}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
       {selectedEntity && (
         <Modal
           centered
           closable={false}
           confirmLoading={isLoadingOnSave}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

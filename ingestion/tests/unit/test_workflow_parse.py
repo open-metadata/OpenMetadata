@@ -16,7 +16,7 @@ from unittest import TestCase
 
 from pydantic import ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
@@ -25,8 +25,8 @@ from metadata.generated.schema.entity.services.connections.dashboard.tableauConn
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.generated.schema.entity.services.connections.messaging.pulsarConnection import (
-    PulsarConnection,
+from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+    KafkaConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -104,9 +104,9 @@ class TestWorkflowParse(TestCase):
         connection = get_connection_class(source_type, get_service_type(source_type))
         self.assertEqual(connection, OpenMetadataConnection)
 
-        source_type = "Pulsar"
+        source_type = "Kafka"
         connection = get_connection_class(source_type, get_service_type(source_type))
-        self.assertEqual(connection, PulsarConnection)
+        self.assertEqual(connection, KafkaConnection)
 
     def test_get_source_config_class(self):
         """
@@ -256,7 +256,6 @@ class TestWorkflowParse(TestCase):
                             "awsRegion": "aws region",
                             "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                         },
-                        "storageServiceName": "storage_name",
                         "random": "extra",
                     }
                 },
@@ -321,7 +320,7 @@ class TestWorkflowParse(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "localhost:3306",
                 }
             },
@@ -338,7 +337,7 @@ class TestWorkflowParse(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                 }
             },
             "connectionType": "Database",
@@ -356,7 +355,7 @@ class TestWorkflowParse(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "localhost:3306",
                     "random": "value",
                 }

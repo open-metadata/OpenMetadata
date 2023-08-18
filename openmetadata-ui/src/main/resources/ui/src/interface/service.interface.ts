@@ -12,6 +12,10 @@
  */
 
 import {
+  StorageConnection,
+  StorageService,
+} from 'generated/entity/services/storageService';
+import {
   DashboardConnection,
   DashboardService,
 } from '../generated/entity/services/dashboardService';
@@ -57,7 +61,6 @@ export interface DataObj {
   databaseConnection?: DatabaseConnection;
   brokers?: Array<string>;
   schemaRegistry?: string;
-  dashboardUrl?: string;
   username?: string;
   password?: string;
   url?: string;
@@ -66,7 +69,7 @@ export interface DataObj {
   api_version?: string;
   server?: string;
   env?: string;
-  pipelineUrl?: string;
+  sourceUrl?: string;
 }
 
 export interface EditObj {
@@ -80,7 +83,8 @@ export type ServicesType =
   | DashboardService
   | PipelineService
   | MlmodelService
-  | MetadataService;
+  | MetadataService
+  | StorageService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -93,4 +97,5 @@ export type ConfigData =
   | DashboardConnection
   | PipelineConnection
   | MlModelConnection
-  | MetadataConnection;
+  | MetadataConnection
+  | StorageConnection;

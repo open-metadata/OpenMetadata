@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Dict
 
 from airflow import DAG, settings
-from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagModel
+from flask import escape
 from jinja2 import Template
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
@@ -31,9 +31,6 @@ from openmetadata_managed_apis.api.utils import (
     scan_dags_job_background,
 )
 from openmetadata_managed_apis.utils.logger import operations_logger
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -57,16 +54,13 @@ class DagDeployer:
     """
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
-
         logger.info(
             f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
         )
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
-            build_secrets_manager_credentials(
-                ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
-            ),
+            ingestion_pipeline.openMetadataServerConnection.secretsManagerLoader,
         )
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
@@ -95,7 +89,7 @@ class DagDeployer:
 
         # Open the template and render
         raw_template = pkgutil.get_data(PLUGIN_NAME, "resources/dag_runner.j2").decode()
-        template = Template(raw_template)
+        template = Template(raw_template, autoescape=True)
 
         rendered_dag = template.render(dag_runner_config)
 
@@ -152,7 +146,7 @@ class DagDeployer:
         scan_dags_job_background()
 
         return ApiResponse.success(
-            {"message": f"Workflow [{self.dag_id}] has been created"}
+            {"message": f"Workflow [{escape(self.dag_id)}] has been created"}
         )
 
     def deploy(self):

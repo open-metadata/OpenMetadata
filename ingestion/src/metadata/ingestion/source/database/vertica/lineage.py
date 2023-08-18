@@ -22,10 +22,15 @@ logger = ingestion_logger()
 
 
 class VerticaLineageSource(VerticaQueryParserSource, LineageSource):
-
     sql_stmt = VERTICA_SQL_STATEMENT
 
-    filters = "AND query_type in ('INSERT', 'UPDATE', 'QUERY', 'DDL')"
+    filters = """
+        AND (
+            query_type in ('UPDATE', 'DDL')
+            OR ( query_type IN ('INSERT','QUERY') and p.query ilike '%%INSERT%%INTO%%SELECT%%')
+            OR ( query_type = 'QUERY' and p.query not ilike '%%INSERT%%INTO%%')
+        )
+    """
 
     database_field = "DBNAME()"
 

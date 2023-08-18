@@ -20,12 +20,8 @@ import {
 import React from 'react';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Table } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
 import { CustomPropertyTable } from './CustomPropertyTable';
+import { EntityDetails } from './CustomPropertyTable.interface';
 
 const mockCustomProperties = [
   {
@@ -42,10 +38,6 @@ const mockCustomProperties = [
     },
   },
 ];
-
-jest.mock('../../../utils/CommonUtils', () => ({
-  isEven: jest.fn(),
-}));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -71,7 +63,21 @@ jest.mock('rest/metadataTypeAPI', () => ({
   ),
 }));
 
-const mockTableDetails = {} as Table & Topic & Dashboard & Pipeline & Mlmodel;
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+
+const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
@@ -90,8 +96,8 @@ describe('Test CustomProperty Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await screen.findByText('Name');
-    const propertyValue = await screen.findByText('Value');
+    const propertyName = await screen.findByText('label.name');
+    const propertyValue = await screen.findByText('label.value');
     const rows = await screen.findAllByRole('row');
 
     expect(propertyName).toBeInTheDocument();

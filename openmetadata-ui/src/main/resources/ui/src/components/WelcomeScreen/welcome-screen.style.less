@@ -1,0 +1,59 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url(../../styles/variables.less);
+
+.welcome-screen-container {
+  .ant-card-head {
+    padding-top: 16px;
+    border-bottom: unset;
+
+    .welcome-screen-close-btn {
+      color: @primary-color;
+      &:hover {
+        background-color: @primary-color-hover;
+      }
+    }
+  }
+  .ant-card-body {
+    height: @welcome-page-height;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.welcome-screen-header-first-line {
+  font-size: 30px;
+  font-weight: 500;
+  color: @text-grey-muted;
+}
+.welcome-screen-header-second-line {
+  font-size: 42px;
+  font-weight: 800;
+  color: #000;
+  line-height: 40px;
+}
+
+.welcome-screen-header-divider {
+  min-width: 90%;
+  width: 90%;
+  border-top: 1.5px solid rgba(113, 71, 232, 0.35);
+  margin: 8px 0;
+}
+
+.welcome-screen-button-text {
+  color: @primary-color;
+  text-decoration: underline;
+  font-size: 1rem;
+  line-height: 1.5rem;
+}

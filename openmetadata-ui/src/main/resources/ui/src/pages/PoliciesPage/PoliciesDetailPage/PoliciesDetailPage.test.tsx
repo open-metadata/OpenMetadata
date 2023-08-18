@@ -120,7 +120,7 @@ describe('Test Policy details page', () => {
 
     const description = await screen.findByTestId('description-data');
 
-    const rulesTab = await screen.findByText('label.rules');
+    const rulesTab = await screen.findByText('label.rule-plural');
 
     const rolesTab = await screen.findByText('label.role-plural');
 

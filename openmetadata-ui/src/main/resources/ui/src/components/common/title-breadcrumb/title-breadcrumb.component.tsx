@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { RightOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
   FunctionComponent,
@@ -21,6 +19,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import TitleBreadcrumbSkeleton from '../../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
@@ -29,8 +28,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
   noLink = false,
+  loading = false,
   widthDeductions,
 }: TitleBreadcrumbProps) => {
+  const { t } = useTranslation();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
   const finalWidthOfBreadcrumb = useMemo(() => {
@@ -59,25 +60,20 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   }, []);
 
   return (
-    <TitleBreadcrumbSkeleton titleLinks={titleLinks}>
+    <TitleBreadcrumbSkeleton loading={loading}>
       <nav className={className} data-testid="breadcrumb">
-        <ol className="list-reset tw-rounded tw-flex">
+        <ol className="rounded-4 d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =
-              'link-title tw-truncate' +
-              (link.activeTitle ? ' tw-font-medium' : '');
+              'link-title truncate' + (link.activeTitle ? ' font-medium' : '');
 
             return (
               <li
-                className="tw-flex tw-items-center"
+                className="d-flex items-center breadcrumb-item"
                 data-testid="breadcrumb-link"
                 key={index}>
                 {link.imgSrc ? (
-                  <img
-                    alt=""
-                    className="tw-inline tw-h-5 tw-mr-2"
-                    src={link.imgSrc}
-                  />
+                  <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}
                 {index < titleLinks.length - 1 && !noLink ? (
                   <>
@@ -90,8 +86,8 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="tw-px-2">
-                      <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                    <span className="text-xss p-x-xs text-grey-muted">
+                      {t('label.slash-symbol')}
                     </span>
                   </>
                 ) : link.url ? (
@@ -105,22 +101,20 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   </Link>
                 ) : (
                   <>
-                    <Tooltip align={{ offset: [0, 10] }} title={link.name}>
-                      <span
-                        className={classNames(
-                          classes,
-                          'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
-                        )}
-                        data-testid="inactive-link"
-                        style={{
-                          maxWidth,
-                        }}>
-                        {link.name}
-                      </span>
-                    </Tooltip>
+                    <span
+                      className={classNames(
+                        classes,
+                        'inactive-link cursor-text'
+                      )}
+                      data-testid="inactive-link"
+                      style={{
+                        maxWidth,
+                      }}>
+                      {link.name}
+                    </span>
                     {noLink && index < titleLinks.length - 1 && (
-                      <span className="tw-px-2">
-                        <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                      <span className="text-xss text-grey-muted">
+                        {t('label.slash-symbol')}
                       </span>
                     )}
                   </>

@@ -23,7 +23,7 @@ describe('Test Error place holder Component', () => {
       </ErrorPlaceHolder>
     );
 
-    expect(getByTestId(container, 'error')).toBeInTheDocument();
+    expect(getByTestId(container, 'no-data-placeholder')).toBeInTheDocument();
     expect(getByTestId(container, 'no-data-image')).toBeInTheDocument();
     expect(getByText(container, 'Children1')).toBeInTheDocument();
   });

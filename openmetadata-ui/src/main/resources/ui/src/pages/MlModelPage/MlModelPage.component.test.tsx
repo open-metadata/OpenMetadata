@@ -228,7 +228,7 @@ describe('Test MlModel Entity Page', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorComponent = await findByTestId(container, 'error');
+    const errorComponent = await findByTestId(container, 'no-data-placeholder');
 
     expect(errorComponent).toBeInTheDocument();
   });

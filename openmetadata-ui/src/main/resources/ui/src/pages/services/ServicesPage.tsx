@@ -17,23 +17,27 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import Services from 'components/Services/Services';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getServices } from 'rest/serviceAPI';
 import { pagingObject, SERVICE_VIEW_CAP } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { SERVICE_CATEGORY } from '../../constants/Services.constant';
+import {
+  OPEN_METADATA,
+  SERVICE_CATEGORY,
+} from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
+  const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
@@ -59,14 +63,21 @@ const ServicesPage = () => {
     setIsLoading(true);
     try {
       const { data, paging } = await getServices(type, SERVICE_VIEW_CAP);
-      setServiceDetails(data);
+
+      setServiceDetails(
+        type === ServiceCategory.METADATA_SERVICES
+          ? data.filter(
+              (service) => service.fullyQualifiedName !== OPEN_METADATA
+            )
+          : data
+      );
       setPaging(paging);
     } catch (error) {
       setServiceDetails([]);
       setPaging(pagingObject);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-services-error']
+        t('server.entity-fetch-error', { entity: t('label.service-plural') })
       );
     } finally {
       setIsLoading(false);
@@ -107,9 +118,7 @@ const ServicesPage = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <ErrorPlaceHolder>
-          <p>{NO_PERMISSION_TO_VIEW}</p>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </Col>
     </Row>
   );

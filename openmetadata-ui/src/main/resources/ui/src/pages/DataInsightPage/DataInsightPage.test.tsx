@@ -27,6 +27,9 @@ jest.mock('react-router-dom', () => ({
 jest.mock('components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
 
 jest.mock('components/DataInsightDetail/DataInsightSummary', () =>
   jest
@@ -103,6 +106,19 @@ jest.mock('./KPIList', () =>
 jest.mock('./DataInsightLeftPanel', () =>
   jest.fn().mockReturnValue(<div data-testid="left-panel">Left panel</div>)
 );
+
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    permissions: {
+      dataInsightChart: {
+        ViewAll: true,
+      },
+      kpi: {
+        ViewAll: true,
+      },
+    },
+  }),
+}));
 
 describe('Test DataInsightPage Component', () => {
   it('Should render all child elements', async () => {

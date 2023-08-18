@@ -14,6 +14,7 @@ Time utility functions
 """
 
 from datetime import datetime, time, timedelta, timezone
+from typing import Union
 
 
 def datetime_to_timestamp(datetime_value, milliseconds=False) -> int:
@@ -99,3 +100,15 @@ def get_end_of_day_timestamp_mill(
         datetime.combine(now_utc - delta, time.max, tzinfo=timezone.utc),
         milliseconds=True,
     )
+
+
+def convert_timestamp(timestamp: str) -> Union[int, float]:
+    """convert timestamp to int
+    Args:
+        timestamp (str):
+    Retunrs:
+        int
+    """
+    if len(timestamp) < 13:  # check for ms timestamp
+        return int(timestamp)
+    return float(timestamp) / 1000

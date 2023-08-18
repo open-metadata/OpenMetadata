@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@manage-button-bg-primary: #7147e8;
-@manage-dropdown-bg-primary: #d9ceee;
-@white: #ffffff;
+@import url('../../../../styles/variables.less');
 
 .manage-button {
   .ant-space-item:first-child {
@@ -24,29 +21,42 @@
 
 .manage-dropdown-button {
   border: none;
-  background-color: @manage-dropdown-bg-primary;
+  background-color: @primary-color-hover;
   padding: 0;
+  border-radius: 4px;
+  width: 24px;
+  display: flex;
+  justify-content: center;
 
   .ant-btn {
-    padding: 0 8px 0 8px;
+    padding: 0 4px;
   }
 }
 
 .manage-dropdown-button:hover,
 .manage-dropdown-button:focus {
+  .ant-btn {
+    .manage-dropdown-icon {
+      color: @primary-color;
+      opacity: 0.5;
+    }
+  }
   .manage-dropdown-icon {
     color: @white;
+    font-weight: 600;
   }
-  background-color: @manage-button-bg-primary;
+  background-color: @primary-color;
 }
 
-.ant-dropdown-menu {
-  padding: 8px 0px;
-  background: @white;
-  border: 1px solid #dde3ea;
-  box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
-  border-radius: 4px;
-  .ant-dropdown-menu-item {
-    padding: 5px 16px;
+.manage-dropdown-list-container {
+  .ant-dropdown-menu {
+    padding: 8px 0px;
+    background: @white;
+    border: 1px solid #dde3ea;
+    box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
+    border-radius: 4px;
+    .ant-dropdown-menu-item {
+      padding: 5px 16px;
+    }
   }
 }

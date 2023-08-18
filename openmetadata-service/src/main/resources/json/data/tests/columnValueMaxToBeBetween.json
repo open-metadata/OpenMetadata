@@ -9,8 +9,8 @@
     "parameterDefinition": [
     {
       "name": "minValueForMaxInCol",
-      "displayName": "Max",
-      "description": "Expected maximum value in the column to be greater or equal than",
+      "displayName": "Min",
+      "description": "Expected minimum value in the column to be greater or equal than",
       "dataType": "INT"
     },
     {

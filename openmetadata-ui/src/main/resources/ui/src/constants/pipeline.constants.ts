@@ -11,14 +11,6 @@
  *  limitations under the License.
  */
 
-export enum PIPELINE_DETAILS_TABS {
-  Tasks = 'tasks',
-  ActivityFeedsAndTasks = 'activity_feed',
-  Executions = 'executions',
-  Lineage = 'lineage',
-  CustomProperties = 'custom-properties',
-}
-
 export enum PIPELINE_TASK_TABS {
   LIST_VIEW = 'List',
   DAG_VIEW = 'Dag',
@@ -28,3 +20,11 @@ export enum PIPELINE_EXECUTION_TABS {
   LIST_VIEW = 'List',
   TREE_VIEW = 'Tree',
 }
+
+export const PIPELINE_INGESTION_RUN_STATUS = {
+  queued: '#777777',
+  success: '#07a35a',
+  failed: '#e54937',
+  running: '#276ef1',
+  partialSuccess: '#439897',
+};

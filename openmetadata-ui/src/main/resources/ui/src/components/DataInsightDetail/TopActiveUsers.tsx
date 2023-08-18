@@ -14,6 +14,8 @@
 import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import PageHeader from 'components/header/PageHeader.component';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -31,6 +33,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
+import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -125,23 +128,26 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.data-insight-active-user-summary')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.most-active-users')}
-          </Typography.Text>
-        </>
+        <PageHeader
+          data={{
+            header: t('label.data-insight-active-user-summary'),
+            subHeader: t('message.most-active-users'),
+          }}
+        />
       }>
-      <Table
-        className="data-insight-table-wrapper"
-        columns={columns}
-        dataSource={mostActiveUsers}
-        loading={{ spinning: isLoading, indicator: <Loader /> }}
-        pagination={false}
-        size="small"
-      />
+      {isLoading ? (
+        <Loader />
+      ) : isEmpty(mostActiveUsers) ? (
+        <EmptyGraphPlaceholder />
+      ) : (
+        <Table
+          className="data-insight-table-wrapper"
+          columns={columns}
+          dataSource={mostActiveUsers}
+          pagination={false}
+          size="small"
+        />
+      )}
     </Card>
   );
 };

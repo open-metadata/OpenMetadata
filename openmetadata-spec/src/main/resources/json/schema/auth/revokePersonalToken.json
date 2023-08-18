@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/api/auth/revokePersonalToken.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RevokePersonalToken",
+  "description": "Generate JWT Token Request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.RevokePersonalTokenRequest",
+  "properties": {
+    "tokenIds": {
+      "description": "Ids of Personal Access Tokens to remove.",
+      "type": "array",
+      "items":{
+        "$ref": "../type/basic.json#/definitions/uuid"
+      }
+    }
+  },
+  "additionalProperties": false
+}

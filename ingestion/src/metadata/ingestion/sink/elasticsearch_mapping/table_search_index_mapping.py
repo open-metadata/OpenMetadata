@@ -34,6 +34,11 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2
         }
       },
       "filter": {
@@ -64,11 +69,19 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "index_options": "docs",
+        "analyzer": "om_analyzer",
+        "norms": false
       },
       "version": {
         "type": "float"
@@ -103,7 +116,9 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "index_options": "docs",
+            "analyzer": "om_analyzer",
+            "norms": false
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -260,6 +275,16 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "type": "keyword"
           },
           "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
             "type": "keyword",
             "fields": {
               "keyword": {

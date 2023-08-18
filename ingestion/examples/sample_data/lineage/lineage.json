@@ -58,6 +58,27 @@
     },
     "edge_meta": { "fqn": "sample_airflow.dim_product_etl", "type": "pipeline" },
     "sql_query": "create ecommerce_db.shopify.\"dim.product.variant\" as select * from sample_data.ecommerce_db.shopify.raw_customer"
-
+  },
+  {
+    "from": {
+      "fqn": "sample_superset.model.103",
+      "type": "dashboardDataModel"
+    },
+    "to": {
+      "fqn": "sample_superset.9",
+      "type": "dashboard"
+    },
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": {
+      "fqn": "sample_superset.model.73",
+      "type": "dashboardDataModel"
+    },
+    "to": {
+      "fqn": "sample_superset.9",
+      "type": "dashboard"
+    },
+    "edge_meta": { "fqn": "", "type": "" }
   }
 ]

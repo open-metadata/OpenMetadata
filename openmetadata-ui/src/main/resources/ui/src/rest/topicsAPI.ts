@@ -13,8 +13,9 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { Include } from 'generated/type/include';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -39,19 +40,22 @@ export const getTopicVersion = async (id: string, version: string) => {
 };
 
 export const getTopics = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/topics`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`/topics`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -67,7 +71,7 @@ export const getTopicDetails = (
 
 export const getTopicByFqn = async (
   fqn: string,
-  arrQueryFields: string | TabSpecificField[]
+  arrQueryFields: string[] | string | TabSpecificField[]
 ) => {
   const url = getURLWithQueryFields(
     `/topics/name/${fqn}`,
@@ -131,6 +135,12 @@ export const restoreTopic = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<Topic>
   >('/topics/restore', { id });
+
+  return response.data;
+};
+
+export const getSampleDataByTopicId = async (id: string) => {
+  const response = await APIClient.get<Topic>(`/topics/${id}/sampleData`);
 
   return response.data;
 };

@@ -27,7 +27,6 @@ from typing import Optional, Union, cast
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.processor.entity_report_data_processor import (
     EntityReportDataProcessor,
@@ -52,14 +51,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
+from metadata.ingestion.api.workflow import REPORTS_INTERVAL_SECONDS
 from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
 from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.importer import get_sink
-from metadata.utils.logger import data_insight_logger
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
+from metadata.utils.logger import data_insight_logger, set_loggers_level
+from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
 from metadata.utils.workflow_output_handler import print_data_insight_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
@@ -78,6 +77,10 @@ class DataInsightWorkflow(WorkflowStatusMixin):
 
     def __init__(self, config: OpenMetadataWorkflowConfig) -> None:
         self.config = config
+        self._timer: Optional[RepeatedTimer] = None
+
+        set_loggers_level(config.workflowConfig.loggerLevel.value)
+
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
@@ -85,7 +88,7 @@ class DataInsightWorkflow(WorkflowStatusMixin):
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.status = ProcessorStatus()
-        self.data_processor: Optional[
+        self.source: Optional[
             Union[
                 DataProcessor,
                 EntityReportDataProcessor,
@@ -112,6 +115,16 @@ class DataInsightWorkflow(WorkflowStatusMixin):
             )
 
             self.es_sink = cast(ElasticsearchSink, self.es_sink)
+
+    @property
+    def timer(self) -> RepeatedTimer:
+        """Status timer"""
+        if not self._timer:
+            self._timer = get_ingestion_status_timer(
+                interval=REPORTS_INTERVAL_SECONDS, logger=logger, workflow=self
+            )
+
+        return self._timer
 
     @staticmethod
     def _is_kpi_active(entity: Kpi) -> bool:
@@ -152,77 +165,32 @@ class DataInsightWorkflow(WorkflowStatusMixin):
 
         return [kpi for kpi in kpis.entities if self._is_kpi_active(kpi)]
 
-    def _check_and_handle_existing_es_data(self, index: str) -> None:
-        """Handles scenarios where data has already been ingested for the execution data.
-        If we find some data for the execution date we should deleted those documents before
-        re indexing new documents.
-        """
-        gte = get_beginning_of_day_timestamp_mill()
-        lte = get_end_of_day_timestamp_mill()
-        query = {
-            "size": 1000,
-            "query": {
-                "range": {
-                    "timestamp": {
-                        "gte": gte,
-                        "lte": lte,
-                    }
-                }
-            },
-        }
-        data = self.es_sink.read_records(index, query)
-        try:
-            hit_total = data["hits"]["total"]["value"]
-            documents = data["hits"]["hits"]
-        except KeyError as exc:
-            logger.error(exc)
-        else:
-            if hit_total > 0:
-                body = [
-                    {"delete": {"_index": document["_index"], "_id": document["_id"]}}
-                    for document in documents
-                ]
-                try:
-                    self.es_sink.bulk_operation(body)
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Could not delete existing data - {exc}")
-                    raise RuntimeError
-            return None
-        return None
-
     def _execute_data_processor(self):
         """Data processor method to refine raw data into report data and ingest it in ES"""
         for report_data_type in ReportDataType:
-            has_checked_and_handled_existing_es_data = False
             logger.info(f"Processing data for report type {report_data_type}")
             try:
-                self.data_processor = DataProcessor.create(
+                self.source = DataProcessor.create(
                     _data_processor_type=report_data_type.value, metadata=self.metadata
                 )
-                for record in self.data_processor.process():
+                for record in self.source.process():
                     if hasattr(self, "sink"):
                         self.sink.write_record(record)
                     if hasattr(self, "es_sink"):
-                        if not has_checked_and_handled_existing_es_data:
-                            self._check_and_handle_existing_es_data(
-                                DataInsightEsIndex[record.data.__class__.__name__].value
-                            )
-                            has_checked_and_handled_existing_es_data = True
                         self.es_sink.write_record(record)
                     else:
                         logger.warning(
                             "No sink attribute found, skipping ingestion of KPI result"
                         )
+                self.status.records.extend(self.source.processor_status.records)
+                self.status.failures.extend(self.source.processor_status.failures)
+                self.status.warnings.extend(self.source.processor_status.warnings)
 
             except Exception as exc:
-                logger.error(
-                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
-                )
+                error = f"Error while executing data insight workflow for report type {report_data_type}: {exc}"
+                logger.error(error)
                 logger.debug(traceback.format_exc())
-                self.status.failure(
-                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
-                )
+                self.status.failed(str(report_data_type), error, traceback.format_exc())
 
     def _execute_kpi_runner(self):
         """KPI runner method to run KPI definiton against platform latest metric"""
@@ -274,6 +242,8 @@ class DataInsightWorkflow(WorkflowStatusMixin):
 
     def execute(self):
         """Execute workflow"""
+        self.timer.trigger()
+
         try:
             logger.info("Starting data processor execution")
             self._execute_data_processor()
@@ -294,21 +264,23 @@ class DataInsightWorkflow(WorkflowStatusMixin):
         except Exception as err:
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
+        finally:
+            self.stop()
 
     def _raise_from_status_internal(self, raise_warnings=False):
-        if self.data_processor and self.data_processor.get_status().failures:
+        if self.source and self.source.get_status().failures:
             raise WorkflowExecutionError(
-                "Source reported errors", self.data_processor.get_status()
+                "Source reported errors", self.source.get_status()
             )
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
         if raise_warnings and (
-            (self.data_processor and self.data_processor.get_status().warnings)
+            (self.source and self.source.get_status().warnings)
             or self.sink.get_status().warnings
         ):
             raise WorkflowExecutionError(
                 "Source reported warnings",
-                self.data_processor.get_status() if self.data_processor else None,
+                self.source.get_status() if self.source else None,
             )
 
     def print_status(self) -> None:
@@ -319,7 +291,7 @@ class DataInsightWorkflow(WorkflowStatusMixin):
         Returns 1 if status is failed, 0 otherwise.
         """
         if (
-            (self.data_processor and self.data_processor.get_status().failures)
+            (self.source and self.source.get_status().failures)
             or self.status.failures
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
@@ -331,3 +303,4 @@ class DataInsightWorkflow(WorkflowStatusMixin):
         Close all connections
         """
         self.metadata.close()
+        self.timer.stop()

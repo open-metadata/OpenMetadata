@@ -16,6 +16,9 @@ from unittest import TestCase
 
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -29,13 +32,12 @@ class MySQLConnectionTest(TestCase):
 
     connection = MysqlConnection(
         username="openmetadata_user",
-        password="openmetadata_password",
+        authType=BasicAuth(password="openmetadata_password"),
         hostPort="localhost:3306",
         databaseSchema="openmetadata_db",
     )
 
     def test_get_connection(self):
-
         engine = get_connection(self.connection)
         self.assertTrue(isinstance(engine, Engine))
 

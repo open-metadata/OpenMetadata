@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
+import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
+import { LoadingState, ServicesUpdateRequest } from 'Models';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
-  ConfigClass,
   CreateIngestionPipeline,
-  DbtConfig,
+  DBTConfigurationSource,
+  Pipeline,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { ProfileSampleType } from '../../generated/entity/data/table';
 import {
@@ -26,8 +27,6 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { DbtPipelineClass } from '../../generated/metadataIngestion/dbtPipeline';
-import { DataObj } from '../../interface/service.interface';
 import {
   DBT_SOURCES,
   GCS_CONFIG,
@@ -41,7 +40,7 @@ export interface AddIngestionProps {
   status: FormSubmitType;
   data?: IngestionPipeline;
   serviceCategory: ServiceCategory;
-  serviceData: DataObj;
+  serviceData: ServicesUpdateRequest;
   showSuccessScreen?: boolean;
   showDeployButton?: boolean;
   setActiveIngestionStep: (step: number) => void;
@@ -60,6 +59,7 @@ export interface AddIngestionProps {
   isIngestionCreated?: boolean;
   ingestionProgress?: number;
   handleViewServiceClick?: () => void;
+  onFocus: (fieldName: string) => void;
 }
 
 export interface ConfigureIngestionProps {
@@ -73,6 +73,7 @@ export interface ConfigureIngestionProps {
   onNext: () => void;
   pipelineType: PipelineType;
   serviceCategory: ServiceCategory;
+  onFocus: (fieldName: string) => void;
 }
 
 export type ScheduleIntervalProps = {
@@ -81,34 +82,53 @@ export type ScheduleIntervalProps = {
   repeatFrequency: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
+  disabledCronChange?: boolean;
   onBack: () => void;
   onDeploy: () => void;
 };
 
 // Todo: Need to refactor below type, as per schema change #9575
-export type ModifiedDbtConfig = DbtConfig &
-  Pick<DbtPipelineClass, 'dbtUpdateDescriptions' | 'dbtClassificationName'>;
+export type ModifiedDBTConfigurationSource = DBTConfigurationSource &
+  Pick<
+    DbtPipeline,
+    | 'dbtUpdateDescriptions'
+    | 'dbtClassificationName'
+    | 'includeTags'
+    | 'databaseFilterPattern'
+    | 'schemaFilterPattern'
+    | 'tableFilterPattern'
+  >;
 
 export interface AddIngestionState {
+  dataModelFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
+  database?: string;
   dashboardFilterPattern: FilterPattern;
   databaseFilterPattern: FilterPattern;
+  containerFilterPattern: FilterPattern;
+  isDatabaseFilterDisabled: boolean;
   databaseServiceNames: string[];
   dbtClassificationName: string;
   dbtUpdateDescriptions: boolean;
-  dbtConfigSource: ModifiedDbtConfig;
+  dbtConfigSource: ModifiedDBTConfigurationSource;
   dbtConfigSourceType: DBT_SOURCES;
   description: string;
   enableDebugLog: boolean;
+  filterCondition: string;
   gcsConfigType: GCS_CONFIG | undefined;
   includeLineage: boolean;
   includeTags: boolean;
   includeView: boolean;
+  includeDataModels: boolean;
   ingestionName: string;
   ingestSampleData: boolean;
   markAllDeletedTables: boolean | undefined;
   markDeletedTables: boolean | undefined;
-  metadataToESConfig: ConfigClass | undefined;
+  markDeletedDashboards?: boolean;
+  markDeletedTopics?: boolean;
+  markDeletedMlModels?: boolean;
+  markDeletedPipelines?: boolean;
+  metadataToESConfig: Pipeline | undefined;
   mlModelFilterPattern: FilterPattern;
   pipelineFilterPattern: FilterPattern;
   profileSample: number | undefined;
@@ -118,6 +138,7 @@ export interface AddIngestionState {
   resultLimit: number;
   saveState: LoadingState;
   schemaFilterPattern: FilterPattern;
+  showDataModelFilter: boolean;
   showChartFilter: boolean;
   showDashboardFilter: boolean;
   showDatabaseFilter: boolean;
@@ -133,6 +154,12 @@ export interface AddIngestionState {
   timeoutSeconds: number;
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
+  viewParsingTimeoutLimit: number;
+  parsingTimeoutLimit: number;
+  processPii: boolean;
+  includeOwners: boolean;
+  confidence?: number;
+  showContainerFilter: boolean;
 }
 
 export enum ShowFilter {
@@ -144,4 +171,6 @@ export enum ShowFilter {
   showSchemaFilter = 'showSchemaFilter',
   showTableFilter = 'showTableFilter',
   showTopicFilter = 'showTopicFilter',
+  showContainerFilter = 'showContainerFilter',
+  showDataModelFilter = 'showDataModelFilter',
 }

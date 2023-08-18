@@ -40,7 +40,7 @@ export const mockEntityDetailsWithTagsAndAlgorithm = {
       tagFQN: 'PersonalData.SpecialCategory',
       labelType: LabelType.Manual,
       description: 'Test Description',
-      source: TagSource.Tag,
+      source: TagSource.Classification,
       state: State.Confirmed,
     },
   ],

@@ -47,7 +47,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
-from metadata.utils.helpers import datetime_to_ts
+from metadata.utils.helpers import clean_uri, datetime_to_ts
 
 
 class SimpleEdge(BaseModel):
@@ -93,6 +93,8 @@ class AirflowLineageRunner:
         self.dag = dag
         self.xlets = xlets
 
+        self.host_port = conf.get("webserver", "base_url")
+
     def get_or_create_pipeline_service(self) -> PipelineService:
         """
         Fetch the Pipeline Service from OM. If it does not exist,
@@ -111,7 +113,7 @@ class AirflowLineageRunner:
                 serviceType=PipelineServiceType.Airflow,
                 connection=PipelineConnection(
                     config=AirflowConnection(
-                        hostPort=conf.get("webserver", "base_url"),
+                        hostPort=self.host_port,
                         connection=BackendConnection(),
                     ),
                 ),
@@ -124,7 +126,10 @@ class AirflowLineageRunner:
         return pipeline_service
 
     def get_task_url(self, task: "Operator"):
-        return f"/taskinstance/list/?flt1_dag_id_equals={self.dag.dag_id}&_flt_3_task_id={task.task_id}"
+        return (
+            f"{clean_uri(self.host_port)}/taskinstance/list/"
+            f"?flt1_dag_id_equals={self.dag.dag_id}&_flt_3_task_id={task.task_id}"
+        )
 
     def get_om_tasks(self) -> List[Task]:
         """
@@ -134,7 +139,7 @@ class AirflowLineageRunner:
         return [
             Task(
                 name=task.task_id,
-                taskUrl=self.get_task_url(task),
+                sourceUrl=self.get_task_url(task),
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
@@ -153,15 +158,12 @@ class AirflowLineageRunner:
         pipeline_request = CreatePipelineRequest(
             name=self.dag.dag_id,
             description=self.dag.description,
-            pipelineUrl=f"/tree?dag_id={self.dag.dag_id}",
+            sourceUrl=f"{clean_uri(self.host_port)}/tree?dag_id={self.dag.dag_id}",
             concurrency=self.dag.max_active_tasks,
             pipelineLocation=self.dag.fileloc,
             startDate=self.dag.start_date.isoformat() if self.dag.start_date else None,
             tasks=self.get_om_tasks(),
-            service=EntityReference(
-                id=pipeline_service.id,
-                type="pipelineService",
-            ),
+            service=pipeline_service.fullyQualifiedName,
         )
 
         return self.metadata.create_or_update(pipeline_request)
@@ -252,28 +254,36 @@ class AirflowLineageRunner:
             pipeline=EntityReference(id=pipeline.id, type="pipeline")
         )
 
-        for fqn_in, fqn_out in zip(xlets.inlets, xlets.outlets):
-            table_in: Optional[Table] = self.metadata.get_by_name(
-                entity=Table, fqn=fqn_in
+        for from_fqn in xlets.inlets or []:
+            from_entity: Optional[Table] = self.metadata.get_by_name(
+                entity=Table, fqn=from_fqn
             )
-            table_out: Optional[Table] = self.metadata.get_by_name(
-                entity=Table, fqn=fqn_out
-            )
-
-            if table_in and table_out:
-                try:
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=table_in.id, type="table"),
-                            toEntity=EntityReference(id=table_out.id, type="table"),
-                            lineageDetails=lineage_details,
-                        ),
+            if from_entity:
+                for to_fqn in xlets.outlets or []:
+                    to_entity: Optional[Table] = self.metadata.get_by_name(
+                        entity=Table, fqn=to_fqn
                     )
-                    self.metadata.add_lineage(lineage)
-                except AttributeError as err:
-                    self.dag.log.error(
-                        f"Error trying to compute lineage due to: {err}."
-                    )
+                    if to_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id, type="table"
+                                ),
+                                toEntity=EntityReference(id=to_entity.id, type="table"),
+                                lineageDetails=lineage_details,
+                            )
+                        )
+                        self.metadata.add_lineage(lineage)
+                    else:
+                        self.dag.log.warning(
+                            f"Could not find Table [{to_fqn}] from "
+                            f"[{pipeline.fullyQualifiedName.__root__}] outlets"
+                        )
+            else:
+                self.dag.log.warning(
+                    f"Could not find Table [{from_fqn}] from "
+                    f"[{pipeline.fullyQualifiedName.__root__}] inlets"
+                )
 
     def clean_lineage(self, pipeline: Pipeline, xlets: XLets):
         """

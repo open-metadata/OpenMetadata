@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/feed/settings.json",
+  "$id": "https://open-metadata.org/schema/settings/settings.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Settings",
   "description": "This schema defines the Settings. A Settings represents a generic Setting.",
@@ -22,8 +22,11 @@
         "secretsManagerConfiguration",
         "sandboxModeEnabled",
         "slackChat",
-        "taskNotificationConfiguration",
-        "testResultNotificationConfiguration"
+        "emailConfiguration",
+        "customLogoConfiguration",
+        "slackAppConfiguration",
+        "slackBot",
+        "slackInstaller"
       ]
     }
   },
@@ -35,7 +38,7 @@
     "config_value": {
       "oneOf": [
         {
-          "$ref": "../configuration/airflowConfiguration.json"
+          "$ref": "../configuration/pipelineServiceClientConfiguration.json"
         },
         {
           "$ref": "../configuration/authenticationConfiguration.json"
@@ -56,18 +59,17 @@
           "$ref": "../configuration/jwtTokenConfiguration.json"
         },
         {
-          "$ref": "../configuration/slackChatConfiguration.json"
-        },
-        {
-          "$ref": "../configuration/slackEventPubConfiguration.json"
-        },
-        {
           "$ref": "../configuration/taskNotificationConfiguration.json"
+        },
+        {
+          "$ref": "../email/smtpSettings.json"
+        },
+        {
+          "$ref": "../configuration/slackAppConfiguration.json"
         }
-
+        
       ]
     }
   },
-  "required": ["config_type"],
-  "additionalProperties": false
+  "required": ["config_type"]
 }

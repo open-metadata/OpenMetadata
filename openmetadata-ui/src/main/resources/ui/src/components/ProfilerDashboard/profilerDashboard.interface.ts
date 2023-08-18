@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { TestSuite } from 'generated/tests/testSuite';
+import { Paging } from 'generated/type/paging';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { ListTestCaseParams } from 'rest/testAPI';
 import {
@@ -19,6 +21,7 @@ import {
   Table,
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
@@ -26,7 +29,10 @@ export interface ProfilerDashboardProps {
   table: Table;
   testCases: TestCase[];
   profilerData: ColumnProfile[];
-  fetchProfilerData: (tableId: string, days?: number) => void;
+  fetchProfilerData: (
+    tableId: string,
+    dateRangeObject?: DateRangeObject
+  ) => void;
   fetchTestCases: (fqn: string, params?: ListTestCaseParams) => void;
   onTestCaseUpdate: (deleted?: boolean) => void;
 }
@@ -43,8 +49,10 @@ export type MetricChartType = {
 };
 
 export interface ProfilerDetailsCardProps {
+  showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
+  title?: string;
   tickFormatter?: string;
   curveType?: CurveType;
 }
@@ -52,6 +60,12 @@ export interface ProfilerDetailsCardProps {
 export enum ProfilerDashboardTab {
   SUMMARY = 'Summary',
   PROFILER = 'Profiler',
+  DATA_QUALITY = 'Data Quality',
+}
+
+export enum TableProfilerTab {
+  COLUMN_PROFILE = 'Column Profile',
+  TABLE_PROFILE = 'Table Profile',
   DATA_QUALITY = 'Data Quality',
 }
 
@@ -86,14 +100,25 @@ export interface ProfilerSummaryCardProps {
 
 export interface DataQualityTabProps {
   testCases: TestCase[];
-  onTestUpdate?: () => void;
-  hasAccess: boolean;
+  onTestUpdate?: (testCase?: TestCase) => void;
+  afterDeleteAction?: () => void;
+  showTableColumn?: boolean;
   isLoading?: boolean;
-  deletedTable?: boolean;
+  onTestCaseResultUpdate?: (data: TestCase) => void;
+  pagingData?: {
+    paging: Paging;
+    currentPage: number;
+    onPagingClick: (cursorValue: string | number, activePage?: number) => void;
+    isNumberBased?: boolean;
+  };
+  removeFromTestSuite?: {
+    testSuite: TestSuite;
+  };
 }
 
 export interface TestSummaryProps {
   data: TestCase;
+  showExpandIcon?: boolean;
 }
 
 export interface ProfilerLatestValueProps {
@@ -101,3 +126,8 @@ export interface ProfilerLatestValueProps {
   tickFormatter?: string;
   stringValue?: boolean;
 }
+
+export type TestCaseAction = {
+  data: TestCase;
+  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+};

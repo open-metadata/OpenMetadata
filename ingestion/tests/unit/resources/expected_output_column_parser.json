@@ -63,6 +63,14 @@
           "dataType": "ARRAY",
           "arrayDataType": "STRUCT",
           "dataTypeDisplay": "array<struct<bigquery_test_datatype_511:array<string>>>",
+          "children": [
+            {
+              "dataType":"ARRAY",
+              "arrayDataType":"STRING",
+              "dataTypeDisplay":"array<string>",
+              "name":"bigquery_test_datatype_511"
+            }
+          ],
           "name": "bigquerytestdatatype51"
         }
       ],
@@ -104,7 +112,15 @@
     {
       "dataType": "ARRAY",
       "arrayDataType": "STRUCT",
-      "dataTypeDisplay": "array<struct<check_datatype:array<string>>>"
+      "dataTypeDisplay": "array<struct<check_datatype:array<string>>>",
+      "children":[
+        {
+          "dataType":"ARRAY",
+          "arrayDataType":"STRING",
+          "dataTypeDisplay":"array<string>",
+          "name":"check_datatype"
+        }
+      ]
     },
     {
       "children": [
@@ -124,8 +140,8 @@
       "dataType": "STRUCT"
     },
     {
-      "dataType": "VARCHAR",
-      "dataTypeDisplay": "VARCHAR",
+      "dataType": "UNKNOWN",
+      "dataTypeDisplay": "UNKNOWN",
       "dataLength": 1
     },
     {
@@ -157,7 +173,20 @@
     {
       "dataType": "ARRAY",
       "arrayDataType": "STRUCT",
-      "dataTypeDisplay": "array<struct<type:string,provider:array<int>>>"
+      "dataTypeDisplay": "array<struct<type:string,provider:array<int>>>",
+      "children":[
+        {
+          "dataType":"STRING",
+          "dataTypeDisplay":"string",
+          "name":"type"
+        },
+        {
+          "dataType":"ARRAY",
+          "arrayDataType":"INT",
+          "dataTypeDisplay":"array<int>",
+          "name":"provider"
+        }
+      ]
     },
     {
       "dataType": "ARRAY",

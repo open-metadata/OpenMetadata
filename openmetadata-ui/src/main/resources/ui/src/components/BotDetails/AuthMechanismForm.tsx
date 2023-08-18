@@ -13,14 +13,13 @@
 
 import { Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import _, { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse } from 'rest/auth-API';
 import { createBotWithPut } from 'rest/botsAPI';
 import { createUserWithPut, getUserByName } from 'rest/userAPI';
-import { validEmailRegEx } from '../../constants/regex.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { SsoServiceType } from '../../generated/auth/ssoAuth';
 import { Bot } from '../../generated/entity/bot';
 import {
@@ -33,7 +32,7 @@ import {
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import {
   getAuthMechanismFormInitialValues,
-  getAuthMechanismTypeOptions,
+  getJWTOption,
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -81,6 +80,8 @@ const AuthMechanismForm: FC<Props> = ({
     useState<boolean>(false);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const jwtOption = getJWTOption();
 
   useEffect(() => {
     const authType = authenticationMechanism.authType;
@@ -172,7 +173,7 @@ const AuthMechanismForm: FC<Props> = ({
         name: botData.name,
         description: botData.description,
         displayName: botData.displayName,
-        botUser: { id: response.id, type: EntityType.USER },
+        botUser: _.toString(response.fullyQualifiedName),
       });
       setIsConfirmationModalOpen(false);
     } catch (error) {
@@ -237,6 +238,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -272,6 +274,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -329,10 +332,13 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.clientSecret-required'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.client-secret'),
+                  }),
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder={t('label.client-secret')}
@@ -365,8 +371,8 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.field-is-require', {
-                    field: t('label.authority'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.authority'),
                   }),
                 },
               ]}>
@@ -415,6 +421,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder={t('label.privateKey')}
@@ -475,7 +482,7 @@ const AuthMechanismForm: FC<Props> = ({
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder={t('label.okta-email')}
+                placeholder={t('label.okta-service-account-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
@@ -507,6 +514,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -598,9 +606,7 @@ const AuthMechanismForm: FC<Props> = ({
               field: t('label.auth-mechanism'),
             })}
             onChange={(value) => setAuthMechanism(value)}>
-            {getAuthMechanismTypeOptions(authConfig).map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            <Option key={jwtOption.value}>{jwtOption.label}</Option>
           </Select>
         </Form.Item>
 
@@ -643,7 +649,7 @@ const AuthMechanismForm: FC<Props> = ({
               name="email"
               rules={[
                 {
-                  pattern: validEmailRegEx,
+                  pattern: EMAIL_REG_EX,
                   required: true,
                   type: 'email',
                   message: t('message.email-is-invalid'),
@@ -660,7 +666,7 @@ const AuthMechanismForm: FC<Props> = ({
             {getSSOConfig()}
           </>
         )}
-        <Space className="w-full tw-justify-end" size={4}>
+        <Space className="w-full justify-end" size={4}>
           {!isEmpty(authenticationMechanism) && (
             <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
               {t('label.cancel')}
@@ -681,6 +687,7 @@ const AuthMechanismForm: FC<Props> = ({
           destroyOnClose
           closable={false}
           confirmLoading={isLoading}
+          maskClosable={false}
           okText={t('label.confirm')}
           title={t('message.are-you-sure')}
           visible={isConfirmationModalOpen}

@@ -42,30 +42,18 @@ jest.mock('antd', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../../generated/entity/data/table', () =>
-  jest.fn().mockReturnValue(<>Table</>)
-);
-jest.mock('../../../generated/type/tagLabel', () =>
-  jest.fn().mockReturnValue(<>TagLabel</>)
-);
 jest.mock('../../../utils/CommonUtils', () => ({
   getTeamsUser: jest.fn().mockReturnValue({
     ownerName: 'test-owner',
     id: 'test-id',
   }),
 }));
-jest.mock('../../buttons/Button/Button', () =>
-  jest.fn().mockReturnValue(<>Button</>)
-);
 
 jest.mock('../ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<>ProfilePicture</>)
 );
 jest.mock('../TierCard/TierCard', () =>
   jest.fn().mockReturnValue(<>TierCard</>)
-);
-jest.mock('../OwnerWidget/OwnerWidgetWrapper.component', () =>
-  jest.fn().mockReturnValue(<>OwnerWidgetWrapper</>)
 );
 
 describe('EntitySummaryDetails Component', () => {

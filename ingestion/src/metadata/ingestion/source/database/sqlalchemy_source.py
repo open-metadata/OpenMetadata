@@ -26,7 +26,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.database_service import SQLSourceStatus
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -41,7 +40,6 @@ class SqlAlchemySource(ABC):
     metadata: OpenMetadata
     context: TopologyContext
     database_source_state: Set
-    status: SQLSourceStatus
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
 

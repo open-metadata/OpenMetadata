@@ -13,12 +13,19 @@
 
 package org.openmetadata.service.exception;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
   public static final String EMAIL_SENDING_ISSUE =
@@ -50,7 +57,7 @@ public final class CatalogExceptionMessage {
   public static final String TEAM_HIERARCHY = "Unexpected error occurred while building the teams hierarchy";
   public static final String LDAP_MISSING_ATTR =
       "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
-  public static final String MULTIPLE_EMAIl_ENTRIES = "Email corresponds to multiple entries in Directory.";
+  public static final String MULTIPLE_EMAIL_ENTRIES = "Email corresponds to multiple entries in Directory.";
 
   public static final String INVALID_EMAIL_PASSWORD = "You have entered an invalid email or password.";
 
@@ -108,6 +115,10 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid fully qualified column name %s", fqn);
   }
 
+  public static String invalidFieldName(String fieldType, String fieldName) {
+    return String.format("Invalid %s name %s", fieldType, fieldName);
+  }
+
   public static String entityVersionNotFound(String entityType, UUID id, Double version) {
     return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
@@ -138,6 +149,10 @@ public final class CatalogExceptionMessage {
   }
 
   public static String permissionNotAllowed(String user, List<MetadataOperation> operations) {
+    return String.format("Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
+  }
+
+  public static String taskOperationNotAllowed(String user, String operations) {
     return String.format("Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
@@ -201,5 +216,36 @@ public final class CatalogExceptionMessage {
 
   public static String userAlreadyBot(String userName, String botName) {
     return String.format("Bot user [%s] is already used by [%s] bot", userName, botName);
+  }
+
+  public static String invalidGlossaryTermMove(String term, String newParent) {
+    return String.format("Can't move Glossary term %s to its child Glossary term %s", term, newParent);
+  }
+
+  public static String eventPublisherFailedToPublish(
+      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) {
+    return String.format(
+        "Failed to publish event %s to %s due to %s ", JsonUtils.pojoToJson(event), type.value(), message);
+  }
+
+  public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
+    return String.format("The Entity link with no field name - %s is not supported for %s task.", entityLink, taskType);
+  }
+
+  public static String invalidFieldForTask(String fieldName, TaskType type) {
+    return String.format("The field name %s is not supported for %s task.", fieldName, type);
+  }
+
+  public static String invalidEnumValue(Class<? extends Enum<?>> enumClass) {
+    String className = enumClass.getSimpleName();
+    String classNameWithLowercaseFirstLetter = className.substring(0, 1).toLowerCase() + className.substring(1);
+
+    return invalidEnumValue(enumClass, classNameWithLowercaseFirstLetter);
+  }
+
+  public static String invalidEnumValue(Class<? extends Enum<?>> enumClass, String key) {
+    String enumValues =
+        Arrays.stream(enumClass.getEnumConstants()).map(Object::toString).collect(Collectors.joining(", "));
+    return "query param " + key + " must be one of [" + enumValues + "]";
   }
 }

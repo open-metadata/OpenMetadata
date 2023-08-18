@@ -22,7 +22,6 @@ logger = ingestion_logger()
 
 
 class VerticaUsageSource(VerticaQueryParserSource, UsageSource):
-
     sql_stmt = VERTICA_SQL_STATEMENT
 
     filters = "AND query_type NOT IN ('UTILITY', 'TRANSACTION', 'SHOW', 'SET')"

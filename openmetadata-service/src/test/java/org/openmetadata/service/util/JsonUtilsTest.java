@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.Json;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
@@ -116,11 +118,11 @@ class JsonUtilsTest {
 
   @Test
   void testJsonWithFieldsRemoveFields() throws IOException, URISyntaxException {
+    HashMap authType = new HashMap();
+    authType.put("username", "username");
+    authType.put("password", "password");
     TableauConnection airflowConnection =
-        new TableauConnection()
-            .withHostPort(new URI("localhost:3306"))
-            .withUsername("username")
-            .withPassword("password");
+        new TableauConnection().withHostPort(new URI("localhost:3306")).withAuthType(authType);
     TableauConnection expectedConnection = new TableauConnection().withHostPort(new URI("localhost:3306"));
     TableauConnection actualConnection = JsonUtils.toExposedEntity(airflowConnection, TableauConnection.class);
     assertEquals(expectedConnection, actualConnection);
@@ -132,7 +134,9 @@ class JsonUtilsTest {
     DatabaseService databaseService =
         new DatabaseService()
             .withName("test")
-            .withConnection(new DatabaseConnection().withConfig(new MysqlConnection().withPassword("password")));
+            .withConnection(
+                new DatabaseConnection()
+                    .withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword("password"))));
     String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
     assertEquals(expectedJson, actualJson);
   }

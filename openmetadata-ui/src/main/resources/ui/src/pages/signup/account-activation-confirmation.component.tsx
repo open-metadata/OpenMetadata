@@ -19,7 +19,6 @@ import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { confirmRegistration } from 'rest/auth-API';
 import { ROUTES } from '../../constants/constants';
-import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AccountActivationConfirmation = () => {
@@ -34,16 +33,11 @@ const AccountActivationConfirmation = () => {
       const res = await confirmRegistration(searchParam.get('token') as string);
       if (!isEmpty(res)) {
         setIsAccountVerified(true);
-        showSuccessToast(
-          jsonData['api-success-messages']['account-verify-success']
-        );
+        showSuccessToast(t('server. account-verify-success'));
         history.push(ROUTES.SIGNIN);
       }
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
   };
 
@@ -60,7 +54,7 @@ const AccountActivationConfirmation = () => {
           <Space align="center" direction="vertical">
             <Alert
               showIcon
-              message="User Verified Successfully"
+              message={t('label.user-verified-successfully')}
               type="success"
             />
             <div className="mt-12" onClick={handleBackToLogin}>
@@ -73,7 +67,7 @@ const AccountActivationConfirmation = () => {
       ) : (
         <div className="mt-12 w-16">
           <Space align="center" direction="vertical">
-            <Alert showIcon message="Token Expired" type="error" />
+            <Alert showIcon message={t('label.token-expired')} type="error" />
             <div className="mt-12">
               <Typography.Link underline>
                 {t('label.regenerate-registration-token')}

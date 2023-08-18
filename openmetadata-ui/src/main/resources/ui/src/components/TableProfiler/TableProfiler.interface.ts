@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
   Column,
   ColumnProfilerConfig,
   PartitionProfilerConfig,
   ProfileSampleType,
+  Table,
   TableProfile,
   TableProfilerConfig,
 } from '../../generated/entity/data/table';
@@ -26,8 +27,8 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 
 export interface TableProfilerProps {
   isTableDeleted?: boolean;
-  tableFqn: string;
   permissions: OperationPermission;
+  testSuite?: Table['testSuite'];
 }
 
 export type TableTestsType = {
@@ -51,6 +52,7 @@ export interface ColumnProfileTableProps {
   columns: Column[];
   hasEditAccess: boolean;
   columnTests: TestCase[];
+  dateRangeObject: DateRangeObject;
 }
 
 export interface ProfilerProgressWidgetProps {
@@ -82,7 +84,9 @@ export type TableProfilerData = {
 };
 
 export type TableProfilerChartProps = {
-  selectedTimeRange: keyof typeof PROFILER_FILTER_RANGE;
+  dateRangeObject: DateRangeObject;
+  entityFqn?: string;
+  showOperationGraph?: boolean;
 };
 
 export interface ProfilerSettingModalState {
@@ -94,4 +98,14 @@ export interface ProfilerSettingModalState {
   enablePartition: boolean;
   partitionData: PartitionProfilerConfig | undefined;
   selectedProfileSampleType: ProfileSampleType | undefined;
+}
+
+export interface ProfilerForm extends PartitionProfilerConfig {
+  profileSample: number | undefined;
+  selectedProfileSampleType: ProfileSampleType | undefined;
+  enablePartition: boolean;
+  profileSampleType: ProfileSampleType | undefined;
+  profileSamplePercentage: number;
+  profileSampleRows: number | undefined;
+  includeColumns: ColumnProfilerConfig[];
 }

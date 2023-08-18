@@ -63,7 +63,7 @@
       "description": "List of SQL Queries associated with table",
       "type": "array",
       "items": {
-        "$ref": "../entity/data/table.json#/definitions/sqlQuery"
+        "$ref": "../api/data/createQuery.json"
       }
     },
     "joins": {

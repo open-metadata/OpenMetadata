@@ -11,38 +11,37 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import Icon from '@ant-design/icons';
+import { Space, Tooltip, Typography } from 'antd';
 import { isEqual } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconTaskClose } from '../../../assets/svg/complete.svg';
+import { ReactComponent as IconTaskOpen } from '../../../assets/svg/in-progress.svg';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import './Badge.less';
 
 const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
   const { t } = useTranslation();
   const isTaskOpen = isEqual(status, ThreadTaskStatus.Open);
 
-  const popoverContent = isTaskOpen
+  const tooltipContent = isTaskOpen
     ? `${t('label.status')}: ${t('label.open-lowercase')}`
     : `${t('label.status')}: ${t('label.closed-lowercase')}`;
 
   return (
-    <Popover
-      align={{ targetOffset: [0, -15] }}
-      content={popoverContent}
-      overlayClassName="ant-popover-task-status"
-      trigger="hover"
-      zIndex={9999}>
-      <span className="tw-px-2 tw-absolute tw-left-4 tw--top-3 tw-flex task-badge">
-        <SVGIcons
+    <Tooltip align={{ targetOffset: [0, -15] }} title={tooltipContent}>
+      <Space align="center" className="task-badge" size={4}>
+        <Icon
           alt="task-status"
-          icon={isTaskOpen ? Icons.TASK_OPEN : Icons.TASK_CLOSED}
-          width="12px"
+          component={isTaskOpen ? IconTaskOpen : IconTaskClose}
+          style={{ fontSize: '12px' }}
         />
-        <span className="tw-pl-1">{t('label.task')}</span>
-      </span>
-    </Popover>
+        <Typography.Text className="text-primary">
+          {t('label.task')}
+        </Typography.Text>
+      </Space>
+    </Tooltip>
   );
 };
 

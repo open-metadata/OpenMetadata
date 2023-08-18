@@ -40,6 +40,7 @@ const DeployIngestionLoaderModal = ({
       closable={false}
       data-testid="deploy-modal"
       footer={null}
+      maskClosable={false}
       open={visible}>
       <div className="p-y-lg d-flex flex-col" data-testid="body-text">
         <div className={classNames('ingestion-content relative', className)}>

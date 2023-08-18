@@ -34,7 +34,9 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
   @SuppressWarnings("unused")
   private CatalogOpenIdAuthorizationRequestFilter() {}
 
-  public CatalogOpenIdAuthorizationRequestFilter(AuthenticationConfiguration config, AuthorizerConfiguration conf) {}
+  public CatalogOpenIdAuthorizationRequestFilter(AuthenticationConfiguration config, AuthorizerConfiguration conf) {
+    /* Used in test */
+  }
 
   public void filter(ContainerRequestContext containerRequestContext) {
     if (isHealthEndpoint(containerRequestContext)) {

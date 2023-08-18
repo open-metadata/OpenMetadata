@@ -12,78 +12,43 @@
  */
 
 import { Carousel } from 'antd';
-import { CarouselProps, CarouselRef } from 'antd/lib/carousel';
 import { uniqueId } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { FeaturesCarouselProps } from './FeaturesCarousel.interface';
 
 const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
-  const [isDataChange, setIsDataChange] = useState(false);
-  const sliderRef = useRef<CarouselRef | null>(null);
-
-  const FEATURES_CAROUSEL_SETTINGS = useMemo(
-    () =>
-      ({
-        dots: {
-          className: 'carousel-dots testid-dots-button',
-        },
-        autoplay: true,
-        prefixCls: 'features-carousel',
-        infinite: true,
-        slidesToShow: 1,
-        slidesToScroll: 1,
-        beforeChange: (current: number) => {
-          if (current >= data.length) {
-            setIsDataChange(true);
-          } else {
-            setIsDataChange(false);
-          }
-        },
-        onReInit: () => {
-          if (isDataChange) {
-            setTimeout(() => {
-              sliderRef?.current?.goTo(0);
-            }, 200);
-          }
-        },
-      } as CarouselProps),
-    [sliderRef, setIsDataChange, data, isDataChange]
-  );
-
-  useEffect(() => {
-    setIsDataChange(true);
-  }, [data]);
-
   return (
-    <Carousel ref={sliderRef} {...FEATURES_CAROUSEL_SETTINGS}>
-      {data.map((d) => (
-        <div className="tw-px-1" key={uniqueId()}>
-          <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
-          <div className="tw-text-sm tw-mb-3">
-            <RichTextEditorPreviewer
-              enableSeeMoreVariant={false}
-              markdown={d.description}
-            />
+    <div className="feature-carousal-container">
+      <Carousel autoplay dots autoplaySpeed={3000} easing="ease-in-out">
+        {data.map((d) => (
+          <div className="p-x-xss" key={uniqueId()}>
+            <p className="text-sm font-medium mb-2">{d.title}</p>
+            <div className="text-sm m-b-xs">
+              <RichTextEditorPreviewer
+                enableSeeMoreVariant={false}
+                markdown={d.description}
+              />
+            </div>
+            <div>
+              {d.path ? (
+                d.isImage ? (
+                  <img alt="feature" className="w-full" src={d.path} />
+                ) : (
+                  <iframe
+                    allowFullScreen
+                    className="w-full"
+                    frameBorder={0}
+                    height={457}
+                    src={d.path}
+                  />
+                )
+              ) : null}
+            </div>
           </div>
-          <div>
-            {d.path ? (
-              d.isImage ? (
-                <img alt="feature" className="tw-w-full" src={d.path} />
-              ) : (
-                <iframe
-                  allowFullScreen
-                  className="tw-w-full"
-                  frameBorder={0}
-                  height={457}
-                  src={d.path}
-                />
-              )
-            ) : null}
-          </div>
-        </div>
-      ))}
-    </Carousel>
+        ))}
+      </Carousel>
+    </div>
   );
 };
 

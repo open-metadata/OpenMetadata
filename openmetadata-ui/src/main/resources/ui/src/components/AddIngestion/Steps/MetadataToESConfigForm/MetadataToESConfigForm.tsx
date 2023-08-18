@@ -11,109 +11,80 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Divider, Form, Input, Row, Select } from 'antd';
+import { AddIngestionState } from 'components/AddIngestion/addIngestion.interface';
 import {
-  Button,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Switch,
-  Typography,
-} from 'antd';
-import React from 'react';
+  ELASTIC_SEARCH_INITIAL_VALUES,
+  RECREATE_INDEX_OPTIONS,
+  RE_INDEX_LANG_OPTIONS,
+} from 'constants/elasticsearch.constant';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import EsConfigFieldLabel from './EsConfigFieldLabel.component';
+import { Pipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import './MetadataToESConfigForm.less';
 
 interface Props {
-  handleMetadataToESConfig: (data: ConfigClass) => void;
+  data: AddIngestionState;
+  handleMetadataToESConfig: (data: Pipeline) => void;
   handlePrev: () => void;
   handleNext: () => void;
+  onFocus: (fieldId: string) => void;
 }
 
-const { Text } = Typography;
+const { Item } = Form;
 
 const MetadataToESConfigForm = ({
   handleMetadataToESConfig,
   handlePrev,
   handleNext,
+  onFocus,
+  data,
 }: Props) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
-  const handleSubmit = (values: ConfigClass) => {
+  const handleSubmit = (values: Pipeline) => {
     handleMetadataToESConfig({
       ...values,
     });
     handleNext();
   };
 
+  const initialValues = useMemo(
+    () => ({
+      recreateIndex:
+        data.metadataToESConfig?.recreateIndex ??
+        ELASTIC_SEARCH_INITIAL_VALUES.recreateIndexPipeline,
+      searchIndexMappingLanguage:
+        data.metadataToESConfig?.searchIndexMappingLanguage ??
+        ELASTIC_SEARCH_INITIAL_VALUES.searchIndexMappingLanguage,
+      batchSize:
+        data.metadataToESConfig?.batchSize ??
+        ELASTIC_SEARCH_INITIAL_VALUES.batchSize,
+    }),
+    [data]
+  );
+
   return (
     <Form
       className="metadata-to-es-config-form"
+      form={form}
+      initialValues={initialValues}
       layout="vertical"
-      onFinish={handleSubmit}>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-ca-certs-description')}
-            label={t('label.ca-certs')}
-          />
-        }
-        name="caCerts">
-        <Input />
-      </Form.Item>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-region-name-description')}
-            label={t('label.region-name')}
-          />
-        }
-        name="regionName">
-        <Input />
-      </Form.Item>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-timeout-description')}
-            label={t('label.timeout')}
-          />
-        }
-        name="timeout">
-        <Input type="number" />
-      </Form.Item>
-      <Divider />
-      <Form.Item
-        className="switch-item"
-        label={t('label.use-aws-credential-plural')}
-        name="useAwsCredentials">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-use-aws-credentials-description')}
-      </Text>
-      <Divider />
-      <Form.Item
-        className="switch-item"
-        label={t('label.use-ssl')}
-        name="useSSL">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-use-ssl-description')}
-      </Text>
-      <Divider />
-      <Form.Item
-        className="switch-item"
-        label={t('label.verify-cert-plural')}
-        name="verifyCerts">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-verify-certs-description')}
-      </Text>
+      onFinish={handleSubmit}
+      onFocus={(e) => onFocus(e.target.id)}>
+      <Item label={t('label.batch-size')} name="batchSize">
+        <Input id="root/batchSize" type="number" />
+      </Item>
+      <Item label={t('label.language')} name="searchIndexMappingLanguage">
+        <Select
+          id="root/searchIndexMappingLanguage"
+          options={RE_INDEX_LANG_OPTIONS}
+        />
+      </Item>
+      <Item label={t('label.recreate-index-plural')} name="recreateIndex">
+        <Select id="root/recreateIndex" options={RECREATE_INDEX_OPTIONS} />
+      </Item>
       <Divider />
       <Row justify="end">
         <Col>

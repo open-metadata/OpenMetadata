@@ -15,42 +15,42 @@ import textwrap
 
 WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX_MAPPING = textwrap.dedent(
     """
-    {
-        "mappings": {
-            "properties": {
-                "timestamp": {
-                    "type": "date"
-                },
-                "reportDataType": {
-                    "type": "keyword"
-                },
-                "data": {
-                    "properties": {
-                        "entityType": {
-                            "type": "keyword"
-                        },
-                        "entityHref": {
-                            "type": "keyword"
-                        },
-                        "entityTier": {
-                            "type": "keyword"
-                        },
-                        "entityFqn": {
-                            "type": "keyword"
-                        },
-                        "owner": {
-                            "type": "keyword"
-                        },
-                        "ownerId": {
-                            "type": "text"
-                        },
-                        "views": {
-                            "type": "integer"
-                        }
-                    }
-                }
-            }
+{
+  "mappings": {
+    "properties": {
+      "timestamp": {
+        "type": "date"
+      },
+      "reportDataType": {
+        "type": "keyword"
+      },
+      "data": {
+        "properties": {
+          "entityType": {
+            "type": "keyword"
+          },
+          "entityTier": {
+            "type": "keyword"
+          },
+          "entityFqn": {
+            "type": "keyword"
+          },
+          "entityHref": {
+            "type": "keyword"
+        },
+          "owner": {
+            "type": "keyword"
+          },
+          "ownerId": {
+            "type": "text"
+          },
+          "views": {
+            "type": "integer"
+          }
         }
+      }
     }
+  }
+}
     """
 )

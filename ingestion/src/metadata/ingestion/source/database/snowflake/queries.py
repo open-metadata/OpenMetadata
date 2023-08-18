@@ -46,11 +46,32 @@ SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
 )
 
 SNOWFLAKE_GET_TABLE_NAMES = """
-select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+"""
+
+SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' AND TABLE_TYPE = 'EXTERNAL TABLE'
+"""
+
+
+SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' 
+AND TABLE_TYPE = 'BASE TABLE' 
+AND IS_TRANSIENT != 'YES'
 """
 
 SNOWFLAKE_GET_VIEW_NAMES = """
-select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
+"""
+SNOWFLAKE_GET_TRANSIENT_NAMES = """
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' 
+AND TABLE_TYPE = 'BASE TABLE' 
+AND IS_TRANSIENT = 'YES'
 """
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
@@ -73,3 +94,55 @@ SNOWFLAKE_GET_CLUSTER_KEY = """
   where  TABLE_TYPE = 'BASE TABLE'
   and CLUSTERING_KEY is not null
 """
+
+
+SNOWFLAKE_GET_SCHEMA_COMMENTS = """
+SELECT 
+      catalog_name DATABASE_NAME,
+      SCHEMA_NAME,
+      COMMENT 
+FROM information_schema.schemata
+"""
+
+
+SNOWFLAKE_GET_DATABASE_COMMENTS = """
+select DATABASE_NAME,COMMENT from information_schema.databases
+"""
+
+SNOWFLAKE_TEST_FETCH_TAG = """
+select TAG_NAME from snowflake.account_usage.tag_references limit 1
+"""
+
+SNOWFLAKE_TEST_GET_QUERIES = """
+SELECT query_text from snowflake.account_usage.query_history limit 1
+"""
+
+SNOWFLAKE_TEST_GET_TABLES = """
+SELECT TABLE_NAME FROM information_schema.tables LIMIT 1 
+"""
+
+SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
+
+
+SNOWFLAKE_GET_SCHEMA_COLUMNS = """
+SELECT /* sqlalchemy:_get_schema_columns */
+        ic.table_name,
+        ic.column_name,
+        ic.data_type,
+        ic.character_maximum_length,
+        ic.numeric_precision,
+        ic.numeric_scale,
+        ic.is_nullable,
+        ic.column_default,
+        ic.is_identity,
+        ic.comment,
+        ic.identity_start,
+        ic.identity_increment
+    FROM information_schema.columns ic
+    WHERE ic.table_schema=:table_schema
+    ORDER BY ic.ordinal_position
+"""
+
+SNOWFLAKE_GET_CURRENT_REGION = "SELECT CURRENT_REGION() AS region"
+
+SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT() AS account"

@@ -13,27 +13,33 @@
 
 package org.openmetadata.service.resources.system;
 
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import org.openmetadata.api.configuration.ApplicationConfiguration;
+import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.airflow.AirflowConfigurationForAPI;
+import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.sandbox.SandboxConfiguration;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Path("/v1/system/config")
-@Api(value = "System configuration APIs")
+@Tag(name = "System", description = "APIs related to System configuration and settings.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
@@ -53,7 +59,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthConfiguration",
       summary = "Get auth configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -67,8 +72,37 @@ public class ConfigResource {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
       authenticationConfiguration = openMetadataApplicationConfig.getAuthenticationConfiguration();
+      // Remove Ldap Configuration
+      authenticationConfiguration.setLdapConfiguration(null);
+
+      if (authenticationConfiguration.getSamlConfiguration() != null) {
+        // Remove Saml Fields
+        SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
+        ssoClientConfig.setIdp(
+            new IdentityProviderConfig()
+                .withAuthorityUrl(authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
+        authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
+      }
     }
     return authenticationConfiguration;
+  }
+
+  @GET
+  @Path(("/customLogoConfiguration"))
+  @Operation(
+      operationId = "getCustomLogoConfiguration",
+      summary = "Get Custom Logo configuration",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Logo Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
+      })
+  public LogoConfiguration getCustomLogoConfig() {
+    return SettingsCache.getSetting(SettingsType.CUSTOM_LOGO_CONFIGURATION, LogoConfiguration.class);
   }
 
   @GET
@@ -76,7 +110,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthorizerConfig",
       summary = "Get authorizer configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -95,55 +128,28 @@ public class ConfigResource {
   }
 
   @GET
-  @Path(("/sandbox"))
+  @Path(("/applicationConfig"))
   @Operation(
-      operationId = "getSandboxConfiguration",
-      summary = "Get sandbox mode",
-      tags = "system",
+      operationId = "getApplicationConfiguration",
+      summary = "Get application configuration",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Sandbox mode",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = SandboxConfiguration.class)))
-      })
-  public SandboxConfiguration getSandboxMode() {
-    SandboxConfiguration sandboxConfiguration = new SandboxConfiguration();
-    if (openMetadataApplicationConfig.isSandboxModeEnabled()) {
-      sandboxConfiguration.setSandboxModeEnabled(true);
-    }
-    return sandboxConfiguration;
-  }
-
-  @GET
-  @Path(("/slackChat"))
-  @Operation(
-      operationId = "getSlackChatConfiguration",
-      summary = "Get Slack Chat Configuration",
-      tags = "system",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Get Slack Chat Configuration",
+            description = "Get application configuration",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SlackChatConfiguration.class)))
+                    schema = @Schema(implementation = ApplicationConfiguration.class)))
       })
-  public SlackChatConfiguration getSlackChatConfiguration() {
-    SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
-    if (openMetadataApplicationConfig.getSlackChatConfiguration() != null) {
-      slackChatConfiguration = openMetadataApplicationConfig.getSlackChatConfiguration();
-    }
-    return slackChatConfiguration;
+  public ApplicationConfiguration getApplicationConfiguration() {
+    return openMetadataApplicationConfig.getApplicationConfiguration();
   }
 
   @GET
-  @Path(("/airflow"))
+  @Path(("/pipeline-service-client"))
   @Operation(
       operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -151,15 +157,15 @@ public class ConfigResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = AirflowConfigurationForAPI.class)))
+                    schema = @Schema(implementation = PipelineServiceAPIClientConfig.class)))
       })
-  public AirflowConfigurationForAPI getAirflowConfig() {
-    AirflowConfigurationForAPI airflowConfigurationForAPI = new AirflowConfigurationForAPI();
-    if (openMetadataApplicationConfig.getAirflowConfiguration() != null) {
-      airflowConfigurationForAPI.setApiEndpoint(
-          openMetadataApplicationConfig.getAirflowConfiguration().getApiEndpoint());
+  public PipelineServiceAPIClientConfig getPipelineServiceConfig() {
+    PipelineServiceAPIClientConfig pipelineServiceClientConfigForAPI = new PipelineServiceAPIClientConfig();
+    if (openMetadataApplicationConfig.getPipelineServiceClientConfiguration() != null) {
+      pipelineServiceClientConfigForAPI.setApiEndpoint(
+          openMetadataApplicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint());
     }
-    return airflowConfigurationForAPI;
+    return pipelineServiceClientConfigForAPI;
   }
 
   @GET
@@ -167,7 +173,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getJWKSResponse",
       summary = "Get JWKS public key",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",

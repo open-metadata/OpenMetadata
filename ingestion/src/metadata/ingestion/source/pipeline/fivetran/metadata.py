@@ -12,6 +12,7 @@
 Airbyte source to extract metadata
 """
 
+import traceback
 from typing import Iterable, Optional
 
 from pydantic import BaseModel
@@ -34,7 +35,6 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -66,21 +66,13 @@ class FivetranSource(PipelineServiceSource):
     Pipeline metadata from Fivetran's REST API
     """
 
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
-        self.client = FivetranClient(self.service_connection)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: FivetranConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, FivetranConnection):
             raise InvalidSourceException(
-                f"Expected AirbyteConnection, but got {connection}"
+                f"Expected FivetranConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -92,7 +84,6 @@ class FivetranSource(PipelineServiceSource):
             Task(
                 name=pipeline_details.pipeline_name,
                 displayName=pipeline_details.pipeline_display_name,
-                description="",
             )
         ]
 
@@ -104,16 +95,19 @@ class FivetranSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from fivetran
         :return: Create Pipeline request with tasks
         """
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details.pipeline_name,
             displayName=pipeline_details.pipeline_display_name,
-            description="",
-            pipelineUrl="",
             tasks=self.get_connections_jobs(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            sourceUrl=self.get_source_url(
+                connector_id=pipeline_details.source.get("id"),
+                group_id=pipeline_details.group.get("id"),
+                source_name=pipeline_details.source.get("service"),
             ),
         )
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: FivetranPipelineDetails
@@ -124,7 +118,7 @@ class FivetranSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: FivetranPipelineDetails
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[AddLineageRequest]:
         """
         Parse all the stream available in the connection and create a lineage between them
         :param pipeline_details: pipeline_details object from airbyte
@@ -203,3 +197,20 @@ class FivetranSource(PipelineServiceSource):
         Get Pipeline Name
         """
         return pipeline_details.pipeline_name
+
+    def get_source_url(
+        self,
+        connector_id: Optional[str],
+        group_id: Optional[str],
+        source_name: Optional[str],
+    ) -> Optional[str]:
+        try:
+            if connector_id and group_id and source_name:
+                return (
+                    f"https://fivetran.com/dashboard/connectors/{connector_id}/status"
+                    f"?groupId={group_id}&service={source_name}"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url: {exc}")
+        return None

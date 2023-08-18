@@ -54,14 +54,29 @@
       "type": "string"
     },
     "databaseSchema": {
-      "title": "databaseSchema",
-      "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
       "type": "string"
     },
     "duration": {
       "title": "Duration",
       "description": "Clickhouse SQL connection duration.",
       "type": "integer"
+    },
+    "https": {
+      "title": "Use HTTPS Protocol",
+      "description": "Use HTTPS Protocol for connection with clickhouse",
+      "type": "boolean"
+    },
+    "secure": {
+      "title": "Secure Connection",
+      "description": "Establish secure connection with clickhouse",
+      "type": "boolean"
+    },
+    "keyfile": {
+      "title": "Key File Path",
+      "description": "Path to key file for establishing secure connection",
+      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",

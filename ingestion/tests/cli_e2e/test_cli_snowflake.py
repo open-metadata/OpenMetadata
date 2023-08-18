@@ -19,14 +19,29 @@ import pytest
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 
-from .test_cli_db_base import E2EType
-from .test_cli_db_base_common import CliCommonDB
+from .base.e2e_types import E2EType
+from .common.test_cli_db import CliCommonDB
+from .common_e2e_sqa_mixins import SQACommonMethods
 
 
-class SnowflakeCliTest(CliCommonDB.TestSuite):
+class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
     Snowflake CLI Tests
     """
+
+    prepare_snowflake_e2e: List[str] = [
+        "DROP DATABASE IF EXISTS E2E_DB;",
+        "CREATE OR REPLACE DATABASE E2E_DB;",
+        "USE E2E_DB;",
+        "CREATE OR REPLACE SCHEMA e2e_test;",
+        "CREATE OR REPLACE TABLE e2e_test.regions(region_id INT PRIMARY KEY,region_name VARCHAR(25));",
+        "CREATE OR REPLACE TABLE e2e_test.countries(country_id CHAR(2) PRIMARY KEY,country_name VARCHAR (40),region_id INT NOT NULL);",
+        "CREATE OR REPLACE TABLE e2e_test.locations(e2e_testlocation_id INT PRIMARY KEY,e2e_teststreet_address VARCHAR (40),e2e_testpostal_code VARCHAR (12),e2e_testcity VARCHAR (30) NOT NULL,e2e_teststate_province VARCHAR (25),e2e_testcountry_id CHAR (2) NOT NULL);",
+        "CREATE OR REPLACE TABLE e2e_test.jobs(e2e_testjob_id INT PRIMARY KEY,e2e_testjob_title VARCHAR (35) NOT NULL,e2e_testmin_salary DECIMAL (8, 2),e2e_testmax_salary DECIMAL (8, 2));",
+        "CREATE OR REPLACE TABLE e2e_test.test_departments(e2e_testdepartment_id INT PRIMARY KEY,e2e_testdepartment_name VARCHAR (30) NOT NULL,e2e_testlocation_id INT);",
+        "CREATE OR REPLACE TABLE e2e_test.test_employees(e2e_testemployee_id INT PRIMARY KEY,e2e_testfirst_name VARCHAR (20),e2e_testlast_name VARCHAR (25) NOT NULL,e2e_testemail VARCHAR (100) NOT NULL,e2e_testphone_number VARCHAR (20),e2e_testhire_date DATE NOT NULL,e2e_testjob_id INT NOT NULL,e2e_testsalary DECIMAL (8, 2) NOT NULL,e2e_testmanager_id INT,e2e_testdepartment_id INT);",
+        "CREATE OR REPLACE TABLE e2e_test.test_dependents(e2e_testdependent_id INT PRIMARY KEY,e2e_testfirst_name VARCHAR (50) NOT NULL,e2e_testlast_name VARCHAR (50) NOT NULL,e2e_testrelationship VARCHAR (25) NOT NULL,e2e_testemployee_id INT NOT NULL);",
+    ]
 
     create_table_query: str = """
         CREATE TABLE E2E_DB.e2e_test.persons (
@@ -54,6 +69,11 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         DROP VIEW IF EXISTS E2E_DB.e2e_test.view_persons;
     """
 
+    def setUp(self) -> None:
+        with self.engine.connect() as connection:
+            for sql_statements in self.prepare_snowflake_e2e:
+                connection.execute(sql_statements)
+
     @staticmethod
     def get_connector_name() -> str:
         return "snowflake"
@@ -64,7 +84,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 1)
-        self.assertTrue(len(source_status.success) >= self.expected_tables())
+        self.assertTrue(len(source_status.records) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
@@ -82,6 +102,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
             connection.execute(self.drop_view_query)
             connection.execute(self.drop_table_query)
             connection.close()
+
+    def delete_table_rows(self) -> None:
+        SQACommonMethods.run_delete_queries(self)
+
+    def update_table_row(self) -> None:
+        SQACommonMethods.run_update_queries(self)
 
     @pytest.mark.order(2)
     def test_create_table_with_profiler(self) -> None:
@@ -149,3 +175,19 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 6
+
+    @staticmethod
+    def delete_queries() -> List[str]:
+        return [
+            """
+            DELETE FROM E2E_DB.E2E_TEST.PERSONS WHERE full_name = 'Peter Parker'
+            """,
+        ]
+
+    @staticmethod
+    def update_queries() -> List[str]:
+        return [
+            """
+            UPDATE E2E_DB.E2E_TEST.PERSONS SET full_name = 'Bruce Wayne' WHERE full_name = 'Clark Kent'
+            """,
+        ]

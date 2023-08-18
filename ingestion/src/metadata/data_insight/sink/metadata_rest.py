@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger
@@ -42,7 +42,6 @@ class MetadataRestSink(Sink[Entity]):
     """
 
     config: MetadataRestSinkConfig
-    status: SinkStatus
 
     def __init__(
         self,
@@ -52,7 +51,6 @@ class MetadataRestSink(Sink[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SinkStatus()
         self.wrote_something = False
         self.metadata = OpenMetadata(self.metadata_config)
 
@@ -61,9 +59,6 @@ class MetadataRestSink(Sink[Entity]):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def get_status(self) -> SinkStatus:
-        return self.status
-
     def close(self) -> None:
         self.metadata.close()
 
@@ -71,8 +66,8 @@ class MetadataRestSink(Sink[Entity]):
         try:
             if isinstance(record, ReportData):
                 self.metadata.add_data_insight_report_data(record)
-                logger.info(
-                    "Successfully ingested data insight for"
+                logger.debug(
+                    "Successfully ingested data insight for "
                     f"{record.data.__class__.__name__ if record.data else 'Unknown'}"
                 )
                 self.status.records_written(
@@ -80,20 +75,18 @@ class MetadataRestSink(Sink[Entity]):
                 )
             if isinstance(record, KpiResult):
                 self.metadata.add_kpi_result(fqn=record.kpiFqn.__root__, record=record)
-                logger.info(f"Successfully ingested KPI for {record.kpiFqn}")
+                logger.debug(f"Successfully ingested KPI for {record.kpiFqn}")
                 self.status.records_written(f"Data Insight: {record.kpiFqn}")
 
         except APIError as err:
             if isinstance(record, ReportData):
+                name = record.data.__class__.__name__ if record.data else "Unknown"
+                error = f"Failed to sink data insight data for {name} - {err}"
                 logger.debug(traceback.format_exc())
-                logger.error(
-                    "Failed to sink data insight data for "
-                    f"{record.data.__class__.__name__ if record.data else 'Unknown'} - {err}"
-                )
-                self.status.failure(
-                    f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
-                )
+                logger.error(error)
+                self.status.failed(name, error, traceback.format_exc())
             if isinstance(record, KpiResult):
+                error = f"Failed to sink KPI results for {record.kpiFqn} - {err}"
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to sink KPI reasults for {record.kpiFqn} - {err}")
-                self.status.failure(f"KPI Result: {record.kpiFqn}")
+                logger.error(error)
+                self.status.failed(str(record.kpiFqn), error, traceback.format_exc())

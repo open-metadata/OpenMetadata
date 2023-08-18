@@ -73,13 +73,11 @@ class TopologyRunnerMixin(Generic[C]):
             )
 
             for element in node_producer() or []:
-
                 for stage in node.stages:
                     logger.debug(f"Processing stage: {stage}")
 
                     stage_fn = getattr(self, stage.processor)
                     for entity_request in stage_fn(element) or []:
-
                         try:
                             # yield and make sure the data is updated
                             yield from self.sink_request(
@@ -233,7 +231,6 @@ class TopologyRunnerMixin(Generic[C]):
                 self.update_context(key=stage.context, value=entity)
             if stage.context and stage.cache_all:
                 self.append_context(key=stage.context, value=entity)
-            logger.debug(self.context)
 
     def _is_force_overwrite_enabled(self) -> bool:
         return self.metadata.config and self.metadata.config.forceEntityOverwriting

@@ -39,9 +39,9 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.airbyte.client import AirbyteClient
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -72,14 +72,6 @@ class AirbyteSource(PipelineServiceSource):
     Pipeline metadata from Airflow's metadata db
     """
 
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
-        self.client = AirbyteClient(self.service_connection)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -98,8 +90,7 @@ class AirbyteSource(PipelineServiceSource):
             Task(
                 name=connection["connectionId"],
                 displayName=connection["name"],
-                description="",
-                taskUrl=f"{connection_url}/status",
+                sourceUrl=f"{connection_url}/status",
             )
         ]
 
@@ -112,21 +103,21 @@ class AirbyteSource(PipelineServiceSource):
         :return: Create Pipeline request with tasks
         """
         connection_url = (
-            f"/workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"{clean_uri(self.service_connection.hostPort)}/workspaces"
+            f"/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}"
         )
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details.connection.get("connectionId"),
             displayName=pipeline_details.connection.get("name"),
-            description="",
-            pipelineUrl=connection_url,
+            sourceUrl=connection_url,
             tasks=self.get_connections_jobs(
                 pipeline_details.connection, connection_url
             ),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: AirbytePipelineDetails
@@ -147,7 +138,6 @@ class AirbyteSource(PipelineServiceSource):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
-
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.get("connectionId")),

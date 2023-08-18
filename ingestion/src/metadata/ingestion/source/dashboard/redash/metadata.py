@@ -14,9 +14,12 @@ Redash source module
 import traceback
 from typing import Iterable, List, Optional
 
+from packaging import version
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -33,19 +36,34 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
+
+REDASH_TAG_CATEGORY = "RedashTags"
+
+INCOMPATIBLE_REDASH_VERSION = "8.0.0"
 
 
 class RedashSource(DashboardServiceSource):
     """
     Redash Source Class
     """
+
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
+    ):
+        super().__init__(config, metadata_config)
+        self.dashboard_list = []  # We will populate this in `prepare`
+        self.tags = []  # To create the tags before yielding final entities
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -57,12 +75,36 @@ class RedashSource(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
+    def prepare(self):
+        """
+        Fetch the paginated list of dashboards and tags
+        """
+
+        self.dashboard_list = self.client.paginate(self.client.dashboards)
+
+        # Collecting all the tags
+        if self.source_config.includeTags:
+            for dashboard in self.dashboard_list:
+                self.tags.extend(dashboard.get("tags") or [])
+
+    def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
+        """
+        Fetch Dashboard Tags
+        """
+        yield from get_ometa_tag_and_classification(
+            tags=self.tags,
+            classification_name=REDASH_TAG_CATEGORY,
+            tag_description="Redash Tag",
+            classification_desciption="Tags associated with redash entities",
+            include_tags=self.source_config.includeTags,
+        )
+
     def get_dashboards_list(self) -> Optional[List[dict]]:
         """
         Get List of all dashboards
         """
-        dashboard_info = self.client.dashboards()
-        return dashboard_info["results"]
+
+        return self.dashboard_list
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """
@@ -76,6 +118,37 @@ class RedashSource(DashboardServiceSource):
         """
         return self.client.get_dashboard(dashboard["slug"])
 
+    def get_owner_details(self, dashboard_details) -> Optional[EntityReference]:
+        """Get dashboard owner
+
+        Args:
+            dashboard_details:
+        Returns:
+            Optional[EntityReference]
+        """
+        if dashboard_details.get("user") and dashboard_details["user"].get("email"):
+            user = self.metadata.get_user_by_email(
+                dashboard_details["user"].get("email")
+            )
+            if user:
+                return EntityReference(id=user.id.__root__, type="user")
+        return None
+
+    def get_dashboard_url(self, dashboard_details: dict) -> str:
+        if version.parse(self.service_connection.redashVersion) > version.parse(
+            INCOMPATIBLE_REDASH_VERSION
+        ):
+            dashboard_url = (
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
+                f"/{dashboard_details.get('id', '')}"
+            )
+        else:
+            dashboard_url = (
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
+                f"/{dashboard_details.get('slug', '')}"
+            )
+        return dashboard_url
+
     def yield_dashboard(
         self, dashboard_details: dict
     ) -> Iterable[CreateDashboardRequest]:
@@ -84,29 +157,39 @@ class RedashSource(DashboardServiceSource):
         """
         try:
             dashboard_description = ""
-            for widgets in dashboard_details.get("widgets", []):
+            for widgets in dashboard_details.get("widgets") or []:
                 dashboard_description = widgets.get("text")
-            yield CreateDashboardRequest(
+
+            dashboard_request = CreateDashboardRequest(
                 name=dashboard_details["id"],
                 displayName=dashboard_details.get("name"),
                 description=dashboard_description,
                 charts=[
-                    EntityReference(id=chart.id.__root__, type="chart")
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        chart_name=chart.name.__root__,
+                    )
                     for chart in self.context.charts
                 ],
-                service=EntityReference(
-                    id=self.context.dashboard_service.id.__root__,
-                    type="dashboardService",
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                sourceUrl=self.get_dashboard_url(dashboard_details),
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=dashboard_details.get("tags"),
+                    classification_name=REDASH_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
                 ),
-                dashboardUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
             )
-            self.status.scanned(dashboard_details["name"])
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
 
-    def yield_dashboard_lineage_details(
+    def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
@@ -125,7 +208,7 @@ class RedashSource(DashboardServiceSource):
             entity=LineageDashboard,
             fqn=to_fqn,
         )
-        for widgets in dashboard_details.get("widgets", []):
+        for widgets in dashboard_details.get("widgets") or []:
             try:
                 visualization = widgets.get("visualization")
                 if not visualization:
@@ -135,11 +218,15 @@ class RedashSource(DashboardServiceSource):
                     for table in lineage_parser.source_tables:
                         table_name = str(table)
                         database_schema_table = fqn.split_table_name(table_name)
+                        database_schema = database_schema_table.get("database_schema")
+                        database_schema_name = self.check_database_schema_name(
+                            database_schema
+                        )
                         from_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
                             service_name=db_service_name,
-                            schema_name=database_schema_table.get("database_schema"),
+                            schema_name=database_schema_name,
                             table_name=database_schema_table.get("table"),
                             database_name=database_schema_table.get("database"),
                         )
@@ -163,7 +250,7 @@ class RedashSource(DashboardServiceSource):
         """
         Metod to fetch charts linked to dashboard
         """
-        for widgets in dashboard_details.get("widgets", []):
+        for widgets in dashboard_details.get("widgets") or []:
             try:
                 visualization = widgets.get("visualization")
                 chart_display_name = str(
@@ -182,18 +269,13 @@ class RedashSource(DashboardServiceSource):
                     chartType=get_standard_chart_type(
                         visualization["type"] if visualization else ""
                     ),
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
-                    chartUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    sourceUrl=self.get_dashboard_url(dashboard_details),
                     description=visualization["description"] if visualization else "",
                 )
+                self.status.scanned(f"Chart: {chart_display_name}")
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Error to yield dashboard chart for widget_id: {widgets['id']} and {dashboard_details}: {exc}"
                 )
-
-    def close(self):
-        self.client.session.close()

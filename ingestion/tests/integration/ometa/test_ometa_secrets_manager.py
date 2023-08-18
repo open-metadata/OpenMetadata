@@ -8,8 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-from unittest import TestCase
+import os
+from unittest import TestCase, mock
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
@@ -18,7 +18,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
     GoogleSSOClientConfig,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+    SecretsManagerClientLoader,
+)
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
@@ -47,9 +49,7 @@ class OMetaSecretManagerTest(TestCase):
         cls.aws_server_config = OpenMetadataConnection(
             hostPort="http://localhost:8585/api",
             secretsManagerProvider=SecretsManagerProvider.aws,
-            secretsManagerCredentials=AWSCredentials(
-                awsRegion="test", awsSecretAccessKey="test"
-            ),
+            secretsManagerLoader=SecretsManagerClientLoader.noop,
             enableVersionValidation=False,
         )
 
@@ -67,6 +67,7 @@ class OMetaSecretManagerTest(TestCase):
         assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
         assert type(self.metadata._auth_provider) is GoogleAuthenticationProvider
 
+    @mock.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"}, clear=True)
     def test_ometa_with_aws_secret_manager(self):
         self._init_aws_secret_manager()
         assert type(self.metadata.secrets_manager_client) is AWSSecretsManager

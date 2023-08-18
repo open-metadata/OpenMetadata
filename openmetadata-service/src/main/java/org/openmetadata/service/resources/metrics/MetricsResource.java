@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.resources.metrics;
 
-import io.swagger.annotations.Api;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +43,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricsRepository;
@@ -50,35 +53,36 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/metrics")
-@Api(value = "Metrics collection", tags = "Metrics collection")
+@Tag(
+    name = "Metrics (beta)",
+    description =
+        "`Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that "
+            + "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metrics")
 public class MetricsResource extends EntityResource<Metrics, MetricsRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
+  static final String FIELDS = "owner,usageSummary,domain";
 
   public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
     super(Metrics.class, new MetricsRepository(dao), authorizer);
   }
 
   @Override
-  public Metrics addHref(UriInfo uriInfo, Metrics entity) {
-    return entity;
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
   public static class MetricsList extends ResultList<Metrics> {
-    public MetricsList(List<Metrics> data) {
-      super(data);
-    }
+    /* Required for serde */
   }
-
-  static final String FIELDS = "owner,usageSummary";
 
   @GET
   @Operation(
       operationId = "listMetrics",
       summary = "List metrics",
-      tags = "metrics",
       description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
       responses = {
         @ApiResponse(
@@ -100,8 +104,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           String before,
       @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     ListFilter filter = new ListFilter();
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -110,9 +113,8 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "getMetricByID",
-      summary = "Get a metric",
-      tags = "metrics",
-      description = "Get a metric by `id`.",
+      summary = "Get a metric by Id",
+      description = "Get a metric by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -139,11 +141,11 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Override
   @POST
   @Operation(
       operationId = "createMetric",
       summary = "Create a metric",
-      tags = "metrics",
       description = "Create a new metric.",
       responses = {
         @ApiResponse(
@@ -152,17 +154,16 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.create(uriInfo, securityContext, metrics);
   }
 
+  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateMetric",
       summary = "Create or update a metric",
-      tags = "metrics",
       description = "Create a new metric, if it does not exist or update an existing metric.",
       responses = {
         @ApiResponse(
@@ -172,7 +173,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.createOrUpdate(uriInfo, securityContext, metrics);
   }

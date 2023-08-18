@@ -51,7 +51,6 @@
             "jwtToken": "myToken"
         },
         "secretsManagerProvider": "noop",
-        "secretsManagerCredentials": null,
         "apiVersion": "v1",
         "includeTopics": true,
         "includeTables": true,

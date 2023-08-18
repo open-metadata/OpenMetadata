@@ -24,10 +24,14 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
+  mlmodels: 'mlmodels',
   service: 'service',
   user: 'user',
-  terms: 'terms',
-  mlmodels: 'mlmodels',
+  teams: 'teams',
+  testSuite: 'test-suite',
+  containers: 'containers',
+  glossaryTerms: 'glossary-terms',
+  tags: 'tags',
 };
 
 export const SEARCH_INDEX = {
@@ -43,8 +47,8 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
-  testSuiteName: 'critical_metrics_suite',
-  sqlTestCase: 'tableCustomSQLQuery',
+  sqlTestCaseName: 'my_sql_test_case_cypress',
+  sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
 
@@ -54,16 +58,37 @@ export const SEARCH_ENTITY_TABLE = {
     displayName: 'raw_customer',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
   table_2: {
     term: 'fact_session',
+    displayName: 'fact_session',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
+    entityType: 'Table',
   },
   table_3: {
     term: 'raw_product_catalog',
+    displayName: 'raw_product_catalog',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
+    entityType: 'Table',
+  },
+  table_4: {
+    term: 'dim_address',
+    displayName: 'dim_address',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+    entityType: 'Table',
+  },
+  table_5: {
+    term: 'dim.api/client',
+    displayName: 'dim.api/client',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+    entityType: 'Table',
   },
 };
 
@@ -73,11 +98,13 @@ export const SEARCH_ENTITY_TOPIC = {
     displayName: 'shop_products',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Topic',
   },
   topic_2: {
     term: 'orders',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Topic',
   },
 };
 
@@ -87,11 +114,13 @@ export const SEARCH_ENTITY_DASHBOARD = {
     displayName: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
+    entityType: 'Dashboard',
   },
   dashboard_2: {
     term: 'Unicode Test',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
+    entityType: 'Dashboard',
   },
 };
 
@@ -101,12 +130,14 @@ export const SEARCH_ENTITY_PIPELINE = {
     displayName: 'dim_product etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+    entityType: 'Pipeline',
   },
   pipeline_2: {
-    term: 'dim_location_etl',
-    displayName: 'dim_location etl',
+    term: 'dim_user_etl',
+    displayName: 'dim_user etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+    entityType: 'Pipeline',
   },
 };
 export const SEARCH_ENTITY_MLMODEL = {
@@ -114,24 +145,29 @@ export const SEARCH_ENTITY_MLMODEL = {
     term: 'forecast_sales',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    entityType: 'ML Model',
   },
   mlmodel_2: {
     term: 'eta_predictions',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    displayName: 'ETA Predictions',
+    entityType: 'ML Model',
   },
 };
 
 export const DELETE_ENTITY = {
   table: {
-    term: 'fact_sale',
+    term: 'dim.shop',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Table',
   },
 };
 
@@ -157,22 +193,28 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
+  name: 'table_column_name_to_exist_in_id',
+  label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
   field: 'id',
   description: 'New table test case for TableColumnNameToExist',
 };
 
 export const NEW_COLUMN_TEST_CASE = {
+  name: 'id_column_value_lengths_to_be_between',
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
+  label: 'Column Value Lengths To Be Between',
   min: 3,
   max: 6,
   description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+  name: 'id_column_values_to_be_not_null',
   column: 'id',
   type: 'columnValuesToBeNotNull',
+  label: 'Column Values To Be Not Null',
   description: 'New table test case for columnValuesToBeNotNull',
 };
 
@@ -201,51 +243,69 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
-export const NEW_TAG_CATEGORY = {
-  name: 'TestCategory',
-  description: 'This is the TestCategory',
+export const NEW_CLASSIFICATION = {
+  name: 'CypressClassification',
+  displayName: 'CypressClassification',
+  description: 'This is the CypressClassification',
 };
 export const NEW_TAG = {
-  name: 'test',
-  description: 'This is the Test tag',
+  name: 'CypressTag',
+  displayName: 'CypressTag',
+  renamedName: 'CypressTag-1',
+  fqn: `${NEW_CLASSIFICATION.name}.CypressTag`,
+  description: 'This is the CypressTag',
 };
 
 export const NEW_GLOSSARY = {
-  name: 'Business Glossary',
-  description: 'This is the Business glossary',
+  name: 'Cypress Glossary',
+  description: 'This is the Cypress Glossary',
   reviewer: 'Aaron Johnson',
   tag: 'PII.None',
 };
 export const NEW_GLOSSARY_1 = {
-  name: 'Product Glossary',
-  description: 'This is the Product glossary',
+  name: 'Cypress Product%Glossary',
+  description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   tag: 'PII.None',
 };
 
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
-    name: 'Purchase',
-    description: 'This is the Purchase',
+    name: 'CypressPurchase',
+    description: 'This is the Cypress Purchase',
     synonyms: 'buy,collect,acquire',
+    fullyQualifiedName: 'Cypress Glossary.CypressPurchase',
   },
   term_2: {
-    name: 'Sales',
-    description: 'This is the Sales',
+    name: 'CypressSales',
+    description: 'This is the Cypress Sales',
     synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Cypress Glossary.CypressSales',
   },
+};
+export const GLOSSARY_TERM_WITH_DETAILS = {
+  name: 'Accounts',
+  description: 'This is the Accounts',
+  tag: 'PersonalData.Personal',
+  synonyms: 'book,ledger,results',
+  relatedTerms: 'CypressSales',
+  reviewer: 'Colin Ho',
+  inheritedReviewer: 'Aaron Johnson',
+  fullyQualifiedName: 'Cypress Glossary.Accounts',
 };
 
 export const NEW_GLOSSARY_1_TERMS = {
   term_1: {
-    name: 'Features',
+    name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
+    fullyQualifiedName: 'Cypress Product%Glossary.Features%Term',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
+    fullyQualifiedName: 'Cypress Product%Glossary.Uses',
   },
 };
 
@@ -253,15 +313,16 @@ export const service = {
   name: 'Glue',
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
-  Owner: 'admin',
+  Owner: 'Aaron Johnson',
 };
 
 export const SERVICE_TYPE = {
   Database: 'Database',
   Messaging: 'Messaging',
   Dashboard: 'Dashboard',
-  Pipelines: 'Pipelines',
+  Pipeline: 'Pipeline',
   MLModels: 'ML Models',
+  Storage: 'Storage',
 };
 
 export const ENTITIES = {
@@ -301,7 +362,7 @@ export const ENTITIES = {
 };
 
 export const LOGIN = {
-  username: 'admin@openmetadata.org',
+  username: 'admin',
   password: 'admin',
 };
 
@@ -325,7 +386,8 @@ export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
-  dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
+  dbtLineageNodeLabel: 'stg_customers',
+  dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
@@ -335,6 +397,8 @@ export const API_SERVICE = {
   messagingServices: 'messagingServices',
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
+  mlmodelServices: 'mlmodelServices',
+  storageServices: 'storageServices',
 };
 
 export const TEST_CASE = {
@@ -364,3 +428,34 @@ export const DESTINATION = {
     url: 'http://localhost:8585',
   },
 };
+
+export const CUSTOM_PROPERTY_INVALID_NAMES = {
+  CAPITAL_CASE: 'CapitalCase',
+  WITH_UNDERSCORE: 'with_underscore',
+  WITH_DOTS: 'with.',
+  WITH_SPACE: 'with ',
+};
+
+export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
+  'Name must start with lower case with no space, underscore, or dots.';
+
+export const TAG_INVALID_NAMES = {
+  MIN_LENGTH: 'c',
+  MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const GLOSSARY_INVALID_NAMES = {
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const NAME_VALIDATION_ERROR =
+  'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
+
+export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
+  'Name size must be between 2 and 64';
+
+export const GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR =
+  'Name can be a maximum of 128 characters';

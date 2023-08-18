@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -20,9 +19,8 @@ public class ReportDataRepository {
   }
 
   @Transaction
-  public Response addReportData(ReportData reportData) throws IOException {
+  public Response addReportData(ReportData reportData) {
     reportData.setId(UUID.randomUUID());
-
     daoCollection
         .entityExtensionTimeSeriesDao()
         .insert(
@@ -34,8 +32,7 @@ public class ReportDataRepository {
     return Response.ok(reportData).build();
   }
 
-  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs)
-      throws IOException {
+  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs) {
     List<ReportData> reportData;
     reportData =
         JsonUtils.readObjects(

@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CSVImportResult } from 'generated/type/csvImportResult';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -93,6 +94,17 @@ export const getGlossariesByName = async (
   return response.data;
 };
 
+export const getGlossariesById = async (
+  id: string,
+  arrQueryFields?: string | string[]
+) => {
+  const url = getURLWithQueryFields(`/glossaries/${id}`, arrQueryFields);
+
+  const response = await APIClient.get<Glossary>(url);
+
+  return response.data;
+};
+
 export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
     '/glossaryTerms',
@@ -104,16 +116,18 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
-export const getGlossaryTermsById = (
+export const getGlossaryTermsById = async (
   glossaryTermId = '',
   arrQueryFields = ''
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields(
     `/glossaryTerms/${glossaryTermId}`,
     arrQueryFields
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<GlossaryTerm>(url);
+
+  return response.data;
 };
 
 export const getGlossaryTermByFQN = async (
@@ -121,7 +135,7 @@ export const getGlossaryTermByFQN = async (
   arrQueryFields: string | string[] = ''
 ) => {
   const url = getURLWithQueryFields(
-    `/glossaryTerms/name/${glossaryTermFQN}`,
+    `/glossaryTerms/name/${encodeURIComponent(glossaryTermFQN)}`,
     arrQueryFields
   );
 
@@ -179,10 +193,43 @@ export const importGlossaryInCSVFormat = async (
     headers: { 'Content-type': 'text/plain' },
   };
   const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/glossaries/name/${glossaryName}/import?dryRun=${dryRun}`,
+    `/glossaries/name/${encodeURIComponent(
+      glossaryName
+    )}/import?dryRun=${dryRun}`,
     data,
     configOptions
   );
+
+  return response.data;
+};
+
+export const getGlossaryVersionsList = async (id: string) => {
+  const url = `/glossaries/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getGlossaryVersion = async (id: string, version: string) => {
+  const url = `/glossaries/${id}/versions/${version}`;
+  const response = await APIClient.get<Glossary>(url);
+
+  return response.data;
+};
+
+export const getGlossaryTermsVersionsList = async (id: string) => {
+  const url = `/glossaryTerms/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getGlossaryTermsVersion = async (id: string, version: string) => {
+  const url = `/glossaryTerms/${id}/versions/${version}`;
+
+  const response = await APIClient.get<GlossaryTerm>(url);
 
   return response.data;
 };

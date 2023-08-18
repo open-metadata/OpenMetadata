@@ -8,11 +8,12 @@
   "definitions": {
     "searchIndexMappingLanguage": {
       "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
-      "description": "This schema defines the language options available for search index mappigns.",
+      "description": "This schema defines the language options available for search index mappings.",
       "type": "string",
       "enum": [
         "EN",
-        "JP"
+        "JP",
+        "ZH"
       ],
       "default": "EN"
     }
@@ -56,6 +57,10 @@
       "type": "integer",
       "default": 60
     },
+    "keepAliveTimeoutSecs": {
+      "description": "Keep Alive Timeout in Seconds",
+      "type": "integer"
+    },
     "batchSize": {
       "description": "Batch Size for Requests",
       "type": "integer",
@@ -63,6 +68,15 @@
     },
     "searchIndexMappingLanguage": {
       "$ref": "#/definitions/searchIndexMappingLanguage"
+    },
+    "searchType": {
+      "description": "This enum defines the search Type elastic/open search.",
+      "type": "string",
+      "enum": [
+        "elasticsearch",
+        "opensearch"
+      ],
+      "default": "elasticsearch"
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],

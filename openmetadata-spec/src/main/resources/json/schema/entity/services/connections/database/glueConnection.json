@@ -24,9 +24,9 @@
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
     },
-    "storageServiceName": {
-      "title": "Storage Service Name",
-      "description": "AWS storageServiceName Name.",
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
     },
     "connectionOptions": {
@@ -46,5 +46,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["awsConfig", "storageServiceName"]
+  "required": ["awsConfig"]
 }

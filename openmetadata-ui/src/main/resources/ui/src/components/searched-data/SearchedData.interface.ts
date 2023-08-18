@@ -11,20 +11,27 @@
  *  limitations under the License.
  */
 
+import Qs from 'qs';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
+  ContainerSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
+  GlossarySearchSource,
   MlmodelSearchSource,
+  PipelineSearchSource,
+  QuerySearchSource,
   SearchHitBody,
   TableSearchSource,
+  TagClassSearchSource,
+  TeamSearchSource,
+  TestCaseSearchSource,
+  TopicSearchSource,
+  UserSearchSource,
 } from '../../interface/search.interface';
-import {
-  EntityDetailsType,
-  ExploreSearchIndex,
-} from '../Explore/explore.interface';
+import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 type Fields =
   | 'name'
@@ -32,18 +39,30 @@ type Fields =
   | 'description'
   | 'serviceType'
   | 'displayName'
-  | 'deleted';
+  | 'deleted'
+  | 'service';
 
 export type SourceType = (
   | Pick<
       TableSearchSource,
       Fields | 'usageSummary' | 'database' | 'databaseSchema' | 'tableType'
     >
+  | Pick<TopicSearchSource, Fields>
+  | Pick<ContainerSearchSource, Fields>
+  | Pick<PipelineSearchSource, Fields>
   | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
   | Pick<
       Exclude<
         ExploreSearchSource,
-        TableSearchSource | DashboardSearchSource | MlmodelSearchSource
+        | TableSearchSource
+        | DashboardSearchSource
+        | MlmodelSearchSource
+        | GlossarySearchSource
+        | TagClassSearchSource
+        | QuerySearchSource
+        | UserSearchSource
+        | TeamSearchSource
+        | TestCaseSearchSource
       >,
       Fields
     >
@@ -51,6 +70,7 @@ export type SourceType = (
   id: string;
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
+  entityType?: string;
   owner?: Partial<
     Pick<
       EntityReference,
@@ -63,19 +83,18 @@ export interface SearchedDataProps {
   children?: ReactNode;
   selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
-  currentPage: number;
   isLoading?: boolean;
-  paginate: (value: string | number) => void;
+  onPaginationChange: (value: number, pageSize?: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
-  searchText?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
-    details: EntityDetailsType,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
+  filter?: Qs.ParsedQs;
 }

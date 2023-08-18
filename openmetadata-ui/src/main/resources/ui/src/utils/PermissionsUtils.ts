@@ -124,3 +124,5 @@ export const DEFAULT_ENTITY_PERMISSION = {
 } as OperationPermission;
 
 export const LIST_CAP = 1;
+
+export const ALL_TYPE_RESOURCE_LIST = ['all', 'All'];

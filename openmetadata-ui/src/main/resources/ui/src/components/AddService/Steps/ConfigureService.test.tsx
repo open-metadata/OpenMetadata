@@ -11,83 +11,63 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  fireEvent,
-  render,
-} from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
 import ConfigureService from './ConfigureService';
 import { ConfigureServiceProps } from './Steps.interface';
 
 const mockConfigureServiceProps: ConfigureServiceProps = {
   serviceName: 'testService',
-  description: '',
-  showError: {
-    name: false,
-    duplicateName: false,
-    nameWithSpace: false,
-    delimit: false,
-    specialChar: false,
-    nameLength: false,
-    allowChar: false,
-  },
-  handleValidation: jest.fn(),
   onBack: jest.fn(),
   onNext: jest.fn(),
 };
 
-jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
-  return forwardRef(
-    jest.fn().mockImplementation(({ initialValue }) => {
-      return (
-        <div
-          ref={(input) => {
-            return {
-              getEditorContent: input,
-            };
-          }}>
-          {initialValue}RichTextEditor.component
-        </div>
-      );
-    })
-  );
-});
-
 describe('Test ConfigureService component', () => {
   it('ConfigureService component should render', async () => {
-    const { container } = render(
-      <ConfigureService {...mockConfigureServiceProps} />
-    );
+    render(<ConfigureService {...mockConfigureServiceProps} />);
 
-    const configureServiceContainer = await findByTestId(
-      container,
+    const configureServiceContainer = screen.getByTestId(
       'configure-service-container'
     );
-    const serviceName = await findByTestId(container, 'service-name');
-    const backButton = await findByTestId(container, 'back-button');
-    const nextButton = await findByTestId(container, 'next-button');
-    const richTextEditor = await findByText(
-      container,
-      'RichTextEditor.component'
-    );
-
-    fireEvent.change(serviceName, {
-      target: {
-        value: 'newName',
-      },
-    });
-    fireEvent.click(backButton);
-    fireEvent.click(nextButton);
+    const serviceName = screen.getByTestId('service-name');
+    const backButton = screen.getByTestId('back-button');
+    const nextButton = screen.getByTestId('next-button');
+    const richTextEditor = screen.getByTestId('editor');
 
     expect(configureServiceContainer).toBeInTheDocument();
     expect(richTextEditor).toBeInTheDocument();
     expect(serviceName).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(mockConfigureServiceProps.handleValidation).toHaveBeenCalled();
+  });
+
+  it('Back button should work', () => {
+    render(<ConfigureService {...mockConfigureServiceProps} />);
+    const backButton = screen.getByTestId('back-button');
+
+    userEvent.click(backButton);
+
     expect(mockConfigureServiceProps.onBack).toHaveBeenCalled();
+  });
+
+  it('Next button should work', async () => {
+    render(<ConfigureService {...mockConfigureServiceProps} />);
+    const serviceName = screen.getByTestId('service-name');
+    const nextButton = screen.getByTestId('next-button');
+
+    userEvent.type(serviceName, 'newName');
+
+    await act(async () => {
+      userEvent.click(nextButton);
+    });
+
+    expect(serviceName).toHaveValue('newName');
+
     expect(mockConfigureServiceProps.onNext).toHaveBeenCalled();
+    expect(mockConfigureServiceProps.onNext).toHaveBeenCalledWith({
+      description: '',
+      serviceName: 'newName',
+    });
   });
 });

@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.topics;
 
-import com.google.inject.Inject;
-import io.swagger.annotations.Api;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,7 +23,8 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -61,43 +62,47 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/topics")
-@Api(value = "Topic data asset collection", tags = "Topic data asset collection")
+@Tag(
+    name = "Topics",
+    description =
+        "A `Topic` is a feed or an event stream in a `Messaging Service` "
+            + "into which publishers publish messages and consumed by consumers.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
+  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts";
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
-    Entity.withHref(uriInfo, topic.getOwner());
+    super.addHref(uriInfo, topic);
     Entity.withHref(uriInfo, topic.getService());
-    Entity.withHref(uriInfo, topic.getFollowers());
     return topic;
   }
 
-  @Inject
   public TopicResource(CollectionDAO dao, Authorizer authorizer) {
     super(Topic.class, new TopicRepository(dao), authorizer);
   }
 
-  public static class TopicList extends ResultList<Topic> {
-    @SuppressWarnings("unused")
-    public TopicList() {
-      // Empty constructor needed for deserialization
-    }
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
+    return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
   }
 
-  static final String FIELDS = "owner,followers,tags,sampleData,extension";
+  public static class TopicList extends ResultList<Topic> {
+    /* Required for serde */
+  }
 
   @GET
   @Operation(
       operationId = "listTopics",
       summary = "List topics",
-      tags = "topics",
       description =
           "Get a list of topics, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -138,8 +143,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -149,7 +153,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "listAllTopicVersion",
       summary = "List topic versions",
-      tags = "topics",
       description = "Get a list of all the versions of a topic identified by `id`",
       responses = {
         @ApiResponse(
@@ -160,16 +163,14 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a topic",
-      tags = "topics",
+      summary = "Get a topic by id",
       description = "Get a topic by `id`.",
       responses = {
         @ApiResponse(
@@ -192,8 +193,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -201,8 +201,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getTopicByFQN",
-      summary = "Get a topic by name",
-      tags = "topics",
+      summary = "Get a topic by fully qualified name",
       description = "Get a topic by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -226,8 +225,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -236,7 +234,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "getSpecificTopicVersion",
       summary = "Get a version of the topic",
-      tags = "topics",
       description = "Get a version of the topic by given `id`",
       responses = {
         @ApiResponse(
@@ -255,8 +252,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               description = "Topic version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -264,7 +260,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "createTopic",
       summary = "Create a topic",
-      tags = "topics",
       description = "Create a topic under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -273,8 +268,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
-      throws IOException {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create) {
     Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, topic);
   }
@@ -284,7 +279,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "patchTopic",
       summary = "Update a topic",
-      tags = "topics",
       description = "Update an existing topic using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -300,8 +294,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -309,7 +302,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "createOrUpdateTopic",
       summary = "Update topic",
-      tags = "topics",
       description = "Create a topic, it it does not exist or update an existing topic.",
       responses = {
         @ApiResponse(
@@ -318,8 +310,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create) {
     Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, topic);
   }
@@ -329,7 +320,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "addSampleData",
       summary = "Add sample data",
-      tags = "topics",
       description = "Add sample data to the topic.",
       responses = {
         @ApiResponse(
@@ -341,11 +331,35 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TopicSampleData sampleData)
-      throws IOException {
+      @Valid TopicSampleData sampleData) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Topic topic = dao.addSampleData(id, sampleData);
+    Topic topic = repository.addSampleData(id, sampleData);
+    return addHref(uriInfo, topic);
+  }
+
+  @GET
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "getSampleData",
+      summary = "Get sample data",
+      description = "Get sample data from the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully obtained the Topic",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
+      })
+  public Topic getSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    Topic topic = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, topic);
   }
 
@@ -354,7 +368,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      tags = "topics",
       description = "Add a user identified by `userId` as followed of this topic",
       responses = {
         @ApiResponse(
@@ -367,16 +380,14 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
-      throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
       summary = "Remove a follower",
-      tags = "topics",
       description = "Remove the user identified `userId` as a follower of the topic.",
       responses = {
         @ApiResponse(
@@ -390,17 +401,17 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
           @PathParam("userId")
-          String userId)
-      throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId)).toResponse();
+          String userId) {
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteTopic",
-      summary = "Delete a topic",
-      tags = "topics",
+      summary = "Delete a topic by id",
       description = "Delete a topic by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -413,8 +424,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -422,8 +432,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTopicByFQN",
-      summary = "Delete a topic",
-      tags = "topics",
+      summary = "Delete a topic by fully qualified name",
       description = "Delete a topic by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -437,8 +446,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the topic", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -446,8 +454,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted topic.",
-      tags = "topics",
+      summary = "Restore a soft deleted topic",
       description = "Restore a soft deleted topic.",
       responses = {
         @ApiResponse(
@@ -456,14 +463,13 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
       })
   public Response restoreTopic(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Topic getTopic(CreateTopic create, String user) throws IOException {
+  private Topic getTopic(CreateTopic create, String user) {
     return copy(new Topic(), create, user)
-        .withService(create.getService())
+        .withService(getEntityReference(Entity.MESSAGING_SERVICE, create.getService()))
         .withPartitions(create.getPartitions())
         .withMessageSchema(create.getMessageSchema())
         .withCleanupPolicies(create.getCleanupPolicies())
@@ -473,6 +479,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
+        .withSourceUrl(create.getSourceUrl())
         .withTags(create.getTags());
   }
 }

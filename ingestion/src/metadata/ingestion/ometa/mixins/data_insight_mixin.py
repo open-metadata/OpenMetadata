@@ -44,7 +44,7 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.post("/analytic/reportData", record.json())
+        resp = self.client.post("/analytics/dataInsights/data", record.json())
 
         return resp
 
@@ -66,7 +66,7 @@ class DataInsightMixin:
     ) -> List[WebAnalyticEventData]:
         """Get web analytic event"""
 
-        resp = self.client.put("/analytics/webAnalyticEvent/collect", event_data.json())
+        resp = self.client.put("/analytics/web/events/collect", event_data.json())
 
         return resp
 
@@ -85,7 +85,7 @@ class DataInsightMixin:
         """
 
         resp = self.client.get(
-            "/analytic/reportData",
+            "/analytics/dataInsights/data",
             {"startTs": start_ts, "endTs": end_ts, "reportDataType": report_data_type},
         )
 
@@ -123,7 +123,7 @@ class DataInsightMixin:
             request_params = {**request_params, **params}
 
         resp = self.client.get(
-            "/dataInsight/aggregate",
+            "/analytics/dataInsights/charts/aggregate",
             request_params,
         )
 
@@ -159,7 +159,7 @@ class DataInsightMixin:
 
         params = {"eventType": event_type_value, "startTs": start_ts, "endTs": end_ts}
 
-        resp = self.client.get("/analytics/webAnalyticEvent/collect", params)
+        resp = self.client.get("/analytics/web/events/collect", params)
 
         return [WebAnalyticEventData(**data) for data in resp["data"]]
 
@@ -173,6 +173,4 @@ class DataInsightMixin:
             tmsp (int): timestamp
         """
         event_type_value = event_type.value
-        self.client.delete(
-            f"/analytics/webAnalyticEvent/{event_type_value}/{tmsp}/collect"
-        )
+        self.client.delete(f"/analytics/web/events/{event_type_value}/{tmsp}/collect")

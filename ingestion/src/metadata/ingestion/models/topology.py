@@ -39,7 +39,7 @@ class NodeStage(BaseModel, Generic[T]):
     cache_all: bool = (
         False  # If we need to cache all values being yielded in the context
     )
-    clear_cache: bool = False  # If we need to clean cache values  in the context for each produced element
+    clear_cache: bool = False  # If we need to clean cache values in the context for each produced element
     overwrite: bool = True  # If we want to overwrite existing data from OM
     consumer: Optional[
         List[str]

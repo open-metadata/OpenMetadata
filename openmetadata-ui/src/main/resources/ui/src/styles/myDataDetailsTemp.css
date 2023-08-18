@@ -135,13 +135,6 @@
   width: 300px;
 }
 
-.breadcrumb-item + .breadcrumb-item::before {
-  content: '\f101';
-  font-family: 'Font Awesome 5 Free';
-  font-weight: 900;
-  margin-top: 2px;
-}
-
 .sl-box .sl-box-header .sl-title a {
   color: inherit;
 }

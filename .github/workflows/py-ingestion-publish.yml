@@ -26,7 +26,7 @@ jobs:
           python-version: 3.9
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+          sudo apt-get update && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install and Publish PyPi packages
         env:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_INGESTION_USERNAME }}'
@@ -37,6 +37,6 @@ jobs:
           sudo make install_antlr_cli
           make install_dev generate install
           cd ingestion; \
-            python setup.py install sdist bdist_wheel; \
+            python setup.py build sdist bdist_wheel; \
             twine check dist/*; \
             twine upload dist/* --verbose

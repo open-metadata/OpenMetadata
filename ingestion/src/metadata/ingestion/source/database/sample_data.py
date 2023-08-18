@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -11,8 +11,10 @@
 """
 Sample Data source ingestion
 """
+# pylint: disable=too-many-lines,too-many-statements
 import json
 import random
+import string
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -21,32 +23,36 @@ from typing import Any, Dict, Iterable, List, Union
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createSearchIndex import (
+    CreateSearchIndexRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceRequest,
-)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     MlFeature,
@@ -58,8 +64,10 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
     Table,
+    TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
@@ -72,6 +80,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -80,29 +89,29 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import Topic
+from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
+    OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
 )
 from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.database_service import TableLocationLink
 from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import UTF_8
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -113,25 +122,6 @@ KEY_TYPE = "Key type"
 DATA_TYPE = "Data type"
 COL_DESCRIPTION = "Description"
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
-
-
-def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
-    """
-    Get an existing storage service or create a new one based on the config provided
-
-    To be refactored after cleaning Storage Services
-    """
-
-    metadata = OpenMetadata(metadata_config)
-    service: StorageService = metadata.get_by_name(
-        entity=StorageService, fqn=service_json["name"]
-    )
-    if service is not None:
-        return service
-    created_service = metadata.create_or_update(
-        CreateStorageServiceRequest(**service_json)
-    )
-    return created_service
 
 
 class InvalidSampleDataException(Exception):
@@ -155,6 +145,10 @@ def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
         dashboard = metadata.get_by_name(entity=Dashboard, fqn=edge_fqn)
         if dashboard:
             return EntityReference(id=dashboard.id, type="dashboard")
+    if edge["type"] == "dashboardDataModel":
+        data_model = metadata.get_by_name(entity=DashboardDataModel, fqn=edge_fqn)
+        if data_model:
+            return EntityReference(id=data_model.id, type="dashboardDataModel")
     return None
 
 
@@ -167,22 +161,6 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned(  # pylint: disable=arguments-differ
-        self, entity_type: str, entity_name: str
-    ) -> None:
-        self.success.append(entity_name)
-        logger.info(f"{entity_type} Scanned: {entity_name}")
-
-    def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
-        self.warnings.append(entity_name)
-        logger.warning(f"Dropped {entity_type} {entity_type} due to {err}")
-
-
 class SampleDataSource(
     Source[Entity]
 ):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -193,7 +171,6 @@ class SampleDataSource(
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
-        self.status = SampleDataSourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
@@ -207,101 +184,71 @@ class SampleDataSource(
             raise InvalidSampleDataException(
                 "Cannot get sampleDataFolder from connection options"
             )
-
-        self.storage_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/locations/service.json",
-                "r",
-                encoding="utf-8",
-            )
-        )
-        self.locations = json.load(
-            open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/locations/locations.json",
-                "r",
-                encoding="utf-8",
-            )
-        )
-        self.storage_service = get_storage_service_or_create(
-            service_json=self.storage_service_json,
-            metadata_config=metadata_config,
-        )
-        self.glue_storage_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/glue/storage_service.json",
-                "r",
-                encoding="utf-8",
-            )
-        )
         self.glue_database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/database_service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_database = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/database.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_database_schema = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/database_schema.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_tables = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/tables.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_database_service = self.metadata.get_service_or_create(
             entity=DatabaseService,
             config=WorkflowSource(**self.glue_database_service_json),
         )
-        self.glue_storage_service = get_storage_service_or_create(
-            self.glue_storage_service_json,
-            metadata_config,
-        )
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/database.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database_schema = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/database_schema.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.tables = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/tables.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database_service = self.metadata.get_service_or_create(
@@ -312,14 +259,14 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/topics/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.topics = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/topics/topics.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
 
@@ -327,25 +274,63 @@ class SampleDataSource(
             entity=MessagingService, config=WorkflowSource(**self.kafka_service_json)
         )
 
+        with open(
+            sample_data_folder + "/looker/service.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_service = self.metadata.get_service_or_create(
+                entity=DashboardService,
+                config=WorkflowSource(**json.load(file)),
+            )
+
+        with open(
+            sample_data_folder + "/looker/charts.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_charts = json.load(file)
+
+        with open(
+            sample_data_folder + "/looker/dashboards.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_dashboards = json.load(file)
+
+        with open(
+            sample_data_folder + "/looker/dashboardDataModels.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_models = json.load(file)
+
         self.dashboard_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.charts = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/charts.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
+            )
+        )
+        self.data_models = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/dashboards/dashboardDataModels.json",
+                "r",
+                encoding=UTF_8,
             )
         )
         self.dashboards = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/dashboards.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.dashboard_service = self.metadata.get_service_or_create(
@@ -357,14 +342,14 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.pipelines = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/pipelines.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.pipeline_service = self.metadata.get_service_or_create(
@@ -374,75 +359,134 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/lineage/lineage.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.teams = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/teams/teams.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.users = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/users/users.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.model_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.model_service = self.metadata.get_service_or_create(
             entity=MlModelService,
             config=WorkflowSource(**self.model_service_json),
         )
+
+        self.storage_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/storage/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.storage_service = self.metadata.get_service_or_create(
+            entity=StorageService,
+            config=WorkflowSource(**self.storage_service_json),
+        )
+
         self.models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/models.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
+
+        self.containers = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/storage/containers.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
         self.user_entity = {}
         self.table_tests = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/tableTests.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.pipeline_status = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/pipelineStatus.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.profiles = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/profiler/tableProfile.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.tests_suites = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/tests/testSuites.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.tests_case_results = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/tests/testCaseResults.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
+            )
+        )
+
+        self.logical_test_suites = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/tests/logicalTestSuites.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.storage_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/storage/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.search_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.search_service = self.metadata.get_service_or_create(
+            entity=SearchService,
+            config=WorkflowSource(**self.search_service_json),
+        )
+
+        self.search_indexes = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/searchIndexes.json",
+                "r",
+                encoding=UTF_8,
             )
         )
 
@@ -463,27 +507,30 @@ class SampleDataSource(
     def next_record(self) -> Iterable[Entity]:
         yield from self.ingest_teams()
         yield from self.ingest_users()
-        yield from self.ingest_locations()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
+        yield from self.ingest_data_models()
         yield from self.ingest_dashboards()
+        yield from self.ingest_looker()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
+        yield from self.ingest_containers()
+        yield from self.ingest_search_indexes()
         yield from self.ingest_profiles()
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
+        yield from self.ingest_logical_test_suite()
 
     def ingest_teams(self):
         """
         Ingest sample teams
         """
         for team in self.teams["teams"]:
-
             team_to_ingest = CreateTeamRequest(
                 name=team["name"], teamType=team["teamType"]
             )
@@ -507,20 +554,6 @@ class SampleDataSource(
 
             yield team_to_ingest
 
-    def ingest_locations(self) -> Iterable[Location]:
-        for location in self.locations["locations"]:
-            location_ev = CreateLocationRequest(
-                name=location["name"],
-                path=location["path"],
-                displayName=location["displayName"],
-                description=location["description"],
-                locationType=location["locationType"],
-                service=EntityReference(
-                    id=self.storage_service.id, type="storageService"
-                ),
-            )
-            yield location_ev
-
     def ingest_glue(self):
         """
         Ingest Sample Data for glue database source
@@ -528,9 +561,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=EntityReference(
-                id=self.database_service.id.__root__, type="databaseService"
-            ),
+            service=self.database_service.fullyQualifiedName,
         )
 
         yield db
@@ -548,7 +579,7 @@ class SampleDataSource(
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=database_object.id, type="database"),
+            database=database_object.fullyQualifiedName,
         )
         yield schema
 
@@ -569,43 +600,12 @@ class SampleDataSource(
                 name=table["name"],
                 description=table["description"],
                 columns=table["columns"],
-                databaseSchema=EntityReference(
-                    id=database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
             )
-
-            self.status.scanned("table", table_request.name.__root__)
+            self.status.scanned(f"Table Scanned: {table_request.name.__root__}")
             yield table_request
-
-            location = CreateLocationRequest(
-                name=table["name"],
-                service=EntityReference(
-                    id=self.glue_storage_service.id, type="storageService"
-                ),
-            )
-            self.status.scanned("location", location.name)
-            yield location
-
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.database_service.name.__root__,
-                database_name=db.name.__root__,
-                schema_name=schema.name.__root__,
-                table_name=table_request.name.__root__,
-                skip_es_search=True,
-            )
-
-            location_fqn = fqn.build(
-                self.metadata,
-                entity_type=Location,
-                service_name=self.glue_storage_service.name.__root__,
-                location_name=location.name.__root__,
-            )
-            if table_fqn and location_fqn:
-                yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
 
     def ingest_tables(self):
         """
@@ -615,9 +615,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=EntityReference(
-                id=self.database_service.id.__root__, type="databaseService"
-            ),
+            service=self.database_service.fullyQualifiedName.__root__,
         )
         yield db
 
@@ -635,7 +633,7 @@ class SampleDataSource(
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=database_object.id, type="database"),
+            database=database_object.fullyQualifiedName,
         )
         yield schema
 
@@ -659,16 +657,35 @@ class SampleDataSource(
                 name=table["name"],
                 description=table["description"],
                 columns=table["columns"],
-                databaseSchema=EntityReference(
-                    id=database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
                 tableType=table["tableType"],
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
             )
 
-            self.status.scanned("table", table_and_db.name)
+            self.status.scanned(f"Table Scanned: {table_and_db.name}")
             yield table_and_db
+
+            if table.get("sampleData"):
+
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.database_service.name.__root__,
+                    database_name=db.name.__root__,
+                    schema_name=schema.name.__root__,
+                    table_name=table_and_db.name.__root__,
+                )
+
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+
+                self.metadata.ingest_table_sample_data(
+                    table_entity,
+                    TableData(
+                        rows=table["sampleData"]["rows"],
+                        columns=table["sampleData"]["columns"],
+                    ),
+                )
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         """
@@ -686,9 +703,7 @@ class SampleDataSource(
                 replicationFactor=topic["replicationFactor"],
                 maximumMessageSize=topic["maximumMessageSize"],
                 cleanupPolicies=topic["cleanupPolicies"],
-                service=EntityReference(
-                    id=self.kafka_service.id, type="messagingService"
-                ),
+                service=self.kafka_service.fullyQualifiedName,
             )
 
             if "schemaType" in topic:
@@ -700,14 +715,161 @@ class SampleDataSource(
                     )
                 schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
 
-                create_topic.messageSchema = Topic(
+                create_topic.messageSchema = TopicSchema(
                     schemaText=topic["schemaText"],
                     schemaType=topic["schemaType"],
                     schemaFields=schema_fields,
                 )
 
-            self.status.scanned("topic", create_topic.name.__root__)
+            self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
             yield create_topic
+
+            if topic.get("sampleData"):
+
+                topic_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Topic,
+                    service_name=self.kafka_service.name.__root__,
+                    topic_name=topic["name"],
+                )
+
+                topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+
+                self.metadata.ingest_topic_sample_data(
+                    topic=topic_entity,
+                    sample_data=TopicSampleData(messages=topic["sampleData"]),
+                )
+
+    def ingest_search_indexes(self) -> Iterable[CreateSearchIndexRequest]:
+        """
+        Ingest Sample SearchIndexes
+        """
+        for search_index in self.search_indexes["searchIndexes"]:
+            search_index["service"] = EntityReference(
+                id=self.search_service.id, type="searchService"
+            )
+            create_search_index = CreateSearchIndexRequest(
+                name=search_index["name"],
+                description=search_index["description"],
+                displayName=search_index["displayName"],
+                tags=search_index["tags"],
+                fields=search_index["fields"],
+                service=self.search_service.fullyQualifiedName,
+            )
+
+            self.status.scanned(
+                f"SearchIndex Scanned: {create_search_index.name.__root__}"
+            )
+            yield create_search_index
+
+            # TODO: Add search index sample data
+
+    def ingest_looker(self) -> Iterable[Entity]:
+        """
+        Looker sample data
+        """
+        for data_model in self.looker_models:
+            try:
+                data_model_ev = CreateDashboardDataModelRequest(
+                    name=data_model["name"],
+                    displayName=data_model["displayName"],
+                    description=data_model["description"],
+                    columns=data_model["columns"],
+                    dataModelType=data_model["dataModelType"],
+                    sql=data_model["sql"],
+                    serviceType=data_model["serviceType"],
+                    service=self.looker_service.fullyQualifiedName,
+                )
+                self.status.scanned(
+                    f"Data Model Scanned: {data_model_ev.name.__root__}"
+                )
+                yield data_model_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected exception ingesting chart [{data_model}]: {err}"
+                )
+
+        for chart in self.looker_charts:
+            try:
+                chart_ev = CreateChartRequest(
+                    name=chart["name"],
+                    displayName=chart["displayName"],
+                    description=chart["description"],
+                    chartType=get_standard_chart_type(chart["chartType"]),
+                    sourceUrl=chart["sourceUrl"],
+                    service=self.looker_service.fullyQualifiedName,
+                )
+                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
+                yield chart_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
+
+        for dashboard in self.looker_dashboards:
+            try:
+                dashboard_ev = CreateDashboardRequest(
+                    name=dashboard["name"],
+                    displayName=dashboard["displayName"],
+                    description=dashboard["description"],
+                    sourceUrl=dashboard["sourceUrl"],
+                    charts=dashboard["charts"],
+                    dataModels=dashboard.get("dataModels", None),
+                    service=self.looker_service.fullyQualifiedName,
+                )
+                self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
+                yield dashboard_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected exception ingesting dashboard [{dashboard}]: {err}"
+                )
+
+        orders_view = self.metadata.get_by_name(
+            entity=DashboardDataModel, fqn="sample_looker.model.orders_view"
+        )
+        operations_view = self.metadata.get_by_name(
+            entity=DashboardDataModel, fqn="sample_looker.model.operations_view"
+        )
+        orders_explore = self.metadata.get_by_name(
+            entity=DashboardDataModel, fqn="sample_looker.model.orders"
+        )
+        orders_dashboard = self.metadata.get_by_name(
+            entity=Dashboard, fqn="sample_looker.orders"
+        )
+
+        yield AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=orders_view.id.__root__, type="dashboardDataModel"
+                ),
+                toEntity=EntityReference(
+                    id=orders_explore.id.__root__, type="dashboardDataModel"
+                ),
+            )
+        )
+
+        yield AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=operations_view.id.__root__, type="dashboardDataModel"
+                ),
+                toEntity=EntityReference(
+                    id=orders_explore.id.__root__, type="dashboardDataModel"
+                ),
+            )
+        )
+
+        yield AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=orders_explore.id.__root__, type="dashboardDataModel"
+                ),
+                toEntity=EntityReference(
+                    id=orders_dashboard.id.__root__, type="dashboard"
+                ),
+            )
+        )
 
     def ingest_charts(self) -> Iterable[CreateChartRequest]:
         for chart in self.charts["charts"]:
@@ -716,17 +878,38 @@ class SampleDataSource(
                     name=chart["name"],
                     displayName=chart["displayName"],
                     description=chart["description"],
-                    chartType=get_standard_chart_type(chart["chartType"]).value,
-                    chartUrl=chart["chartUrl"],
-                    service=EntityReference(
-                        id=self.dashboard_service.id, type="dashboardService"
-                    ),
+                    chartType=get_standard_chart_type(chart["chartType"]),
+                    sourceUrl=chart["sourceUrl"],
+                    service=self.dashboard_service.fullyQualifiedName,
                 )
-                self.status.scanned("chart", chart_ev.name)
+                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
                 yield chart_ev
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
+
+    def ingest_data_models(self) -> Iterable[CreateDashboardDataModelRequest]:
+        for data_model in self.data_models["datamodels"]:
+            try:
+                data_model_ev = CreateDashboardDataModelRequest(
+                    name=data_model["name"],
+                    displayName=data_model["displayName"],
+                    description=data_model["description"],
+                    columns=data_model["columns"],
+                    dataModelType=data_model["dataModelType"],
+                    sql=data_model["sql"],
+                    serviceType=data_model["serviceType"],
+                    service=self.dashboard_service.fullyQualifiedName,
+                )
+                self.status.scanned(
+                    f"Data Model Scanned: {data_model_ev.name.__root__}"
+                )
+                yield data_model_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected exception ingesting chart [{data_model}]: {err}"
+                )
 
     def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
         for dashboard in self.dashboards["dashboards"]:
@@ -734,30 +917,30 @@ class SampleDataSource(
                 name=dashboard["name"],
                 displayName=dashboard["displayName"],
                 description=dashboard["description"],
-                dashboardUrl=dashboard["dashboardUrl"],
-                charts=get_chart_entities_from_id(
-                    dashboard["charts"],
-                    self.metadata,
-                    self.dashboard_service.name.__root__,
-                ),
-                service=EntityReference(
-                    id=self.dashboard_service.id, type="dashboardService"
-                ),
+                sourceUrl=dashboard["sourceUrl"],
+                charts=dashboard["charts"],
+                dataModels=dashboard.get("dataModels", None),
+                service=self.dashboard_service.fullyQualifiedName,
             )
-            self.status.scanned("dashboard", dashboard_ev.name.__root__)
+            self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
             yield dashboard_ev
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
         for pipeline in self.pipelines["pipelines"]:
+            owner = None
+            if pipeline.get("owner"):
+                user = self.metadata.get_user_by_email(email=pipeline.get("owner"))
+                if user:
+                    owner = EntityReference(id=user.id.__root__, type="user")
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
-                pipelineUrl=pipeline["pipelineUrl"],
+                sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
-                service=EntityReference(
-                    id=self.pipeline_service.id, type="pipelineService"
-                ),
+                service=self.pipeline_service.fullyQualifiedName,
+                owner=owner,
+                scheduleInterval=pipeline.get("scheduleInterval"),
             )
             yield pipeline_ev
 
@@ -768,8 +951,10 @@ class SampleDataSource(
             edge_entity_ref = get_lineage_entity_ref(
                 edge["edge_meta"], self.metadata_config
             )
-            lineage_details = LineageDetails(
-                pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query")
+            lineage_details = (
+                LineageDetails(pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query"))
+                if edge_entity_ref
+                else None
             )
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
@@ -839,14 +1024,12 @@ class SampleDataSource(
                         f"Cannot find {mlmodel_fqn} in Sample Dashboards"
                     )
 
-                dashboard_id = str(dashboard.id.__root__)
-
                 model_ev = CreateMlModelRequest(
                     name=model["name"],
                     displayName=model["displayName"],
                     description=model["description"],
                     algorithm=model["algorithm"],
-                    dashboard=EntityReference(id=dashboard_id, type="dashboard"),
+                    dashboard=dashboard.fullyQualifiedName.__root__,
                     mlStore=MlStore(
                         storage=model["mlStore"]["storage"],
                         imageRepository=model["mlStore"]["imageRepository"],
@@ -860,15 +1043,84 @@ class SampleDataSource(
                         MlHyperParameter(name=param["name"], value=param["value"])
                         for param in model.get("mlHyperParameters", [])
                     ],
-                    service=EntityReference(
-                        id=self.model_service.id,
-                        type="mlmodelService",
-                    ),
+                    service=self.model_service.fullyQualifiedName,
                 )
                 yield model_ev
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
+
+    def ingest_containers(self) -> Iterable[CreateContainerRequest]:
+        """
+        Convert sample containers data into a Container Entity
+        to feed the metastore
+        """
+
+        for container in self.containers:
+            try:
+                # Fetch linked dashboard ID from name
+                parent_container_fqn = container.get("parent")
+                parent_container = None
+                if parent_container_fqn:
+                    parent_container = self.metadata.get_by_name(
+                        entity=Container, fqn=parent_container_fqn
+                    )
+                    if not parent_container:
+                        raise InvalidSampleDataException(
+                            f"Cannot find {parent_container_fqn} in Sample Containers"
+                        )
+
+                container_request = CreateContainerRequest(
+                    name=container["name"],
+                    displayName=container["displayName"],
+                    description=container["description"],
+                    parent=EntityReference(id=parent_container.id, type="container")
+                    if parent_container_fqn
+                    else None,
+                    prefix=container["prefix"],
+                    dataModel=container.get("dataModel"),
+                    numberOfObjects=container.get("numberOfObjects"),
+                    size=container.get("size"),
+                    fileFormats=container.get("fileFormats"),
+                    service=self.storage_service.fullyQualifiedName,
+                )
+                yield container_request
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error ingesting Container [{container}]: {exc}")
+
+        # Create a very nested container structure:
+        try:
+            long_base_name = (
+                "".join(random.choice(string.ascii_letters) for _ in range(100))
+                + "{suffix}"
+            )
+            for base_name in ("deep_nested_container_{suffix}", long_base_name):
+                parent_container_fqns = []
+                # We cannot go deeper than this
+                for i in range(1, 6):
+                    parent_container: Container = (
+                        self.metadata.get_by_name(
+                            entity=Container,
+                            fqn=self.storage_service.fullyQualifiedName.__root__
+                            + FQN_SEPARATOR
+                            + FQN_SEPARATOR.join(parent_container_fqns),
+                        )
+                        if parent_container_fqns
+                        else None
+                    )
+                    name = base_name.format(suffix=i)
+                    parent_container_fqns.append(name)
+                    yield CreateContainerRequest(
+                        name=name,
+                        parent=EntityReference(id=parent_container.id, type="container")
+                        if parent_container
+                        else None,
+                        service=self.storage_service.fullyQualifiedName,
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error ingesting nested containers: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         """
@@ -886,13 +1138,13 @@ class SampleDataSource(
                 ]
                 if not self.list_policies:
                     self.list_policies = self.metadata.list_entities(entity=Policy)
-                    role_ref_id = self.list_policies.entities[0].id.__root__
+                    role_name = self.list_policies.entities[0].name
                 roles = (
                     [
                         CreateRoleRequest(
                             name=role,
                             description=f"This is {role} description.",
-                            policies=[EntityReference(id=role_ref_id, type="policies")],
+                            policies=[role_name],
                         )
                         for role in user["roles"]
                     ]
@@ -924,6 +1176,8 @@ class SampleDataSource(
                         tableProfile=TableProfile(
                             columnCount=profile["columnCount"],
                             rowCount=profile["rowCount"],
+                            createDateTime=profile.get("createDateTime"),
+                            sizeInByte=profile.get("sizeInByte"),
                             timestamp=(
                                 datetime.now(tz=timezone.utc) - timedelta(days=days)
                             ).timestamp(),
@@ -962,7 +1216,29 @@ class SampleDataSource(
                 test_suite=CreateTestSuiteRequest(
                     name=test_suite["testSuiteName"],
                     description=test_suite["testSuiteDescription"],
+                    executableEntityReference=test_suite["executableEntityReference"],
                 )
+            )
+
+    def ingest_logical_test_suite(self) -> Iterable[OMetaLogicalTestSuiteSample]:
+        """Iterate over all the logical testSuite and testCase and ingest them"""
+        for logical_test_suite in self.logical_test_suites["tests"]:
+            test_suite = CreateTestSuiteRequest(
+                name=logical_test_suite["testSuiteName"],
+                description=logical_test_suite["testSuiteDescription"],
+            )  # type: ignore
+            test_cases: List[TestCase] = []
+            for test_case in logical_test_suite["testCases"]:
+                test_case = self.metadata.get_by_name(
+                    entity=TestCase,
+                    fqn=test_case["fqn"],
+                    fields=["testSuite", "testDefinition"],
+                )
+                if test_case:
+                    test_cases.append(test_case)
+
+            yield OMetaLogicalTestSuiteSample(
+                test_suite=test_suite, test_cases=test_cases
             )
 
     def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:
@@ -975,18 +1251,9 @@ class SampleDataSource(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
                         description=test_case["description"],
-                        testDefinition=EntityReference(
-                            id=self.metadata.get_by_name(
-                                fqn=test_case["testDefinitionName"],
-                                entity=TestDefinition,
-                            ).id.__root__,
-                            type="testDefinition",
-                        ),
+                        testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
-                        testSuite=EntityReference(
-                            id=suite.id.__root__,
-                            type="testSuite",
-                        ),
+                        testSuite=suite.fullyQualifiedName.__root__,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
@@ -1021,9 +1288,6 @@ class SampleDataSource(
 
     def close(self):
         pass
-
-    def get_status(self):
-        return self.status
 
     def test_connection(self) -> None:
         pass

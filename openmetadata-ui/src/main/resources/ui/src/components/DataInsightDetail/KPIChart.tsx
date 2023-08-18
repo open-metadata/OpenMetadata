@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Space,
-  Tooltip as AntdTooltip,
-  Typography,
-} from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageHeader from 'components/header/PageHeader.component';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,7 +49,6 @@ import {
   KpiResult,
   KpiTargetType,
 } from '../../generated/dataInsight/kpi/kpi';
-import { useAuth } from '../../hooks/authHooks';
 import {
   ChartFilter,
   UIKpiResult,
@@ -72,10 +67,16 @@ import KPILatestResults from './KPILatestResults';
 interface Props {
   chartFilter: ChartFilter;
   kpiList: Array<Kpi>;
+  viewKPIPermission: boolean;
+  createKPIPermission: boolean;
 }
 
-const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
-  const { isAdminUser } = useAuth();
+const KPIChart: FC<Props> = ({
+  chartFilter,
+  kpiList,
+  viewKPIPermission,
+  createKPIPermission,
+}) => {
   const { t } = useTranslation();
   const history = useHistory();
 
@@ -197,16 +198,12 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
       id="kpi-charts"
       loading={isLoading}
       title={
-        <Space className="w-full justify-between">
-          <div>
-            <Typography.Title level={5}>
-              {t('label.kpi-title')}
-            </Typography.Title>
-            <Typography.Text className="data-insight-label-text">
-              {t('message.kpi-subtitle')}
-            </Typography.Text>
-          </div>
-        </Space>
+        <PageHeader
+          data={{
+            header: t('label.kpi-title'),
+            subHeader: t('message.kpi-subtitle'),
+          }}
+        />
       }>
       {kpiList.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
@@ -267,34 +264,41 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
               )}
             </>
           ) : (
-            <EmptyGraphPlaceholder />
+            <Col className="justify-center" span={24}>
+              {viewKPIPermission ? (
+                <EmptyGraphPlaceholder />
+              ) : (
+                <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+              )}
+            </Col>
           )}
         </Row>
       ) : (
         <Space
           className="w-full justify-center items-center"
           direction="vertical">
-          <Typography.Text>
-            {t('message.no-kpi-available-add-new-one')}
-          </Typography.Text>
-          <AntdTooltip
-            title={
-              isAdminUser
-                ? t('label.add-entity', {
-                    entity: t('label.kpi-uppercase'),
-                  })
-                : t('message.no-permission-for-action')
+          <ErrorPlaceHolder
+            button={
+              <Button
+                ghost
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={handleAddKpi}>
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
+              </Button>
+            }
+            className="m-0"
+            permission={createKPIPermission}
+            size={SIZE.MEDIUM}
+            type={
+              createKPIPermission
+                ? ERROR_PLACEHOLDER_TYPE.ASSIGN
+                : ERROR_PLACEHOLDER_TYPE.NO_DATA
             }>
-            <Button
-              className="tw-border-primary tw-text-primary"
-              disabled={!isAdminUser}
-              type="default"
-              onClick={handleAddKpi}>
-              {t('label.add-entity', {
-                entity: t('label.kpi-uppercase'),
-              })}
-            </Button>
-          </AntdTooltip>
+            {createKPIPermission && t('message.no-kpi-available-add-new-one')}
+          </ErrorPlaceHolder>
         </Space>
       )}
     </Card>

@@ -11,237 +11,43 @@
  *  limitations under the License.
  */
 
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
+import { ModifiedDBTConfigurationSource } from 'components/AddIngestion/addIngestion.interface';
 import {
   DbtConfigCloud,
-  DbtConfigCloudReq,
   DbtConfigHttp,
   DbtConfigLocal,
-  DbtS3CredsReq,
   DbtSourceTypes,
-  ErrorDbtCloud,
-  ErrorDbtGCS,
-  ErrorDbtHttp,
-  ErrorDbtLocal,
-  ErrorDbtS3,
 } from 'components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
 import {
   reqDBTCloudFields,
   reqDBTHttpFields,
   reqDBTLocalFields,
-  reqDBTS3Fields,
-  rulesDBTGCSCredsFields,
-  rulesDBTS3CredsFields,
 } from 'components/common/DBTConfigFormBuilder/DBTFormConstants';
 import {
   DBT_SOURCES,
   GCS_CONFIG,
 } from 'components/common/DBTConfigFormBuilder/DBTFormEnum';
 import { isEmpty, isNil, isString } from 'lodash';
-import { FormValidationRulesType } from '../enums/form.enum';
-import {
-  DbtConfig,
-  GCSCredentialsValues,
-  SCredentials,
-} from '../generated/metadataIngestion/dbtPipeline';
-import { FormValidationRules } from '../interface/genericForm.interface';
-import jsonData from '../jsons/en';
-import { isValidEmail, isValidUrl } from './CommonUtils';
-
-export const validateDbtCloudConfig = (
-  data: DbtConfig,
-  requiredFields = reqDBTCloudFields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtCloud;
-  for (const field of Object.keys(requiredFields) as Array<
-    keyof DbtConfigCloudReq
-  >) {
-    if (isEmpty(data[field])) {
-      isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
-    }
-  }
-
-  return { isValid, errors };
-};
-
-export const validateDbtLocalConfig = (
-  data: ModifiedDbtConfig,
-  requiredFields = reqDBTLocalFields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtLocal;
-  for (const field of Object.keys(requiredFields) as Array<
-    keyof DbtConfigLocal
-  >) {
-    if (isEmpty(data[field])) {
-      isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
-    }
-  }
-
-  return { isValid, errors };
-};
-
-export const validateDbtHttpConfig = (
-  data: ModifiedDbtConfig,
-  requiredFields = reqDBTHttpFields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtHttp;
-  for (const field of Object.keys(requiredFields) as Array<
-    keyof DbtConfigHttp
-  >) {
-    if (isEmpty(data[field])) {
-      isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
-    }
-  }
-
-  return { isValid, errors };
-};
-
-export const validateDbtS3Config = (
-  data: SCredentials,
-  requiredFields = reqDBTS3Fields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtS3;
-  for (const field of Object.keys(requiredFields) as Array<
-    keyof DbtS3CredsReq
-  >) {
-    if (isEmpty(data[field])) {
-      isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
-    }
-  }
-
-  return { isValid, errors };
-};
-
-function getInvalidEmailErrors<
-  Type,
-  Keys extends Array<keyof Type>,
-  Errors extends Partial<Record<keyof Type, string>>
->(
-  data: Type,
-  errors: Errors,
-  ruleFields: Record<
-    keyof Pick<FormValidationRules, FormValidationRulesType.email>,
-    Keys
-  >,
-  rule: FormValidationRulesType.email
-) {
-  let isValid = true;
-  for (const field of ruleFields[rule]) {
-    if (data[field] && !isValidEmail(data[field] as unknown as string)) {
-      isValid = false;
-      errors[field] = jsonData['form-error-messages'][
-        'invalid-email'
-      ] as Errors[keyof Type];
-    }
-  }
-
-  return isValid;
-}
-
-function getInvalidUrlErrors<
-  Type,
-  Keys extends Array<keyof Type>,
-  Errors extends Partial<Record<keyof Type, string>>
->(
-  data: Type,
-  errors: Errors,
-  ruleFields: Record<
-    keyof Pick<FormValidationRules, FormValidationRulesType.url>,
-    Keys
-  >,
-  rule: FormValidationRulesType.url
-) {
-  let isValid = true;
-  for (const field of ruleFields[rule]) {
-    if (data[field] && !isValidUrl(data[field] as unknown as string)) {
-      isValid = false;
-      errors[field] = jsonData['form-error-messages'][
-        'invalid-url'
-      ] as Errors[keyof Type];
-    }
-  }
-
-  return isValid;
-}
-
-export const checkDbtS3CredsConfigRules = (
-  data: SCredentials,
-  ruleFields = rulesDBTS3CredsFields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtS3;
-  for (const rule in ruleFields) {
-    if (rule === FormValidationRulesType.url) {
-      // Need to update `errors` object for each rule
-      // even if isValid is already false
-      isValid = getInvalidUrlErrors(data, errors, ruleFields, rule) && isValid;
-    }
-  }
-
-  return { isValid, errors };
-};
-
-export const checkDbtGCSCredsConfigRules = (
-  data: GCSCredentialsValues,
-  ruleFields = rulesDBTGCSCredsFields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtGCS;
-  for (const rule in ruleFields) {
-    switch (rule) {
-      case FormValidationRulesType.email: {
-        // Need to update `errors` object for each rule
-        // even if isValid is already false
-        isValid =
-          getInvalidEmailErrors(data, errors, ruleFields, rule) && isValid;
-
-        break;
-      }
-      case FormValidationRulesType.url: {
-        // Need to update `errors` object for each rule
-        // even if isValid is already false
-        isValid =
-          getInvalidUrlErrors(data, errors, ruleFields, rule) && isValid;
-
-        break;
-      }
-      default:
-        break;
-    }
-  }
-
-  return { isValid, errors };
-};
 
 export const getSourceTypeFromConfig = (
-  data?: ModifiedDbtConfig,
+  data?: ModifiedDBTConfigurationSource,
   defaultSource = DBT_SOURCES.local
 ): DbtSourceTypes => {
   let sourceType = defaultSource;
   let gcsType = undefined;
   if (data) {
     if (!isNil(data.dbtSecurityConfig)) {
-      if (!isNil(data.dbtSecurityConfig.gcsConfig)) {
+      if (!isNil(data.dbtSecurityConfig.gcpConfig)) {
         sourceType = DBT_SOURCES.gcs;
-        gcsType = isString(data.dbtSecurityConfig.gcsConfig)
+        gcsType = isString(data.dbtSecurityConfig.gcpConfig)
           ? GCS_CONFIG.GCSCredentialsPath
           : GCS_CONFIG.GCSValues;
+      }
+      if (
+        !isNil(data.dbtSecurityConfig.clientId) ||
+        !isNil(data.dbtSecurityConfig.tenantId)
+      ) {
+        sourceType = DBT_SOURCES.azure;
       } else {
         sourceType = DBT_SOURCES.s3;
       }

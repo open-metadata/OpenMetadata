@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets;
 import static org.mockito.Mockito.reset;
 
 import org.mockito.Mock;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import software.amazon.awssdk.services.ssm.SsmClient;
 

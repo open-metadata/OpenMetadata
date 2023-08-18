@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
     AirbyteConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.credentials import generate_http_basic_token
 
 
@@ -31,8 +32,8 @@ class AirbyteClient:
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
             api_version="api/v1",
-            auth_header="Authorization",
-            auth_token=lambda: ("no_token", 0),
+            auth_header=AUTHORIZATION_HEADER,
+            auth_token=lambda: (NO_ACCESS_TOKEN, 0),
         )
         if self.config.username:
             client_config.auth_token_mode = "Basic"

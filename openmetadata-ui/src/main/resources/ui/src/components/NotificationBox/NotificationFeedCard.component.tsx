@@ -12,7 +12,6 @@
  */
 
 import { List, Space, Typography } from 'antd';
-import { toString } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -32,25 +31,26 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   entityType,
   timestamp,
   feedType,
-  taskDetails,
+  task,
 }) => {
   const { t } = useTranslation();
+  const { task: taskDetails } = task ?? {};
 
   return (
     <Link
-      className="tw-no-underline"
+      className="no-underline"
       to={
         feedType === ThreadType.Conversation
           ? prepareFeedLink(entityType, entityFQN)
-          : getTaskDetailPath(toString(taskDetails?.id)).pathname
+          : getTaskDetailPath(task)
       }>
       <List.Item.Meta
         avatar={<ProfilePicture id="" name={createdBy} width="32" />}
-        className="tw-m-0"
+        className="m-0"
         description={
           <Space direction="vertical" size={0}>
             <Typography.Paragraph
-              className="tw-m-0"
+              className="m-0"
               style={{ color: '#37352F', marginBottom: 0 }}>
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
@@ -58,7 +58,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   <span> {t('message.mentioned-you-on-the-lowercase')} </span>{' '}
                   <span>{entityType} </span>
                   <Link
-                    className="tw-truncate"
+                    className="truncate"
                     to={prepareFeedLink(entityType, entityFQN)}>
                     {entityDisplayName(entityType, entityFQN)}
                   </Link>
@@ -68,8 +68,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   <span className="p-x-xss">
                     {t('message.assigned-you-a-new-task-lowercase')}
                   </span>
-                  <Link
-                    to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
+                  <Link to={getTaskDetailPath(task)}>
                     {`#${taskDetails?.id}`} {taskDetails?.type}
                   </Link>
                 </>

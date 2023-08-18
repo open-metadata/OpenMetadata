@@ -14,6 +14,7 @@
 import { Steps } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
+import './ingestion-stepper.style.less';
 
 type Props = {
   steps: Array<{ name: string; step: number }>;
@@ -30,7 +31,7 @@ const IngestionStepper = ({ steps, activeStep, excludeSteps = [] }: Props) => {
             icon: (
               <span
                 className={classNames(
-                  'ingestion-rounder tw-self-center',
+                  'ingestion-rounder self-center',
                   {
                     active: step.step === activeStep,
                   },
@@ -47,7 +48,7 @@ const IngestionStepper = ({ steps, activeStep, excludeSteps = [] }: Props) => {
   );
 
   return (
-    <div className="tw-px-24" data-testid="stepper-container">
+    <div className="stepper-container p-x-24" data-testid="stepper-container">
       <Steps
         current={activeStep}
         items={items}

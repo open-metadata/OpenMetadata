@@ -12,13 +12,31 @@
  */
 
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
+import { SearchIndex } from 'enums/search.enum';
 import {
+  getChartsOptions,
+  getColumnsOptions,
+  getSchemaFieldOptions,
   getSearchDropdownLabels,
   getSearchLabel,
   getSelectedOptionLabelString,
+  getServiceOptions,
+  getTasksOptions,
 } from './AdvancedSearchUtils';
 import {
   highlightedItemLabel,
+  mockGetChartsOptionsData,
+  mockGetChartsOptionsDataWithoutDN,
+  mockGetChartsOptionsDataWithoutNameDN,
+  mockGetColumnOptionsData,
+  mockGetColumnOptionsDataWithoutDN,
+  mockGetSchemaFieldOptionsData,
+  mockGetSchemaFieldOptionsDataWithoutDN,
+  mockGetServiceOptionData,
+  mockGetServiceOptionDataWithoutDN,
+  mockGetServiceOptionDataWithoutNameDN,
+  mockGetTasksOptionsData,
+  mockGetTasksOptionsDataWithoutDN,
   mockItemLabel,
   mockLongOptionsArray,
   mockOptionsArray,
@@ -90,5 +108,99 @@ describe('AdvancedSearchUtils tests', () => {
     const resultSearchLabel = getSearchLabel(mockItemLabel, '');
 
     expect(resultSearchLabel).toBe(mockItemLabel);
+  });
+
+  it('Function getServiceOptions should return displayName of the service', () => {
+    const resultGetServiceOptions = getServiceOptions(mockGetServiceOptionData);
+
+    expect(resultGetServiceOptions).toBe('sample_data display');
+  });
+
+  it('Function getServiceOptions should return name of the service if no display name present', () => {
+    const resultGetServiceOptions = getServiceOptions(
+      mockGetServiceOptionDataWithoutDN
+    );
+
+    expect(resultGetServiceOptions).toBe('sample_data');
+  });
+
+  it('Function getServiceOptions should return text value in case not name or display name of service present', () => {
+    const resultGetServiceOptions = getServiceOptions(
+      mockGetServiceOptionDataWithoutNameDN
+    );
+
+    expect(resultGetServiceOptions).toBe('sample_data text');
+  });
+
+  it('Function getColumnsOptions should return displayName of the column', () => {
+    const resultGetColumnsOptions = getColumnsOptions(
+      mockGetColumnOptionsData,
+      SearchIndex.TABLE
+    );
+
+    expect(resultGetColumnsOptions).toBe('ad_id display');
+  });
+
+  it('Function getColumnsOptions should return name of the column if no display name present', () => {
+    const resultGetColumnsOptions = getColumnsOptions(
+      mockGetColumnOptionsDataWithoutDN,
+      SearchIndex.TABLE
+    );
+
+    expect(resultGetColumnsOptions).toBe('ad_id');
+  });
+
+  it('Function getSchemaFieldOptions should return displayName of the schemaField', () => {
+    const resultGetSchemaFieldOptions = getSchemaFieldOptions(
+      mockGetSchemaFieldOptionsData
+    );
+
+    expect(resultGetSchemaFieldOptions).toBe('AddressBook display');
+  });
+
+  it('Function getSchemaFieldOptions should return name of the schemaField if no display name present', () => {
+    const resultGetSchemaFieldOptions = getSchemaFieldOptions(
+      mockGetSchemaFieldOptionsDataWithoutDN
+    );
+
+    expect(resultGetSchemaFieldOptions).toBe('AddressBook');
+  });
+
+  it('Function getTasksOptions should return displayName of the Task', () => {
+    const resultGetTasksOptionsOptions = getTasksOptions(
+      mockGetTasksOptionsData
+    );
+
+    expect(resultGetTasksOptionsOptions).toBe('task display');
+  });
+
+  it('Function getTasksOptions should return name of the Task if no display name present', () => {
+    const resultGetTasksOptionsOptions = getTasksOptions(
+      mockGetTasksOptionsDataWithoutDN
+    );
+
+    expect(resultGetTasksOptionsOptions).toBe('task name');
+  });
+
+  it('Function getChartsOptions should return displayName of the chart', () => {
+    const resultGetChartsOptions = getChartsOptions(mockGetChartsOptionsData);
+
+    expect(resultGetChartsOptions).toBe('chart display');
+  });
+
+  it('Function getChartsOptions should return name of the chart if no display name present', () => {
+    const resultGetChartsOptions = getChartsOptions(
+      mockGetChartsOptionsDataWithoutDN
+    );
+
+    expect(resultGetChartsOptions).toBe('chart name');
+  });
+
+  it('Function getChartsOptions should return text value in case no name or display name of chart is present', () => {
+    const resultGetChartsOptions = getChartsOptions(
+      mockGetChartsOptionsDataWithoutNameDN
+    );
+
+    expect(resultGetChartsOptions).toBe('chart text');
   });
 });

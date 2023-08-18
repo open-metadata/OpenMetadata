@@ -15,7 +15,7 @@ import { Card, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { InheritedRolesCardProps } from './InheritedRolesCard.interface';
 import './InheritedRolesCard.style.less';

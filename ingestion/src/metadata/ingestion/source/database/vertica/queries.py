@@ -21,23 +21,44 @@ import textwrap
 # So to fetch column comments we need to concat the table_name + projection infix + column name.
 # Example: querying `v_catalog.comments` we find an object_name for a column in the table vendor_dimension as
 # `vendor_dimension_super.vendor_name`. Note how this is the `_super` projection.
-# Then, our join looks for the match in `vendor_dimension_%.vendor_name`.
+# Then, our join looks for the match in `vendor_dimension_super.vendor_name`.
+# In case there are more than one projections available for a table then we pick up
+# comments from any one projection available for table
 # Note: This might not suit for all column scenarios, but currently we did not find a better way to join
 # v_catalog.comments with v_catalog.columns.
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
-        SELECT
+        WITH column_projection as (
+          SELECT 
+            column_id,
+            proj.projection_name
+        FROM v_catalog.columns col,
+          v_catalog.projections proj
+        where lower(table_name) = '{table}' 
+            AND {schema_condition}
+            AND proj.projection_id in (
+              select 
+                min(projection_id) 
+              from v_catalog.projections sub_proj
+              where col.table_id=sub_proj.anchor_table_id
+        ))
+        select
           column_name,
           data_type,
           column_default,
           is_nullable,
-          comment
-        FROM v_catalog.columns col
-        LEFT JOIN v_catalog.comments com
-          ON com.object_type = 'COLUMN'
-         AND com.object_name LIKE CONCAT(CONCAT(col.table_name, '_%.'), col.column_name)
-        WHERE lower(table_name) = '{table}'
-        AND {schema_condition}
+          comment 
+        from 
+          v_catalog.columns col
+          LEFT JOIN column_projection proj ON proj.column_id = col.column_id
+          LEFT JOIN v_catalog.comments com ON com.object_type = 'COLUMN'
+          AND com.object_name = CONCAT(
+            CONCAT(proj.projection_name, '.'),
+            col.column_name
+          )
+        WHERE 
+          lower(table_name) = '{table}'
+          AND {schema_condition}
         UNION ALL
         SELECT
           column_name,
@@ -83,6 +104,17 @@ VERTICA_TABLE_COMMENTS = textwrap.dedent(
     """
 )
 
+VERTICA_SCHEMA_COMMENTS = textwrap.dedent(
+    """
+    SELECT
+      object_name as schema_name,
+      comment
+    FROM v_catalog.comments
+    WHERE object_type = 'SCHEMA';
+    """
+)
+
+
 VERTICA_SQL_STATEMENT = textwrap.dedent(
     """
     SELECT
@@ -108,3 +140,13 @@ VERTICA_SQL_STATEMENT = textwrap.dedent(
     LIMIT {result_limit}
     """
 )
+
+VERTICA_TEST_GET_QUERIES = """
+SELECT 
+p.query AS query_text
+FROM query_profiles p
+    LEFT JOIN query_requests r
+      ON p.TRANSACTION_ID = r.TRANSACTION_ID
+     AND p.STATEMENT_ID = r.STATEMENT_ID
+LIMIT 1
+"""

@@ -20,7 +20,7 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
+import { TEST_CASE } from '../../mocks/TableData.mock';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
@@ -28,9 +28,13 @@ import TableProfilerV1 from './TableProfilerV1';
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => {
-    jest.fn();
-  }),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: jest.fn(),
+  })),
+  useLocation: jest.fn().mockImplementation(() => ({
+    search: '?activeTab=Table Profile',
+    pathname: '/table',
+  })),
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
@@ -64,7 +68,6 @@ jest.mock('rest/testAPI', () => ({
 }));
 
 const mockProps: TableProfilerProps = {
-  tableFqn: MOCK_TABLE.fullyQualifiedName || '',
   permissions: {
     Create: true,
     Delete: true,

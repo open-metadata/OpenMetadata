@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { ReactNode } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -28,9 +29,9 @@ export interface SelectTestSuiteProps {
 }
 
 export interface TestCaseFormProps {
-  initialValue?: TestCase;
-  onSubmit: (data: TestCase) => void;
-  onCancel: (data: TestCase) => void;
+  initialValue?: CreateTestCase;
+  onSubmit: (data: CreateTestCase) => void;
+  onCancel: (data: CreateTestCase) => void;
   table: Table;
 }
 
@@ -62,11 +63,12 @@ export type SelectTestSuiteType = {
 
 export interface ParameterFormProps {
   definition: TestDefinition;
+  table?: Table;
 }
 
 export interface EditTestCaseModalProps {
   visible: boolean;
   testCase: TestCase;
   onCancel: () => void;
-  onUpdate?: () => void;
+  onUpdate?: (testCase: TestCase) => void;
 }

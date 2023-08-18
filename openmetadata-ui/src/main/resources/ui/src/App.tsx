@@ -11,42 +11,53 @@
  *  limitations under the License.
  */
 
-import Appbar from 'components/app-bar/Appbar';
+import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
-import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
+import { EntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import ErrorBoundary from 'components/ErrorBoundary/ErrorBoundary';
 import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
 import AppRouter from 'components/router/AppRouter';
+import TourProvider from 'components/TourProvider/TourProvider';
 import WebSocketProvider from 'components/web-scoket/web-scoket.provider';
 import WebAnalyticsProvider from 'components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from 'constants/Toasts.constants';
 import React, { FunctionComponent } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
+import { history } from 'utils/HistoryUtils';
 import i18n from 'utils/i18next/LocalUtil';
 
 const App: FunctionComponent = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <Router>
+        <Router history={history}>
           <I18nextProvider i18n={i18n}>
-            <ErrorBoundry>
-              <AuthProvider childComponentType={AppRouter}>
-                <WebAnalyticsProvider>
-                  <PermissionProvider>
-                    <WebSocketProvider>
-                      <GlobalSearchProvider>
-                        <Appbar />
-                        <AppRouter />
-                      </GlobalSearchProvider>
-                    </WebSocketProvider>
-                  </PermissionProvider>
-                </WebAnalyticsProvider>
-              </AuthProvider>
-            </ErrorBoundry>
+            <ErrorBoundary>
+              <ApplicationConfigProvider>
+                <AuthProvider childComponentType={AppRouter}>
+                  <TourProvider>
+                    <HelmetProvider>
+                      <WebAnalyticsProvider>
+                        <PermissionProvider>
+                          <WebSocketProvider>
+                            <GlobalSearchProvider>
+                              <EntityExportModalProvider>
+                                <AppRouter />
+                              </EntityExportModalProvider>
+                            </GlobalSearchProvider>
+                          </WebSocketProvider>
+                        </PermissionProvider>
+                      </WebAnalyticsProvider>
+                    </HelmetProvider>
+                  </TourProvider>
+                </AuthProvider>
+              </ApplicationConfigProvider>
+            </ErrorBoundary>
           </I18nextProvider>
         </Router>
         <ToastContainer {...TOAST_OPTIONS} newestOnTop />

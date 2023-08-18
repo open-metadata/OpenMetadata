@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,20 +16,25 @@ package org.openmetadata.service.secrets;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class NoopSecretsManager extends SecretsManager {
-
-  private static NoopSecretsManager INSTANCE;
+  private static NoopSecretsManager instance;
 
   private NoopSecretsManager(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
     super(secretsManagerProvider, clusterPrefix);
   }
 
   public static NoopSecretsManager getInstance(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
-    if (INSTANCE == null) INSTANCE = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
-    return INSTANCE;
+    if (instance == null) {
+      instance = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
+    }
+    return instance;
   }
 
   @Override
-  protected String storeValue(String fieldName, String value, String secretId) {
+  protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     return value;
   }
+
+  // Nothing to delete on the Noop SM. We only delete on External SM
+  @Override
+  protected void deleteSecretInternal(String secretName) {}
 }

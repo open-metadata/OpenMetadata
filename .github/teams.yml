@@ -3,9 +3,6 @@
 
 "safe to test":
   - '@ayush-shah'
-  - '@MilanBariya'
-  - '@nahuelverdugo'
-  - '@NiharDoshi99'
   - '@OnkarVO7'
   - '@TeddyCr'
   - '@ulixius9'
@@ -16,20 +13,21 @@
   - '@Sachin-chaurasiya'
   - '@shahsank3t'
   - '@ShaileshParmar11'
+  - '@karanh37'
   - '@harshach'
   - '@mohityadav766'
   - '@sureshms'
   - '@akash-jain-10'
-  - '@Vj-L'
+  - '@dhruvinmaniar123'
   - '@ShilpaVernekar'
+  - '@07Himank'
+  - '@Anuj359'
+  - '@tutte'
   - '@snyk-bot'
   - '@dependabot'
 
 ingestion:
   - '@ayush-shah'
-  - '@MilanBariya'
-  - '@nahuelverdugo'
-  - '@NiharDoshi99'
   - '@OnkarVO7'
   - '@TeddyCr'
   - '@ulixius9'
@@ -42,15 +40,19 @@ UI:
   - '@Sachin-chaurasiya'
   - '@shahsank3t'
   - '@ShaileshParmar11'
+  - '@karanh37'
 
 backend:
   - '@harshach'
   - '@mohityadav766'
   - '@sureshms'
+  - '@07Himank'
 
 devops:
   - '@akash-jain-10'
-  - '@Vj-L'
+  - '@dhruvinmaniar123'
+  - '@Anuj359'
+  - '@tutte'
 
 documentation:
   - '@ShilpaVernekar'

@@ -20,7 +20,6 @@ import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -47,7 +46,6 @@ import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -61,7 +59,7 @@ public class UsageRepository {
   }
 
   @Transaction
-  public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
+  public EntityUsage get(String entityType, String id, String date, int days) {
     EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
@@ -75,29 +73,27 @@ public class UsageRepository {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> create(String entityType, String id, DailyCount usage) throws IOException {
+  public RestUtil.PutResponse<?> create(String entityType, String id, DailyCount usage) {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return addUsage(POST, entityType, id, usage);
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> createByName(String entityType, String fullyQualifiedName, DailyCount usage)
-      throws IOException {
+  public RestUtil.PutResponse<?> createByName(String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(POST, entityType, ref.getId().toString(), usage);
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> createOrUpdate(String entityType, String id, DailyCount usage) throws IOException {
+  public RestUtil.PutResponse<?> createOrUpdate(String entityType, UUID id, DailyCount usage) {
     // Validate data entity for which usage is being collected
-    Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
-    return addUsage(PUT, entityType, id, usage);
+    Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
+    return addUsage(PUT, entityType, id.toString(), usage);
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> createOrUpdateByName(String entityType, String fullyQualifiedName, DailyCount usage)
-      throws IOException {
+  public RestUtil.PutResponse<?> createOrUpdateByName(String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(PUT, entityType, ref.getId().toString(), usage);
   }
@@ -107,9 +103,8 @@ public class UsageRepository {
     dao.usageDAO().computePercentile(entityType, date);
   }
 
-  private RestUtil.PutResponse<?> addUsage(String method, String entityType, String entityId, DailyCount usage)
-      throws IOException {
-    Fields fields = new Fields(List.of("usageSummary"));
+  private RestUtil.PutResponse<?> addUsage(String method, String entityType, String entityId, DailyCount usage) {
+    String fields = "usageSummary";
     // If table usage was reported, add the usage count to schema and database
     String type = entityType.toLowerCase();
     switch (type) {
@@ -128,7 +123,7 @@ public class UsageRepository {
   }
 
   private RestUtil.PutResponse<?> tableEntityUsage(
-      String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
+      String method, String fields, String entityId, String entityType, DailyCount usage) {
     // we accept usage for deleted entities
     Table table = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
     // Insert usage record
@@ -149,7 +144,7 @@ public class UsageRepository {
   }
 
   private RestUtil.PutResponse<?> dashboardEntityUsage(
-      String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
+      String method, String fields, String entityId, String entityType, DailyCount usage) {
     Dashboard dashboard = Entity.getEntity(Entity.DASHBOARD, UUID.fromString(entityId), fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
     Dashboard updated = Entity.getEntity(Entity.DASHBOARD, UUID.fromString(entityId), fields, Include.ALL);
@@ -162,7 +157,7 @@ public class UsageRepository {
   }
 
   private RestUtil.PutResponse<?> chartEntityUsage(
-      String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
+      String method, String fields, String entityId, String entityType, DailyCount usage) {
     Chart chart = Entity.getEntity(Entity.CHART, UUID.fromString(entityId), fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
     Chart updated = Entity.getEntity(Entity.CHART, UUID.fromString(entityId), fields, Include.ALL);
@@ -175,7 +170,7 @@ public class UsageRepository {
   }
 
   private RestUtil.PutResponse<?> mlModelEntityUsage(
-      String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
+      String method, String fields, String entityId, String entityType, DailyCount usage) {
     MlModel mlModel = Entity.getEntity(Entity.MLMODEL, UUID.fromString(entityId), fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
     MlModel updated = Entity.getEntity(Entity.CHART, UUID.fromString(entityId), fields, Include.ALL);

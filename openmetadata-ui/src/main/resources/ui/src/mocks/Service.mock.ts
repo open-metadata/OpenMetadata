@@ -285,7 +285,7 @@ export const mockPipelineService = {
       serviceType: 'Airflow',
       description: 'Airflow service',
       version: 0.1,
-      pipelineUrl: 'http://localhost:8080',
+      sourceUrl: 'http://localhost:8080',
       href: 'http://localhost:8585/api/v1/services/pipelineServices/7576944e-2921-4c15-9edc-b9bada93338a',
     },
   ],

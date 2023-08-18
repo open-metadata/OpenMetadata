@@ -49,6 +49,7 @@ const CommentModal: FC<CommentModalProps> = ({
       closable={false}
       confirmLoading={isLoading}
       data-testid="comment-modal"
+      maskClosable={false}
       okButtonProps={{
         disabled: !comment,
         className: 'ant-btn-primary-custom',

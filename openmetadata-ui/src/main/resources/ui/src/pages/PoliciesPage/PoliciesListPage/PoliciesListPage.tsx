@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -19,6 +19,7 @@ import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +30,6 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
@@ -87,33 +87,27 @@ const PoliciesListPage = () => {
     fetchPolicies();
   }, []);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () => {
-      return (
-        <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              data-testid="add-policy"
-              disabled={!addPolicyPermission}
-              type="primary"
-              onClick={handleAddPolicy}>
-              {t('label.add-entity', { entity: t('label.policy') })}
-            </Button>
-          }
-          heading="Policy"
-          type="ADD_DATA"
-        />
-      );
-    },
-    []
+  const errorPlaceHolder = useMemo(
+    () => (
+      <ErrorPlaceHolder
+        heading={t('label.policy')}
+        permission={addPolicyPermission}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddPolicy}
+      />
+    ),
+    [addPolicyPermission]
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : isEmpty(policies) ? (
-    fetchErrorPlaceHolder()
-  ) : (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(policies)) {
+    return errorPlaceHolder;
+  }
+
+  return (
     <Row
       className="policies-list-container"
       data-testid="policies-list-container"
@@ -121,19 +115,15 @@ const PoliciesListPage = () => {
       <Col span={24}>
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.POLICIES} />
-          <Tooltip
-            placement="left"
-            title={
-              addPolicyPermission ? 'Add Policy' : NO_PERMISSION_FOR_ACTION
-            }>
+
+          {addPolicyPermission && (
             <Button
               data-testid="add-policy"
-              disabled={!addPolicyPermission}
               type="primary"
               onClick={handleAddPolicy}>
               {t('label.add-entity', { entity: t('label.policy') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={24}>

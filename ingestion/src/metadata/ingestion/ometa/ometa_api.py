@@ -31,26 +31,33 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.automations.workflow import Workflow
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.report import Report
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
+    TestConnectionDefinition,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -61,10 +68,11 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -85,6 +93,9 @@ from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
+from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
@@ -107,6 +118,20 @@ logger = ometa_logger()
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
 C = TypeVar("C", bound=BaseModel)
+
+# Helps us dynamically load the Entity class path in the
+# generated module.
+MODULE_PATH = {
+    "policy": "policies",
+    "service": "services",
+    "tag": "classification",
+    "classification": "classification",
+    "test": "tests",
+    "user": "teams",
+    "role": "teams",
+    "team": "teams",
+    "workflow": "automations",
+}
 
 
 class MissingEntityTypeException(Exception):
@@ -145,6 +170,9 @@ class OpenMetadata(
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
     OMetaUserMixin,
+    OMetaQueryMixin,
+    OMetaRolePolicyMixin,
+    OMetaSearchIndexMixin,
     Generic[T, C],
 ):
     """
@@ -163,11 +191,6 @@ class OpenMetadata(
     entity_path = "entity"
     api_path = "api"
     data_path = "data"
-    policies_path = "policies"
-    services_path = "services"
-    teams_path = "teams"
-    classifications_path = "classification"
-    tests_path = "tests"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
@@ -175,7 +198,7 @@ class OpenMetadata(
         # Load the secrets' manager client
         self.secrets_manager_client = SecretsManagerFactory(
             config.secretsManagerProvider,
-            config.secretsManagerCredentials,
+            config.secretsManagerLoader,
         ).get_secrets_manager()
 
         # Load the auth provider init from the registry
@@ -228,6 +251,16 @@ class OpenMetadata(
             return "/charts"
 
         if issubclass(
+            entity,
+            get_args(
+                Union[
+                    DashboardDataModel, self.get_create_entity_type(DashboardDataModel)
+                ]
+            ),
+        ):
+            return "/dashboard/datamodels"
+
+        if issubclass(
             entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
         ):
             return "/dashboards"
@@ -249,11 +282,6 @@ class OpenMetadata(
             entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
         ):
             return "/pipelines"
-
-        if issubclass(
-            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
-        ):
-            return "/locations"
 
         if issubclass(
             entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
@@ -278,6 +306,9 @@ class OpenMetadata(
 
         if issubclass(entity, Report):
             return "/reports"
+
+        if issubclass(entity, AuthenticationMechanism):
+            return "/users/auth-mechanism"
 
         if issubclass(
             entity,
@@ -315,11 +346,32 @@ class OpenMetadata(
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
             return "/roles"
 
+        if issubclass(
+            entity, get_args(Union[Query, self.get_create_entity_type(Query)])
+        ):
+            return "/queries"
+
         if issubclass(entity, get_args(Union[Team, self.get_create_entity_type(Team)])):
             return "/teams"
 
         if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
             return "/users"
+
+        if issubclass(
+            entity, get_args(Union[Container, self.get_create_entity_type(Container)])
+        ):
+            return "/containers"
+
+        if issubclass(
+            entity,
+            get_args(Union[SearchIndex, self.get_create_entity_type(SearchIndex)]),
+        ):
+            return "/searchIndexes"
+
+        if issubclass(
+            entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
+        ):
+            return "/automations/workflows"
 
         # Services Schemas
         if issubclass(
@@ -380,9 +432,21 @@ class OpenMetadata(
 
         if issubclass(
             entity,
+            get_args(Union[SearchService, self.get_create_entity_type(SearchService)]),
+        ):
+            return "/services/searchServices"
+
+        if issubclass(
+            entity,
             IngestionPipeline,
         ):
             return "/services/ingestionPipelines"
+
+        if issubclass(
+            entity,
+            TestConnectionDefinition,
+        ):
+            return "/services/testConnectionDefinitions"
 
         if issubclass(
             entity,
@@ -390,25 +454,25 @@ class OpenMetadata(
                 Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
             ),
         ):
-            return "/testDefinition"
+            return "/dataQuality/testDefinitions"
 
         if issubclass(
             entity,
             get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
         ):
-            return "/testSuite"
+            return "/dataQuality/testSuites"
 
         if issubclass(
             entity,
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
-            return "/testCase"
+            return "/dataQuality/testCases"
 
         if issubclass(entity, WebAnalyticEventData):
-            return "/analytics/webAnalyticEvent/collect"
+            return "/analytics/web/events/collect"
 
         if issubclass(entity, DataInsightChart):
-            return "/dataInsight"
+            return "/analytics/dataInsights/charts"
 
         if issubclass(
             entity,
@@ -426,27 +490,9 @@ class OpenMetadata(
         it is found inside generated
         """
 
-        if "policy" in entity.__name__.lower():
-            return self.policies_path
-
-        if "service" in entity.__name__.lower():
-            return self.services_path
-
-        if (
-            "tag" in entity.__name__.lower()
-            or "classification" in entity.__name__.lower()
-        ):
-            return self.classifications_path
-
-        if "test" in entity.__name__.lower():
-            return self.tests_path
-
-        if (
-            "user" in entity.__name__.lower()
-            or "role" in entity.__name__.lower()
-            or "team" in entity.__name__.lower()
-        ):
-            return self.teams_path
+        for key, value in MODULE_PATH.items():
+            if key in entity.__name__.lower():
+                return value
 
         return self.data_path
 
@@ -491,9 +537,11 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
+            .replace("dashboarddatamodel", "dashboardDataModel")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
+            .replace("searchindex", "searchIndex")
         )
 
         class_path = ".".join(
@@ -527,7 +575,7 @@ class OpenMetadata(
             entity_class = self.get_entity_from_create(entity)
         else:
             raise InvalidEntityException(
-                f"PUT operations need a CrateEntity, not {entity}"
+                f"PUT operations need a CreateEntity, not {entity}"
             )
         resp = self.client.put(
             self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)
@@ -563,7 +611,6 @@ class OpenMetadata(
         """
         Return entity by ID or None
         """
-
         return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(

@@ -61,17 +61,24 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
+import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
+import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.type.SearchConnection;
+import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
@@ -81,7 +88,9 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public final class TestUtils {
-  public static final String LONG_ENTITY_NAME = "a".repeat(128 + 1);
+
+  // Setting length at +256 since this is the length of the longest EntityName for Test Suites
+  public static String LONG_ENTITY_NAME = "a".repeat(256 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
@@ -100,13 +109,21 @@ public final class TestUtils {
   public static PipelineConnection GLUE_CONNECTION;
 
   public static MessagingConnection KAFKA_CONNECTION;
+  public static MessagingConnection REDPANDA_CONNECTION;
   public static DashboardConnection METABASE_CONNECTION;
 
   public static final MlModelConnection MLFLOW_CONNECTION;
+  public static final StorageConnection S3_STORAGE_CONNECTION;
+
+  public static final SearchConnection ELASTIC_SEARCH_CONNECTION;
+  public static final SearchConnection OPEN_SEARCH_CONNECTION;
+
   public static MetadataConnection AMUNDSEN_CONNECTION;
   public static MetadataConnection ATLAS_CONNECTION;
 
   public static URI PIPELINE_URL;
+
+  public static final AWSCredentials AWS_CREDENTIALS;
 
   public static void assertCustomProperties(List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -135,7 +152,11 @@ public final class TestUtils {
   static {
     MYSQL_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("localhost:3306")
+                    .withUsername("test")
+                    .withAuthType(new basicAuth().withPassword("test")));
     REDSHIFT_DATABASE_CONNECTION =
         new DatabaseConnection()
             .withConfig(
@@ -157,6 +178,16 @@ public final class TestUtils {
                       .withSchemaRegistryURL(new URI("http://localhost:8081")));
     } catch (URISyntaxException e) {
       KAFKA_CONNECTION = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      REDPANDA_CONNECTION =
+          new MessagingConnection().withConfig(new RedpandaConnection().withBootstrapServers("localhost:9092"));
+    } catch (Exception e) {
+      REDPANDA_CONNECTION = null;
       e.printStackTrace();
     }
   }
@@ -186,21 +217,33 @@ public final class TestUtils {
   }
 
   static {
+    AWS_CREDENTIALS =
+        new AWSCredentials().withAwsAccessKeyId("ABCD").withAwsSecretAccessKey("1234").withAwsRegion("eu-west-2");
+  }
+
+  static {
+    S3_STORAGE_CONNECTION = new StorageConnection().withConfig(new S3Connection().withAwsConfig(AWS_CREDENTIALS));
+  }
+
+  static {
+    ELASTIC_SEARCH_CONNECTION =
+        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9200"));
+    OPEN_SEARCH_CONNECTION =
+        new SearchConnection().withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
+  }
+
+  static {
     try {
       PIPELINE_URL = new URI("http://localhost:8080");
       AIRFLOW_CONNECTION =
           new PipelineConnection()
-              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
+              .withConfig(
+                  new AirflowConnection()
+                      .withHostPort(PIPELINE_URL)
+                      .withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
       GLUE_CONNECTION =
-          new PipelineConnection()
-              .withConfig(
-                  new GluePipelineConnection()
-                      .withAwsConfig(
-                          new AWSCredentials()
-                              .withAwsAccessKeyId("ABCD")
-                              .withAwsSecretAccessKey("1234")
-                              .withAwsRegion("eu-west-2")));
+          new PipelineConnection().withConfig(new GluePipelineConnection().withAwsConfig(AWS_CREDENTIALS));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();
@@ -380,6 +423,7 @@ public final class TestUtils {
   }
 
   public static void validateEntityReference(EntityReference ref) {
+    assertNotNull(ref);
     assertNotNull(ref.getId(), invalidEntityReference(ref, "null Id"));
     assertNotNull(ref.getHref(), invalidEntityReference(ref, "null href"));
     assertNotNull(ref.getName(), invalidEntityReference(ref, "null name"));
@@ -506,7 +550,16 @@ public final class TestUtils {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
-    validateEntityReferences(actual);
+  }
+
+  public static void assertEntityReferenceNames(List<String> expected, List<EntityReference> actual) {
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      for (String e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e, true);
+      }
+    }
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
@@ -523,6 +576,26 @@ public final class TestUtils {
     } else {
       if (ref != null) {
         assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + id);
+      }
+    }
+  }
+
+  // TODO clean up
+  public static void existsInEntityReferenceList(List<EntityReference> list, String fqn, boolean expectedExistsInList) {
+    EntityReference ref = null;
+    for (EntityReference r : list) {
+      // TODO Change description does not href in EntityReferences
+      // validateEntityReference(r);
+      if (r.getFullyQualifiedName().equals(fqn)) {
+        ref = r;
+        break;
+      }
+    }
+    if (expectedExistsInList) {
+      assertNotNull(ref, "EntityReference does not exist for " + fqn);
+    } else {
+      if (ref != null) {
+        assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + fqn);
       }
     }
   }

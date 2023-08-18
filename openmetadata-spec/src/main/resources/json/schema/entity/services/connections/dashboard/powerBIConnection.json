@@ -65,6 +65,12 @@
       "type": "integer",
       "default": 100
     },
+    "useAdminApis": {
+      "title": "Use PowerBI Admin APIs",
+      "description": "Fetch the PowerBI metadata using admin APIs",
+      "type": "boolean",
+      "default": true
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

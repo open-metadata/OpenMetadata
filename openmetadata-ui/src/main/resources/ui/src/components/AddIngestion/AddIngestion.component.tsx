@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
+import { LOADING_STATE } from 'enums/common.enum';
+import { Connection } from 'generated/api/services/createDatabaseService';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import { LoadingState } from 'Models';
 import React, {
   Reducer,
   useCallback,
@@ -23,6 +25,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   DBT_CLASSIFICATION_DEFAULT_VALUE,
+  DEFAULT_PARSING_TIMEOUT_LIMIT,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/Ingestions.constant';
@@ -36,16 +39,14 @@ import {
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
-  ConfigClass,
   ConfigType,
   FilterPattern,
   IngestionPipeline,
+  Pipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-import {
-  DbtConfig,
-  DbtPipelineClass,
-} from '../../generated/metadataIngestion/dbtPipeline';
+
+import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
 import {
   getCurrentUserId,
   getFilterTypes,
@@ -63,9 +64,10 @@ import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/Dep
 import {
   AddIngestionProps,
   AddIngestionState,
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
 } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
+import DataInsightMetadataToESConfigForm from './Steps/DataInsightMetadataToESConfigForm/DataInsightMetadataToESConfigForm';
 import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
@@ -90,15 +92,33 @@ const AddIngestion = ({
   showDeployButton,
   showSuccessScreen = true,
   status,
+  onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
-  console.log('data:', data);
   const { sourceConfig, sourceConfigType } = useMemo(
     () => ({
-      sourceConfig: data?.sourceConfig.config as ConfigClass,
-      sourceConfigType: (data?.sourceConfig.config as ConfigClass)?.type,
+      sourceConfig: data?.sourceConfig.config as Pipeline,
+      sourceConfigType: (data?.sourceConfig.config as Pipeline)?.type,
     }),
     []
+  );
+
+  const isSettingsPipeline = useMemo(
+    () =>
+      pipelineType === PipelineType.DataInsight ||
+      pipelineType === PipelineType.ElasticSearchReindex,
+    [pipelineType]
+  );
+
+  const viewServiceText = useMemo(
+    () =>
+      isSettingsPipeline
+        ? t('label.view-entity', {
+            entity: t('label.pipeline-detail-plural'),
+          })
+        : undefined,
+
+    [isSettingsPipeline]
   );
 
   const {
@@ -108,8 +128,7 @@ const AddIngestion = ({
     profilerIngestionType,
   } = useMemo(() => {
     return {
-      configData: (data?.sourceConfig.config as DbtPipelineClass)
-        ?.dbtConfigSource,
+      configData: (data?.sourceConfig.config as DbtPipeline)?.dbtConfigSource,
       usageIngestionType: sourceConfigType ?? ConfigType.DatabaseUsage,
       lineageIngestionType: sourceConfigType ?? ConfigType.DatabaseLineage,
       profilerIngestionType: sourceConfigType ?? ConfigType.Profiler,
@@ -129,32 +148,43 @@ const AddIngestion = ({
   }, [isDatabaseService, pipelineType]);
 
   const sourceTypeData = useMemo(
-    () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
+    () => getSourceTypeFromConfig(configData),
     [configData]
   );
+  const { database, ingestAllDatabases } = serviceData.connection
+    .config as Connection;
 
   const initialState: AddIngestionState = useMemo(
     () => ({
+      database,
       saveState: 'initial',
       showDeployModal: false,
       ingestionName:
         data?.name ?? getIngestionName(serviceData.name, pipelineType),
       ingestSampleData: sourceConfig?.generateSampleData ?? true,
       useFqnFilter: sourceConfig?.useFqnForFiltering ?? false,
+      processPii: sourceConfig?.processPiiSensitive ?? false,
       databaseServiceNames: sourceConfig?.dbServiceNames ?? [],
       description: data?.description ?? '',
       repeatFrequency:
         data?.airflowConfig.scheduleInterval ??
         getIngestionFrequency(pipelineType),
       showDashboardFilter: !isUndefined(sourceConfig?.dashboardFilterPattern),
-      showDatabaseFilter: !isUndefined(sourceConfig?.databaseFilterPattern),
+      showDatabaseFilter: Boolean(
+        database || sourceConfig?.databaseFilterPattern
+      ),
+      isDatabaseFilterDisabled: ingestAllDatabases
+        ? !ingestAllDatabases
+        : Boolean(database),
       showSchemaFilter: !isUndefined(sourceConfig?.schemaFilterPattern),
       showTableFilter: !isUndefined(sourceConfig?.tableFilterPattern),
       showTopicFilter: !isUndefined(sourceConfig?.topicFilterPattern),
+      showDataModelFilter: !isUndefined(sourceConfig?.dataModelFilterPattern),
       showChartFilter: !isUndefined(sourceConfig?.chartFilterPattern),
       showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
       showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
-      dbtConfigSource: configData as ModifiedDbtConfig,
+      showContainerFilter: !isUndefined(sourceConfig?.containerFilterPattern),
+      dbtConfigSource: configData as ModifiedDBTConfigurationSource,
       gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
       chartFilterPattern:
         sourceConfig?.chartFilterPattern ?? INITIAL_FILTER_PATTERN,
@@ -162,15 +192,29 @@ const AddIngestion = ({
       markDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markDeletedTables ?? true)
         : undefined,
+      dataModelFilterPattern:
+        sourceConfig?.dataModelFilterPattern ?? INITIAL_FILTER_PATTERN,
       dashboardFilterPattern:
         sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
-      databaseFilterPattern:
-        sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN,
+      containerFilterPattern:
+        sourceConfig?.containerFilterPattern ?? INITIAL_FILTER_PATTERN,
+      databaseFilterPattern: isUndefined(database)
+        ? sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
+        : {
+            includes: [database],
+            excludes: [],
+          },
       markAllDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markAllDeletedTables ?? false)
         : undefined,
+      markDeletedDashboards: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedTopics: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedMlModels: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedPipelines: sourceConfig?.markDeletedDashboards ?? true,
       includeView: Boolean(sourceConfig?.includeViews),
-      includeTags: Boolean(sourceConfig?.includeTags),
+      includeTags: sourceConfig?.includeTags ?? true,
+      includeDataModels: sourceConfig?.includeDataModels ?? true,
+      includeOwners: Boolean(sourceConfig?.includeOwners),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
       profileSample: sourceConfig?.profileSample,
@@ -191,10 +235,26 @@ const AddIngestion = ({
       queryLogDuration: sourceConfig?.queryLogDuration ?? 1,
       stageFileLocation: sourceConfig?.stageFileLocation ?? '/tmp/query_log',
       resultLimit: sourceConfig?.resultLimit ?? 1000,
-      metadataToESConfig: undefined,
+      metadataToESConfig: {
+        caCerts: sourceConfig?.caCerts,
+        regionName: sourceConfig?.regionName,
+        timeout: sourceConfig?.timeout,
+        useAwsCredentials: Boolean(sourceConfig?.useAwsCredentials),
+        useSSL: Boolean(sourceConfig?.useSSL),
+        verifyCerts: Boolean(sourceConfig?.verifyCerts),
+        batchSize: sourceConfig?.batchSize,
+        searchIndexMappingLanguage: sourceConfig?.searchIndexMappingLanguage,
+        recreateIndex: sourceConfig?.recreateIndex,
+      },
       dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
+      confidence: sourceConfig?.confidence,
       dbtClassificationName:
         sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
+      parsingTimeoutLimit:
+        sourceConfig?.parsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      viewParsingTimeoutLimit:
+        sourceConfig?.viewParsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      filterCondition: sourceConfig?.filterCondition ?? '',
     }),
     []
   );
@@ -203,7 +263,9 @@ const AddIngestion = ({
     Reducer<AddIngestionState, Partial<AddIngestionState>>
   >(reducerWithoutAction, initialState);
 
-  const [saveState, setSaveState] = useState<LoadingState>('initial');
+  const [saveState, setSaveState] = useState<LOADING_STATE>(
+    LOADING_STATE.INITIAL
+  );
   const [showDeployModal, setShowDeployModal] = useState(false);
 
   const handleStateChange = useCallback(
@@ -213,7 +275,7 @@ const AddIngestion = ({
     []
   );
 
-  const handleMetadataToESConfig = (data: ConfigClass) => {
+  const handleMetadataToESConfig = (data: Pipeline) => {
     handleStateChange({
       metadataToESConfig: data,
     });
@@ -304,20 +366,29 @@ const AddIngestion = ({
   const getMetadataIngestionFields = () => {
     const {
       chartFilterPattern,
+      dataModelFilterPattern,
       dashboardFilterPattern,
       databaseFilterPattern,
       databaseServiceNames,
       includeLineage,
       includeTags,
       includeView,
+      includeDataModels,
+      showContainerFilter,
       ingestSampleData,
       markAllDeletedTables,
       markDeletedTables,
+      markDeletedDashboards,
+      markDeletedTopics,
+      markDeletedMlModels,
+      markDeletedPipelines,
       mlModelFilterPattern,
+      containerFilterPattern,
       pipelineFilterPattern,
       schemaFilterPattern,
       showChartFilter,
       showDashboardFilter,
+      showDataModelFilter,
       showDatabaseFilter,
       showMlModelFilter,
       showPipelineFilter,
@@ -327,6 +398,8 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
+      includeOwners,
+      viewParsingTimeoutLimit,
     } = state;
 
     switch (serviceCategory) {
@@ -350,6 +423,7 @@ const AddIngestion = ({
           markDeletedTables: markDeletedTables,
           markAllDeletedTables: markAllDeletedTables,
           type: ConfigType.DatabaseMetadata,
+          viewParsingTimeoutLimit: viewParsingTimeoutLimit,
         };
       }
       case ServiceCategory.MESSAGING_SERVICES: {
@@ -360,6 +434,7 @@ const AddIngestion = ({
           ),
           generateSampleData: ingestSampleData,
           type: ConfigType.MessagingMetadata,
+          markDeletedTopics,
         };
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
@@ -372,8 +447,16 @@ const AddIngestion = ({
             dashboardFilterPattern,
             showDashboardFilter
           ),
+          dataModelFilterPattern: getFilterPatternData(
+            dataModelFilterPattern,
+            showDataModelFilter
+          ),
           dbServiceNames: databaseServiceNames,
+          includeOwners,
           type: ConfigType.DashboardMetadata,
+          markDeletedDashboards,
+          includeTags,
+          includeDataModels,
         };
       }
       case ServiceCategory.PIPELINE_SERVICES: {
@@ -383,7 +466,11 @@ const AddIngestion = ({
             pipelineFilterPattern,
             showPipelineFilter
           ),
+          includeOwners: includeOwners,
+          dbServiceNames: databaseServiceNames,
           type: ConfigType.PipelineMetadata,
+          markDeletedPipelines,
+          includeTags,
         };
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
@@ -393,15 +480,26 @@ const AddIngestion = ({
             showMlModelFilter
           ),
           type: ConfigType.MlModelMetadata,
+          markDeletedMlModels,
         };
       }
+      case ServiceCategory.STORAGE_SERVICES: {
+        return {
+          containerFilterPattern: getFilterPatternData(
+            containerFilterPattern,
+            showContainerFilter
+          ),
+          type: ConfigType.StorageMetadata,
+        };
+      }
+
       default: {
         return {};
       }
     }
   };
 
-  const getConfigData = (type: PipelineType): ConfigClass => {
+  const getConfigData = (type: PipelineType): Pipeline => {
     const {
       databaseFilterPattern,
       dbtConfigSource,
@@ -419,6 +517,10 @@ const AddIngestion = ({
       tableFilterPattern,
       threadCount,
       timeoutSeconds,
+      processPii,
+      confidence,
+      filterCondition,
+      parsingTimeoutLimit,
     } = state;
     switch (type) {
       case PipelineType.Usage: {
@@ -427,6 +529,7 @@ const AddIngestion = ({
           resultLimit: resultLimit,
           stageFileLocation: stageFileLocation,
           type: usageIngestionType,
+          filterCondition: filterCondition,
         };
       }
       case PipelineType.Lineage: {
@@ -434,6 +537,8 @@ const AddIngestion = ({
           queryLogDuration: queryLogDuration,
           resultLimit: resultLimit,
           type: lineageIngestionType,
+          filterCondition: filterCondition,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
       case PipelineType.Profiler: {
@@ -454,9 +559,11 @@ const AddIngestion = ({
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
           profileSample: profileSample,
+          confidence: processPii ? confidence : undefined,
           profileSampleType: profileSampleType,
           threadCount: threadCount,
           timeoutSeconds: timeoutSeconds,
+          processPiiSensitive: processPii,
         };
       }
 
@@ -466,11 +573,17 @@ const AddIngestion = ({
             dbtConfigSource: omit(dbtConfigSource, [
               'dbtUpdateDescriptions',
               'dbtClassificationName',
+              'includeTags',
             ]),
-          } as ConfigClass),
+          } as Pipeline),
           type: ConfigType.Dbt,
           dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
+          includeTags: dbtConfigSource?.includeTags,
           dbtClassificationName: dbtConfigSource?.dbtClassificationName,
+          databaseFilterPattern: databaseFilterPattern,
+          schemaFilterPattern: schemaFilterPattern,
+          tableFilterPattern: tableFilterPattern,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
 
@@ -491,12 +604,19 @@ const AddIngestion = ({
   };
 
   const createNewIngestion = () => {
+    setSaveState(LOADING_STATE.WAITING);
     const { repeatFrequency, enableDebugLog, ingestionName } = state;
+    // below setting is required to trigger workflow which schedule with one day or more frequency
+    const date = new Date(Date.now());
+    date.setUTCHours(0, 0, 0, 0); // setting time to 00:00:00
+    date.setDate(date.getDate() - 1); // subtracting 1 day from current date
+
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
+        startDate: date,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: trim(ingestionName),
@@ -531,7 +651,8 @@ const AddIngestion = ({
           // ignore since error is displayed in toast in the parent promise
         })
         .finally(() => {
-          setTimeout(() => setShowDeployModal(false), 500);
+          setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
+          setShowDeployModal(false);
         });
     }
   };
@@ -550,18 +671,18 @@ const AddIngestion = ({
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(data.sourceConfig.config as ConfigClass),
+            ...(data.sourceConfig.config as Pipeline),
             ...getConfigData(pipelineType),
           },
         },
       };
 
       if (onUpdateIngestion) {
-        setSaveState('waiting');
+        setSaveState(LOADING_STATE.WAITING);
         setShowDeployModal(true);
         onUpdateIngestion(updatedData, data, data.id as string, data.name)
           .then(() => {
-            setSaveState('success');
+            setSaveState(LOADING_STATE.SUCCESS);
             if (showSuccessScreen) {
               handleNext();
             } else {
@@ -569,7 +690,7 @@ const AddIngestion = ({
             }
           })
           .finally(() => {
-            setTimeout(() => setSaveState('initial'), 500);
+            setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
             setTimeout(() => setShowDeployModal(false), 500);
           });
       }
@@ -609,9 +730,7 @@ const AddIngestion = ({
 
     return (
       <span>
-        <span className="tw-mr-1 tw-font-semibold">
-          {`"${state.ingestionName}"`}
-        </span>
+        <span className="font-medium">{`"${state.ingestionName}"`}</span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}
         </span>
@@ -634,7 +753,9 @@ const AddIngestion = ({
 
   return (
     <div data-testid="add-ingestion-container">
-      <h6 className="tw-heading tw-text-base">{heading}</h6>
+      <Typography.Title className="font-normal" level={5}>
+        {heading}
+      </Typography.Title>
 
       <IngestionStepper
         activeStep={activeIngestionStep}
@@ -642,7 +763,7 @@ const AddIngestion = ({
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
-      <div className="tw-pt-7">
+      <div className="p-t-lg">
         {activeIngestionStep === 1 && (
           <ConfigureIngestion
             data={state}
@@ -654,6 +775,7 @@ const AddIngestion = ({
             serviceCategory={serviceCategory}
             onCancel={handleCancelClick}
             onChange={handleStateChange}
+            onFocus={onFocus}
             onNext={handleNext}
           />
         )}
@@ -663,28 +785,42 @@ const AddIngestion = ({
             cancelText={t('label.cancel')}
             data={state}
             formType={status}
+            getExcludeValue={getExcludeValue}
+            getIncludeValue={getIncludeValue}
+            handleShowFilter={handleShowFilter}
             okText={t('label.next')}
             onCancel={handleCancelClick}
             onChange={handleStateChange}
-            onSubmit={(dbtConfigData) => {
-              handleStateChange({
-                dbtConfigSource: dbtConfigData,
-              });
-              handleNext();
-            }}
+            onFocus={onFocus}
+            onSubmit={handleNext}
           />
         )}
 
-        {activeIngestionStep === 3 && isServiceTypeOpenMetadata && (
-          <MetadataToESConfigForm
-            handleMetadataToESConfig={handleMetadataToESConfig}
-            handleNext={handleNext}
-            handlePrev={handlePrev}
-          />
-        )}
+        {activeIngestionStep === 3 &&
+          pipelineType === PipelineType.ElasticSearchReindex && (
+            <MetadataToESConfigForm
+              data={state}
+              handleMetadataToESConfig={handleMetadataToESConfig}
+              handleNext={handleNext}
+              handlePrev={handlePrev}
+              onFocus={onFocus}
+            />
+          )}
+
+        {activeIngestionStep === 3 &&
+          pipelineType === PipelineType.DataInsight && (
+            <DataInsightMetadataToESConfigForm
+              data={state}
+              handleMetadataToESConfig={handleMetadataToESConfig}
+              handleNext={handleNext}
+              handlePrev={handlePrev}
+              onFocus={onFocus}
+            />
+          )}
 
         {activeIngestionStep === 4 && (
           <ScheduleInterval
+            disabledCronChange={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
               pipelineType === PipelineType.DataInsight ? ['day'] : undefined
             }
@@ -708,6 +844,7 @@ const AddIngestion = ({
             showIngestionButton={false}
             state={status}
             successMessage={getSuccessMessage()}
+            viewServiceText={viewServiceText}
           />
         )}
 

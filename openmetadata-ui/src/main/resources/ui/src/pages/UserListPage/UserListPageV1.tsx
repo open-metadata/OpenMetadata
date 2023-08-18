@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getUsers } from 'rest/userAPI';
@@ -30,13 +31,13 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { SearchResponse } from '../../interface/search.interface';
-import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
 
 const UserListPageV1 = () => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
   const history = useHistory();
   const location = useLocation();
@@ -78,12 +79,16 @@ const UserListPageV1 = () => {
         setUserList(data);
         setPaging(paging);
       } else {
-        throw jsonData['api-error-messages']['fetch-users-error'];
+        throw t('server.entity-fetch-error', {
+          entity: t('label.user'),
+        });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-users-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.user'),
+        })
       );
     }
     setIsDataLoading(false);
@@ -102,9 +107,9 @@ const UserListPageV1 = () => {
     isAdmin = false,
     isDeleted = false
   ) => {
-    let filters = '';
+    let filters = 'isBot:false';
     if (isAdmin) {
-      filters = '(isAdmin:true)';
+      filters = 'isAdmin:true isBot:false';
     }
 
     return new Promise<Array<User>>((resolve) => {
@@ -130,7 +135,9 @@ const UserListPageV1 = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-users-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.user'),
+            })
           );
           resolve([]);
         });
@@ -176,7 +183,7 @@ const UserListPageV1 = () => {
   const handleSearch = (value: string) => {
     setSearchValue(value);
     setCurrentPage(INITIAL_PAGING_VALUE);
-    const params = new URLSearchParams({ search: value });
+    const params = new URLSearchParams({ user: value });
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
@@ -200,9 +207,9 @@ const UserListPageV1 = () => {
         // Converting string to URLSearchParameter
         const searchParameter = new URLSearchParams(location.search);
         // Getting the searched name
-        const searchTerm = searchParameter.get('search') || '';
-        setSearchValue(searchTerm);
-        getSearchedUsers(searchTerm, 1);
+        const userSearchTerm = searchParameter.get('user') || '';
+        setSearchValue(userSearchTerm);
+        getSearchedUsers(userSearchTerm, 1);
         setIsPageLoading(false);
       } else {
         fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);
@@ -219,7 +226,7 @@ const UserListPageV1 = () => {
 
   return (
     <UserListV1
-      afterDeleteAction={handleFetch}
+      afterDeleteAction={() => handleSearch('')}
       currentPage={currentPage}
       data={userList}
       isAdminPage={isAdminPage}

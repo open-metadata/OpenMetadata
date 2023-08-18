@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -19,6 +19,7 @@ import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -29,7 +30,6 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
@@ -89,33 +89,27 @@ const RolesListPage = () => {
     fetchRoles();
   }, []);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () => {
-      return (
-        <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              data-testid="add-role"
-              disabled={!addRolePermission}
-              type="primary"
-              onClick={handleAddRole}>
-              {t('label.add-entity', { entity: t('label.role') })}
-            </Button>
-          }
-          heading="Role"
-          type="ADD_DATA"
-        />
-      );
-    },
-    []
+  const errorPlaceHolder = useMemo(
+    () => (
+      <ErrorPlaceHolder
+        heading={t('label.role')}
+        permission={addRolePermission}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddRole}
+      />
+    ),
+    [addRolePermission]
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : isEmpty(roles) ? (
-    fetchErrorPlaceHolder()
-  ) : (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(roles)) {
+    return errorPlaceHolder;
+  }
+
+  return (
     <Row
       className="roles-list-container"
       data-testid="roles-list-container"
@@ -123,17 +117,15 @@ const RolesListPage = () => {
       <Col span={24}>
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.ROLES} />
-          <Tooltip
-            placement="left"
-            title={addRolePermission ? 'Add Role' : NO_PERMISSION_FOR_ACTION}>
+
+          {addRolePermission && (
             <Button
               data-testid="add-role"
-              disabled={!addRolePermission}
               type="primary"
               onClick={handleAddRole}>
               {t('label.add-entity', { entity: t('label.role') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={24}>

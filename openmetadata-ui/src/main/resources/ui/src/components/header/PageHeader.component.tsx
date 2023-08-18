@@ -16,11 +16,17 @@ import React from 'react';
 import { HeaderProps } from './PageHeader.interface';
 import './PageHeader.style.less';
 
+/**
+ * @deprecated will be removed
+ * I don't see any need of this page we can eliminate this in future releases
+ */
 const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
   return (
     <div className="page-header-container">
-      <Typography.Title className="heading">{header}</Typography.Title>
-      <Typography.Paragraph className="sub-heading">
+      <Typography.Title className="heading" data-testid="heading" level={5}>
+        {header}
+      </Typography.Title>
+      <Typography.Paragraph className="sub-heading" data-testid="sub-heading">
         {subHeader}
       </Typography.Paragraph>
     </div>

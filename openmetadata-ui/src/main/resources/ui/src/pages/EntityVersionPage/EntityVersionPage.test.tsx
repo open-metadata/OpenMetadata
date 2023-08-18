@@ -27,8 +27,8 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/DatasetVersion/DatasetVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>DatasetVersion component</div>);
+jest.mock('components/TableVersion/TableVersion.component', () => {
+  return jest.fn().mockReturnValue(<div>TableVersion component</div>);
 });
 jest.mock('components/DashboardVersion/DashboardVersion.component', () => {
   return jest.fn().mockReturnValue(<div>DashboardVersion component</div>);
@@ -42,45 +42,70 @@ jest.mock('components/TopicVersion/TopicVersion.component', () => {
 jest.mock('components/MlModelVersion/MlModelVersion.component', () => {
   return jest.fn().mockReturnValue(<div>MlModelVersion component</div>);
 });
+jest.mock('components/ContainerVersion/ContainerVersion.component', () => {
+  return jest.fn().mockReturnValue(<div>ContainerVersion component</div>);
+});
+
+jest.mock('components/DataModelVersion/DataModelVersion.component', () => {
+  return jest.fn().mockReturnValue(<div>DataModelVersion component</div>);
+});
 
 jest.mock('rest/dashboardAPI', () => ({
-  getDashboardByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
-  getDashboardVersion: jest.fn().mockImplementation(() => Promise.resolve()),
-  getDashboardVersions: jest.fn().mockImplementation(() => Promise.resolve()),
+  getDashboardByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getDashboardVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getDashboardVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 jest.mock('rest/pipelineAPI', () => ({
-  getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
-  getPipelineVersion: jest.fn().mockImplementation(() => Promise.resolve()),
-  getPipelineVersions: jest.fn().mockImplementation(() => Promise.resolve()),
+  getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getPipelineVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getPipelineVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 jest.mock('rest/tableAPI', () => ({
-  getTableDetailsByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
-  getTableVersion: jest.fn().mockImplementation(() => Promise.resolve()),
-  getTableVersions: jest.fn().mockImplementation(() => Promise.resolve()),
+  getTableDetailsByFQN: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getTableVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getTableVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 jest.mock('rest/topicsAPI', () => ({
-  getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
-  getTopicVersion: jest.fn().mockImplementation(() => Promise.resolve()),
-  getTopicVersions: jest.fn().mockImplementation(() => Promise.resolve()),
+  getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getTopicVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getTopicVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
 jest.mock('rest/mlModelAPI', () => ({
-  getMlModelByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
-  getMlModelVersion: jest.fn().mockImplementation(() => Promise.resolve()),
-  getMlModelVersions: jest.fn().mockImplementation(() => Promise.resolve()),
+  getMlModelByFQN: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getMlModelVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getMlModelVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('rest/storageAPI', () => ({
+  getContainerByName: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getContainerVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getContainerVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
+jest.mock('rest/dataModelsAPI', () => ({
+  getDataModelDetailsByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({})),
+  getDataModelVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getDataModelVersionsList: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({})),
 }));
 
 describe('Test EntityVersionPage component', () => {
-  it('Checks if the DatasetVersion component renderst if respective data pass', async () => {
+  it('Checks if the TableVersion component renderst if respective data pass', async () => {
     await act(async () => {
       render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-      const datasetVersion = await screen.findByText(
-        /DatasetVersion component/i
-      );
+      const tableVersion = await screen.findByText(/TableVersion component/i);
 
-      expect(datasetVersion).toBeInTheDocument();
+      expect(tableVersion).toBeInTheDocument();
     });
   });
 
@@ -144,6 +169,69 @@ describe('Test EntityVersionPage component', () => {
       );
 
       expect(TopicVersion).toBeInTheDocument();
+    });
+  });
+
+  it('Should render the mlModel Version Component', async () => {
+    mockParams = {
+      entityType: 'mlmodel',
+      version: '0.1',
+      entityFQN: 'mlflow_svc.eta_predictions',
+    };
+
+    await act(async () => {
+      const { container } = render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
+
+      const MlModelVersion = await findByText(
+        container,
+        /MlModelVersion component/i
+      );
+
+      expect(MlModelVersion).toBeInTheDocument();
+    });
+  });
+
+  it('Should render the container Version Component', async () => {
+    mockParams = {
+      entityType: 'container',
+      version: '0.1',
+      entityFQN: 's3_storage_sample.transactions',
+    };
+
+    await act(async () => {
+      const { container } = render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
+
+      const ContainerVersion = await findByText(
+        container,
+        /ContainerVersion component/i
+      );
+
+      expect(ContainerVersion).toBeInTheDocument();
+    });
+  });
+
+  it('Should render the DataModel Version Component', async () => {
+    mockParams = {
+      entityType: 'dashboardDataModel',
+      version: '0.1',
+      entityFQN: 'data_model.sales',
+    };
+
+    await act(async () => {
+      const { container } = render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
+
+      const ContainerVersion = await findByText(
+        container,
+        /DataModelVersion component/i
+      );
+
+      expect(ContainerVersion).toBeInTheDocument();
     });
   });
 });

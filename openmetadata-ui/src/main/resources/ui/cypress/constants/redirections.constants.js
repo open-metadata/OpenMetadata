@@ -34,10 +34,6 @@ export const LEFT_PANEL_DETAILS = {
     testid: '[data-testid="mlmodels"]',
     url: `${BASE_URL}/explore/mlmodels`,
   },
-  testSuites: {
-    testid: '[data-testid="test-suite"]',
-    url: `${BASE_URL}/test-suites`,
-  },
   services: {
     testid: '[data-testid="service"]',
     url: `${BASE_URL}/settings/services/databases`,
@@ -47,19 +43,31 @@ export const LEFT_PANEL_DETAILS = {
     url: `${BASE_URL}/settings/members/users`,
   },
   teams: {
-    testid: '[data-testid="terms"]',
+    testid: '[data-testid="teams"]',
     url: `${BASE_URL}/settings/members/teams`,
+  },
+  testSuites: {
+    testid: '[data-testid="test-suite"]',
+    url: `${BASE_URL}/test-suites`,
+  },
+  containers: {
+    testid: '[data-testid="containers"]',
+    url: `${BASE_URL}/explore/containers`,
+  },
+  glossaryTerms: {
+    testid: '[data-testid="glossary-terms"]',
+    url: `${BASE_URL}/glossary`,
   },
 };
 
 export const NAVBAR_DETAILS = {
   explore: {
     testid: '[data-testid="appbar-item-explore"]',
-    url: `${BASE_URL}/explore/tables/?page=1`,
+    url: `${BASE_URL}/explore/tables`,
   },
   quality: {
     testid: '[data-testid="appbar-item-data-quality"]',
-    url: `${BASE_URL}/test-suites`,
+    url: `${BASE_URL}/data-quality`,
   },
   insights: {
     testid: '[data-testid="appbar-item-data-insight"]',
@@ -73,7 +81,7 @@ export const NAVBAR_DETAILS = {
   tags: {
     testid: `[data-testid="governance"]`,
     subMenu: '[data-testid="appbar-item-tags"]',
-    url: `${BASE_URL}/tags`,
+    url: `${BASE_URL}/tags/`,
   },
   settings: {
     testid: '[data-testid="appbar-item-settings"]',
@@ -81,7 +89,7 @@ export const NAVBAR_DETAILS = {
   },
   profile: {
     testid: '[data-testid="dropdown-profile"]',
-    subMenu: '[data-testid="greeting-text"] [data-testid="user-name"]',
+    subMenu: '[data-testid="user-name"]',
     url: `${BASE_URL}/users/admin`,
   },
 };
@@ -155,9 +163,9 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
     url: `${BASE_URL}/settings/customAttributes/mlModels`,
   },
-  elasticsearch: {
-    testid: '[data-menu-id*="elasticsearch"]',
-    url: `${BASE_URL}/settings/eventPublishers/elasticsearch`,
+  search: {
+    testid: '[data-menu-id*="search"]',
+    url: `${BASE_URL}/settings/openMetadata/search`,
   },
   bots: {
     testid: '[data-menu-id*="bots"]',

@@ -14,11 +14,14 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getBots } from 'rest/botsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
@@ -31,7 +34,6 @@ import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -96,14 +98,16 @@ const BotListV1 = ({
         dataIndex: 'displayName',
         key: 'displayName',
         width: 200,
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            data-testid={`bot-link-${getEntityName(record)}`}
-            to={getBotsPath(record?.fullyQualifiedName || record?.name || '')}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          const name = getEntityName(record);
+          const fqn = record.fullyQualifiedName || record.name || '';
+
+          return (
+            <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: t('label.description'),
@@ -135,23 +139,15 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Space align="center" size={8}>
-              <Tooltip placement="bottom" title={title}>
-                <Button
-                  data-testid={`bot-delete-${getEntityName(record)}`}
-                  disabled={isDisabled}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.delete')}
-                      className="tw-w-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
-                  type="text"
-                  onClick={() => setSelectedUser(record)}
-                />
-              </Tooltip>
-            </Space>
+            <Tooltip placement="topRight" title={title}>
+              <Button
+                data-testid={`bot-delete-${getEntityName(record)}`}
+                disabled={isDisabled}
+                icon={<SVGIcons alt={t('label.delete')} icon={Icons.DELETE} />}
+                type="text"
+                onClick={() => setSelectedUser(record)}
+              />
+            </Tooltip>
           );
         },
       },
@@ -171,7 +167,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    fetchBots();
+    fetchBots(showDeleted);
   }, [selectedUser]);
 
   const handleSearch = (text: string) => {
@@ -200,7 +196,7 @@ const BotListV1 = ({
 
   return handleErrorPlaceholder ? (
     <Row>
-      <Col className="w-full tw-flex tw-justify-end">
+      <Col className="w-full d-flex justify-end">
         <Space align="end" size={5}>
           <Switch
             checked={showDeleted}
@@ -213,27 +209,12 @@ const BotListV1 = ({
       </Col>
       <Col className="w-full">
         <ErrorPlaceHolder
-          buttons={
-            <div className="tw-text-lg tw-text-center">
-              <Tooltip
-                placement="left"
-                title={
-                  isAdminUser ? addBotLabel : t('message.admin-only-action')
-                }>
-                <Button
-                  ghost
-                  data-testid="add-bot"
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddBotClick}>
-                  {addBotLabel}
-                </Button>
-              </Tooltip>
-            </div>
-          }
+          className="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
-          type="ADD_DATA"
+          permission={isAdminUser}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddBotClick}
         />
       </Col>
     </Row>
@@ -244,7 +225,7 @@ const BotListV1 = ({
       </Col>
 
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}
@@ -255,7 +236,8 @@ const BotListV1 = ({
           </Space>
 
           <Tooltip
-            title={isAdminUser ? addBotLabel : t('message.admin-only-action')}>
+            placement="topLeft"
+            title={!isAdminUser && t('message.admin-only-action')}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}
@@ -279,17 +261,21 @@ const BotListV1 = ({
       <Col span={24}>
         <Row>
           <Col span={24}>
-            <Table
-              bordered
-              columns={columns}
-              dataSource={searchedData}
-              loading={{
-                spinning: loading,
-                indicator: <Loader size="small" />,
-              }}
-              pagination={false}
-              size="small"
-            />
+            {loading ? (
+              <Loader />
+            ) : (
+              <Table
+                bordered
+                columns={columns}
+                dataSource={searchedData}
+                locale={{
+                  emptyText: <FilterTablePlaceHolder />,
+                }}
+                pagination={false}
+                rowKey="name"
+                size="small"
+              />
+            )}
           </Col>
           <Col span={24}>
             {paging.total > PAGE_SIZE_LARGE && (
@@ -306,6 +292,7 @@ const BotListV1 = ({
 
         <DeleteWidgetModal
           afterDeleteAction={handleDeleteAction}
+          allowSoftDelete={!showDeleted}
           entityId={selectedUser?.id || ''}
           entityName={selectedUser?.displayName || ''}
           entityType={EntityType.BOT}

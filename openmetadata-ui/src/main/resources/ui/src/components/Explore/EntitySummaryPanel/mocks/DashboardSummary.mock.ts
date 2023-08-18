@@ -27,7 +27,7 @@ export const mockDashboardEntityDetails: Dashboard = {
   version: 0.1,
   updatedAt: 1672627828951,
   updatedBy: 'admin',
-  dashboardUrl: 'http://localhost:808/superset/dashboard/deck/',
+  sourceUrl: 'http://localhost:808/superset/dashboard/deck/',
   charts: [
     {
       id: 'eba9c260-4036-4c57-92fe-6c6e3d703bda',
@@ -81,7 +81,7 @@ export const mockFetchChartsResponse = [
     updatedAt: 1672627828742,
     updatedBy: 'admin',
     chartType: 'Other',
-    chartUrl:
+    sourceUrl:
       'http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D',
     href: 'http://localhost:8585/api/v1/charts/eba9c260-4036-4c57-92fe-6c6e3d703bda',
     tags: [],

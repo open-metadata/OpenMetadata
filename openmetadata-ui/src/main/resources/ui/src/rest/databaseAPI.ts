@@ -13,6 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Paging } from '../generated/type/paging';
@@ -20,19 +22,22 @@ import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getDatabases = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/databases`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: Database[];
     paging: Paging;
-  }>(url);
+  }>(`/databases`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -52,11 +57,16 @@ export const getDatabase = (
 
 export const getDatabaseDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[]
+  arrQueryFields: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const url = getURLWithQueryFields(`/databases/name/${fqn}`, arrQueryFields);
 
-  const response = await APIClient.get<Database>(url);
+  const response = await APIClient.get<Database>(url, {
+    params: {
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -94,7 +104,8 @@ export const patchDatabaseSchemaDetails = async (
 export const getDatabaseSchemas = async (
   databaseName: string,
   paging?: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const url = `${getURLWithQueryFields(
     `/databaseSchemas`,
@@ -104,20 +115,48 @@ export const getDatabaseSchemas = async (
   const response = await APIClient.get<{
     data: DatabaseSchema[];
     paging: Paging;
-  }>(url);
+  }>(url, {
+    params: {
+      include,
+    },
+  });
 
   return response.data;
 };
 export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  qParams?: string
 ) => {
   const url = `${getURLWithQueryFields(
     `/databaseSchemas/name/${databaseSchemaName}`,
-    arrQueryFields
+    arrQueryFields,
+    qParams
   )}`;
 
   const response = await APIClient.get<DatabaseSchema>(url);
+
+  return response.data;
+};
+
+export const restoreDatabaseSchema = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<DatabaseSchema>
+  >('/databaseSchemas/restore', {
+    id,
+  });
+
+  return response.data;
+};
+
+export const restoreDatabase = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<Database>
+  >('/databases/restore', {
+    id,
+  });
 
   return response.data;
 };

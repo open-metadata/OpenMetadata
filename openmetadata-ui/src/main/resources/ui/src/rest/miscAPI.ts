@@ -12,13 +12,14 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Edge } from 'components/EntityLineage/EntityLineage.interface';
+import { Edge } from 'components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { WILD_CARD_CHAR } from 'constants/char.constants';
+import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { SearchIndex } from '../enums/search.enum';
-import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
+import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
 import { Paging } from '../generated/type/paging';
 import {
   RawSuggestResponse,
@@ -71,6 +72,13 @@ export const fetchAuthenticationConfig = async () => {
 
   return response.data;
 };
+export const getApplicationConfig = async () => {
+  const response = await APIClient.get<ApplicationConfiguration>(
+    '/system/config/applicationConfig'
+  );
+
+  return response.data;
+};
 
 export const fetchAuthorizerConfig = async () => {
   const response = await APIClient.get<AuthorizerConfiguration>(
@@ -88,13 +96,9 @@ export const fetchSandboxConfig = async () => {
   return response.data;
 };
 
-export const fetchSlackConfig = (): Promise<AxiosResponse> => {
-  return APIClient.get('/system/config/slackChat');
-};
-
 export const fetchAirflowConfig = async () => {
-  const response = await APIClient.get<AirflowConfiguration>(
-    '/system/config/airflow'
+  const response = await APIClient.get<PipelineServiceClientConfiguration>(
+    '/system/config/pipeline-service-client'
   );
 
   return response.data;
@@ -112,6 +116,9 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.TOPIC,
       SearchIndex.PIPELINE,
       SearchIndex.MLMODEL,
+      SearchIndex.CONTAINER,
+      SearchIndex.GLOSSARY,
+      SearchIndex.TAG,
     ],
   };
 
@@ -131,6 +138,12 @@ export const getSuggestions = <T extends SearchIndex>(
 
 export const getVersion = async () => {
   const response = await APIClient.get<{ version: string }>('/system/version');
+
+  return response.data;
+};
+
+export const postSamlLogout = async (data: { token: string }) => {
+  const response = await APIClient.post(`/users/logout`, { ...data });
 
   return response.data;
 };
@@ -164,7 +177,7 @@ export const getSuggestedTeams = (term: string) => {
 
 export const getUserSuggestions = (term: string) => {
   const params = {
-    q: term,
+    q: term || WILD_CARD_CHAR,
     index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
   };
 
@@ -268,11 +281,24 @@ export const getAdvancedFieldOptions = (
   });
 };
 
-export const getAdvancedFieldDefaultOptions = (
+/**
+ * Retrieves the aggregate field options based on the provided parameters.
+ *
+ * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
+ * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
+ * @param {string} value - The value to filter the aggregation on.
+ * @param {string} q - The search query.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
+ */
+export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
-  field: string
+  field: string,
+  value: string,
+  q: string
 ) => {
-  const params = { index, field };
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
+  const params = { index, field, value: withWildCardValue, q };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
@@ -293,8 +319,23 @@ export const getEntityCount = async (
   return response.data;
 };
 
-export const getAllEntityCount = async () => {
-  const response = await APIClient.get<EntitiesCount>('/system/entities/count');
+export const fetchMarkdownFile = async (filePath: string) => {
+  let baseURL;
+
+  try {
+    const url = new URL(filePath);
+    baseURL = `${url.origin}/`;
+  } catch (error) {
+    baseURL = '/';
+  }
+
+  const response = await APIClient.get<string>(filePath, {
+    baseURL,
+    headers: {
+      'Content-Type': 'text/markdown',
+      Accept: 'text/markdown',
+    },
+  });
 
   return response.data;
 };

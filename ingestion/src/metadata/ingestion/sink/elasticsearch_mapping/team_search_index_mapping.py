@@ -42,10 +42,10 @@ TEAM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           }
         }
       },
-      "teamType": {
+      "description": {
         "type": "text"
       },
-      "description": {
+      "teamType": { 
         "type": "text"
       },
       "version": {

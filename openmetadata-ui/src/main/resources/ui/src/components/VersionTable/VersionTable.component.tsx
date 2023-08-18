@@ -11,21 +11,35 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table } from 'antd';
+import { Col, Row, Space, Table } from 'antd';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { Column } from '../../generated/entity/data/table';
 import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
-import { getTableExpandableConfig, makeData } from '../../utils/TableUtils';
+import {
+  getTableExpandableConfig,
+  makeData,
+  prepareConstraintIcon,
+} from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
+import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
-const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
+const VersionTable = ({
+  columnName,
+  columns,
+  joins,
+  tableConstraints,
+  constraintUpdatedColumns,
+}: VersionTableProps) => {
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const { t } = useTranslation();
 
@@ -42,10 +56,21 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'name',
         ellipsis: true,
         width: 180,
-        render: (name: Column['name']) => (
-          <div className="d-inline-block">
+        render: (name: Column['name'], record: Column) => (
+          <Space
+            align="start"
+            className="w-max-90 vertical-align-inherit"
+            size={2}>
+            {prepareConstraintIcon(
+              name,
+              record.constraint,
+              tableConstraints,
+              undefined,
+              undefined,
+              constraintUpdatedColumns?.includes(name)
+            )}
             <RichTextEditorPreviewer markdown={name} />
-          </div>
+          </Space>
         ),
       },
       {
@@ -59,7 +84,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
           dataTypeDisplay ? (
             <RichTextEditorPreviewer markdown={dataTypeDisplay.toLowerCase()} />
           ) : (
-            '--'
+            NO_DATA_PLACEHOLDER
           ),
       },
       {
@@ -67,6 +92,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
+        width: 400,
         render: (description: Column['description']) =>
           description ? (
             <>
@@ -78,7 +104,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
               )}
             </>
           ) : (
-            <span className="tw-no-description">
+            <span className="text-grey-muted">
               {t('label.no-entity', {
                 entity: t('label.description'),
               })}
@@ -92,13 +118,24 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'tags',
         width: 272,
         render: (tags: Column['tags']) => (
-          <div className="d-flex flex-wrap">
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          </div>
+          <TagsViewer
+            sizeCap={-1}
+            tags={getFilterTags(tags ?? []).Classification}
+          />
+        ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 272,
+        render: (tags: Column['tags']) => (
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags ?? []).Glossary} />
         ),
       },
     ],
-    []
+    [columnName, joins, data]
   );
 
   const handleSearchAction = (searchValue: string) => {
@@ -126,14 +163,21 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
       </Col>
       <Col>
         <Table
+          bordered
           columns={versionTableColumns}
           data-testid="entity-table"
           dataSource={data}
           expandable={{
             ...getTableExpandableConfig<Column>(),
-            defaultExpandedRowKeys: [],
+            defaultExpandAllRows: true,
+          }}
+          key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
+          rowKey="name"
+          scroll={TABLE_SCROLL_VALUE}
           size="small"
         />
       </Col>

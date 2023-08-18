@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestSuitePipeline",
   "description": "TestSuite Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "testSuiteConfigType": {
       "description": "Pipeline Source Config Metadata Pipeline type",
@@ -16,8 +17,20 @@
       "description": "Pipeline type",
       "$ref": "#/definitions/testSuiteConfigType",
       "default": "TestSuite"
+    },
+    "entityFullyQualifiedName": {
+      "description": "Fully qualified name of the entity to be tested.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "profileSample": {
+      "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
+      "type": "number",
+      "default": null
+    },
+    "profileSampleType": {
+      "$ref": "../entity/data/table.json#/definitions/profileSampleType"
     }
   },
-  "required": ["type"],
+  "required": ["type", "entityFullyQualifiedName"],
   "additionalProperties": false
 }

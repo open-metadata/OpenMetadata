@@ -11,20 +11,17 @@
  *  limitations under the License.
  */
 
-import { cleanup, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
-
-jest.mock('antd/lib/grid', () => ({
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Col: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div data-testid={props['data-testid']}>{children}</div>
-    )),
-}));
 
 jest.mock('rest/tableAPI', () => ({
   getTableProfilerConfig: jest
@@ -55,11 +52,51 @@ describe('Test ProfilerSettingsModal component', () => {
     const sqlEditor = await screen.findByTestId('sql-editor-container');
     const includeSelect = await screen.findByTestId('include-column-container');
     const excludeSelect = await screen.findByTestId('exclude-column-container');
+    const partitionSwitch = await screen.findByTestId(
+      'enable-partition-switch'
+    );
+    const intervalType = await screen.findByTestId('interval-type');
+    const columnName = await screen.findByTestId('column-name');
 
     expect(modal).toBeInTheDocument();
     expect(sampleContainer).toBeInTheDocument();
     expect(sqlEditor).toBeInTheDocument();
     expect(includeSelect).toBeInTheDocument();
     expect(excludeSelect).toBeInTheDocument();
+    expect(partitionSwitch).toBeInTheDocument();
+    expect(intervalType).toBeInTheDocument();
+    expect(columnName).toBeInTheDocument();
+  });
+
+  it('Interval Type and Column Name field should be disabled, when partition switch is off', async () => {
+    render(<ProfilerSettingsModal {...mockProps} />);
+    const partitionSwitch = await screen.findByTestId(
+      'enable-partition-switch'
+    );
+    const intervalType = await screen.findByTestId('interval-type');
+    const columnName = await screen.findByTestId('column-name');
+
+    expect(partitionSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(intervalType).toHaveClass('ant-select-disabled');
+    expect(columnName).toHaveClass('ant-select-disabled');
+  });
+
+  it('Interval Type and Column Name field should be enabled, when partition switch is on', async () => {
+    render(<ProfilerSettingsModal {...mockProps} />);
+    const partitionSwitch = await screen.findByTestId(
+      'enable-partition-switch'
+    );
+    const intervalType = await screen.findByTestId('interval-type');
+    const columnName = await screen.findByTestId('column-name');
+
+    expect(partitionSwitch).toHaveAttribute('aria-checked', 'false');
+
+    await act(async () => {
+      fireEvent.click(partitionSwitch);
+    });
+
+    expect(partitionSwitch).toHaveAttribute('aria-checked', 'true');
+    expect(intervalType).not.toHaveClass('ant-select-disabled');
+    expect(columnName).not.toHaveClass('ant-select-disabled');
   });
 });

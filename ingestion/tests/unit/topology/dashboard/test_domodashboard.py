@@ -1,3 +1,14 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 """
 Test Domo Dashboard using the topology
 """
@@ -9,7 +20,6 @@ from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -18,7 +28,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.dashboard.domodashboard.metadata import (
     DomoDashboardDetails,
@@ -34,20 +44,10 @@ with open(mock_file_path, encoding="UTF-8") as file:
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     name="domodashboard_source_test",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.DomoDashboard,
-)
-
-MOCK_DASHBOARD = Dashboard(
-    id="a58b1856-729c-493b-bc87-6d2269b43ec0",
-    name="do_it_all_with_default_config",
-    fullyQualifiedName="domodashboard_source.do_it_all_with_default_config",
-    displayName="do_it_all_with_default_config",
-    description="",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="dashboardService"
-    ),
 )
 
 mock_domopipeline_config = {
@@ -97,20 +97,11 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="552315335",
     displayName="New Dashboard",
     description=None,
-    dashboardUrl="https://domain.domo.com/page/552315335",
+    sourceUrl="https://domain.domo.com/page/552315335",
     charts=[],
     tags=None,
     owner=None,
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-        type="dashboardService",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
-        displayName=None,
-        deleted=None,
-        href=None,
-    ),
+    service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     extension=None,
 )
 
@@ -123,20 +114,10 @@ EXPECTED_CHARTS = [
             " Identify over-performers and understand the secrets to their success."
         ),
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
-        tables=None,
+        sourceUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     ),
     CreateChartRequest(
         name="781210736",
@@ -146,20 +127,10 @@ EXPECTED_CHARTS = [
             " Identify over-performers and understand the secrets to their success."
         ),
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
-        tables=None,
+        sourceUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     ),
 ]
 

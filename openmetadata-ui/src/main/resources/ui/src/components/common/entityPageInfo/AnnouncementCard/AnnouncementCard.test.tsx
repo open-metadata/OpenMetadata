@@ -48,10 +48,8 @@ describe('Test Announcement card component', () => {
     );
 
     const card = await screen.findByTestId('announcement-card');
-    const readMore = await screen.findByTestId('read-more');
 
     expect(card).toBeInTheDocument();
-    expect(readMore).toBeInTheDocument();
   });
 
   it('Click should call onClick function', async () => {
@@ -60,13 +58,10 @@ describe('Test Announcement card component', () => {
     );
 
     const card = await screen.findByTestId('announcement-card');
-    const readMore = await screen.findByTestId('read-more');
 
     fireEvent.click(card);
 
     expect(mockOnClick).toHaveBeenCalled();
-
-    fireEvent.click(readMore);
 
     expect(mockOnClick).toHaveBeenCalled();
   });

@@ -19,6 +19,7 @@ from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
 
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
 
 
@@ -53,7 +54,7 @@ class ColumnTypeParser:
         types.ARRAY: "ARRAY",
         types.Boolean: "BOOLEAN",
         types.CHAR: "CHAR",
-        types.CLOB: "BINARY",
+        types.CLOB: "CLOB",
         types.Date: "DATE",
         types.DATE: "DATE",
         types.DateTime: "DATETIME",
@@ -109,17 +110,20 @@ class ColumnTypeParser:
         "ENUM": "ENUM",
         "FLOAT": "FLOAT",
         "FLOAT4": "FLOAT",
+        "FLOAT32": "FLOAT",
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
         "GEOGRAPHY": "GEOGRAPHY",
         "GEOMETRY": "GEOMETRY",
         "HYPERLOGLOG": "BINARY",
-        "IMAGE": "BINARY",
+        "IMAGE": "IMAGE",
         "INT": "INT",
         "INT2": "SMALLINT",
         "INT4": "INT",
         "INT8": "BIGINT",
         "INT16": "BIGINT",
+        "TUPLE": "TUPLE",
+        "SPATIAL": "SPATIAL",
         "INT32": "BIGINT",
         "INT64": "BIGINT",
         "INT128": "BIGINT",
@@ -146,7 +150,7 @@ class ColumnTypeParser:
         "MEDIUMTEXT": "MEDIUMTEXT",
         "MONEY": "NUMBER",
         "NCHAR": "CHAR",
-        "NTEXT": "TEXT",
+        "NTEXT": "NTEXT",
         "NULL": "NULL",
         "NUMBER": "NUMBER",
         "NUMERIC": "NUMERIC",
@@ -187,20 +191,96 @@ class ColumnTypeParser:
         "VARIANT": "JSON",
         "JSON": "JSON",
         "JSONB": "JSON",
-        "XML": "BINARY",
-        "XMLTYPE": "BINARY",
         "UUID": "UUID",
-        "POINT": "POINT",
-        "POLYGON": "POLYGON",
+        "POINT": "GEOMETRY",
+        "POLYGON": "GEOMETRY",
         "AggregateFunction()": "AGGREGATEFUNCTION",
         "BYTEA": "BYTEA",
+        "UNKNOWN": "UNKNOWN",
+        # redshift
+        "HLLSKETCH": "HLLSKETCH",
+        "SUPER": "SUPER",
+        # postgres
+        "BOX": "GEOMETRY",
+        "CIRCLE": "GEOMETRY",
+        "LINE": "GEOMETRY",
+        "LSEG": "GEOMETRY",
+        "PATH": "GEOMETRY",
+        "PG_LSN": "PG_LSN",
+        "PG_SNAPSHOT": "PG_SNAPSHOT",
+        "TSQUERY": "TSQUERY",
+        "TXID_SNAPSHOT": "TXID_SNAPSHOT",
+        "XML": "XML",
+        "TSVECTOR": "TSVECTOR",
+        "MACADDR": "MACADDR",
+        "MACADDR8": "MACADDR",
+        "CIDR": "CIDR",
+        "INET": "INET",
+        "TSRANGE": "DATETIMERANGE",
+        # ORACLE
+        "BINARY_DOUBLE": "DOUBLE",
+        "BINARY_FLOAT": "FLOAT",
+        "XMLTYPE": "XML",
+        "BFILE": "BINARY",
+        "CLOB": "CLOB",
+        "NCLOB": "CLOB",
+        "LONG": "LONG",
+        # clickhouse
+        "LOWCARDINALITY": "LOWCARDINALITY",
+        "DATETIME64": "DATETIME",
+        "SimpleAggregateFunction()": "AGGREGATEFUNCTION",
+        "IPV4": "IPV4",
+        "IPV6": "IPV6",
+        # Databricks
+        "VOID": "NULL",
+        # mysql
+        "TINYBLOB": "BLOB",
+        "LONGTEXT": "TEXT",
+        "TINYTEXT": "TEXT",
+        "YEAR": "YEAR",
+        # Tableau
+        "EMPTY": "NULL",
+        "I2": "INT",
+        "I4": "INT",
+        "R4": "FLOAT",
+        "R8": "DOUBLE",
+        "CY": "NUMERIC",
+        "BSTR": "BINARY",
+        "IDISPATCH": "BINARY",
+        "ERROR": "VARCHAR",
+        "IUNKNOWN": "UNKNOWN",
+        "UI1": "INT",
+        "BYREF": "BINARY",
+        "I1": "INT",
+        "UI2": "SMALLINT",
+        "UI4": "INT",
+        "I8": "BIGINT",
+        "UI8": "BIGINT",
+        "GUID": "BINARY",
+        "VECTOR": "BINARY",
+        "FILETIME": "BINARY",
+        "RESERVED": "BINARY",
+        "STR": "STRING",
+        "WSTR": "STRING",
+        "UDT": "JSON",
+        "DBDATE": "DATE",
+        "DBTIME": "TIME",
+        "DBTIMESTAMP": "TIMESTAMP",
+        "HCHAPTER": "VARCHAR",
+        "PROPVARIANT": "BINARY",
+        "VARNUMERIC": "NUMERIC",
+        "WDC_INT": "INT",
+        "WDC_FLOAT": "FLOAT",
+        "WDC_STRING": "STRING",
+        "WDC_DATETIME": "DATETIME",
+        "WDC_BOOL": "BOOLEAN",
+        "WDC_DATE": "DATE",
+        "WDC_GEOMETRY": "GEOMETRY",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
     _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*,\s*(\d+)\s*\))?")
-
-    _FIXED_STRING = re.compile(r"(var)?char\(\s*(\d+)\s*\)")
 
     try:
         # pylint: disable=import-outside-toplevel
@@ -213,19 +293,15 @@ class ColumnTypeParser:
 
     @staticmethod
     def get_column_type(column_type: Any) -> str:
-        column_type_result = ColumnTypeParser.get_column_type_mapping(column_type)
-        if column_type_result:
-            return column_type_result
-        column_type_result = ColumnTypeParser.get_source_type_mapping(column_type)
-        if column_type_result:
-            return column_type_result
-        column_type_result = ColumnTypeParser.get_source_type_containes_brackets(
-            column_type
-        )
-        if column_type_result:
-            return column_type_result
-
-        return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("VARCHAR")
+        for func in [
+            ColumnTypeParser.get_column_type_mapping,
+            ColumnTypeParser.get_source_type_mapping,
+            ColumnTypeParser.get_source_type_contains_brackets,
+        ]:
+            column_type_result = func(column_type)
+            if column_type_result:
+                return column_type_result
+        return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("UNKNOWN")
 
     @staticmethod
     def get_column_type_mapping(column_type: Any) -> str:
@@ -236,7 +312,7 @@ class ColumnTypeParser:
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(str(column_type), None)
 
     @staticmethod
-    def get_source_type_containes_brackets(column_type: Any) -> str:
+    def get_source_type_contains_brackets(column_type: Any) -> str:
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(
             str(column_type).split("(", maxsplit=1)[0].split("<")[0].upper(), None
         )
@@ -245,7 +321,7 @@ class ColumnTypeParser:
     def _parse_datatype_string(
         data_type: str, **kwargs: Any  # pylint: disable=unused-argument
     ) -> Union[object, Dict[str, object]]:
-        data_type = data_type.strip()
+        data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
         if data_type.startswith("array<"):
             if data_type[-1] != ">":
@@ -253,11 +329,18 @@ class ColumnTypeParser:
             arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
                 data_type[6:-1]
             )["dataType"]
-            return {
+
+            data_type_string = {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,
                 "dataTypeDisplay": data_type,
             }
+            if arr_data_type == DataType.STRUCT.value:
+                children = ColumnTypeParser._parse_struct_fields_string(
+                    data_type[6:-1][7:-1]
+                )["children"]
+                data_type_string["children"] = children
+            return data_type_string
         if data_type.startswith("map<"):
             if data_type[-1] != ">":
                 raise ValueError(f"expected '>' found: {data_type}")
@@ -319,8 +402,6 @@ class ColumnTypeParser:
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
                 "dataTypeDisplay": dtype,
             }
-        if ColumnTypeParser._FIXED_STRING.match(dtype):
-            return {"dataType": "STRING", "dataTypeDisplay": dtype}
         if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
             match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
             if match.group(2) is not None:  # type: ignore

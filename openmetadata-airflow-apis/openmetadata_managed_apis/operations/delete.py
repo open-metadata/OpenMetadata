@@ -49,7 +49,6 @@ def delete_dag_id(dag_id: str) -> Response:
         os.remove(config_file.absolute())
 
     with settings.Session() as session:
-
         deleted_dags = (
             session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
         )

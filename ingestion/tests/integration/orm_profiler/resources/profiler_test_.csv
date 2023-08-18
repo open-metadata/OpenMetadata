@@ -1,4 +1,4 @@
-id,first_name,last_name,city,country
-1,John,Doe,Los Angeles,US
-2,Jane,Doe,Los Angeles,US
-3,Jane,Smith,Paris,FR
+id,first_name,last_name,city,country,birthdate,age
+1,John,Doe,Los Angeles,US,1980-01-01,40
+2,Jane,Doe,Los Angeles,US,2000-12-31,39
+3,Jane,Smith,Paris,FR,2001-11-11,28

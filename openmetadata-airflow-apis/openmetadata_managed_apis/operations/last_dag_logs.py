@@ -61,10 +61,8 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
     raw_logs_str = None
 
     for task_instance in task_instances:
-
         # Only fetch the required logs
         if task_instance.task_id == task_id:
-
             # Pick up the _try_number, otherwise they are adding 1
             try_number = task_instance._try_number  # pylint: disable=protected-access
 

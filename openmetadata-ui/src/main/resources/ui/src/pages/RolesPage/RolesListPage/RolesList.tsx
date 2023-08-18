@@ -18,8 +18,11 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -28,7 +31,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
-import { getEntityName } from '../../../utils/CommonUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -38,7 +40,6 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface RolesListProps {
   roles: Role[];
@@ -46,6 +47,7 @@ interface RolesListProps {
 }
 
 const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
+  const { t } = useTranslation();
   const [selectedRole, setSelectedRole] = useState<Role>();
 
   const { permissions } = usePermissionProvider();
@@ -67,7 +69,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
   const columns: ColumnsType<Role> = useMemo(() => {
     return [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -75,13 +77,15 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
           <Link
             className="link-hover"
             data-testid="role-name"
-            to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
+            to={getRoleWithFqnPath(
+              encodeURIComponent(record.fullyQualifiedName ?? '')
+            )}>
             {getEntityName(record)}
           </Link>
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
@@ -89,7 +93,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         ),
       },
       {
-        title: 'Policies',
+        title: t('label.policy-plural'),
         dataIndex: 'policies',
         width: '250px',
         key: 'policies',
@@ -150,23 +154,20 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         },
       },
       {
-        title: 'Actions',
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         width: '80px',
+        align: 'center',
         key: 'actions',
         render: (_, record) => {
           return (
             <Tooltip
               placement="left"
-              title={
-                deleteRolePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
-              }>
+              title={!deleteRolePermission && NO_PERMISSION_FOR_ACTION}>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
                 disabled={!deleteRolePermission}
-                icon={
-                  <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
-                }
+                icon={<IconDelete name={t('label.delete')} width="16px" />}
                 type="text"
                 onClick={() => setSelectedRole(record)}
               />
@@ -176,6 +177,10 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
       },
     ];
   }, []);
+
+  const handleAfterDeleteAction = useCallback(() => {
+    fetchRoles();
+  }, [fetchRoles]);
 
   return (
     <>
@@ -191,11 +196,11 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
       />
       {selectedRole && (
         <DeleteWidgetModal
-          afterDeleteAction={fetchRoles}
+          afterDeleteAction={handleAfterDeleteAction}
           allowSoftDelete={false}
-          deleteMessage={`Are you sure you want to delete ${getEntityName(
-            selectedRole
-          )}`}
+          deleteMessage={t('message.are-you-sure-delete-entity', {
+            entity: getEntityName(selectedRole),
+          })}
           entityId={selectedRole.id}
           entityName={getEntityName(selectedRole)}
           entityType={EntityType.ROLE}

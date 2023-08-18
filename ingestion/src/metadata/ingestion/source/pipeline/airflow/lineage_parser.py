@@ -62,12 +62,27 @@ we'll join the keys and get [
 ]
 and we'll treat this as independent sets of lineage
 """
+import logging
+import traceback
+from enum import Enum
 from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel
 
-INLETS_ATTR = "_inlets"
-OUTLETS_ATTR = "_outlets"
+logger = logging.getLogger("airflow.task")
+
+
+class XLetsMode(Enum):
+    INLETS = "inlets"
+    OUTLETS = "outlets"
+
+
+class XLetsAttr(Enum):
+    INLETS = "inlets"
+    PRIVATE_INLETS = "_inlets"
+
+    OUTLETS = "outlets"
+    PRIVATE_OUTLETS = "_outlets"
 
 
 class XLets(BaseModel):
@@ -84,10 +99,17 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
     Parse airflow xlets for V1
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
+
+    [{'__var': {'tables': ['sample_data.ecommerce_db.shopify.fact_order']},
+        '__type': 'dict'}]
+
     """
+    # This branch is for lineage parser op
     if isinstance(xlet, list) and len(xlet) and isinstance(xlet[0], dict):
         xlet_dict = xlet[0]
-
+        # This is how the Serialized DAG is giving us the info from _inlets & _outlets
+        if isinstance(xlet_dict, dict) and xlet_dict.get("__var"):
+            xlet_dict = xlet_dict["__var"]
         return {
             key: value for key, value in xlet_dict.items() if isinstance(value, list)
         }
@@ -96,7 +118,7 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
 
 
 def get_xlets_from_operator(
-    operator: "BaseOperator", xlet_mode: str = INLETS_ATTR
+    operator: "BaseOperator", xlet_mode: XLetsMode
 ) -> Optional[Dict[str, List[str]]]:
     """
     Given an Airflow DAG Task, obtain the tables
@@ -109,14 +131,32 @@ def get_xlets_from_operator(
     :param xlet_mode: get inlet or outlet
     :return: list of tables FQN
     """
-    xlet = getattr(operator, xlet_mode)
+    attribute = None
+    if xlet_mode == XLetsMode.INLETS:
+        attribute = (
+            XLetsAttr.INLETS.value
+            if hasattr(operator, XLetsAttr.INLETS.value)
+            else XLetsAttr.PRIVATE_INLETS.value
+        )
+
+    if xlet_mode == XLetsMode.OUTLETS:
+        attribute = (
+            XLetsAttr.OUTLETS.value
+            if hasattr(operator, XLetsAttr.OUTLETS.value)
+            else XLetsAttr.PRIVATE_OUTLETS.value
+        )
+
+    if attribute is None:
+        raise ValueError(f"Missing attribute for {xlet_mode.value}")
+
+    xlet = getattr(operator, attribute) or []
     xlet_data = parse_xlets(xlet)
 
     if not xlet_data:
-        operator.log.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
+        logger.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
 
     else:
-        operator.log.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
+        logger.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
 
     return xlet_data
 
@@ -131,12 +171,28 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
 
     # First, grab all the inlets and outlets from all tasks grouped by keys
     for task in dag.tasks:
-        _inlets.update(
-            get_xlets_from_operator(operator=task, xlet_mode=INLETS_ATTR) or []
-        )
-        _outlets.update(
-            get_xlets_from_operator(operator=task, xlet_mode=OUTLETS_ATTR) or []
-        )
+        try:
+            _inlets.update(
+                get_xlets_from_operator(
+                    operator=task,
+                    xlet_mode=XLetsMode.INLETS,
+                )
+                or []
+            )
+            _outlets.update(
+                get_xlets_from_operator(
+                    operator=task,
+                    xlet_mode=XLetsMode.OUTLETS,
+                )
+                or []
+            )
+
+        except Exception as exc:
+            error_msg = (
+                f"Error while getting inlets and outlets for task - {task} - {exc}"
+            )
+            logger.error(error_msg)
+            logger.error(traceback.format_exc())
 
     # We expect to have the same keys in both inlets and outlets dicts
     # We will then iterate over the inlet keys to build the list of XLets

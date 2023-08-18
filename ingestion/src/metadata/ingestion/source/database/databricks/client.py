@@ -21,12 +21,20 @@ import requests
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.source.database.databricks.models import (
+    LineageColumnStreams,
+    LineageTableStreams,
+)
+from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
-QUERY_WITH_DBT = '/* {"app": "dbt"'
+API_TIMEOUT = 10
+QUERIES_PATH = "/sql/history/queries"
+TABLE_LINEAGE_PATH = "/lineage-tracking/table-lineage/get"
+COLUMN_LINEAGE_PATH = "/lineage-tracking/column-lineage/get"
 
 
 class DatabricksClient:
@@ -40,7 +48,8 @@ class DatabricksClient:
         api_version = "/api/2.0"
         job_api_version = "/api/2.1"
         auth_token = self.config.token.get_secret_value()
-        self.base_query_url = f"https://{base_url}{api_version}/sql/history/queries"
+        self.base_url = f"https://{base_url}{api_version}"
+        self.base_query_url = f"{self.base_url}{QUERIES_PATH}"
         self.base_job_url = f"https://{base_url}{job_api_version}/jobs"
         self.jobs_list_url = f"{self.base_job_url}/list"
         self.jobs_run_list_url = f"{self.base_job_url}/runs/list"
@@ -49,6 +58,13 @@ class DatabricksClient:
             "Content-Type": "application/json",
         }
         self.client = requests
+
+    def test_query_api_access(self) -> None:
+        res = self.client.get(
+            self.base_query_url, headers=self.headers, timeout=API_TIMEOUT
+        )
+        if res.status_code != 200:
+            raise APIError(res.json)
 
     def list_query_history(self, start_date=None, end_date=None) -> List[dict]:
         """
@@ -82,10 +98,10 @@ class DatabricksClient:
                         self.base_query_url,
                         data=json.dumps(data),
                         headers=self.headers,
-                        timeout=10,
+                        timeout=API_TIMEOUT,
                     ).json()
 
-                    result = response.get("res")
+                    result = response.get("res") or []
                     data = {}
 
                 while True:
@@ -95,7 +111,6 @@ class DatabricksClient:
                         next_page_token = response.get("next_page_token", None)
                         has_next_page = response.get("has_next_page", None)
                         if next_page_token:
-
                             data["page_token"] = next_page_token
 
                         if not has_next_page:
@@ -105,12 +120,11 @@ class DatabricksClient:
                         break
 
                     if result[-1]["execution_end_time_ms"] <= end_time:
-
                         response = self.client.get(
                             self.base_query_url,
                             data=json.dumps(data),
                             headers=self.headers,
-                            timeout=10,
+                            timeout=API_TIMEOUT,
                         ).json()
                         result = response.get("res")
 
@@ -139,23 +153,22 @@ class DatabricksClient:
                 self.jobs_list_url,
                 data=json.dumps(data),
                 headers=self.headers,
-                timeout=10,
+                timeout=API_TIMEOUT,
             ).json()
 
-            job_list.extend(response["jobs"])
+            job_list.extend(response.get("jobs") or [])
 
             while response["has_more"]:
-
-                data["offset"] = len(response["jobs"])
+                data["offset"] = len(response.get("jobs") or [])
 
                 response = self.client.get(
                     self.jobs_list_url,
                     data=json.dumps(data),
                     headers=self.headers,
-                    timeout=10,
+                    timeout=API_TIMEOUT,
                 ).json()
 
-                job_list.extend(response["jobs"])
+                job_list.extend(response.get("jobs") or [])
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -181,26 +194,77 @@ class DatabricksClient:
                 self.jobs_run_list_url,
                 params=params,
                 headers=self.headers,
-                timeout=10,
+                timeout=API_TIMEOUT,
             ).json()
 
-            job_runs.extend(response["runs"])
+            job_runs.extend(response.get("runs") or [])
 
             while response["has_more"]:
-
                 params.update({"start_time_to": response["runs"][-1]["start_time"]})
 
                 response = self.client.get(
                     self.jobs_run_list_url,
                     params=params,
                     headers=self.headers,
-                    timeout=10,
+                    timeout=API_TIMEOUT,
                 ).json()
 
-                job_runs.extend(response["runs"])
+                job_runs.extend(response.get("runs" or []))
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(exc)
 
         return job_runs
+
+    def get_table_lineage(self, table_name: str) -> LineageTableStreams:
+        """
+        Method returns table lineage details
+        """
+        try:
+            data = {
+                "table_name": table_name,
+            }
+
+            response = self.client.get(
+                f"{self.base_url}{TABLE_LINEAGE_PATH}",
+                headers=self.headers,
+                data=json.dumps(data),
+                timeout=API_TIMEOUT,
+            ).json()
+            if response:
+                return LineageTableStreams(**response)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(exc)
+
+        return LineageTableStreams()
+
+    def get_column_lineage(
+        self, table_name: str, column_name: str
+    ) -> LineageColumnStreams:
+        """
+        Method returns table lineage details
+        """
+        try:
+            data = {
+                "table_name": table_name,
+                "column_name": column_name,
+            }
+
+            response = self.client.get(
+                f"{self.base_url}{COLUMN_LINEAGE_PATH}",
+                headers=self.headers,
+                data=json.dumps(data),
+                timeout=API_TIMEOUT,
+            ).json()
+
+            if response:
+                return LineageColumnStreams(**response)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(exc)
+
+        return LineageColumnStreams()

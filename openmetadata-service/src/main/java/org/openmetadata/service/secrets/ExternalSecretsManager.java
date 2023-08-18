@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,21 +19,22 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
   public static final String SECRET_FIELD_PREFIX = "secret:";
-
-  private final long WAIT_TIME_BETWEEN_STORE_CALLS;
+  private final long waitTimeBetweenStoreCalls;
 
   protected ExternalSecretsManager(
       SecretsManagerProvider secretsManagerProvider, String clusterPrefix, long waitTimeBetweenCalls) {
     super(secretsManagerProvider, clusterPrefix);
-    WAIT_TIME_BETWEEN_STORE_CALLS = waitTimeBetweenCalls;
+    waitTimeBetweenStoreCalls = waitTimeBetweenCalls;
   }
 
   @Override
-  protected String storeValue(String fieldName, String value, String secretId) {
+  protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     // check if value does not start with 'config:' only String can have password annotation
     if (!value.startsWith(SECRET_FIELD_PREFIX)) {
-      upsertSecret(fieldSecretId, value);
+      if (store) {
+        upsertSecret(fieldSecretId, value);
+      }
       return SECRET_FIELD_PREFIX + fieldSecretId;
     } else {
       return value;
@@ -68,9 +69,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   private void sleep() {
     // delay reaching secrets manager quotas
-    if (WAIT_TIME_BETWEEN_STORE_CALLS > 0) {
+    if (waitTimeBetweenStoreCalls > 0) {
       try {
-        Thread.sleep(WAIT_TIME_BETWEEN_STORE_CALLS);
+        Thread.sleep(waitTimeBetweenStoreCalls);
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       }

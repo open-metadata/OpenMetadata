@@ -24,6 +24,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -38,7 +41,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
@@ -66,7 +68,9 @@ class OMetaESTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -83,7 +87,6 @@ class OMetaESTest(TestCase):
 
         res = None
         while not res and tries <= 5:  # Kill in 5 seconds
-
             res = cls.metadata.es_search_from_fqn(
                 entity_type=Table,
                 fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
@@ -102,28 +105,21 @@ class OMetaESTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db-es",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db-es", type="database"
-        )
+        cls.create_db_entity = cls.metadata.create_or_update(data=create_db)
 
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema-es", database=cls.db_reference
+            name="test-schema-es",
+            database=cls.create_db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema-es", type="databaseSchema"
-        )
+        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         create = CreateTableRequest(
             name="test-es",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -151,6 +147,9 @@ class OMetaESTest(TestCase):
             hard_delete=True,
         )
 
+    # Disabling this test because it fails with
+    # this pr: https://github.com/open-metadata/OpenMetadata/pull/11879
+    # and failure is repoducible only with docker deployment
     def test_es_search_from_service_table(self):
         """
         We can fetch tables from a service
@@ -172,7 +171,7 @@ class OMetaESTest(TestCase):
 
         fqn_search_string = fqn._build(
             self.service.name.__root__,
-            self.db_reference.name,
+            self.create_db_entity.name.__root__,
             "*",
             self.entity.name.__root__,
         )
@@ -188,8 +187,8 @@ class OMetaESTest(TestCase):
 
         fqn_search_string = fqn._build(
             self.service.name.__root__,
-            self.db_reference.name,
-            self.schema_reference.name,
+            self.create_db_entity.name.__root__,
+            self.create_schema_entity.name.__root__,
             self.entity.name.__root__,
         )
 

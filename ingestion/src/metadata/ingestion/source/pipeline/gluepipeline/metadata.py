@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.gluePipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -95,17 +94,21 @@ class GluepipelineSource(PipelineServiceSource):
         """
         Method to Get Pipeline Entity
         """
+        source_url = (
+            f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/glue/home?"
+            f"region={self.service_connection.awsConfig.awsRegion}#/v2/etl-configuration/"
+            f"workflows/view/{pipeline_details[NAME]}"
+        )
         self.job_name_list = set()
-        pipeline_ev = CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
-            description="",
             tasks=self.get_tasks(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            sourceUrl=source_url,
         )
-        yield pipeline_ev
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def get_tasks(self, pipeline_details: Any) -> List[Task]:
         task_list = []

@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
+import { FilterPatternEnum } from 'enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import {
-  DbtConfig,
-  GCSCredentialsValues,
-  SCredentials,
+  Credentials,
+  DBTConfigurationSource,
+  GCPCredentialsValues,
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
   AddIngestionState,
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
 } from '../../AddIngestion/addIngestion.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
@@ -27,54 +28,71 @@ export interface DBTFormCommonProps {
   okText: string;
   cancelText: string;
   onCancel: () => void;
-  onSubmit: (data?: DbtConfig) => void;
+  onSubmit: (data?: DBTConfigurationSource) => void;
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
   formType: FormSubmitType;
   data: AddIngestionState;
-
   onChange: (newState: Partial<AddIngestionState>) => void;
+  onFocus: (fieldName: string) => void;
+  getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
+  getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
+  handleShowFilter: (value: boolean, type: string) => void;
 }
 
 export type DbtConfigCloud = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtCloudAccountId'
   | 'dbtCloudAuthToken'
   | 'dbtUpdateDescriptions'
   | 'dbtCloudProjectId'
   | 'dbtClassificationName'
   | 'dbtCloudUrl'
+  | 'dbtCloudJobId'
+  | 'includeTags'
 >;
 
 export type DbtConfigLocal = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtCatalogFilePath'
   | 'dbtManifestFilePath'
   | 'dbtRunResultsFilePath'
   | 'dbtUpdateDescriptions'
   | 'dbtClassificationName'
+  | 'includeTags'
 >;
 
 export type DbtConfigHttp = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtCatalogHttpPath'
   | 'dbtManifestHttpPath'
   | 'dbtRunResultsHttpPath'
   | 'dbtUpdateDescriptions'
   | 'dbtClassificationName'
+  | 'includeTags'
 >;
 
 export type DbtConfigS3GCS = Pick<
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
   | 'dbtSecurityConfig'
   | 'dbtPrefixConfig'
   | 'dbtUpdateDescriptions'
   | 'dbtClassificationName'
+  | 'includeTags'
+>;
+
+export type DbtConfigAzure = Pick<
+  ModifiedDBTConfigurationSource,
+  | 'dbtSecurityConfig'
+  | 'dbtPrefixConfig'
+  | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
+  | 'includeTags'
 >;
 
 export type DbtS3Creds = Pick<
-  SCredentials,
+  Credentials,
   | 'awsAccessKeyId'
   | 'awsRegion'
   | 'awsSecretAccessKey'
@@ -94,7 +112,7 @@ export interface DbtSourceTypes {
   gcsType?: GCS_CONFIG;
 }
 
-export type DbtGCSCreds = GCSCredentialsValues;
+export type DbtGCSCreds = GCPCredentialsValues;
 
 export type ErrorDbtCloud = Record<keyof DbtConfigCloud, string>;
 

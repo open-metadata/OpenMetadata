@@ -16,7 +16,7 @@
     {
       "name": "maxValueForMeanInCol",
       "displayName": "Max",
-      "description": "Expected mean value for the column to be greater or equal than",
+      "description": "Expected mean value for the column to be lower or equal than",
       "dataType": "INT"
     }
   ]

@@ -34,6 +34,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
@@ -54,6 +55,7 @@ import org.reflections.util.ConfigurationBuilder;
 @Slf4j
 public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
+  private static volatile boolean initialized = false;
 
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
@@ -61,21 +63,22 @@ public final class CollectionRegistry {
   /** Map of class name to list of functions exposed for writing conditions */
   private final Map<Class<?>, List<org.openmetadata.schema.type.Function>> functionMap = new ConcurrentHashMap<>();
 
-  /**
-   * Some functions are used for capturing resource based rules where policies are applied based on resource being
-   * accessed and team hierarchy the resource belongs to instead of the subject.
-   */
-  @Getter private final List<String> resourceBasedFunctions = new ArrayList<>();
-
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
-  private CollectionRegistry() {}
+  public List<String> getAdditionalResources() {
+    return additionalResources;
+  }
+
+  private final List<String> additionalResources;
+
+  private CollectionRegistry(List<String> additionalResources) {
+    this.additionalResources = additionalResources;
+  }
 
   public static CollectionRegistry getInstance() {
-    if (instance == null) {
-      instance = new CollectionRegistry();
-      instance.initialize();
+    if (!initialized) {
+      initialize(null);
     }
     return instance;
   }
@@ -84,9 +87,15 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
-  private void initialize() {
-    loadCollectionDescriptors();
-    loadConditionFunctions();
+  public static void initialize(List<String> additionalResources) {
+    if (!initialized) {
+      instance = new CollectionRegistry(additionalResources);
+      initialized = true;
+      instance.loadCollectionDescriptors();
+      instance.loadConditionFunctions();
+    } else {
+      LOG.info("[Collection Registry] is already initialized.");
+    }
   }
 
   public Map<String, CollectionDetails> getCollectionMap() {
@@ -137,10 +146,6 @@ public final class CollectionRegistry {
               .withParameterInputType(annotation.paramInputType());
       functionList.add(function);
       functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
-
-      if (annotation.resourceBased()) {
-        resourceBasedFunctions.add(annotation.name());
-      }
       LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
     }
   }
@@ -207,9 +212,15 @@ public final class CollectionRegistry {
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.service.resources");
-
     // Get classes marked with @Collection annotation
     Set<Class<?>> collectionClasses = reflections.getTypesAnnotatedWith(Collection.class);
+    // Get classes marked in other
+    if (!CommonUtil.nullOrEmpty(instance.getAdditionalResources())) {
+      for (String packageName : instance.getAdditionalResources()) {
+        Reflections packageReflections = new Reflections(packageName);
+        collectionClasses.addAll(packageReflections.getTypesAnnotatedWith(Collection.class));
+      }
+    }
     List<CollectionDetails> collections = new ArrayList<>();
     for (Class<?> cl : collectionClasses) {
       CollectionDetails cd = getCollection(cl);
@@ -227,7 +238,7 @@ public final class CollectionRegistry {
       AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
-    Object resource;
+    Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
     // Create the resource identified by resourceClass
@@ -241,6 +252,8 @@ public final class CollectionRegistry {
       } catch (NoSuchMethodException ex) {
         resource = Class.forName(resourceClass).getConstructor().newInstance();
       }
+    } catch (Exception ex) {
+      LOG.warn("Exception encountered", ex);
     }
 
     // Call initialize method, if it exists

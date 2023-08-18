@@ -22,6 +22,7 @@ import {
   deployIngestionPipelineById,
   updateIngestionPipeline as putIngestionPipeline,
 } from 'rest/ingestionPipelineAPI';
+import { getIngestionName } from 'utils/ServiceUtils';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -34,13 +35,12 @@ import {
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import jsonData from '../../jsons/en';
 import {
   getIngestionFrequency,
-  replaceSpaceWith_,
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
   Transi18next,
 } from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -105,14 +105,22 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         setShowDeployButton(true);
         setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
         showErrorToast(
-          err || jsonData['api-error-messages']['deploy-ingestion-error']
+          err,
+          t('server.deploy-entity-error', {
+            entity: t('label.ingestion-workflow-lowercase'),
+          })
         );
       })
       .finally(() => setTimeout(() => setShowDeployModal(false), 500));
   };
 
   const createIngestionPipeline = async (repeatFrequency: string) => {
-    const updatedName = replaceSpaceWith_(testSuite.name);
+    const tableName = replaceAllSpacialCharWith_(
+      getNameFromFQN(
+        testSuite.executableEntityReference?.fullyQualifiedName ?? ''
+      )
+    );
+    const updatedName = getIngestionName(tableName, PipelineType.TestSuite);
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
@@ -120,15 +128,17 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           ? undefined
           : repeatFrequency,
       },
-      name: `${updatedName}_${PipelineType.TestSuite}`,
+      name: updatedName,
       pipelineType: PipelineType.TestSuite,
       service: {
-        id: testSuite.id || '',
+        id: testSuite.id ?? '',
         type: camelCase(PipelineType.TestSuite),
       },
       sourceConfig: {
         config: {
           type: ConfigType.TestSuite,
+          entityFullyQualifiedName:
+            testSuite.executableEntityReference?.fullyQualifiedName,
         },
       },
     };
@@ -177,7 +187,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-ingestion-error']
+        t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
+        })
       );
     }
   };
@@ -199,8 +211,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   );
 
   const handleViewTestSuiteClick = useCallback(() => {
-    history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
-  }, [history, testSuite]);
+    history.goBack();
+  }, [history]);
 
   const handleDeployClick = () => {
     setShowDeployModal(true);
@@ -208,13 +220,11 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   return (
-    <Row className="tw-form-container" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Typography.Paragraph
-          className="tw-heading tw-text-base"
-          data-testid="header">
+        <Typography.Text className="font-medium" data-testid="header">
           {t('label.schedule-for-ingestion')}
-        </Typography.Paragraph>
+        </Typography.Text>
       </Col>
 
       <Col span={24}>

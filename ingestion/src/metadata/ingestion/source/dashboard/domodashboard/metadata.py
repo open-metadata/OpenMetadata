@@ -26,6 +26,7 @@ from metadata.clients.domo_client import (
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
@@ -36,8 +37,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -53,7 +55,6 @@ class DomodashboardSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
@@ -65,7 +66,7 @@ class DomodashboardSource(DashboardServiceSource):
         connection: DomoDashboardConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DomoDashboardConnection):
             raise InvalidSourceException(
-                f"Expected MetabaseConnection, but got {connection}"
+                f"Expected DomoDashboardConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -92,16 +93,18 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
-    def get_owner_details(self, owners: List[DomoOwner]) -> Optional[EntityReference]:
-        for owner in owners:
+    def get_owner_details(
+        self, dashboard_details: DomoDashboardDetails
+    ) -> Optional[EntityReference]:
+        for owner in dashboard_details.owners:
             try:
                 owner_details = self.client.users_get(owner.id)
                 if owner_details.get("email"):
                     user = self.metadata.get_user_by_email(owner_details["email"])
                     if user:
-                        return EntityReference(id=user["id"], type="user")
-                    logger.debug(
-                        f"No user for found for email {owner_details['email']} in OMD"
+                        return EntityReference(id=user.id.__root__, type="user")
+                    logger.warning(
+                        f"No user found with email [{owner_details['email']}] in OMD"
                     )
             except Exception as exc:
                 logger.warning(
@@ -117,21 +120,24 @@ class DomodashboardSource(DashboardServiceSource):
                 f"{self.service_connection.sandboxDomain}/page/{dashboard_details.id}"
             )
 
-            yield CreateDashboardRequest(
+            dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
-                dashboardUrl=dashboard_url,
+                sourceUrl=dashboard_url,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
                 charts=[
-                    EntityReference(id=chart.id.__root__, type="chart")
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        chart_name=chart.name.__root__,
+                    )
                     for chart in self.context.charts
                 ],
-                service=EntityReference(
-                    id=self.context.dashboard_service.id.__root__,
-                    type="dashboardService",
-                ),
-                owner=self.get_owner_details(dashboard_details.owners),
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
         except KeyError as err:
             logger.warning(
                 f"Error extracting data from {dashboard_details.name} - {err}"
@@ -185,15 +191,14 @@ class DomodashboardSource(DashboardServiceSource):
 
     def yield_dashboard_chart(
         self, dashboard_details: DomoDashboardDetails
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Optional[CreateChartRequest]]:
         chart_ids = dashboard_details.cardIds
         chart_id_from_collection = self.get_chart_ids(dashboard_details.collectionIds)
         chart_ids.extend(chart_id_from_collection)
         for chart_id in chart_ids:
+            chart: Optional[DomoChartDetails] = None
             try:
-                chart: DomoChartDetails = self.domo_client.get_chart_details(
-                    page_id=chart_id
-                )
+                chart = self.domo_client.get_chart_details(page_id=chart_id)
                 chart_url = (
                     f"{self.service_connection.sandboxDomain}/page/"
                     f"{dashboard_details.id}/kpis/details/{chart_id}"
@@ -207,18 +212,17 @@ class DomodashboardSource(DashboardServiceSource):
                         name=chart_id,
                         description=chart.description,
                         displayName=chart.name,
-                        chartUrl=chart_url,
-                        service=EntityReference(
-                            id=self.context.dashboard_service.id.__root__,
-                            type="dashboardService",
-                        ),
+                        sourceUrl=chart_url,
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
                         chartType=get_standard_chart_type(chart.metadata.chartType),
                     )
                     self.status.scanned(chart.name)
             except Exception as exc:
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
-                self.status.failures.append(f"{dashboard_details.name}.{chart_id}")
+                name = chart.name if chart else ""
+                error = f"Error creating chart [{name}]: {exc}"
+                logger.warning(error)
                 logger.debug(traceback.format_exc())
+                self.status.failed(name, error, traceback.format_exc())
                 continue
 
     def yield_dashboard_lineage_details(

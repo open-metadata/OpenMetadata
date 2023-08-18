@@ -23,31 +23,33 @@ const mockSampleData = {
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
+jest.mock('rest/topicsAPI', () => ({
+  getSampleDataByTopicId: jest
+    .fn()
+    .mockImplementation(() => ({ sampleData: mockSampleData })),
+}));
 
 describe('Test SampleData Component', () => {
-  it('Should render message cards', () => {
-    const { getAllByTestId } = render(
-      <SampleDataTopic sampleData={mockSampleData} />,
+  it('Should render message cards', async () => {
+    const { findAllByTestId } = render(
+      <SampleDataTopic topicId="f8e260ac-4db1-4bf3-92ad-f28bdb7dc041" />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const messageCards = getAllByTestId('message-card');
-
-    expect(messageCards).toHaveLength(mockSampleData.messages.length);
+    expect(await findAllByTestId('message-card')).toHaveLength(
+      mockSampleData.messages.length
+    );
   });
 
   it('Should render no data placeholder if no data available', () => {
     act(() => {
-      const { getByTestId } = render(
-        <SampleDataTopic sampleData={undefined} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
+      const { getByTestId } = render(<SampleDataTopic topicId="" />, {
+        wrapper: MemoryRouter,
+      });
 
-      const noDataPlaceHolder = getByTestId('no-data');
+      const noDataPlaceHolder = getByTestId('no-data-placeholder');
 
       expect(noDataPlaceHolder).toBeInTheDocument();
     });

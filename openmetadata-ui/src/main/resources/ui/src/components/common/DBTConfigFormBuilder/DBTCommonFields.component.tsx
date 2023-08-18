@@ -11,77 +11,114 @@
  *  limitations under the License.
  */
 
-import { Input, Space, Switch, Typography } from 'antd';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Field } from '../../Field/Field';
+import { generateFormFields } from 'utils/formUtils';
 
 interface Props {
   dbtClassificationName: string | undefined;
   descriptionId: string;
-  handleUpdateDBTClassification: (value: string) => void;
   dbtUpdateDescriptions: boolean;
-  handleUpdateDescriptions: (value: boolean) => void;
+  enableDebugLog: boolean;
+  includeTags: boolean;
+  parsingTimeoutLimit: number;
 }
 
 function DBTCommonFields({
   descriptionId,
   dbtUpdateDescriptions,
   dbtClassificationName,
-  handleUpdateDescriptions,
-  handleUpdateDBTClassification,
+  enableDebugLog,
+  includeTags,
+  parsingTimeoutLimit,
 }: Props) {
   const { t } = useTranslation();
 
-  return (
-    <Fragment>
-      <Field>
-        <Space align="end" className="m-b-xs">
-          <label
-            className="tw-form-label m-b-0 tw-mb-1"
-            data-testid={descriptionId}
-            htmlFor={descriptionId}>
-            {t('label.update-description')}
-          </label>
-          <Switch
-            checked={dbtUpdateDescriptions}
-            data-testid="description-switch"
-            id={descriptionId}
-            onChange={handleUpdateDescriptions}
-          />
-        </Space>
-        <Typography.Text
-          className="d-block text-grey-muted m-b-xs text-xs"
-          data-testid="switch-description">
-          {t('message.optional-configuration-update-description-dbt')}
-        </Typography.Text>
-      </Field>
+  const commonFields: FieldProp[] = [
+    {
+      name: 'dbtClassificationName',
+      label: t('label.dbt-classification-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'dbt-classification-name',
+      },
+      id: 'root/dbtClassificationName',
+      helperText: t('message.custom-classification-name-dbt-tags'),
+      hasSeparator: true,
+      formItemProps: {
+        initialValue: dbtClassificationName,
+      },
+    },
+    {
+      name: 'loggerLevel',
+      label: t('label.enable-debug-log'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        'data-testid': 'toggle-button-enable-debug-log',
+      },
+      id: 'root/loggerLevel',
+      hasSeparator: true,
+      helperText: t('message.enable-debug-logging'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: enableDebugLog,
+        valuePropName: 'checked',
+      },
+    },
+    {
+      name: 'dbtUpdateDescriptions',
+      label: t('label.update-description'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        'data-testid': descriptionId,
+      },
+      id: 'root/dbtUpdateDescriptions',
+      hasSeparator: true,
+      helperText: t('message.optional-configuration-update-description-dbt'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: dbtUpdateDescriptions,
+        valuePropName: 'checked',
+      },
+    },
+    {
+      name: 'includeTags',
+      label: t('label.include-entity', { entity: t('label.tag-plural') }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        'data-testid': 'toggle-button-include-tags',
+      },
+      id: 'root/includeTags',
+      hasSeparator: true,
+      helperText: t('message.include-assets-message'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: includeTags,
+        valuePropName: 'checked',
+      },
+    },
+    {
+      name: 'parsingTimeoutLimit',
+      label: t('label.parsing-timeout-limit'),
+      type: FieldTypes.NUMBER,
+      required: false,
+      props: {
+        'data-testid': 'dbt-parsing-timeout-limit',
+      },
+      id: 'root/parsingTimeoutLimit',
+      hasSeparator: true,
+      formItemProps: {
+        initialValue: parsingTimeoutLimit,
+      },
+    },
+  ];
 
-      <Field>
-        <label
-          className="tw-form-label tw-mb-1"
-          data-testid="dbt-classification-label"
-          htmlFor="dbt-object-prefix">
-          {t('label.dbt-classification-name')}
-        </label>
-
-        <Typography.Text
-          className="d-block text-grey-muted m-b-xs text-xs"
-          data-testid="dbt-classification-description">
-          {t('message.custom-classification-name-dbt-tags')}
-        </Typography.Text>
-
-        <Input
-          className="tw-form-inputs"
-          data-testid="dbt-classification-name"
-          id="dbt-classification-name"
-          name="dbt-classification-name"
-          value={dbtClassificationName}
-          onChange={(e) => handleUpdateDBTClassification(e.target.value)}
-        />
-      </Field>
-    </Fragment>
-  );
+  return <Fragment>{generateFormFields(commonFields)}</Fragment>;
 }
 
 export default DBTCommonFields;

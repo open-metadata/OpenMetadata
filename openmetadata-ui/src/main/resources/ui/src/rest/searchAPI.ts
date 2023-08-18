@@ -173,7 +173,16 @@ export const rawSearchQuery = <
     trackTotalHits,
     postFilter,
     fetchSource,
+    filters,
   } = req;
+
+  const queryWithSlash = getQueryWithSlash(query || '');
+
+  const apiQuery = query
+    ? filters
+      ? `${queryWithSlash} AND `
+      : queryWithSlash
+    : '';
 
   return APIClient.get<
     SearchResponse<
@@ -182,7 +191,7 @@ export const rawSearchQuery = <
     >
   >('/search/query', {
     params: {
-      q: getQueryWithSlash(query || ''),
+      q: `${apiQuery}${filters ? filters : ''}`,
       index: getSearchIndexParam(searchIndex),
       from: (pageNumber - 1) * pageSize,
       size: pageSize,

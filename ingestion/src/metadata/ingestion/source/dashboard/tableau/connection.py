@@ -14,31 +14,99 @@ Source connection handler
 """
 import traceback
 from functools import partial
+from typing import Any, Dict, Optional
 
-from tableau_api_lib import TableauServerConnection
 from tableau_api_lib.utils import extract_pages
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
+from metadata.generated.schema.security.credentials.accessTokenAuth import (
+    AccessTokenAuth,
+)
+from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
-    TestConnectionStep,
     test_connection_steps,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
 )
+from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ingestion_logger()
 
 
-def get_connection(connection: TableauConnection) -> TableauServerConnection:
+def get_connection(connection: TableauConnection) -> TableauClient:
     """
     Create connection
+    """
+    tableau_server_config = build_server_config(connection)
+    get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
+    try:
+        return TableauClient(
+            config=tableau_server_config,
+            env=connection.env,
+            ssl_verify=get_verify_ssl(connection.sslConfig),
+            pagination_limit=connection.paginationLimit,
+        )
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection}: {exc}."
+        )
+
+
+def test_connection(
+    metadata: OpenMetadata,
+    client: TableauClient,
+    service_connection: TableauConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
+
+    test_fn = {
+        "ServerInfo": client.server_info,
+        "GetWorkbooks": partial(
+            extract_pages,
+            query_func=client.query_workbooks_for_site,
+            parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
+        ),
+        "GetViews": partial(
+            extract_pages,
+            query_func=client.query_views_for_site,
+            content_id=client.site_id,
+            parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
+        ),
+        "GetOwners": client.get_owners,
+        "GetDataModels": client.test_get_datamodels,
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )
+
+
+def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, Any]]:
+    """
+    Build client configuration
+    Args:
+        connection: configuration of Tableau Connection
+    Returns:
+        Client configuration
     """
     tableau_server_config = {
         f"{connection.env}": {
@@ -48,68 +116,16 @@ def get_connection(connection: TableauConnection) -> TableauServerConnection:
             "site_url": connection.siteUrl if connection.siteUrl else "",
         }
     }
-    if connection.username and connection.password:
-        tableau_server_config[connection.env]["username"] = connection.username
+    if isinstance(connection.authType, BasicAuth):
+        tableau_server_config[connection.env]["username"] = connection.authType.username
         tableau_server_config[connection.env][
             "password"
-        ] = connection.password.get_secret_value()
-    elif (
-        connection.personalAccessTokenName
-        and connection.personalAccessTokenSecret.get_secret_value()
-    ):
+        ] = connection.authType.password.get_secret_value()
+    elif isinstance(connection.authType, AccessTokenAuth):
         tableau_server_config[connection.env][
             "personal_access_token_name"
-        ] = connection.personalAccessTokenName
+        ] = connection.authType.personalAccessTokenName
         tableau_server_config[connection.env][
             "personal_access_token_secret"
-        ] = connection.personalAccessTokenSecret.get_secret_value()
-    try:
-
-        get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
-        # ssl_verify is typed as a `bool` in TableauServerConnection
-        # However, it is passed as `verify=self.ssl_verify` in each `requests` call.
-        # In requests (https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)
-        # the param can be None, False to ignore HTTPS certs or a string with the path to the cert.
-        conn = TableauServerConnection(
-            config_json=tableau_server_config,
-            env=connection.env,
-            ssl_verify=get_verify_ssl(connection.sslConfig),
-        )
-        conn.sign_in().json()
-        return conn
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        raise SourceConnectionException(
-            f"Unknown error connecting with {connection}: {exc}."
-        )
-
-
-def test_connection(client: TableauServerConnection) -> None:
-    """
-    Test connection
-    """
-    steps = [
-        TestConnectionStep(
-            function=client.server_info,
-            name="Server Info",
-        ),
-        TestConnectionStep(
-            function=partial(
-                extract_pages,
-                query_func=client.query_workbooks_for_site,
-                parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
-            ),
-            name="Get Workbooks",
-        ),
-        TestConnectionStep(
-            function=partial(
-                extract_pages,
-                query_func=client.query_views_for_site,
-                content_id=client.site_id,
-                parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
-            ),
-            name="Get Views",
-        ),
-    ]
-
-    test_connection_steps(steps)
+        ] = connection.authType.personalAccessTokenSecret.get_secret_value()
+    return tableau_server_config

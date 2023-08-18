@@ -15,42 +15,42 @@ import textwrap
 
 WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX_MAPPING = textwrap.dedent(
     """
-    {
-        "mappings": {
-            "properties": {
-                "timestamp": {
-                    "type": "date"
-                },
-                "reportDataType": {
-                    "type": "keyword"
-                },
-                "data": {
-                    "properties": {
-                        "userName": {
-                            "type": "keyword"
-                        },
-                        "userId": {
-                            "type": "text"
-                        },
-                        "team": {
-                            "type": "keyword"
-                        },
-                        "totalSessions": {
-                            "type": "integer"
-                        },
-                        "totalSessionDuration": {
-                            "type": "double"
-                        },
-                        "totalPageView": {
-                            "type": "integer"
-                        },
-                        "lastSession": {
-                            "type": "long"
-                        }
-                    }
-                }
-            }
+{
+  "mappings": {
+    "properties": {
+      "timestamp": {
+        "type": "date"
+      },
+      "reportDataType": {
+        "type": "keyword"
+      },
+      "data": {
+        "properties": {
+          "userName": {
+            "type": "keyword"
+          },
+          "userId": {
+            "type": "text"
+          },
+          "team": {
+            "type": "keyword"
+          },
+          "totalSessions": {
+            "type": "integer"
+          },
+          "totalSessionDuration": {
+            "type": "double"
+          },
+          "totalPageView": {
+            "type": "integer"
+          },
+          "lastSession": {
+            "type": "long"
+          }
         }
+      }
     }
+  }
+}
     """
 )

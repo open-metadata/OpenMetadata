@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MetadataToElasticSearchPipeline",
   "description": "Data Insight Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "metadataToESConfigType": {
       "description": "Pipeline Source Config Metadata Pipeline type",
@@ -51,6 +52,21 @@
       "description": "Region name. Required when using AWS Credentials.",
       "type": "string",
       "default": null
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    },
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Maximum number of events entities in a batch (Default 1000).",
+      "type": "integer",
+      "default": 1000
+    },
+    "recreateIndex": {
+      "title": "Recreate Indexes",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": ["type"],

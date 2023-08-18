@@ -13,8 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
-import { isEmpty, isUndefined, omit } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
@@ -74,24 +73,19 @@ export const getEntityReferenceFromGlossary = (
   };
 };
 
-export const parseCSV = (csvData: string[][]) => {
-  const recordList: GlossaryCSVRecord[] = [];
-
-  if (!isEmpty(csvData)) {
-    const headers = csvData[0];
-
-    csvData.slice(1).forEach((line) => {
-      const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
-
-      headers.forEach((header, index) => {
-        record[header as keyof GlossaryCSVRecord] = line[index];
-      });
-
-      recordList.push(record);
-    });
-  }
-
-  return recordList;
+export const getEntityReferenceFromGlossaryTerm = (
+  glossaryTerm: GlossaryTerm
+): EntityReference => {
+  return {
+    deleted: glossaryTerm.deleted,
+    href: glossaryTerm.href,
+    fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
+    id: glossaryTerm.id,
+    type: 'glossaryTerm',
+    description: glossaryTerm.description,
+    displayName: glossaryTerm.displayName,
+    name: glossaryTerm.name,
+  };
 };
 
 // calculate root level glossary term
@@ -112,6 +106,34 @@ export const getRootLevelGlossaryTerm = (
       ? [...glossaryTerms, currentTerm]
       : glossaryTerms;
   }, [] as GlossaryTerm[]);
+};
+
+export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
+  const nodes: Record<string, GlossaryTerm> = {};
+
+  // Create nodes first
+  data.forEach((obj) => {
+    nodes[obj.fullyQualifiedName ?? ''] = {
+      ...obj,
+      children: obj.children?.length ? [] : undefined,
+    };
+  });
+
+  // Build the tree structure
+  const tree: GlossaryTerm[] = [];
+  data.forEach((obj) => {
+    const current = nodes[obj.fullyQualifiedName ?? ''];
+    const parent = nodes[obj.parent?.fullyQualifiedName || ''];
+
+    if (parent && parent.children) {
+      // converting glossaryTerm to EntityReference
+      parent.children.push({ ...current, type: 'glossaryTerm' });
+    } else {
+      tree.push(current);
+    }
+  });
+
+  return tree;
 };
 
 // update glossaryTerm tree with newly fetch child term
@@ -159,4 +181,41 @@ export const getSearchedDataFromGlossaryTree = (
 
     return acc;
   }, [] as ModifiedGlossaryTerm[]);
+};
+
+export const getQueryFilterToExcludeTerm = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must_not: {
+                    term: {
+                      'tags.tagFQN': fqn,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
+export const formatRelatedTermOptions = (
+  data: EntityReference[] | undefined
+) => {
+  return data
+    ? data.map((value) => ({
+        ...value,
+        value: value.id,
+        label: value.displayName || value.name,
+        key: value.id,
+      }))
+    : [];
 };

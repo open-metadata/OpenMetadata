@@ -15,7 +15,7 @@ test entity link utils
 
 import pytest
 
-from metadata.utils.entity_link import get_decoded_column
+from metadata.utils.entity_link import get_decoded_column, get_table_or_column_fqn
 
 
 @pytest.mark.parametrize(
@@ -34,3 +34,22 @@ from metadata.utils.entity_link import get_decoded_column
 def test_get_decoded_column(entity_link, expected):
     """test get_decoded_column return expected values"""
     assert get_decoded_column(entity_link) == expected
+
+
+def test_get_table_or_column_fqn():
+    entity_link = "<#E::table::rds.dev.dbt_jaffle.customers::columns::number_of_orders>"
+    assert (
+        get_table_or_column_fqn(entity_link)
+        == "rds.dev.dbt_jaffle.customers.number_of_orders"
+    )
+
+    invalid_entity_link = (
+        "<#E::table::rds.dev.dbt_jaffle.customers::foo::number_of_orders>"
+    )
+    with pytest.raises(ValueError):
+        get_table_or_column_fqn(invalid_entity_link)
+
+    invalid_entity_link = "<#E::table::rds.dev.dbt_jaffle.customers>"
+    assert (
+        get_table_or_column_fqn(invalid_entity_link) == "rds.dev.dbt_jaffle.customers"
+    )

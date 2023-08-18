@@ -17,13 +17,7 @@
 name: Publish openmetadata-ingestion-core packages
 
 on:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths:
-      - 'openmetadata-service/src/main/resources/json/schema/**'
-      - 'ingestion-core/src/metadata/_version.py'
+  workflow_dispatch:
 
 concurrency: 
   group: py-ingestion-core-publish-${{ github.head_ref || github.run_id }}
@@ -39,11 +33,17 @@ jobs:
           python-version: 3.9
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+          sudo apt-get update && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install, Generate and Publish Test PyPi packages
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
+          python3 -m venv env
+          source env/bin/activate
           sudo make install_antlr_cli
-          make core_publish
+          make install_dev generate install
+          cd ingestion-core; \
+            python setup.py build sdist bdist_wheel; \
+            twine check dist/*; \
+            twine upload dist/* --verbose

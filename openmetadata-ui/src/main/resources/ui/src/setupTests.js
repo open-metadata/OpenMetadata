@@ -97,5 +97,6 @@ jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: jest.fn().mockReturnValue({
     t: (key) => key,
+    i18n: { language: 'en-US' },
   }),
 }));

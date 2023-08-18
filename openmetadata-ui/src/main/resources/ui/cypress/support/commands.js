@@ -77,18 +77,13 @@ Cypress.Commands.add('loginByGoogleApi', () => {
   });
 });
 
-Cypress.Commands.add('goToHomePage', () => {
-  interceptURL('GET', '/api/v1/system/entities/count', 'count');
+Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   interceptURL('GET', '/api/v1/feed*', 'feed');
-  interceptURL('GET', '/api/v1/users/name/*?fields=*', 'userProfile');
-  cy.get('[data-testid="whats-new-dialog"]')
-    .should('exist')
-    .then(() => {
-      cy.get('[role="dialog"]').should('be.visible');
-    });
-  cy.get('[data-testid="closeWhatsNew"]').click();
-  cy.get('[data-testid="whats-new-dialog"]').should('not.exist');
-  verifyResponseStatusCode('@count', 200);
+  interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
+  !doNotNavigate && cy.visit('/');
+  cy.get('[data-testid="whats-new-alert-card"]').should('be.visible');
+  cy.get('[data-testid="close-whats-new-alert"]').click();
+  cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
   verifyResponseStatusCode('@feed', 200);
   verifyResponseStatusCode('@userProfile', 200);
 });
@@ -128,6 +123,9 @@ Cypress.Commands.add('storeSession', (username, password) => {
 
 Cypress.Commands.add('login', () => {
   cy.storeSession(LOGIN.username, LOGIN.password);
-  cy.visit('/');
   cy.goToHomePage();
+});
+
+Cypress.Commands.add('clickOutside', function () {
+  return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
 });

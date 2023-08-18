@@ -14,6 +14,7 @@
 import {
   interceptURL,
   login,
+  uuid,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
@@ -29,13 +30,13 @@ import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 const CREDENTIALS = {
   firstName: 'Test_Data_Consumer',
   lastName: 'User_Data_consumer',
-  email: 'test_dataconsumer@openmetadata.org',
+  email: `test_dataconsumer${uuid()}@openmetadata.org`,
   password: 'User@OMD123',
 };
 
 const policy = 'Data Consumer';
 const ENTITIES = {
-  table: SEARCH_ENTITY_TABLE.table_1,
+  table: SEARCH_ENTITY_TABLE.table_2,
   topic: SEARCH_ENTITY_TOPIC.topic_1,
   dashboard: SEARCH_ENTITY_DASHBOARD.dashboard_1,
   pipeline: SEARCH_ENTITY_PIPELINE.pipeline_1,
@@ -85,33 +86,28 @@ const ID = {
     testid: '[data-menu-id*="services.mlModels"]',
     button: 'add-service-button',
   },
+};
+const PERMISSIONS = {
   metadata: {
     testid: '[data-menu-id*="metadata"]',
-    button: 'add-service-button',
   },
   customAttributesTable: {
     testid: '[data-menu-id*="tables"]',
-    button: 'add-field-button',
   },
   customAttributesTopics: {
     testid: '[data-menu-id*="topics"]',
-    button: 'add-field-button',
   },
   customAttributesDashboards: {
     testid: '[data-menu-id*="customAttributes.dashboards"]',
-    button: 'add-field-button',
   },
   customAttributesPipelines: {
     testid: '[data-menu-id*="customAttributes.pipelines"]',
-    button: 'add-field-button',
   },
   customAttributesMlModels: {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
-    button: 'add-field-button',
   },
   bots: {
     testid: '[data-menu-id*="bots"]',
-    button: 'add-bot',
   },
 };
 
@@ -151,7 +147,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     // Login with the created user
 
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
@@ -169,20 +165,21 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .click({ force: true });
-    verifyResponseStatusCode('@getUserPage', 200);
-    cy.get('[data-testid="left-panel"]').should(
-      'contain',
-      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
-    );
+    cy.wait('@getUserPage').then((response) => {
+      CREDENTIALS.id = response.response.body.id;
+    });
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
 
-    cy.get('[data-testid="left-panel"]')
-      .should('be.visible')
-      .should('contain', policy);
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
+    ).should('contain', policy);
   });
 
   it('Check if the new user has only edit access on description and tags', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     Object.values(ENTITIES).forEach((entity) => {
@@ -200,7 +197,7 @@ describe('DataConsumer Edit policy should work properly', () => {
       cy.get('[data-testid="cancel"]').should('be.visible').click();
 
       // Navigate to lineage tab
-      cy.get('[data-testid="Lineage"]').should('be.visible').click();
+      cy.get('[data-testid="lineage"]').should('be.visible').click();
 
       // Check if edit lineage button is disabled
       cy.get('[data-testid="edit-lineage"]')
@@ -239,9 +236,9 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="tag-selector"]').should('be.visible');
   });
 
-  it('Check for CRUD operations to be disabled for the user for glossary and tags', () => {
+  it('Check for CRUD operations to not exist for the user for glossary and tags', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Check CRUD for Glossary
@@ -252,10 +249,6 @@ describe('DataConsumer Edit policy should work properly', () => {
       cy.get(glossary.subMenu).should('be.visible').click({ force: true });
     }
     cy.get('body').click();
-
-    cy.get('[data-testid="add-new-glossary"]')
-      .should('be.visible')
-      .should('be.disabled');
 
     cy.clickOnLogo();
 
@@ -268,26 +261,47 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
     cy.wait(200);
-    cy.get('[data-testid="add-new-tag-button"]')
-      .should('be.visible')
-      .should('be.disabled');
+    cy.get('[data-testid="add-new-tag-button"]').should('not.exist');
 
-    cy.get('[data-testid="delete-classification-or-tag"]')
-      .should('be.visible')
-      .should('be.disabled');
+    cy.get('[data-testid="manage-button"]').should('not.exist');
   });
 
   it('Check CRUD operations for settings page', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
     // Navigate to settings
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(ID).forEach((id) => {
       cy.get(id.testid).should('be.visible').click();
-      cy.get(`[data-testid="${id.button}"]`)
-        .should('be.visible')
-        .should('be.disabled');
+      cy.get(`[data-testid="${id.button}"]`).should('not.be.exist');
+    });
+
+    Object.values(PERMISSIONS).forEach((id) => {
+      if (id.testid === '[data-menu-id*="metadata"]') {
+        cy.get(id.testid).should('be.visible').click();
+      } else {
+        cy.get(id.testid).should('not.be.exist');
+      }
+    });
+  });
+});
+
+describe('Cleanup', () => {
+  beforeEach(() => {
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
+  });
+
+  it('delete user', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
     });
   });
 });

@@ -11,7 +11,9 @@
     "Messaging",
     "Metadata",
     "MlModel",
-    "Pipeline"
+    "Pipeline",
+    "Storage",
+    "Search"
   ],
   "additionalProperties": false
 }

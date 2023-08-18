@@ -30,7 +30,7 @@ export const mockCharts = [
     updatedAt: 1669804896748,
     updatedBy: 'admin',
     chartType: ChartType.Other,
-    chartUrl:
+    sourceUrl:
       'http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D',
     href: 'http://localhost:8585/api/v1/charts/86dad1d4-8830-4d35-ab03-dd6190c1f05d',
     tags: [
@@ -38,7 +38,7 @@ export const mockCharts = [
         tagFQN: 'PII.NonSensitive',
         description:
           'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
@@ -46,35 +46,35 @@ export const mockCharts = [
         tagFQN: 'PersonalData.Personal',
         description:
           'Data that can be used to directly or indirectly identify a person.',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
         tagFQN: 'ab.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
         tagFQN: 'persona.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
         tagFQN: 'aa.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
         tagFQN: 'ac.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
@@ -114,35 +114,35 @@ export const sortedTagsMockCharts = [
     updatedAt: 1669804896748,
     updatedBy: 'admin',
     chartType: ChartType.Other,
-    chartUrl:
+    sourceUrl:
       'http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D',
     href: 'http://localhost:8585/api/v1/charts/86dad1d4-8830-4d35-ab03-dd6190c1f05d',
     tags: [
       {
         tagFQN: 'aa.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
         tagFQN: 'ab.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
         tagFQN: 'ac.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
         tagFQN: 'persona.tag',
         description: '',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
@@ -150,7 +150,7 @@ export const sortedTagsMockCharts = [
         tagFQN: 'PersonalData.Personal',
         description:
           'Data that can be used to directly or indirectly identify a person.',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
@@ -158,7 +158,7 @@ export const sortedTagsMockCharts = [
         tagFQN: 'PII.NonSensitive',
         description:
           'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },

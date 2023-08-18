@@ -6,7 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.services.CreateDashboardService",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
-
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
@@ -37,6 +36,10 @@
     "owner": {
       "description": "Owner of this dashboard service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Dashboard Service belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "serviceType", "connection"],

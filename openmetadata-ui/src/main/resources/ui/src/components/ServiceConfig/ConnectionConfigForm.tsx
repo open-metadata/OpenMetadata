@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { ISubmitEvent } from '@rjsf/core';
+import { IChangeEvent } from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';
+import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
+import { StorageServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { Fragment, FunctionComponent, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { TestConnection } from 'rest/serviceAPI';
+import React, { Fragment, FunctionComponent } from 'react';
+import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
@@ -24,7 +26,6 @@ import { DashboardServiceType } from '../../generated/entity/services/dashboardS
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -33,11 +34,6 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import {
-  getTestConnectionType,
-  shouldTestConnection,
-} from '../../utils/ServiceUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
@@ -47,9 +43,10 @@ interface Props {
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onCancel?: () => void;
-  onSave: (data: ISubmitEvent<ConfigData>) => void;
+  onFocus: (id: string) => void;
+  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
+  onCancel?: () => void;
 }
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
@@ -61,46 +58,20 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   status,
   onCancel,
   onSave,
+  onFocus,
   disableTestConnection = false,
 }: Props) => {
-  const { t } = useTranslation();
-  const { isAirflowAvailable } = useAirflowStatus();
-
-  const allowTestConn = useMemo(() => {
-    return shouldTestConnection(serviceType);
-  }, [serviceType]);
-
   const config = !isNil(data)
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
 
-  const handleSave = (data: ISubmitEvent<ConfigData>) => {
+  const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
-    onSave({ ...data, formData: updatedFormData });
+
+    await onSave({ ...data, formData: updatedFormData });
   };
 
-  const handleTestConnection = (formData: ConfigData) => {
-    const updatedFormData = formatFormDataForSubmit(formData);
-
-    return new Promise<void>((resolve, reject) => {
-      TestConnection(updatedFormData, getTestConnectionType(serviceCategory))
-        .then((res) => {
-          // This api only responds with status 200 on success
-          // No data sent on api success
-          if (res.status === 200) {
-            resolve();
-          } else {
-            throw t('server.unexpected-response');
-          }
-        })
-        .catch((err) => {
-          showErrorToast(err, t('server.test-connection-error'));
-          reject(err);
-        });
-    });
-  };
-
-  const getDatabaseFields = () => {
+  const getConfigFields = () => {
     let connSch = {
       schema: {},
       uiSchema: {},
@@ -145,6 +116,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
         break;
       }
+      case ServiceCategory.STORAGE_SERVICES: {
+        connSch = getStorageServiceConfig(serviceType as StorageServiceType);
+
+        break;
+      }
     }
 
     return (
@@ -152,21 +128,27 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         cancelText={cancelText}
         disableTestConnection={disableTestConnection}
         formData={validConfig}
-        isAirflowAvailable={isAirflowAvailable}
         okText={okText}
         schema={connSch.schema}
+        serviceCategory={serviceCategory}
+        serviceName={data?.name}
+        serviceType={serviceType}
         status={status}
         uiSchema={connSch.uiSchema}
+        validator={validator}
         onCancel={onCancel}
+        onFocus={onFocus}
         onSubmit={handleSave}
-        onTestConnection={
-          allowTestConn && isAirflowAvailable ? handleTestConnection : undefined
-        }
       />
     );
   };
 
-  return <Fragment>{getDatabaseFields()}</Fragment>;
+  return (
+    <Fragment>
+      <AirflowMessageBanner />
+      {getConfigFields()}
+    </Fragment>
+  );
 };
 
 export default ConnectionConfigForm;

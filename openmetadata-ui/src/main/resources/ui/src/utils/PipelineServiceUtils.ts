@@ -25,6 +25,7 @@ import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipel
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
+import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
@@ -73,6 +74,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.DatabricksPipeline: {
       schema = databricksPipelineConnection;
+
+      break;
+    }
+    case PipelineServiceType.Spline: {
+      schema = splineConnection;
 
       break;
     }

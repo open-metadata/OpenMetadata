@@ -11,22 +11,28 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { act } from 'react-test-renderer';
+
+import userEvent from '@testing-library/user-event';
+import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
 
 const mockDescription =
   // eslint-disable-next-line max-len
   '**Headings**\n\n# H1\n## H2\n### H3\n\n***\n**Bold**\n\n**bold text**\n\n\n***\n**Italic**\n\n*italic*\n\n***\n**BlockQuote**\n\n> blockquote\n\n***\n**Ordered List**\n\n1. First item\n2. Second item\n3. Third item\n\n\n***\n**Unordered List**\n\n- First item\n- Second item\n- Third item\n\n\n***\n**Code**\n\n`code`\n\n\n***\n**Horizontal Rule**\n\n---\n\n\n***\n**Link**\n[title](https://www.example.com)\n\n\n***\n**Image**\n\n![alt text](https://github.com/open-metadata/OpenMetadata/blob/main/docs/.gitbook/assets/openmetadata-banner.png?raw=true)\n\n\n***\n**Table**\n\n| Syntax | Description |\n| ----------- | ----------- |\n| Header | Title |\n| Paragraph | Text |\n***\n\n**Fenced Code Block**\n\n```\n{\n  "firstName": "John",\n  "lastName": "Smith",\n  "age": 25\n}\n```\n\n\n***\n**Strikethrough**\n~~The world is flat.~~\n';
 
-const mockProp = {
+const mockProp: PreviewerProp = {
   markdown: mockDescription,
   className: '',
-  blurClasses: 'see-more-blur',
-  maxHtClass: 'tw-h-24',
-  maxLen: 300,
+  maxLength: 300,
   enableSeeMoreVariant: true,
 };
 
@@ -343,5 +349,90 @@ describe('Test RichTextEditor Previewer Component', () => {
     expect(markdownParser.querySelector('table')).toBeInTheDocument();
 
     expect(markdownParser).toBeInTheDocument();
+  });
+
+  it('Should render read more button if enableSeeMoreVariant is true and max length is less than content length', () => {
+    render(<RichTextEditorPreviewer {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+  });
+
+  it('Read more toggling should work', async () => {
+    render(<RichTextEditorPreviewer {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const readMoreButton = screen.getByTestId('read-more-button');
+
+    await act(async () => {
+      userEvent.click(readMoreButton);
+    });
+
+    const readLessButton = screen.getByTestId('read-less-button');
+
+    expect(readLessButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(readLessButton);
+    });
+
+    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+  });
+
+  it('Should render the whole content if enableSeeMoreVariant is false', () => {
+    const markdown = 'This is a simple paragraph text';
+
+    render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        enableSeeMoreVariant={false}
+        markdown={markdown}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByText(markdown)).toBeInTheDocument();
+    expect(screen.queryByTestId('read-more-button')).toBeNull();
+  });
+
+  it('Should render the clipped content if enableSeeMoreVariant is true', () => {
+    const markdown = 'This is a simple paragraph text';
+
+    render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        enableSeeMoreVariant
+        markdown={markdown}
+        maxLength={20}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByText('This is a simple...')).toBeInTheDocument();
+    expect(screen.queryByTestId('read-more-button')).toBeInTheDocument();
+  });
+
+  it('Should not clipped content if enableSeeMoreVariant is true and markdown length is less than max length', () => {
+    const markdown = 'This is a simple paragraph text';
+
+    render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        enableSeeMoreVariant
+        markdown={markdown}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByText(markdown)).toBeInTheDocument();
+    expect(screen.queryByTestId('read-more-button')).toBeNull();
   });
 });

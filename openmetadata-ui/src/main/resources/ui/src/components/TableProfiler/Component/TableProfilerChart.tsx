@@ -11,26 +11,21 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
-  PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import {
   calculateRowCountMetrics,
   calculateSystemMetrics,
 } from '../../../utils/TableProfilerUtils';
-import {
-  getCurrentDateTimeMillis,
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
-  getPastDaysDateTimeMillis,
-} from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CustomBarChart from '../../Chart/CustomBarChart';
 import OperationDateBarChart from '../../Chart/OperationDateBarChart';
@@ -40,8 +35,13 @@ import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLates
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
 
-const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
+const TableProfilerChart = ({
+  dateRangeObject,
+  entityFqn = '',
+  showOperationGraph = false,
+}: TableProfilerChartProps) => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { t } = useTranslation();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
@@ -53,28 +53,24 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
     useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchTableProfiler = async (fqn: string, days = 3) => {
+  const fetchTableProfiler = async (
+    fqn: string,
+    dateRangeObj: DateRangeObject
+  ) => {
     try {
-      const startTs = getPastDatesTimeStampFromCurrentDate(days);
-      const endTs = getCurrentDateTimeStamp();
-      const { data } = await getTableProfilesList(fqn, {
-        startTs,
-        endTs,
-      });
+      const { data } = await getTableProfilesList(fqn, dateRangeObj);
       const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
       setRowCountMetrics(rowMetricsData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
-  const fetchSystemProfiler = async (fqn: string, days = 3) => {
+  const fetchSystemProfiler = async (
+    fqn: string,
+    dateRangeObj: DateRangeObject
+  ) => {
     try {
-      const startTs = getPastDaysDateTimeMillis(days);
-      const endTs = getCurrentDateTimeMillis();
-      const { data } = await getSystemProfileList(fqn, {
-        startTs,
-        endTs,
-      });
+      const { data } = await getSystemProfileList(fqn, dateRangeObj);
       const { operationMetrics: metricsData, operationDateMetrics } =
         calculateSystemMetrics(data, operationMetrics);
 
@@ -85,23 +81,26 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
     }
   };
 
-  const fetchProfilerData = async (fqn: string, days = 3) => {
+  const fetchProfilerData = async (
+    fqn: string,
+    dateRangeObj: DateRangeObject
+  ) => {
     setIsLoading(true);
-    await fetchTableProfiler(fqn, days);
-    await fetchSystemProfiler(fqn, days);
+    await fetchTableProfiler(fqn, dateRangeObj);
+    await fetchSystemProfiler(fqn, {
+      startTs: dateRangeObj.startTs * 1000,
+      endTs: dateRangeObj.endTs * 1000,
+    });
     setIsLoading(false);
   };
 
   useEffect(() => {
-    if (datasetFQN) {
-      fetchProfilerData(
-        datasetFQN,
-        PROFILER_FILTER_RANGE[selectedTimeRange].days
-      );
+    if (datasetFQN || entityFqn) {
+      fetchProfilerData(datasetFQN || entityFqn, dateRangeObject);
     } else {
       setIsLoading(false);
     }
-  }, [datasetFQN, selectedTimeRange]);
+  }, [datasetFQN, dateRangeObject, entityFqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -114,43 +113,62 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
           chartCollection={rowCountMetrics}
           curveType="stepAfter"
           name="rowCount"
+          title={t('label.data-volume')}
         />
       </Col>
-      <Col span={24}>
-        <Card
-          className="rounded-6 border-1"
-          data-testid="operation-date-metrics">
-          <Row gutter={[16, 16]}>
-            <Col span={4}>
-              <ProfilerLatestValue
-                stringValue
-                information={operationDateMetrics.information}
-              />
-            </Col>
-            <Col span={20}>
-              <OperationDateBarChart
-                chartCollection={operationDateMetrics}
-                name="operationDateMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
-      <Col span={24}>
-        <Card className="rounded-6 border-1" data-testid="operation-metrics">
-          <Row gutter={[16, 16]}>
-            <Col span={4}>
-              <ProfilerLatestValue information={operationMetrics.information} />
-            </Col>
-            <Col span={20}>
-              <CustomBarChart
-                chartCollection={operationMetrics}
-                name="operationMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
+      {showOperationGraph && (
+        <>
+          <Col span={24}>
+            <Card
+              className="shadow-none global-border-radius"
+              data-testid="operation-date-metrics">
+              <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title level={5}>
+                    {t('label.table-update-plural')}
+                  </Typography.Title>
+                </Col>
+                <Col span={4}>
+                  <ProfilerLatestValue
+                    stringValue
+                    information={operationDateMetrics.information}
+                  />
+                </Col>
+                <Col span={20}>
+                  <OperationDateBarChart
+                    chartCollection={operationDateMetrics}
+                    name="operationDateMetrics"
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+          <Col span={24}>
+            <Card
+              className="shadow-none global-border-radius"
+              data-testid="operation-metrics">
+              <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title level={5}>
+                    {t('label.volume-change')}
+                  </Typography.Title>
+                </Col>
+                <Col span={4}>
+                  <ProfilerLatestValue
+                    information={operationMetrics.information}
+                  />
+                </Col>
+                <Col span={20}>
+                  <CustomBarChart
+                    chartCollection={operationMetrics}
+                    name="operationMetrics"
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </>
+      )}
     </Row>
   );
 };

@@ -5,7 +5,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.RetriableException;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
 
 @Slf4j
 public abstract class AbstractEventPublisher implements EventPublisher {
@@ -36,7 +36,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
       return;
     }
 
-    ChangeEventList list = new ChangeEventList(batch, null, null, batch.size());
+    EventList list = new EventList(batch, null, null, batch.size());
     try {
       publish(list);
       batch.clear();

@@ -5,6 +5,9 @@
   "description": "percentageOfEntitiesWithDescriptionByType data blob",
   "type": "object",
   "javaType": "org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType",
+  "javaInterfaces": [
+    "org.openmetadata.schema.DataInsightInterface"
+  ],
   "properties": {
     "timestamp": {
       "description": "timestamp",

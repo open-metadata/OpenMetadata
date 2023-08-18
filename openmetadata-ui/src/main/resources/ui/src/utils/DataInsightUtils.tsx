@@ -26,6 +26,7 @@ import {
   omit,
   round,
   sortBy,
+  sumBy,
   toNumber,
 } from 'lodash';
 import moment from 'moment';
@@ -39,7 +40,6 @@ import {
 } from '../constants/constants';
 import {
   ENTITIES_SUMMARY_LIST,
-  KPI_DATE_PICKER_FORMAT,
   TIER_DATA,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
@@ -54,7 +54,6 @@ import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntities
 import {
   ChartValue,
   DataInsightChartTooltipProps,
-  KpiDates,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
 import {
@@ -86,15 +85,15 @@ export const renderLegend = (
             className="recharts-legend-item custom-data-insight-legend-item"
             key={`item-${index}`}
             onClick={(e) =>
-              legendData.onClick && legendData.onClick({ ...entry, ...e })
+              legendData.onClick && legendData.onClick(entry, index, e)
             }
             onMouseEnter={(e) =>
               legendData.onMouseEnter &&
-              legendData.onMouseEnter({ ...entry, ...e })
+              legendData.onMouseEnter(entry, index, e)
             }
             onMouseLeave={(e) =>
               legendData.onMouseLeave &&
-              legendData.onMouseLeave({ ...entry, ...e })
+              legendData.onMouseLeave(entry, index, e)
             }>
             <Surface className="m-r-xss" height={14} version="1.1" width={14}>
               <rect
@@ -172,7 +171,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         {payload.map((entry, index) => (
           <li
-            className="d-flex items-center justify-between tw-gap-6 tw-pb-1.5 text-sm"
+            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
             key={`item-${index}`}>
             <span className="flex items-center text-grey-muted">
               <Surface className="mr-2" height={12} version="1.1" width={12}>
@@ -580,29 +579,32 @@ export const getEntitiesChartSummary = (
 export const getWebChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
 ) => {
-  const updatedSummary = WEB_SUMMARY_LIST.map((summary) => {
+  const updatedSummary = [];
+
+  for (const summary of WEB_SUMMARY_LIST) {
     // grab the current chart type
     const chartData = chartResults.find(
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
     if (isUndefined(chartData)) {
-      return summary;
-    } else {
-      if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
-        const latestData = last(chartData.data);
+      updatedSummary.push(summary);
 
-        return { ...summary, latest: latestData?.activeUsers ?? 0 };
-      } else {
-        const { total } = getGraphDataByEntityType(
-          chartData.data ?? [],
-          chartData.chartType
-        );
-
-        return { ...summary, latest: total };
-      }
+      continue;
     }
-  });
+
+    const { chartType, data } = chartData;
+
+    updatedSummary.push({
+      ...summary,
+      latest: sumBy(
+        data,
+        chartType === DataInsightChartType.DailyActiveUsers
+          ? 'activeUsers'
+          : 'pageViews'
+      ),
+    });
+  }
 
   return updatedSummary;
 };
@@ -643,9 +645,6 @@ export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   return current && current.isBefore(moment().subtract(1, 'day'));
 };
 
-export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
-  moment(timestamp).format(KPI_DATE_PICKER_FORMAT);
-
 export const getKpiTargetValueByMetricType = (
   metricType: KpiTargetType,
   metricValue: number
@@ -671,10 +670,3 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
 
 export const getDataInsightPathWithFqn = (fqn: string) =>
   ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
-
-export const getKPIFormattedDates = (kpiDates: KpiDates): KpiDates => {
-  return {
-    startDate: `${kpiDates.startDate} 00:00`,
-    endDate: `${kpiDates.endDate} 23:59`,
-  };
-};

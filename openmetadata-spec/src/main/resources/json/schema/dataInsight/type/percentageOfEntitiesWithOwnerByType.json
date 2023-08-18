@@ -5,6 +5,9 @@
   "description": "percentageOfEntitiesWithOwnerByType data blob",
   "type": "object",
   "javaType": "org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType",
+  "javaInterfaces": [
+    "org.openmetadata.schema.DataInsightInterface"
+  ],
   "properties": {
     "timestamp": {
       "description": "timestamp",
