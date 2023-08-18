@@ -51,6 +51,7 @@ from metadata.ingestion.source.database.domodatabase.models import (
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -174,6 +175,9 @@ class DomodatabaseSource(DatabaseServiceSource):
                 owner=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
+                sourceUrl=self.get_source_url(
+                    table_name=table_id,
+                ),
             )
             yield table_request
             self.register_record(table_request=table_request)
@@ -203,6 +207,20 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
+
+    def get_source_url(
+        self,
+        table_name: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for domodatabase
+        """
+        try:
+            return f"{clean_uri(self.service_connection.sandboxDomain)}/datasources/{table_name}/details/overview"
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url for {table_name}: {exc}")
+        return None
 
     def standardize_table_name(  # pylint: disable=unused-argument
         self, schema: str, table: str

@@ -50,3 +50,9 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
     and option_value is not null
     """
 )
+
+BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
+    """
+    select table_name, table_type from {}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
+    """
+)
