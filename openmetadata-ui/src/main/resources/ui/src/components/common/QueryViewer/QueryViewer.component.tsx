@@ -63,7 +63,7 @@ const QueryViewer = ({
       <SchemaEditor
         className="custom-code-mirror-theme"
         editorClass={classNames(
-          lineCount > 4 ? 'table-query-editor' : 'query-editor-h-200'
+          lineCount > 4 ? 'table-query-editor' : 'query-editor'
         )}
         mode={{ name: CSMode.SQL }}
         options={{ readOnly: true }}
