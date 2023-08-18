@@ -42,9 +42,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSCredentialsPath,
-    GCSValues,
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
@@ -219,26 +218,18 @@ class BigquerySource(CommonDbSourceService):
             impersonate_service_account=impersonate_service_account,
             lifetime=lifetime,
         )
-        if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
-            self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
+        if isinstance(
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
+        ):
+            self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
         self.engine = get_connection(self.service_connection)
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        if isinstance(
-            self.service_connection.credentials.gcsConfig, GCSCredentialsPath
-        ):
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
-        elif isinstance(
-            self.service_connection.credentials.gcsConfig.projectId, SingleProjectId
-        ):
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
-        elif hasattr(
-            self.service_connection.credentials.gcsConfig, "projectId"
+        if hasattr(
+            self.service_connection.credentials.gcpConfig, "projectId"
         ) and isinstance(
             self.service_connection.credentials.gcsConfig.projectId, MultipleProjectId
         ):
