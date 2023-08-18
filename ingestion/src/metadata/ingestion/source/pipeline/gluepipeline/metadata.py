@@ -94,12 +94,18 @@ class GluepipelineSource(PipelineServiceSource):
         """
         Method to Get Pipeline Entity
         """
+        source_url = (
+            f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/glue/home?"
+            f"region={self.service_connection.awsConfig.awsRegion}#/v2/etl-configuration/"
+            f"workflows/view/{pipeline_details[NAME]}"
+        )
         self.job_name_list = set()
         pipeline_request = CreatePipelineRequest(
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
             tasks=self.get_tasks(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            sourceUrl=source_url,
         )
         yield pipeline_request
         self.register_record(pipeline_request=pipeline_request)
