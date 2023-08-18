@@ -96,6 +96,7 @@ import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.util.JsonUtils;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.opensearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.opensearch.action.bulk.BulkItemResponse;
 import org.opensearch.action.bulk.BulkRequest;
@@ -105,6 +106,7 @@ import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.support.WriteRequest;
 import org.opensearch.action.support.master.AcknowledgedResponse;
 import org.opensearch.action.update.UpdateRequest;
+import org.opensearch.client.GetAliasesResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
@@ -259,14 +261,20 @@ public class OpenSearchClientImpl implements SearchClient {
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (exists) {
-        // deleting alias for indexes
-        IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-        IndicesAliasesRequest.AliasActions aliasAction =
-            IndicesAliasesRequest.AliasActions.remove()
-                .index(elasticSearchIndexType.indexName)
-                .alias("sourceUrlSearchAlias");
-        aliasesRequest.addAliasAction(aliasAction);
-        client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+        // check if the alias is exist or not
+        GetAliasesRequest getAliasesRequest = new GetAliasesRequest("sourceUrlSearchAlias");
+        GetAliasesResponse getAliasesResponse = client.indices().getAlias(getAliasesRequest, RequestOptions.DEFAULT);
+        boolean aliasExists = getAliasesResponse.getAliases().containsKey(elasticSearchIndexType.indexName);
+        // deleting alias for indexes if exists
+        if (aliasExists) {
+          IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+          IndicesAliasesRequest.AliasActions aliasAction =
+              IndicesAliasesRequest.AliasActions.remove()
+                  .index(elasticSearchIndexType.indexName)
+                  .alias("sourceUrlSearchAlias");
+          aliasesRequest.addAliasAction(aliasAction);
+          client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+        }
         DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
         AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
         LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());

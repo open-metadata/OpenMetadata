@@ -475,8 +475,7 @@ export const visitEntityDetailsPage = (
   serviceName,
   entity,
   dataTestId,
-  entityType,
-  count = 0
+  entityType
 ) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
@@ -484,11 +483,7 @@ export const visitEntityDetailsPage = (
     `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
     'explorePageTabSearch'
   );
-  interceptURL(
-    'GET',
-    `/api/v1/search/suggest?q=*&index=*`,
-    `searchQuery-${entity}-${count}`
-  );
+  interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
   const id = dataTestId ?? `${serviceName}-${term}`;
 
@@ -500,35 +495,37 @@ export const visitEntityDetailsPage = (
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  verifyResponseStatusCode(`@searchQuery-${entity}-${count}`, 200);
-  cy.get('body').then(($body) => {
-    // checking if requested term is available in search suggestion
-    if ($body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length) {
-      // if term is available in search suggestion, redirecting to entity details page
-      cy.get(`[data-testid="${id}"] [data-testid="data-name"]`)
-        .should('be.visible')
-        .first()
-        .click();
-    } else {
-      // if term is not available in search suggestion, hitting enter to search box so it will redirect to explore page
-      cy.get('body').click(1, 1);
-      cy.get('[data-testid="searchBox"]').type('{enter}');
-      verifyResponseStatusCode('@explorePageSearch', 200);
+  cy.wait('@searchQuery').then(() => {
+    cy.wait(500);
+    cy.get('body').then(($body) => {
+      // checking if requested term is available in search suggestion
+      if (
+        $body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length
+      ) {
+        // if term is available in search suggestion, redirecting to entity details page
+        cy.get(`[data-testid="${id}"] [data-testid="data-name"]`)
+          .should('be.visible')
+          .first()
+          .click();
+      } else {
+        // if term is not available in search suggestion,
+        // hitting enter to search box so it will redirect to explore page
+        cy.get('body').click(1, 1);
+        cy.get('[data-testid="searchBox"]').type('{enter}');
+        verifyResponseStatusCode('@explorePageSearch', 200);
 
-      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
-      cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
-      verifyResponseStatusCode('@explorePageTabSearch', 200);
+        cy.get(`[data-testid="${entity}-tab"]`).should('be.visible').click();
+        cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
+        verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-      cy.get(`[data-testid="${id}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-    }
+        cy.get(`[data-testid="${id}"]`).scrollIntoView().click();
+      }
+    });
+
+    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.get('body').click(1, 1);
+    cy.get('[data-testid="searchBox"]').clear();
   });
-
-  verifyResponseStatusCode('@getEntityDetails', 200);
-  cy.get('body').click(1, 1);
-  cy.get('[data-testid="searchBox"]').clear();
 };
 
 // add new tag to entity and its table
