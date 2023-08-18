@@ -167,10 +167,23 @@ public class MigrationUtil {
         // Update the Statements to Database
         T entity = JsonUtils.readValue(json, clazz);
         try {
-          String hash =
-              withName
-                  ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
-                  : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+          String hash;
+          if (entity.getFullyQualifiedName() != null) {
+            hash =
+                withName
+                    ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
+                    : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+          } else {
+            LOG.info(
+                "Failed in creating FQN Hash for Entity Name : {}, since the FQN is null. Auto Correcting.",
+                entity.getName());
+            hash =
+                withName
+                    ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getName()))
+                    : FullyQualifiedName.buildHash(entity.getName());
+            entity.setFullyQualifiedName(entity.getName());
+            dao.update(entity.getId(), entity.getName(), JsonUtils.pojoToJson(entity));
+          }
           int result =
               handle
                   .createUpdate(updateSql)
@@ -217,6 +230,7 @@ public class MigrationUtil {
     updateFQNHashForEntityWithName(handle, Bot.class, collectionDAO.botDAO(), limitParam);
     updateFQNHashForEntityWithName(handle, User.class, collectionDAO.userDAO(), limitParam);
     updateFQNHashForEntityWithName(handle, Team.class, collectionDAO.teamDAO(), limitParam);
+    updateFQNHashForEntityWithName(handle, Classification.class, collectionDAO.classificationDAO(), limitParam);
 
     // Update all the services
     updateFQNHashForEntityWithName(handle, DatabaseService.class, collectionDAO.dbServiceDAO(), limitParam);
@@ -244,7 +258,6 @@ public class MigrationUtil {
     updateFQNHashForEntity(handle, Report.class, collectionDAO.reportDAO(), limitParam);
 
     // Update Glossaries & Classifications
-    updateFQNHashForEntity(handle, Classification.class, collectionDAO.classificationDAO(), limitParam);
     updateFQNHashForEntity(handle, Glossary.class, collectionDAO.glossaryDAO(), limitParam);
     updateFQNHashForEntity(handle, GlossaryTerm.class, collectionDAO.glossaryTermDAO(), limitParam);
     updateFQNHashForEntity(handle, Tag.class, collectionDAO.tagDAO(), limitParam);
