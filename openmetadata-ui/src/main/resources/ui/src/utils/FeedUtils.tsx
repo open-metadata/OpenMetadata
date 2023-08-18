@@ -14,6 +14,7 @@
 import { RightOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { MentionSuggestionsItem } from 'components/FeedEditor/FeedEditor.interface';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual } from 'lodash';
@@ -62,7 +63,8 @@ import {
   getRandomColor,
 } from './CommonUtils';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
+import Fqn from './Fqn';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
@@ -156,6 +158,14 @@ export const getThreadField = (
 };
 
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
+  if (entityType === EntityType.GLOSSARY_TERM) {
+    return `${document.location.protocol}//${document.location.host}/glossary/${entityFqn}`;
+  } else if (entityType === EntityType.TAG) {
+    const classificationFqn = Fqn.split(entityFqn);
+
+    return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  }
+
   return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
 };
 
@@ -255,6 +265,11 @@ export async function suggestions(
 
       hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
+        const breadcrumbs = getEntityBreadcrumbs(
+          hit._source,
+          entityType as EntityType,
+          false
+        );
 
         return {
           id: hit._id,
@@ -264,7 +279,8 @@ export async function suggestions(
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
           type: entityType,
-          name: hit._source.name,
+          name: hit._source.displayName || hit._source.name,
+          breadcrumbs,
         };
       });
     } else {
@@ -273,6 +289,11 @@ export async function suggestions(
 
       hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
+        const breadcrumbs = getEntityBreadcrumbs(
+          hit._source as SearchedDataProps['data'][number]['_source'],
+          entityType as EntityType,
+          false
+        );
 
         return {
           id: hit._id,
@@ -282,7 +303,8 @@ export async function suggestions(
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
           type: entityType,
-          name: hit._source.name,
+          name: hit._source.displayName || hit._source.name,
+          breadcrumbs,
         };
       });
     }

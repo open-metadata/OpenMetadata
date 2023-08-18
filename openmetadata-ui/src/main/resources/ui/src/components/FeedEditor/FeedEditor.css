@@ -1090,3 +1090,8 @@ button.ql-emoji {
   width: 100%;
   border-radius: 50%;
 }
+
+.mention-icon-image > svg {
+  height: 24px;
+  width: 24px;
+}

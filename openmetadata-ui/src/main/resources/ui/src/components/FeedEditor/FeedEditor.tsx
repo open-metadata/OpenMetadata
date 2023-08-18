@@ -24,8 +24,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill';
+import { getEntityIcon } from 'utils/TableUtils';
 import {
   MENTION_ALLOWED_CHARS,
   MENTION_DENOTATION_CHARS,
@@ -98,17 +100,43 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           showDenotationChar: false,
           renderLoading: () => `${t('label.loading')}...`,
           renderItem: (item: Record<string, any>) => {
-            if (item.type) {
-              return `<div class="d-flex flex-col">
-                  <span class="text-grey-muted text-xs">${item.type}</span>
-                  <span class="font-medium truncate w-56">${item.name}</span>
-              </div>`;
-            } else {
+            if (!item.type) {
               return `<div class="d-flex gap-2"> 
-              ${item.avatarEle}
+                ${item.avatarEle}
                 <span class="d-flex items-center truncate w-56">${item.name}</span>
               </div>`;
             }
+
+            const breadcrumbsData = item.breadcrumbs
+              ? item.breadcrumbs
+                  .map((obj: { name: string }) => obj.name)
+                  .join('/')
+              : '';
+
+            const breadcrumbEle = breadcrumbsData
+              ? `<div class="d-flex flex-wrap">
+                  <span class="text-grey-muted truncate w-max-200 text-xss">${breadcrumbsData}</span>
+                </div>`
+              : '';
+
+            const icon = ReactDOMServer.renderToString(
+              getEntityIcon(item.type)
+            );
+
+            const typeSpan = !breadcrumbEle
+              ? `<span class="text-grey-muted text-xs">${item.type}</span>`
+              : '';
+
+            return `<div class="d-flex items-center gap-2">
+              <div class="flex-center mention-icon-image">${icon}</div>
+              <div>
+                ${breadcrumbEle}
+                <div class="d-flex flex-col">
+                  ${typeSpan}
+                  <span class="font-medium truncate w-56">${item.name}</span>
+                </div>
+              </div>
+            </div>`;
           },
         },
         markdownOptions: {},
