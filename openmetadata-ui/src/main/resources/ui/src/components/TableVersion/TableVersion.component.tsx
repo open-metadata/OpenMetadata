@@ -243,6 +243,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                entityType={EntityType.TABLE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 tierDisplayName={tierDisplayName}

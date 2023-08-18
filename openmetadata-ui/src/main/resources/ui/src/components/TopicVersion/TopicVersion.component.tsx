@@ -17,9 +17,7 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import DataAssetsVersionHeader, {
-  VersionExtraInfoLabel,
-} from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -30,13 +28,13 @@ import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/tagLabel';
-import { isEmpty, noop, toString } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { stringToHTML } from 'utils/StringsUtils';
 import { getUpdatedMessageSchema } from 'utils/TopicVersionUtils';
-import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
+import { ChangeDescription } from '../../generated/entity/data/topic';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
@@ -207,38 +205,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
     ]
   );
 
-  const extraInfo = useMemo(() => {
-    const topicDetails = currentVersionData as Topic;
-    const partitions = getEntityVersionByField(
-      changeDescription,
-      EntityField.PARTITIONS,
-      toString(topicDetails.partitions)
-    );
-
-    const replicationFactor = getEntityVersionByField(
-      changeDescription,
-      EntityField.REPLICATION_FACTOR,
-      toString(topicDetails.replicationFactor)
-    );
-
-    return (
-      <>
-        {!isEmpty(partitions) && (
-          <VersionExtraInfoLabel
-            label={t('label.partition-plural')}
-            value={partitions}
-          />
-        )}
-        {!isEmpty(replicationFactor) && (
-          <VersionExtraInfoLabel
-            label={t('label.replication-factor')}
-            value={replicationFactor}
-          />
-        )}
-      </>
-    );
-  }, [currentVersionData, changeDescription]);
-
   if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
@@ -256,7 +222,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
-                extraInfo={extraInfo}
+                entityType={EntityType.TOPIC}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 tierDisplayName={tierDisplayName}

@@ -43,7 +43,6 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-  getExtraInfoSourceUrl,
 } from '../../utils/EntityVersionUtils';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
@@ -235,12 +234,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     [description, tableColumn, currentVersionData, entityPermissions]
   );
 
-  const extraInfo = useMemo(
-    () =>
-      getExtraInfoSourceUrl(currentVersionData as Dashboard, changeDescription),
-    [currentVersionData, changeDescription]
-  );
-
   if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
@@ -258,7 +251,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
-                extraInfo={extraInfo}
+                entityType={EntityType.DASHBOARD}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 tierDisplayName={tierDisplayName}

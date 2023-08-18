@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
+import { Space, Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { EntityDetails } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { VersionExtraInfoLink } from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
 import {
@@ -26,10 +24,8 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { Dashboard } from 'generated/entity/data/dashboard';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Pipeline } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
 import { EntityReference } from 'generated/entity/type';
 import { t } from 'i18next';
@@ -743,48 +739,4 @@ export const getConstraintChanges = (
   ];
 
   return { addedConstraintDiffs, deletedConstraintDiffs };
-};
-
-export const getExtraInfoSourceUrl = (
-  currentVersionData: Dashboard | Pipeline,
-  changeDescription: ChangeDescription
-) => {
-  const pipelineDetails = currentVersionData as Pipeline;
-  const sourceUrl = getEntityVersionByField(
-    changeDescription,
-    EntityField.SOURCE_URL,
-    toString(pipelineDetails.sourceUrl)
-  );
-  const fieldDiff = getDiffByFieldName(
-    EntityField.SOURCE_URL,
-    changeDescription,
-    true
-  );
-  const changedEntityName = getChangedEntityName(fieldDiff);
-  if (isEmpty(sourceUrl)) {
-    return null;
-  }
-
-  return (
-    <>
-      {isUndefined(changedEntityName) ? (
-        <>
-          <Divider className="self-center m-x-sm" type="vertical" />
-          <div className="d-flex items-center text-xs">
-            <Typography.Link
-              href={pipelineDetails.sourceUrl}
-              style={{ fontSize: '12px' }}>
-              {getEntityName(pipelineDetails)}{' '}
-            </Typography.Link>
-            <IconExternalLink className="m-l-xss " width={14} />{' '}
-          </div>
-        </>
-      ) : (
-        <VersionExtraInfoLink
-          href={pipelineDetails.sourceUrl}
-          value={sourceUrl}
-        />
-      )}
-    </>
-  );
 };

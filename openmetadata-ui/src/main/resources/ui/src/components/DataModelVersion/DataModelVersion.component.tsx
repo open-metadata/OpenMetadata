@@ -339,6 +339,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  entityType={EntityType.DASHBOARD_DATA_MODEL}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
                   tierDisplayName={tierDisplayName}

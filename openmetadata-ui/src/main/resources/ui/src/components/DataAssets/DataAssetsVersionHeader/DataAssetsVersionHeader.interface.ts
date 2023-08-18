@@ -12,6 +12,7 @@
  */
 
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import { EntityType } from 'enums/entity.enum';
 import { EntityReference } from 'generated/entity/type';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 
@@ -25,5 +26,5 @@ export interface DataAssetsVersionHeaderProps {
   tierDisplayName: React.ReactNode;
   ownerRef: EntityReference | undefined;
   onVersionClick: () => void;
-  extraInfo?: React.ReactNode;
+  entityType: EntityType;
 }

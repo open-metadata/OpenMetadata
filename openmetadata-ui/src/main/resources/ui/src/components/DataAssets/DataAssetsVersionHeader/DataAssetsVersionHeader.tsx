@@ -18,8 +18,9 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { isEmpty } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getDataAssetsVersionHeaderInfo } from 'utils/DataAssetsVersionHeaderUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { stringToHTML } from 'utils/StringsUtils';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
@@ -74,9 +75,14 @@ function DataAssetsVersionHeader({
   tierDisplayName,
   ownerRef,
   onVersionClick,
-  extraInfo,
+  entityType,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
+
+  const extraInfo = useMemo(
+    () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
+    [entityType, currentVersionData]
+  );
 
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">

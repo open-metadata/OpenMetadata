@@ -36,16 +36,11 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getUpdatedPipelineTasks } from 'utils/PipelineVersionUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { EntityField } from '../../constants/Feeds.constants';
-import {
-  ChangeDescription,
-  Pipeline,
-  Task,
-} from '../../generated/entity/data/pipeline';
+import { ChangeDescription, Task } from '../../generated/entity/data/pipeline';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-  getExtraInfoSourceUrl,
 } from '../../utils/EntityVersionUtils';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
@@ -256,12 +251,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     ]
   );
 
-  const extraInfo = useMemo(
-    () =>
-      getExtraInfoSourceUrl(currentVersionData as Pipeline, changeDescription),
-    [currentVersionData, changeDescription]
-  );
-
   if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
@@ -279,7 +268,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
-                extraInfo={extraInfo}
+                entityType={EntityType.PIPELINE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 tierDisplayName={tierDisplayName}
