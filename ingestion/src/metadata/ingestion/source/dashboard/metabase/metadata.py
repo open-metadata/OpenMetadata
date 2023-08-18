@@ -11,7 +11,7 @@
 """Metabase source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -99,17 +99,17 @@ class MetabaseSource(DashboardServiceSource):
         """
         return self.client.get_dashboard_details(dashboard.id)
 
-    def _get_collection_name(self, collection_id: Optional[str]) -> Optional[str]:
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
         """
-        Method to search the dataset using id in the workspace dict
+        Method to get the project name by searching the dataset using id in the workspace dict
         """
         try:
-            if collection_id:
+            if dashboard_details.collection_id:
                 collection_name = next(
                     (
                         collection.name
                         for collection in self.collections
-                        if collection.id == collection_id
+                        if collection.id == dashboard_details.collection_id
                     ),
                     None,
                 )
@@ -117,7 +117,7 @@ class MetabaseSource(DashboardServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error fetching the collection details for [{collection_id}]: {exc}"
+                f"Error fetching the collection details for [{dashboard_details.collection_id}]: {exc}"
             )
         return None
 
@@ -137,9 +137,7 @@ class MetabaseSource(DashboardServiceSource):
                 sourceUrl=dashboard_url,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
-                project=self._get_collection_name(
-                    collection_id=dashboard_details.collection_id
-                ),
+                project=self.context.project_name,
                 charts=[
                     fqn.build(
                         self.metadata,
@@ -161,7 +159,7 @@ class MetabaseSource(DashboardServiceSource):
 
     def yield_dashboard_chart(
         self, dashboard_details: MetabaseDashboardDetails
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Optional[CreateChartRequest]]:
         """Get chart method
 
         Args:
@@ -201,7 +199,7 @@ class MetabaseSource(DashboardServiceSource):
         self,
         dashboard_details: MetabaseDashboardDetails,
         db_service_name: Optional[str],
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Optional[AddLineageRequest]]:
         """Get lineage method
 
         Args:
@@ -245,7 +243,7 @@ class MetabaseSource(DashboardServiceSource):
 
     def _yield_lineage_from_query(
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
-    ) -> Optional[AddLineageRequest]:
+    ) -> Iterable[Optional[AddLineageRequest]]:
         database = self.client.get_database(chart_details.database_id)
 
         query = None
@@ -291,7 +289,7 @@ class MetabaseSource(DashboardServiceSource):
 
     def _yield_lineage_from_api(
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
-    ) -> Optional[AddLineageRequest]:
+    ) -> Iterable[Optional[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
 
         if table is None or table.display_name is None:
