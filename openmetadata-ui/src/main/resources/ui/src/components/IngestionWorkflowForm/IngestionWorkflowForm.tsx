@@ -31,7 +31,7 @@ import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
 } from 'interface/service.interface';
-import { omit } from 'lodash';
+import { isUndefined, omit, omitBy } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { transformErrors } from 'utils/formUtils';
 import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
@@ -64,6 +64,8 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
   const isElasticSearchPipeline =
     pipeLineType === PipelineType.ElasticSearchReindex;
+
+  const isDbtPipeline = pipeLineType === PipelineType.Dbt;
 
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
@@ -107,6 +109,15 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           ]),
         };
       }
+      if (isDbtPipeline) {
+        formData = {
+          ...formData,
+          dbtConfigSource: {
+            ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
+          },
+        };
+      }
+
       onSubmit(formData);
     }
   };
@@ -115,7 +126,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     <Form
       focusOnFirstError
       noHtml5Validate
-      omitExtraData
       className={classNames('rjsf no-header', className)}
       fields={customFields}
       formContext={{ handleFocus: onFocus }}
