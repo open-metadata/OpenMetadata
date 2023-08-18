@@ -154,7 +154,7 @@ function ServiceMainTabContent({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
-        className: 'd-block w-max-200 truncate',
+        width: 280,
         render: (_, record: ServicePageData) => {
           return (
             <Link
@@ -162,7 +162,14 @@ function ServiceMainTabContent({
                 serviceCategory,
                 record.fullyQualifiedName ?? ''
               )}>
-              {getEntityName(record)}
+              <Typography.Paragraph
+                ellipsis={{
+                  rows: 2,
+                  tooltip: true,
+                }}
+                style={{ width: 280, color: 'inherit' }}>
+                {getEntityName(record)}
+              </Typography.Paragraph>
             </Link>
           );
         },
@@ -290,33 +297,35 @@ function ServiceMainTabContent({
             </Row>
           </Col>
           <Col data-testid="table-container" span={24}>
-            {isServiceLoading ? (
-              <Loader />
-            ) : (
-              <Table
-                bordered
-                columns={tableColumn}
-                components={tableComponent}
-                data-testid="service-children-table"
-                dataSource={data}
-                locale={{
-                  emptyText: <ErrorPlaceHolder className="m-y-md" />,
-                }}
-                pagination={false}
-                rowKey="id"
-                size="small"
-              />
-            )}
-            {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-              !isEmpty(data) && (
-                <NextPrevious
-                  currentPage={currentPage}
-                  pageSize={PAGE_SIZE}
-                  paging={paging}
-                  pagingHandler={pagingHandler}
-                  totalCount={paging.total}
+            <Space className="w-full m-b-md" direction="vertical" size="large">
+              {isServiceLoading ? (
+                <Loader />
+              ) : (
+                <Table
+                  bordered
+                  columns={tableColumn}
+                  components={tableComponent}
+                  data-testid="service-children-table"
+                  dataSource={data}
+                  locale={{
+                    emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                  }}
+                  pagination={false}
+                  rowKey="id"
+                  size="small"
                 />
               )}
+              {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
+                !isEmpty(data) && (
+                  <NextPrevious
+                    currentPage={currentPage}
+                    pageSize={PAGE_SIZE}
+                    paging={paging}
+                    pagingHandler={pagingHandler}
+                    totalCount={paging.total}
+                  />
+                )}
+            </Space>
           </Col>
         </Row>
       </Col>
