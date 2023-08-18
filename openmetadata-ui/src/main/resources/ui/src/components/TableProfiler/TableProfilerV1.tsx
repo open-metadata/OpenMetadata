@@ -137,7 +137,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
@@ -501,6 +501,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
     if (fetchProfiler) {
       fetchLatestProfilerData();
+    } else {
+      setIsLoading(false);
     }
     if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);

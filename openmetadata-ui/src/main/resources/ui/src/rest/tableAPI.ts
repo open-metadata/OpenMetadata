@@ -246,3 +246,7 @@ export const getTableList = async (params?: TableListParams) => {
 
   return response.data;
 };
+
+export const deleteSampleDataByTableId = async (id: string) => {
+  return await APIClient.delete<Table>(`/tables/${id}/sampleData`);
+};

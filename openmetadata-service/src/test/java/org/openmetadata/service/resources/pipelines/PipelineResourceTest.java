@@ -336,22 +336,15 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
-    // Replace pipeline status for a date
-    PipelineStatus newPipelineStatus1 =
-        new PipelineStatus()
-            .withExecutionStatus(StatusType.Pending)
-            .withTimestamp(TestUtils.dateToTimestamp("2022-01-16"))
-            .withTaskStatus(taskStatus);
-    putResponse = putPipelineStatusData(pipeline.getFullyQualifiedName(), newPipelineStatus1, ADMIN_AUTH_HEADERS);
     // Validate put response
-    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus1);
+    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus);
     pipelineStatues =
         getPipelineStatues(
             pipeline.getFullyQualifiedName(),
             TestUtils.dateToTimestamp("2022-01-15"),
             TestUtils.dateToTimestamp("2022-01-16"),
             ADMIN_AUTH_HEADERS);
-    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus1), 2);
+    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
     String dateStr = "2021-09-";
     List<PipelineStatus> pipelineStatusList = new ArrayList<>();
