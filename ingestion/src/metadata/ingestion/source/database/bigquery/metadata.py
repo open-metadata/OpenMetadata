@@ -61,6 +61,7 @@ from metadata.ingestion.source.database.common_db_source import (
 )
 from metadata.utils import fqn
 from metadata.utils.bigquery_utils import get_bigquery_client
+from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
