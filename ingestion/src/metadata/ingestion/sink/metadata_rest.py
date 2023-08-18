@@ -41,6 +41,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
+from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
@@ -109,6 +110,9 @@ class MetadataRestSink(Sink[Entity]):
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
         self.write_record.register(OMetaTopicSampleData, self.write_topic_sample_data)
+        self.write_record.register(
+            OMetaIndexSampleData, self.write_search_index_sample_data
+        )
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -465,6 +469,28 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Unexpected error while ingesting sample data for topic [{record.topic.name.__root__}]: {exc}"
+            )
+
+    def write_search_index_sample_data(self, record: OMetaIndexSampleData):
+        """
+        Ingest Search Index Sample Data
+        """
+        try:
+            if record.data.messages:
+                self.metadata.ingest_search_index_sample_data(
+                    record.entity,
+                    record.data,
+                )
+                logger.debug(
+                    f"Successfully ingested sample data for {record.entity.name.__root__}"
+                )
+                self.status.records_written(
+                    f"SearchIndexSampleData: {record.entity.name.__root__}"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error while ingesting sample data for search index [{record.entity.name.__root__}]: {exc}"
             )
 
     def close(self):
