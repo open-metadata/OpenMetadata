@@ -539,7 +539,8 @@ class ProfilerWorkflowTest(TestCase):
         ).profile
 
         assert profile.rowCount == 4.0
-        assert profile.profileSample is None
+        # uncomment when reactivate once https://github.com/open-metadata/OpenMetadata/issues/8930 is fixed
+        # assert profile.profileSample is None
 
         workflow_config["processor"] = {
             "type": "orm-profiler",
