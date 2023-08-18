@@ -37,11 +37,14 @@ jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
-jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
-});
+jest.mock(
+  'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
+  }
+);
 
 jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);

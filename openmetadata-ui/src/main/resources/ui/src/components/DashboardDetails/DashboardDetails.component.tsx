@@ -20,24 +20,28 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
+import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getDashboardDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
-import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getEntityName } from 'utils/EntityUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
-import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -54,7 +58,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -63,12 +66,6 @@ import {
   ChartType,
   DashboardDetailsProps,
 } from './DashboardDetails.interface';
-
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
 
 const DashboardDetails = ({
   charts,
@@ -94,9 +91,6 @@ const DashboardDetails = ({
     index: number;
   }>();
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
   const [threadLink, setThreadLink] = useState<string>('');
 
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -174,12 +168,7 @@ const DashboardDetails = ({
   }, []);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.DASHBOARD,
-      dashboardFQN,
-      setEntityFieldThreadCount,
-      setFeedCount
-    );
+    getFeedCounts(EntityType.DASHBOARD, dashboardFQN, setFeedCount);
   };
 
   useEffect(() => {
@@ -418,12 +407,6 @@ const DashboardDetails = ({
     }
   };
 
-  const entityFieldThreads = useMemo(
-    () =>
-      getEntityFieldThreadCounts(EntityField.CHARTS, entityFieldThreadCount),
-    [entityFieldThreadCount, getEntityFieldThreadCounts]
-  );
-
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -476,10 +459,6 @@ const DashboardDetails = ({
                 fqn: record.fullyQualifiedName ?? '',
                 field: record.description,
               }}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.DESCRIPTION,
-                entityFieldThreadCount
-              )}
               entityFqn={entityFqn}
               entityType={EntityType.DASHBOARD}
               hasEditPermission={editDescriptionPermissions}
@@ -500,7 +479,6 @@ const DashboardDetails = ({
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
-              entityFieldThreads={entityFieldThreads}
               entityFqn={entityFqn}
               entityType={EntityType.DASHBOARD}
               handleTagSelection={handleChartTagSelection}
@@ -523,7 +501,6 @@ const DashboardDetails = ({
         width: 300,
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD}
             handleTagSelection={handleChartTagSelection}
@@ -541,8 +518,6 @@ const DashboardDetails = ({
     [
       deleted,
       entityFqn,
-      entityFieldThreads,
-      entityFieldThreadCount,
       chartsPermissionsArray,
       onThreadLinkSelect,
       hasEditTagAccess,
@@ -565,10 +540,6 @@ const DashboardDetails = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={dashboardDetails.description}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
@@ -609,7 +580,6 @@ const DashboardDetails = ({
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={dashboardDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||
@@ -625,7 +595,6 @@ const DashboardDetails = ({
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={dashboardDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||
@@ -706,7 +675,6 @@ const DashboardDetails = ({
       tableColumn,
       dashboardDetails,
       charts,
-      entityFieldThreadCount,
       entityName,
       dashboardPermissions,
       dashboardTags,

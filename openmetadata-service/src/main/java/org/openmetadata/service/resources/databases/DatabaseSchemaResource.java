@@ -74,11 +74,10 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
+    super.addHref(uriInfo, schema);
     Entity.withHref(uriInfo, schema.getTables());
-    Entity.withHref(uriInfo, schema.getOwner());
     Entity.withHref(uriInfo, schema.getService());
     Entity.withHref(uriInfo, schema.getDatabase());
-    Entity.withHref(uriInfo, schema.getDomain());
     return schema;
   }
 

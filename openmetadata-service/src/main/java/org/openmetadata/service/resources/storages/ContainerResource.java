@@ -45,7 +45,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/containers")
@@ -64,12 +63,9 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
-    container.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, container.getId()));
-    Entity.withHref(uriInfo, container.getOwner());
+    super.addHref(uriInfo, container);
     Entity.withHref(uriInfo, container.getService());
     Entity.withHref(uriInfo, container.getParent());
-    Entity.withHref(uriInfo, container.getChildren());
-    Entity.withHref(uriInfo, container.getFollowers());
     return container;
   }
 

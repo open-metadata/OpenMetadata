@@ -89,11 +89,11 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
 }));
 
-jest.mock('components/GlossaryDetails/GlossaryDetails.component', () => {
+jest.mock('./GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
 
-jest.mock('components/GlossaryTerms/GlossaryTermsV1.component', () => {
+jest.mock('./GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
 

@@ -14,13 +14,12 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
-import CustomNodeV1 from 'components/EntityLineage/CustomNodeV1.component';
+import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
+import CustomNodeV1 from 'components/Entity/EntityLineage/CustomNodeV1.component';
 import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
-  Edge as InterfaceEdge,
   EdgeData,
   EdgeTypeEnum,
   EntityReferenceChild,
@@ -31,7 +30,7 @@ import {
   NodeIndexMap,
   SelectedEdge,
   SelectedNode,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
@@ -100,7 +99,6 @@ import {
   prepareLabel,
 } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
-import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -397,7 +395,7 @@ export const getLineageData = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+    <div className="m-t-md m-l-md global-border rounded-4 flex-center p-8 font-medium">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>
@@ -502,21 +500,6 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
   });
 
   return uniqueElements;
-};
-
-/**
- *
- * @param onClick - callback
- * @returns - Button element with attach callback
- */
-export const getNodeRemoveButton = (onClick: () => void) => {
-  return (
-    <button
-      className="tw-absolute tw--top-3.5 tw--right-3 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-      onClick={() => onClick()}>
-      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-    </button>
-  );
 };
 
 export const getSelectedEdgeArr = (
@@ -1291,7 +1274,7 @@ export const findNodeById = (
   return undefined;
 };
 
-export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
+export const addLineageHandler = async (edge: AddLineage): Promise<void> => {
   try {
     await addLineage(edge);
   } catch (err) {

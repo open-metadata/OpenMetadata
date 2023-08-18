@@ -84,6 +84,14 @@ public interface MigrationDAO {
       connectionType = POSTGRES)
   List<String> getServerMigrationSQLWithVersion(@Bind("version") String version);
 
+  @ConnectionAwareSqlQuery(
+      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
+      connectionType = POSTGRES)
+  String checkIfQueryPreviouslyRan(@Bind("checksum") String checksum);
+
   @Getter
   @Setter
   class ServerMigrationSQLTable {

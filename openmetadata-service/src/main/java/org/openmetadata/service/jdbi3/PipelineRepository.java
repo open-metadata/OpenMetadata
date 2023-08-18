@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
@@ -129,15 +128,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    String storedPipelineStatus =
-        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
     storeTimeSeries(
         pipeline.getFullyQualifiedName(),
         PIPELINE_STATUS_EXTENSION,
         "pipelineStatus",
         JsonUtils.pojoToJson(pipelineStatus),
-        pipelineStatus.getTimestamp(),
-        storedPipelineStatus != null);
+        pipelineStatus.getTimestamp());
 
     return pipeline.withPipelineStatus(pipelineStatus);
   }
@@ -214,11 +210,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public Pipeline setInheritedFields(Pipeline pipeline, Fields fields) {
     // If pipeline does not have domain, then inherit it from parent Pipeline service
-    if (fields.contains(FIELD_DOMAIN) && pipeline.getDomain() == null) {
-      PipelineService service = Entity.getEntity(PIPELINE_SERVICE, pipeline.getService().getId(), "domain", ALL);
-      pipeline.withDomain(service.getDomain());
-    }
-    return pipeline;
+    PipelineService service = Entity.getEntity(PIPELINE_SERVICE, pipeline.getService().getId(), "domain", ALL);
+    return inheritDomain(pipeline, fields, service);
   }
 
   @Override

@@ -61,7 +61,6 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -93,12 +92,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owner,filteringRules";
   private final CollectionDAO daoCollection;
-
-  @Override
-  public EventSubscription addHref(UriInfo uriInfo, EventSubscription entity) {
-    Entity.withHref(uriInfo, entity.getOwner());
-    return entity;
-  }
 
   public EventSubscriptionResource(CollectionDAO dao, Authorizer authorizer) {
     super(EventSubscription.class, new EventSubscriptionRepository(dao), authorizer);

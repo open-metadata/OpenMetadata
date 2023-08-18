@@ -89,7 +89,7 @@ export const NAVBAR_DETAILS = {
   },
   profile: {
     testid: '[data-testid="dropdown-profile"]',
-    subMenu: '[data-testid="greeting-text"] [data-testid="user-name"]',
+    subMenu: '[data-testid="user-name"]',
     url: `${BASE_URL}/users/admin`,
   },
 };

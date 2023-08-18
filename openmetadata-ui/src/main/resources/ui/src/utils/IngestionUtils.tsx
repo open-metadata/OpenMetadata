@@ -264,7 +264,7 @@ export const getErrorPlaceHolder = (
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
-      <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder className="p-y-lg" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         {getPipelineExtraInfo(pipelineType)}
       </ErrorPlaceHolder>
     );
