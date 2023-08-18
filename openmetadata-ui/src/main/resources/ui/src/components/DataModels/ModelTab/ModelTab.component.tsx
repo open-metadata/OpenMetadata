@@ -36,7 +36,6 @@ const ModelTab = ({
   hasEditTagsPermission,
   onUpdate,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }: ModelTabProps) => {
   const { t } = useTranslation();
@@ -110,9 +109,8 @@ const ModelTab = ({
           <TableDescription
             columnData={{
               fqn: record.fullyQualifiedName ?? '',
-              description: record.description,
+              field: record.description,
             }}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditPermission={hasEditDescriptionPermission}
@@ -131,7 +129,6 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
@@ -153,7 +150,6 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
@@ -171,7 +167,7 @@ const ModelTab = ({
     [
       entityFqn,
       isReadOnly,
-      entityFieldThreads,
+
       hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,

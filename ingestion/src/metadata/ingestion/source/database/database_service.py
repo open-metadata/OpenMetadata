@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
     Table,
+    TableConstraint,
     TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -46,7 +47,6 @@ from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import delete_entity_from_source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -92,7 +92,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process=["yield_view_lineage", "yield_table_constraints"],
+        post_process=["yield_view_lineage"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -234,14 +234,13 @@ class DatabaseServiceSource(
         Parses view definition to get lineage information
         """
 
-    def yield_table_constraints(self) -> Optional[Iterable[OMetaTableConstraints]]:
+    def update_table_constraints(
+        self, table_constraints: List[TableConstraint], foreign_columns: []
+    ) -> List[TableConstraint]:
         """
-        From topology.
         process the table constraints of all tables
-        by default no need to process table constraints
-        specially for non SQA sources
+        transform SQLAlchemy returned foreign_columns into list of TableConstraint.
         """
-        yield from []
 
     @abstractmethod
     def yield_table(

@@ -75,8 +75,16 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getUserByName = async (name: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields('/users/name/' + name, arrQueryFields);
+export const getUserByName = async (
+  name: string,
+  arrQueryFields?: string,
+  params?: string
+) => {
+  const url = getURLWithQueryFields(
+    '/users/name/' + name,
+    arrQueryFields,
+    params
+  );
 
   const response = await APIClient.get<User>(url);
 
@@ -200,8 +208,16 @@ export const getAuthMechanismForBotUser = async (botId: string) => {
   return response.data;
 };
 
-export const getBotByName = async (name: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields(`/bots/name/${name}`, arrQueryFields);
+export const getBotByName = async (
+  name: string,
+  arrQueryFields?: string,
+  params?: string
+) => {
+  const url = getURLWithQueryFields(
+    `/bots/name/${name}`,
+    arrQueryFields,
+    params
+  );
 
   const response = await APIClient.get<Bot>(url);
 

@@ -27,8 +27,8 @@ jest.mock('utils/FeedElementUtils', () => ({
     ),
 }));
 
-jest.mock('pages/TasksPage/EntityTaskTags/EntityTaskTags.component', () => {
-  return jest.fn().mockImplementation(() => <div>EntityTaskTags</div>);
+jest.mock('pages/TasksPage/EntityTasks/EntityTasks.component', () => {
+  return jest.fn().mockImplementation(() => <div>EntityTasks</div>);
 });
 
 const glossaryTags = [
@@ -106,7 +106,7 @@ describe('Test EntityTableTags Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -127,7 +127,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -147,7 +147,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
     const tagPersonal = await screen.findByTestId('tag-PersonalData.Personal');
 
     expect(tagContainer).toBeInTheDocument();
@@ -170,11 +170,11 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
-    const entityTaskTags = screen.queryByText('EntityTaskTags');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
+    const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(entityTaskTags).not.toBeInTheDocument();
+    expect(entityTasks).not.toBeInTheDocument();
   });
 
   it('Should render update and request tags buttons', async () => {
@@ -193,10 +193,10 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
-    const entityTaskTags = screen.queryByText('EntityTaskTags');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
+    const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(entityTaskTags).toBeInTheDocument();
+    expect(entityTasks).toBeInTheDocument();
   });
 });

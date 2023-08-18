@@ -14,7 +14,171 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 We also assume that your helm chart release names are `openmetadata` and `openmetadata-dependencies` and namespace used is `default`.
 
-{% partial file="/v1.1.0/deployment/upgrade/upgrade-prerequisites-110.md" /%}
+## Prerequisites
+
+Everytime that you plan on upgrading OpenMetadata to a newer version, make sure to go over all these steps:
+
+### 1. Backup your Metadata
+
+Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
+
+The source of truth is stored in the underlying database (MySQL and Postgres supported). During each version upgrade there
+is a database migration process that needs to run. It will directly attack your database and update the shape of the
+data to the newest OpenMetadata release.
+
+It is important that we backup the data because if we face any unexpected issues during the upgrade process, 
+you will be able to get back to the previous version without any loss.
+
+{% note %}
+
+You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
+
+{% /note %}
+
+- To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion` version to have all the improvements shipped in the CLI.
+- Also, make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands.
+
+**1. Create a Virtual Environment and Install the Backup CLI**
+
+```python
+python -m venv venv
+source venv/bin/activate
+pip install openmetadata-ingestion~=1.1.0
+```
+
+Validate the installed metadata version with `python -m metadata --version`
+
+**2. Run the Backup**
+
+If using MySQL:
+
+```bash
+python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
+```
+
+If using Postgres:
+
+```bash
+python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
+```
+
+**3. Store the backup file somewhere safe**
+
+The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup command output.
+
+Make sure to store it somewhere safe in case you need to restore the data later.
+
+You can refer to the following guide to get more details about the backup and restore:
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="luggage"
+    bold="Backup Metadata"
+    href="/deployment/backup-restore-metadata" %}
+      Learn how to back up MySQL or Postgres data.
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+### 2. Review the Deprecation Notice and Breaking Changes
+
+Releases might introduce deprecations and breaking changes that you should be aware of and understand before moving forward.
+
+Below in this page you will find the details for the latest release, and you can find older release notes [here](/deployment/upgrade/versions).
+
+The goal is to answer questions like:
+- *Do I need to update my configurations?*
+- *If I am running connectors externally, did their service connection change?*
+
+Carefully reviewing this will prevent easy errors.
+
+## 1.1 - Stable Release 🎉
+
+OpenMetadata 1.1 is a stable release. Please check the [release notes](/releases/latest-release).
+
+If you are upgrading production this is the recommended version to upgrade to.
+
+## Deprecation Notice
+
+- The 1.1 Release will be the last one with support for Python 3.7 since it is already [EOL](https://devguide.python.org/versions/).
+  OpenMetadata 1.2 will support Python version 3.8 to 3.10.
+- In 1.2 we will completely remove the Bots configured with SSO. Only JWT will be available then. Please, upgrade your
+  bots if you haven't done so. Note that the UI already does not allow creating bots with SSO.
+- 1.1 is the last release that will allow ingesting Impala from the Hive connector. In the next release we will
+  only support the Impala scheme from the Impala Connector.
+
+## Breaking Changes for 1.1 Stable Release
+
+{% note noteType="Warning" %}
+
+The Release 1.1.0 migration process will modify the structure of all your data. Depending on the number of records in the database,
+**this process can take up quite some time to run**. Please wait until it gets executed end-to-end.
+
+Make sure your data has been backed up before running the migration.
+
+{% /note %}
+
+### OpenMetadata Helm Chart Values
+
+With `1.1.0` we are moving away from `global.*` helm values under openmetadata helm charts to `openmetadata.config.*`.
+This change is introduce as helm reserves global chart values across all the helm charts. This conflicted the use of
+OpenMetadata helm charts along with other helm charts for organizations using common helm values yaml files.
+
+For example, with `1.0.X` Application version Releases, helm values would look like below -
+```yaml
+global:
+  ...
+  authorizer:
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+    initialAdmins:
+      - "user1"
+    botPrincipals:
+      - "<service_application_client_id>"
+    principalDomain: "open-metadata.org"
+  authentication:
+    provider: "google"
+    publicKeys:
+      - "https://www.googleapis.com/oauth2/v3/certs"
+      - "http://openmetadata:8585/api/v1/system/config/jwks"
+    authority: "https://accounts.google.com"
+    clientId: "{client id}"
+    callbackUrl: "http://localhost:8585/callback"
+  ...
+```
+
+With OpenMetadata Application version `1.1.0` and above, the above config will need to be updated as
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins:
+        - "user1"
+        - "user2"
+      botPrincipals:
+        - "<service_application_client_id>"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "google"
+      publicKeys:
+        - "https://www.googleapis.com/oauth2/v3/certs"
+        - "http://openmetadata:8585/api/v1/system/config/jwks"
+      authority: "https://accounts.google.com"
+      clientId: "{client id}"
+      callbackUrl: "http://localhost:8585/callback"
+```
+
+A quick and easy way to update the config is to use [yq](https://mikefarah.gitbook.io/yq/) utility to manipulate YAML files.
+
+```bash
+yq -i -e '{"openmetadata": {"config": .global}}' openmetadata.values.yml
+```
+
+The above command will update `global.*` with `openmetadata.config.*` yaml config. Please note, the above command is only recommended for users with custom helm values file explicit for OpenMetadata Helm Charts.
+
+For more information, visit the official helm docs for [global chart values](https://helm.sh/docs/chart_template_guide/subcharts_and_globals/#global-chart-values).
 
 # Upgrade Process
 
@@ -45,11 +209,11 @@ Verify with the below command to see the latest release available locally.
 ```commandline
 helm search repo open-metadata --versions
 > NAME                                   	CHART VERSION	APP VERSION	DESCRIPTION                                
+open-metadata/openmetadata             	1.1.4        	1.1.0      	A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata             	1.1.3        	1.1.0      	A Helm chart for OpenMetadata on Kubernetes
-open-metadata/openmetadata             	1.1.2        	1.1.0      	A Helm chart for OpenMetadata on Kubernetes
 ...
+open-metadata/openmetadata-dependencies	1.1.4        	1.1.0      	Helm Dependencies for OpenMetadata
 open-metadata/openmetadata-dependencies	1.1.3        	1.1.0      	Helm Dependencies for OpenMetadata
-open-metadata/openmetadata-dependencies	1.1.2        	1.1.0      	Helm Dependencies for OpenMetadata
 ...
 ```
 
@@ -71,6 +235,12 @@ This would prevent your new deployment to use the latest containers when running
 
 If you are running into any issues, double-check what are the default values of the helm revision.
 
+The command would look like below -
+
+```commandline
+helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies --values <path-to-custom-values-file>
+```
+
 {% /note %}
 
 ## Step 4: Upgrade OpenMetadata
@@ -81,11 +251,20 @@ Finally, we upgrade OpenMetadata with the below command:
 helm upgrade openmetadata open-metadata/openmetadata
 ```
 
-You might need to pass your own `values.yaml` with the `--values` flag.
+{% note noteType="Tip" %}
 
-Note that in every version upgrade there is a migration process that updates your database to the newest version.
+Make sure that, when using your own `values.yaml`, you are not overwriting elements such as the `image` of the containers.
+This would prevent your new deployment to use the latest containers when running the upgrade.
 
-For kubernetes, this process will happen automatically as an upgrade hook.
+If you are running into any issues, double-check what are the default values of the helm revision.
+
+The command would look like below -
+
+```commandline
+helm upgrade openmetadata open-metadata/openmetadata --values <path-to-custom-values-file>
+```
+
+{% /note %}
 
 {% note %}
 
@@ -102,9 +281,9 @@ Click on reindex all
 in the dialog box choose Recreate Indexes to All
 {% image src="/images/v1.1.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
-## Troubleshooting
+# Troubleshooting
 
-### Helm Upgrade fails with additional property airflow not allowed
+## Helm Upgrade fails with additional property airflow not allowed
 
 With Release 1.0.0, if you see your helm charts failing to deploy with the below issue -
 
@@ -173,7 +352,7 @@ openmetadata:
 
 Run the [helm lint](https://helm.sh/docs/helm/helm_lint/) command on your custom values after making the changes to validate with the JSON Schema.
 
-### With 0.13.0 Release
+## With 0.13.0 Release
 
 If your helm dependencies upgrade fails with the below command result -
 
@@ -194,7 +373,7 @@ kubectl patch pvc data-mysql-0 -p '{"spec":{"resources":{"requests":{"storage":"
 kubectl patch pv <mysql-pv> -p '{"spec":{"storage":"50Gi"}}'
 ```
 
-### MySQL Pod fails on Upgrade
+## MySQL Pod fails on Upgrade
 
 {% note %}
 

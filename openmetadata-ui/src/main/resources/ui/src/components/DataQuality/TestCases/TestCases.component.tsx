@@ -29,7 +29,7 @@ import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import {
@@ -39,9 +39,8 @@ import {
 } from 'rest/testAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
-import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestCases = () => {
+export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const history = useHistory();
   const location = useLocation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
@@ -204,11 +203,10 @@ export const TestCases = () => {
           onSearch={(value) => handleSearchParam(value, 'searchValue')}
         />
       </Col>
-      <Col span={24}>
-        <SummaryPanel />
-      </Col>
+      <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
         <DataQualityTab
+          afterDeleteAction={fetchTestCases}
           isLoading={isLoading}
           pagingData={{
             paging: testCase.paging,

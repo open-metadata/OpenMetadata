@@ -33,6 +33,7 @@ import {
   getIngestionPipelineByName,
   getIngestionPipelineLogById,
 } from 'rest/ingestionPipelineAPI';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
@@ -232,7 +233,7 @@ const LogsViewer = () => {
           <TitleBreadcrumb
             titleLinks={getLogBreadCrumbs(
               logEntityType,
-              ingestionName,
+              getDecodedFqn(ingestionName),
               ingestionDetails
             )}
           />

@@ -15,7 +15,7 @@ import AppState from 'AppState';
 import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
 import FeedCardBodyV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
-import { EntityListWithV1 } from 'components/EntityList/EntityList';
+import { EntityListWithV1 } from 'components/Entity/EntityList/EntityList';
 import RecentlyViewed from 'components/recently-viewed/RecentlyViewed';
 import { getUserPath } from 'constants/constants';
 import { Thread } from 'generated/entity/feed/thread';
@@ -125,7 +125,7 @@ const RightSidebar = ({
           headerTextLabel={t('label.following')}
           loading={isLoadingOwnedData}
           noDataPlaceholder={t('message.not-followed-anything')}
-          testIDText="Following data"
+          testIDText="following"
         />
       </div>
       <div className="p-md" data-testid="recently-viewed-container">

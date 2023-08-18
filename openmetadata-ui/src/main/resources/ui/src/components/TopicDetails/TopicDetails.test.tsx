@@ -71,7 +71,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 
@@ -93,10 +93,6 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 
 jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockReturnValue(<p>TagsContainerV2</p>);
-});
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p>Tags</p>);
 });
 
 jest.mock('../FeedEditor/FeedEditor', () => {

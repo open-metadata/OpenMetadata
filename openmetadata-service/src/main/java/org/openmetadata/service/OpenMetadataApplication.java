@@ -13,9 +13,7 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.migration.api.MigrationWorkflow.validateMigrationsForServer;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
-import static org.openmetadata.service.util.TablesInitializer.getServerMigrationFiles;
 
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -58,7 +56,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.http.pathmap.ServletPathSpec;
-import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
@@ -73,8 +70,7 @@ import org.openmetadata.schema.api.configuration.extension.Extension;
 import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
-import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
@@ -82,19 +78,22 @@ import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
+import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.Migration;
-import org.openmetadata.service.migration.MigrationConfiguration;
-import org.openmetadata.service.migration.api.MigrationStep;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchEventPublisher;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -164,7 +163,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
 
     // Validate flyway Migrations
-    validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
+    validateMigrations(jdbi, catalogConfig);
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
@@ -252,10 +251,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     if (catalogConfig.getAuthenticationConfiguration() != null
-        && catalogConfig
-            .getAuthenticationConfiguration()
-            .getProvider()
-            .equals(SSOAuthMechanism.SsoServiceType.SAML.toString())) {
+        && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
       ServletRegistration.Dynamic samlRedirectServlet =
           environment.servlets().addServlet("saml_login", new SamlLoginServlet());
@@ -328,11 +324,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     super.initialize(bootstrap);
   }
 
-  private void validateMigrations(Jdbi jdbi, MigrationConfiguration conf) throws IOException {
+  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf) throws IOException {
     LOG.info("Validating Flyway migrations");
     Optional<String> lastMigrated = Migration.lastMigrated(jdbi);
-    String maxMigration = Migration.lastMigrationFile(conf);
-
+    String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
     if (lastMigrated.isEmpty()) {
       throw new IllegalStateException(
           "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
@@ -345,9 +340,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
 
-    LOG.info("Validating Server migrations");
-    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(DatasourceConfig.getConnectionType());
-    validateMigrationsForServer(jdbi, loadedMigrationFiles);
+    LOG.info("Validating native migrations");
+    ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
+    MigrationWorkflow migrationWorkflow =
+        new MigrationWorkflow(jdbi, conf.getMigrationConfiguration().getNativePath(), connectionType, false);
+    migrationWorkflow.validateMigrationsForServer();
   }
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {
@@ -393,10 +390,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
-      case "basic":
+      case BASIC:
         authenticatorHandler = new BasicAuthenticator();
         break;
-      case "ldap":
+      case LDAP:
         authenticatorHandler = new LdapAuthenticator();
         break;
       default:
@@ -417,10 +414,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
     // register ElasticSearch Event publisher
     if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
-      ElasticSearchEventPublisher elasticSearchEventPublisher =
-          new ElasticSearchEventPublisher(
+      SearchEventPublisher searchEventPublisher =
+          new SearchEventPublisher(
               openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
-      EventPubSub.addEventHandler(elasticSearchEventPublisher);
+      EventPubSub.addEventHandler(searchEventPublisher);
     }
 
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
@@ -440,7 +437,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
-    ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
+    OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
   }
@@ -493,6 +490,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     @Override
     public void stop() throws InterruptedException, SchedulerException {
+      LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
+      LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
       ReportsHandler.shutDown();
       LOG.info("Stopping the application");

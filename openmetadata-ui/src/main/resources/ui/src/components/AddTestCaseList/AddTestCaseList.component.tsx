@@ -27,7 +27,7 @@ import { Link } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import { getNameFromFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
+import { replacePlus } from 'utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from 'utils/TableUtils';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
@@ -212,12 +212,11 @@ export const AddTestCaseList = ({
                       )}:`}</Typography.Text>
                       <Typography.Text className="text-grey-muted text-xs">
                         {getNameFromFQN(
-                          getDecodedFqn(
+                          replacePlus(
                             getEntityFqnFromEntityLink(
                               test.entityLink,
                               isColumn
-                            ),
-                            true
+                            )
                           )
                         ) ?? '--'}
                       </Typography.Text>
@@ -230,10 +229,14 @@ export const AddTestCaseList = ({
         </List>
       </Col>
       <Col className="d-flex justify-end items-center p-y-xss" span={24}>
-        <Button type="link" onClick={onCancel}>
+        <Button data-testid="cancel" type="link" onClick={onCancel}>
           {cancelText ?? t('label.cancel')}
         </Button>
-        <Button loading={isLoading} type="primary" onClick={handleSubmit}>
+        <Button
+          data-testid="submit"
+          loading={isLoading}
+          type="primary"
+          onClick={handleSubmit}>
           {submitText ?? t('label.submit')}
         </Button>
       </Col>

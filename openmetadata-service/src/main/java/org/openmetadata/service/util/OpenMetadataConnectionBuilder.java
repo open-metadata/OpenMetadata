@@ -13,8 +13,7 @@
 
 package org.openmetadata.service.util;
 
-import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -27,6 +26,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerClientLoader;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.security.ssl.VerifySSL;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -39,7 +39,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class OpenMetadataConnectionBuilder {
 
-  OpenMetadataConnection.AuthProvider authProvider;
+  AuthProvider authProvider;
   String bot;
   Object securityConfig;
   private final VerifySSL verifySSL;
@@ -52,21 +52,11 @@ public class OpenMetadataConnectionBuilder {
   UserRepository userRepository;
 
   public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
-    String provider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
-    authProvider =
-        ("basic".equals(provider) || "ldap".equals(provider) || "saml".equals(provider))
-            ? OpenMetadataConnection.AuthProvider.OPENMETADATA
-            : OpenMetadataConnection.AuthProvider.fromValue(
-                openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
-
-    if (!OpenMetadataConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
-      botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
-      userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      User botUser = retrieveBotUser();
-      securityConfig = extractSecurityConfig(botUser);
-      authProvider = extractAuthProvider(botUser);
-    }
+    botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+    userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    User botUser = retrieveBotUser();
+    securityConfig = extractSecurityConfig(botUser);
+    authProvider = extractAuthProvider(botUser);
 
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
@@ -94,16 +84,16 @@ public class OpenMetadataConnectionBuilder {
     secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
   }
 
-  private OpenMetadataConnection.AuthProvider extractAuthProvider(User botUser) {
+  private AuthProvider extractAuthProvider(User botUser) {
     AuthenticationMechanism.AuthType authType = botUser.getAuthenticationMechanism().getAuthType();
     switch (authType) {
       case SSO:
-        return OpenMetadataConnection.AuthProvider.fromValue(
+        return AuthProvider.fromValue(
             JsonUtils.convertValue(botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
                 .getSsoServiceType()
                 .value());
       case JWT:
-        return OpenMetadataConnection.AuthProvider.OPENMETADATA;
+        return AuthProvider.OPENMETADATA;
       default:
         throw new IllegalArgumentException(
             String.format("Not supported authentication mechanism type: [%s]", authType.value()));
@@ -160,12 +150,12 @@ public class OpenMetadataConnectionBuilder {
           userRepository.getByName(
               null,
               bot1.getBotUser().getFullyQualifiedName(),
-              new EntityUtil.Fields(List.of("authenticationMechanism")));
+              new EntityUtil.Fields(Set.of("authenticationMechanism")));
       if (user.getAuthenticationMechanism() != null) {
         user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }
       return user;
-    } catch (IOException | EntityNotFoundException ex) {
+    } catch (EntityNotFoundException ex) {
       LOG.debug((bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
       return null;
     }

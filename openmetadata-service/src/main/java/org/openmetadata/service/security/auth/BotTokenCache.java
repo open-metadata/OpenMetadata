@@ -7,7 +7,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -18,17 +18,20 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class BotTokenCache {
   public static final String EMPTY_STRING = "";
-  private static BotTokenCache instance;
   private static final LoadingCache<String, String> BOTS_TOKEN_CACHE =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new BotTokenLoader());
 
-  public String getToken(String botName) {
+  private BotTokenCache() {
+    // Private constructor for utility class
+  }
+
+  public static String getToken(String botName) {
     try {
       if (BOTS_TOKEN_CACHE.get(botName).equals(EMPTY_STRING)) {
         BOTS_TOKEN_CACHE.invalidate(botName);
@@ -39,19 +42,12 @@ public class BotTokenCache {
     }
   }
 
-  public void invalidateToken(String botName) {
+  public static void invalidateToken(String botName) {
     try {
       BOTS_TOKEN_CACHE.invalidate(botName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate Bot token cache for Bot {}", botName, ex);
     }
-  }
-
-  public static BotTokenCache getInstance() {
-    if (instance == null) {
-      instance = new BotTokenCache();
-    }
-    return instance;
   }
 
   static class BotTokenLoader extends CacheLoader<String, String> {
@@ -60,7 +56,7 @@ public class BotTokenCache {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
           userRepository.getByName(
-              null, botName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
+              null, botName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED, true);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       if (authenticationMechanism != null) {
         JWTAuthMechanism jwtAuthMechanism =

@@ -14,13 +14,17 @@
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
-export const validEmailRegEx = /^\S+@\S+\.\S+$/;
+export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
 export const FQN_REGEX = new RegExp(
   `("${FQN_SEPARATOR_CHAR}*?"|[^"${FQN_SEPARATOR_CHAR}\\s]+)(?=\\s*.|\\s*$)`,
   'g'
 );
 
-export const ENTITY_NAME_REGEX = /^[\p{L}\w\- .'&()]+$/;
+/**
+ * strings that contain a combination of letters, alphanumeric characters, hyphens,
+ * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
+ */
+export const ENTITY_NAME_REGEX = /^[\p{L}\w\- .'&()%]+$/u;
 
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;

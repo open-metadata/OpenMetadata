@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
@@ -86,7 +86,6 @@ function SummaryListItem({
               <TagsViewer
                 sizeCap={2}
                 tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
-                type="border"
               />
             </Col>
           )}

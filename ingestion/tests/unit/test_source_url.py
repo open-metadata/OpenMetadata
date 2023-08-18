@@ -64,13 +64,13 @@ class TestConfig(TestCase):
             get_connection_url,
         )
 
-        expected_url = "mssql+pytds://sa:password@james\\bond:1433"
+        expected_url = "mssql+pytds://sa:password@james\\bond:1433/master"
         mssql_conn_obj = MssqlConnection(
             username="sa",
             password="password",
             hostPort="james\\bond:1433",
             scheme=MssqlScheme.mssql_pytds,
-            database=None,
+            database="master",
         )
 
         assert expected_url == get_connection_url(mssql_conn_obj)

@@ -167,7 +167,7 @@ This is a sample config for Snowflake:
 
 {% codeInfo srNumber=6 %}
 
-**includeTempTables**: Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.
+**includeTransientTables**: Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.
 
 {% /codeInfo %}
 
@@ -328,7 +328,7 @@ sink:
   config: {}
 ```
 
-{% partial file="workflow-config-yaml.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 

@@ -30,7 +30,7 @@ export const TagsDiffView = ({
     if (diff.added) {
       return (
         <div
-          className="tw-my-2 d-flex flex-wrap tw-gap-y-1"
+          className="d-flex flex-wrap m-y-xs"
           data-testid="diff-added"
           key={uniqueId()}>
           {diff.value.map((tag) => (
@@ -49,7 +49,7 @@ export const TagsDiffView = ({
     if (diff.removed) {
       return (
         <div
-          className="tw-my-2 d-flex flex-wrap tw-gap-y-1"
+          className="d-flex flex-wrap m-y-xs"
           data-testid="diff-removed"
           key={uniqueId()}>
           {diff.value.map((tag) => (
@@ -65,14 +65,14 @@ export const TagsDiffView = ({
 
     return (
       <div
-        className="tw-my-2 d-flex flex-wrap tw-gap-y-1"
+        className="d-flex flex-wrap m-y-xs"
         data-testid="diff-normal"
         key={uniqueId()}>
         {diff.value.length ? (
           diff.value.map((tag) => <Tag key={uniqueId()}>{tag.tagFQN}</Tag>)
         ) : (
           <div
-            className="text-grey-muted tw-text-center"
+            className="text-grey-muted text-center"
             data-testid="noDiff-placeholder">
             {t('label.no-diff-available')}
           </div>
@@ -83,7 +83,7 @@ export const TagsDiffView = ({
 
   return (
     <div
-      className={classNames('tw-w-full', className)}
+      className={classNames('w-full', className)}
       data-testid="diff-container">
       {elements}
     </div>

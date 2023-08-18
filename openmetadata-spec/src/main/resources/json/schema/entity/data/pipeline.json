@@ -9,7 +9,7 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "entityName": {
-      "description": "Name of a table. Expected to be unique within a database.",
+      "description": "Name of a pipeline. Expected to be unique within a pipeline service.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
@@ -143,7 +143,8 @@
           "default": null
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["timestamp", "executionStatus"]
     }
   },
   "properties": {
@@ -210,7 +211,7 @@
     },
     "followers": {
       "description": "Followers of this Pipeline.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this Pipeline.",

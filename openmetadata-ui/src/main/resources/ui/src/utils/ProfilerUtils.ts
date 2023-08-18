@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ColumnProfile } from '../generated/entity/data/table';
 import { ImageList } from '../generated/entity/teams/user';
 
 export enum ImageQuality {
@@ -23,20 +22,6 @@ export enum ImageQuality {
   '5x',
   '6x',
 }
-
-export const getRoundedValue = (
-  value: ColumnProfile['histogram'] | Date | undefined
-) => {
-  if (typeof value == 'number' && !isNaN(value)) {
-    if (Number.isInteger(value)) {
-      return value;
-    } else {
-      return value.toFixed(2);
-    }
-  } else {
-    return value;
-  }
-};
 
 /**
  * Returns correct imageSrc from given images or undefined if not any

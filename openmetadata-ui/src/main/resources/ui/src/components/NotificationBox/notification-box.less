@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../../styles/variables.less');
+
 .notification-box {
+  background: @background-color;
+  border: @global-border;
+  border-radius: 4px;
+  box-shadow: @box-shadow-base;
+
   .ant-list {
     .ant-list-footer {
       border-top: 1px solid rgb(220, 227, 236);

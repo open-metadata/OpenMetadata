@@ -12,7 +12,6 @@
  */
 import { ThreadType } from 'generated/api/feed/createThread';
 import { Column } from 'generated/entity/data/dashboardDataModel';
-import { EntityFieldThreads } from 'interface/feed.interface';
 
 export interface ModelTabProps {
   data: Column[];
@@ -20,7 +19,6 @@ export interface ModelTabProps {
   isReadOnly: boolean;
   hasEditTagsPermission: boolean;
   hasEditDescriptionPermission: boolean;
-  entityFieldThreads: EntityFieldThreads[];
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (updatedDataModel: Column[]) => Promise<void>;
 }

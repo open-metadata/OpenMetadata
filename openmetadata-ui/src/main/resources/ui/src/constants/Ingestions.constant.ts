@@ -59,3 +59,5 @@ export const PIPELINE_TYPE_LOCALIZATION = {
 };
 
 export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';
+
+export const DEFAULT_PARSING_TIMEOUT_LIMIT = 300;

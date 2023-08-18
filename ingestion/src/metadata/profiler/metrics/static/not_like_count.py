@@ -48,5 +48,8 @@ class NotLikeCount(StaticMetric):
                 "Not Like Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_LIKE_COUNT)"
             )
         return SumFn(
-            case([(column(self.col.name).not_like(self.expression), 0)], else_=1)
+            case(
+                [(column(self.col.name, self.col.type).not_like(self.expression), 0)],
+                else_=1,
+            )
         )

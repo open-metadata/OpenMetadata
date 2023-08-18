@@ -13,6 +13,7 @@
 
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -27,6 +28,7 @@ export type EntityData =
   | Pipeline
   | Mlmodel
   | Container
+  | Database
   | DatabaseSchema
   | DashboardDataModel;
 

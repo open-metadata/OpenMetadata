@@ -11,33 +11,33 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SampleDataTopic from 'components/SampleDataTopic/SampleDataTopic';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getTopicDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagLabel } from 'generated/type/schema';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
-import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
-import { EntityField } from '../../constants/Feeds.constants';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getEntityName } from 'utils/EntityUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -47,7 +47,6 @@ import {
   getFeedCounts,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -74,9 +73,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -168,7 +164,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getTopicDetailsPath(topicFQN, activeKey));
+      history.push(getTopicDetailsPath(getDecodedFqn(topicFQN), activeKey));
     }
   };
 
@@ -247,12 +243,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.TOPIC,
-      topicFQN,
-      setEntityFieldThreadCount,
-      setFeedCount
-    );
+    getFeedCounts(EntityType.TOPIC, topicFQN, setFeedCount);
   };
 
   useEffect(() => {
@@ -272,10 +263,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={topicDetails.description}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
                   entityFqn={topicDetails.fullyQualifiedName}
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
@@ -291,10 +278,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.MESSAGE_SCHEMA,
-                    entityFieldThreadCount
-                  )}
                   entityFqn={topicDetails.fullyQualifiedName ?? ''}
                   hasDescriptionEditAccess={
                     topicPermissions.EditAll || topicPermissions.EditDescription
@@ -315,8 +298,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={topicDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
                   permission={
                     (topicPermissions.EditAll || topicPermissions.EditTags) &&
@@ -329,8 +312,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 />
 
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={topicDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
                   permission={
                     (topicPermissions.EditAll || topicPermissions.EditTags) &&
@@ -357,14 +340,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.TOPIC}
-              fqn={topicDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchTopic}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.TOPIC}
+            fqn={topicDetails?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchTopic}
+          />
         ),
       },
       {
@@ -378,7 +359,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         children: !(
           topicPermissions.ViewAll || topicPermissions.ViewSampleData
         ) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <div className="m-t-xlg">
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          </div>
         ) : (
           <SampleDataTopic topicId={topicDetails.id} />
         ),
@@ -397,17 +380,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            data-testid="lineage-details"
-            id="lineageDetails">
-            <EntityLineageComponent
-              entityType={EntityType.TOPIC}
-              hasEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={topicDetails}
+            entityType={EntityType.TOPIC}
+            hasEditAccess={
+              topicPermissions.EditAll || topicPermissions.EditLineage
+            }
+          />
         ),
       },
       {
@@ -437,7 +416,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       activeTab,
       feedCount,
       topicDetails,
-      entityFieldThreadCount,
       topicPermissions,
       isEdit,
       entityName,
@@ -454,6 +432,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
             permissions={topicPermissions}
@@ -493,4 +472,4 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 };
 
-export default TopicDetails;
+export default withActivityFeed<TopicDetailsProps>(TopicDetails);

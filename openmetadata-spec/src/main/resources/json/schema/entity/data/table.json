@@ -14,7 +14,7 @@
       "description": "Name of a table. Expected to be unique within a database.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
+      "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
     "profileSampleType": {
@@ -39,7 +39,8 @@
         "Iceberg",
         "Local",
         "Partitioned",
-        "Foreign"
+        "Foreign",
+        "Transient"
       ],
       "javaEnums": [
         {
@@ -68,6 +69,9 @@
         },
         {
           "name": "Foreign"
+        },
+        {
+          "name": "Transient"
         }
       ]
     },
@@ -142,7 +146,12 @@
         "POLYGON",
         "TUPLE",
         "SPATIAL",
-        "TABLE"
+        "TABLE",
+        "NTEXT",
+        "IMAGE",
+        "IPV4",
+        "IPV6",
+        "DATETIMERANGE"
       ]
     },
     "constraint": {
@@ -196,7 +205,7 @@
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
+      "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
     "tablePartition": {
@@ -957,7 +966,7 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "joins": {
       "description": "Details of other tables this table is frequently joined with.",
@@ -1013,7 +1022,7 @@
     },
     "dataProducts" : {
       "description": "List of of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref" : "../../type/entityReferenceList.json"
     }
   },
   "required": [

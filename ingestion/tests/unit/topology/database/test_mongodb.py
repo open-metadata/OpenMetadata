@@ -125,21 +125,18 @@ MOCK_CREATE_TABLE = [
                 name="name",
                 displayName="name",
                 dataType=DataType.STRING,
-                dataLength=1,
                 dataTypeDisplay=DataType.STRING.value,
             ),
             Column(
                 name="age",
                 displayName="age",
                 dataType=DataType.INT,
-                dataLength=1,
                 dataTypeDisplay=DataType.INT.value,
             ),
             Column(
                 name="is_married",
                 displayName="is_married",
                 dataType=DataType.BOOLEAN,
-                dataLength=1,
                 dataTypeDisplay=DataType.BOOLEAN.value,
             ),
             Column(

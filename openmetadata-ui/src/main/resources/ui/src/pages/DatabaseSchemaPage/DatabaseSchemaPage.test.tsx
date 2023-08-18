@@ -35,23 +35,15 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('components/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
+  jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="RichTextEditorPreviewer">RichTextEditorPreviewer</div>
-    ))
+  jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
 jest.mock('components/common/next-previous/NextPrevious', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="NextPrevious">NextPrevious</div>
-    ))
+  jest.fn().mockImplementation(() => <div>NextPrevious</div>)
 );
 
 jest.mock('components/FeedEditor/FeedEditor', () => {
@@ -62,15 +54,7 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
   jest
     .fn()
     .mockImplementation(({ children }) => (
-      <div data-testid="ErrorPlaceHolder">{children}</div>
-    ))
-);
-
-jest.mock('components/common/entityPageInfo/EntityPageInfo', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="entityPageInfo">EntityPageInfo</div>
+      <div data-testid="error-placeHolder">{children}</div>
     ))
 );
 
@@ -80,7 +64,6 @@ jest.mock('components/common/description/Description', () =>
     .mockImplementation(
       ({ onThreadLinkSelect, onDescriptionEdit, onDescriptionUpdate }) => (
         <div
-          data-testid="Description"
           onClick={() => {
             onThreadLinkSelect('threadLink');
             onDescriptionEdit();
@@ -94,12 +77,7 @@ jest.mock('components/common/description/Description', () =>
 
 jest.mock(
   'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="ActivityThreadPanel">ActivityThreadPanel</div>
-      ))
+  () => jest.fn().mockImplementation(() => <div>ActivityThreadPanel</div>)
 );
 
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
@@ -185,11 +163,11 @@ describe.skip('Tests for DatabaseSchemaPage', () => {
 
     const entityPageInfo = await screen.findByTestId('entityPageInfo');
     const tabsPane = await screen.findByTestId('tabs');
-    const richTextEditorPreviewer = await screen.findAllByTestId(
+    const richTextEditorPreviewer = await screen.findAllByText(
       'RichTextEditorPreviewer'
     );
-    const description = await screen.findByTestId('Description');
-    const nextPrevious = await screen.findByTestId('NextPrevious');
+    const description = await screen.findByText('Description');
+    const nextPrevious = await screen.findByText('NextPrevious');
     const databaseSchemaTable = await screen.findByTestId(
       'databaseSchema-tables'
     );
@@ -200,6 +178,26 @@ describe.skip('Tests for DatabaseSchemaPage', () => {
     expect(description).toBeInTheDocument();
     expect(nextPrevious).toBeInTheDocument();
     expect(databaseSchemaTable).toBeInTheDocument();
+  });
+
+  it('Loader should be visible if the permissions are being fetched', async () => {
+    await act(async () => {
+      render(<DatabaseSchemaPageComponent />, {
+        wrapper: MemoryRouter,
+      });
+
+      const loader = screen.getByText('Loader');
+      const errorPlaceHolder = screen.queryByText('error-placeHolder');
+
+      expect(loader).toBeInTheDocument();
+      expect(errorPlaceHolder).toBeNull();
+    });
+
+    const entityPageInfo = await screen.findByTestId('entityPageInfo');
+    const tabsPane = await screen.findByTestId('tabs');
+
+    expect(entityPageInfo).toBeInTheDocument();
+    expect(tabsPane).toBeInTheDocument();
   });
 
   it('Activity Feed List should render properly for "Activity Feeds" tab', async () => {
@@ -216,7 +214,7 @@ describe.skip('Tests for DatabaseSchemaPage', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('AcivityThreadPanel should render properly after clicked on thread panel button', async () => {
+  it('ActivityThreadPanel should render properly after clicked on thread panel button', async () => {
     mockParams.tab = 'table';
     await act(async () => {
       render(<DatabaseSchemaPageComponent />, {
@@ -224,7 +222,7 @@ describe.skip('Tests for DatabaseSchemaPage', () => {
       });
     });
 
-    const description = await screen.findByTestId('Description');
+    const description = await screen.findByText('Description');
 
     expect(description).toBeInTheDocument();
 
@@ -232,9 +230,7 @@ describe.skip('Tests for DatabaseSchemaPage', () => {
       fireEvent.click(description);
     });
 
-    const activityThreadPanel = await screen.findByTestId(
-      'ActivityThreadPanel'
-    );
+    const activityThreadPanel = await screen.findByText('ActivityThreadPanel');
 
     expect(activityThreadPanel).toBeInTheDocument();
   });
@@ -250,7 +246,7 @@ describe.skip('Tests for DatabaseSchemaPage', () => {
       });
     });
 
-    const errorPlaceHolder = await screen.findByTestId('ErrorPlaceHolder');
+    const errorPlaceHolder = await screen.findByTestId('error-placeHolder');
     const errorMessage = await screen.findByTestId('error-message');
 
     expect(errorPlaceHolder).toBeInTheDocument();
@@ -274,7 +270,7 @@ describe.skip('Tests for DatabaseSchemaPage', () => {
       });
     });
 
-    const errorPlaceHolder = await screen.findByTestId('ErrorPlaceHolder');
+    const errorPlaceHolder = await screen.findByTestId('error-placeHolder');
 
     expect(errorPlaceHolder).toBeInTheDocument();
   });

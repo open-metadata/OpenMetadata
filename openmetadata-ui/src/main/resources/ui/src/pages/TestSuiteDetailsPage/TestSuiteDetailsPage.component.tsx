@@ -44,11 +44,7 @@ import {
 } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDataQualityPagePath } from 'utils/RouterUtils';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  pagingObject,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -120,15 +116,12 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const fetchTestCases = async (param?: ListTestCaseParams, limit?: number) => {
+  const fetchTestCases = async (param?: ListTestCaseParams) => {
     setIsTestCaseLoading(true);
     try {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite',
         testSuiteId: testSuiteId,
-        limit: limit || PAGE_SIZE,
-        before: param && param.before,
-        after: param && param.after,
         ...param,
       });
 
@@ -326,7 +319,7 @@ const TestSuiteDetailsPage = () => {
             </Space>
           </Space>
 
-          <div className="d-flex tw-gap-1 tw-mb-2 tw-mt-1 flex-wrap">
+          <div className="w-full m-t-xxs m-b-xs">
             <OwnerLabel
               hasPermission={hasAccess}
               owner={testOwner}
@@ -334,21 +327,21 @@ const TestSuiteDetailsPage = () => {
             />
           </div>
 
-          <Space>
-            <Description
-              className="test-suite-description"
-              description={testSuiteDescription || ''}
-              entityName={testSuite?.displayName ?? testSuite?.name}
-              hasEditAccess={hasAccess}
-              isEdit={isDescriptionEditable}
-              onCancel={() => descriptionHandler(false)}
-              onDescriptionEdit={() => descriptionHandler(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
-            />
-          </Space>
+          <Description
+            className="test-suite-description"
+            description={testSuiteDescription || ''}
+            entityName={testSuite?.displayName ?? testSuite?.name}
+            hasEditAccess={hasAccess}
+            isEdit={isDescriptionEditable}
+            onCancel={() => descriptionHandler(false)}
+            onDescriptionEdit={() => descriptionHandler(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
         </Col>
+
         <Col span={24}>
           <DataQualityTab
+            afterDeleteAction={fetchTestCases}
             isLoading={isTestCaseLoading}
             pagingData={{
               currentPage,

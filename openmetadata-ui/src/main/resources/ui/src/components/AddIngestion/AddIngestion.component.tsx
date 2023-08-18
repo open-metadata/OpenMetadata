@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { LOADING_STATE } from 'enums/common.enum';
 import { Connection } from 'generated/api/services/createDatabaseService';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
@@ -24,6 +25,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   DBT_CLASSIFICATION_DEFAULT_VALUE,
+  DEFAULT_PARSING_TIMEOUT_LIMIT,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/Ingestions.constant';
@@ -37,16 +39,14 @@ import {
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
-  ConfigClass,
   ConfigType,
   FilterPattern,
   IngestionPipeline,
+  Pipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-import {
-  DbtConfig,
-  DbtPipelineClass,
-} from '../../generated/metadataIngestion/dbtPipeline';
+
+import { DbtPipeline } from 'generated/metadataIngestion/dbtPipeline';
 import {
   getCurrentUserId,
   getFilterTypes,
@@ -64,7 +64,7 @@ import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/Dep
 import {
   AddIngestionProps,
   AddIngestionState,
-  ModifiedDbtConfig,
+  ModifiedDBTConfigurationSource,
 } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 import DataInsightMetadataToESConfigForm from './Steps/DataInsightMetadataToESConfigForm/DataInsightMetadataToESConfigForm';
@@ -97,8 +97,8 @@ const AddIngestion = ({
   const { t } = useTranslation();
   const { sourceConfig, sourceConfigType } = useMemo(
     () => ({
-      sourceConfig: data?.sourceConfig.config as ConfigClass,
-      sourceConfigType: (data?.sourceConfig.config as ConfigClass)?.type,
+      sourceConfig: data?.sourceConfig.config as Pipeline,
+      sourceConfigType: (data?.sourceConfig.config as Pipeline)?.type,
     }),
     []
   );
@@ -128,8 +128,7 @@ const AddIngestion = ({
     profilerIngestionType,
   } = useMemo(() => {
     return {
-      configData: (data?.sourceConfig.config as DbtPipelineClass)
-        ?.dbtConfigSource,
+      configData: (data?.sourceConfig.config as DbtPipeline)?.dbtConfigSource,
       usageIngestionType: sourceConfigType ?? ConfigType.DatabaseUsage,
       lineageIngestionType: sourceConfigType ?? ConfigType.DatabaseLineage,
       profilerIngestionType: sourceConfigType ?? ConfigType.Profiler,
@@ -149,7 +148,7 @@ const AddIngestion = ({
   }, [isDatabaseService, pipelineType]);
 
   const sourceTypeData = useMemo(
-    () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
+    () => getSourceTypeFromConfig(configData),
     [configData]
   );
   const { database, ingestAllDatabases } = serviceData.connection
@@ -185,7 +184,7 @@ const AddIngestion = ({
       showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
       showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
       showContainerFilter: !isUndefined(sourceConfig?.containerFilterPattern),
-      dbtConfigSource: configData as ModifiedDbtConfig,
+      dbtConfigSource: configData as ModifiedDBTConfigurationSource,
       gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
       chartFilterPattern:
         sourceConfig?.chartFilterPattern ?? INITIAL_FILTER_PATTERN,
@@ -251,6 +250,11 @@ const AddIngestion = ({
       confidence: sourceConfig?.confidence,
       dbtClassificationName:
         sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
+      parsingTimeoutLimit:
+        sourceConfig?.parsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      viewParsingTimeoutLimit:
+        sourceConfig?.viewParsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      filterCondition: sourceConfig?.filterCondition ?? '',
     }),
     []
   );
@@ -271,7 +275,7 @@ const AddIngestion = ({
     []
   );
 
-  const handleMetadataToESConfig = (data: ConfigClass) => {
+  const handleMetadataToESConfig = (data: Pipeline) => {
     handleStateChange({
       metadataToESConfig: data,
     });
@@ -395,6 +399,7 @@ const AddIngestion = ({
       topicFilterPattern,
       useFqnFilter,
       includeOwners,
+      viewParsingTimeoutLimit,
     } = state;
 
     switch (serviceCategory) {
@@ -418,6 +423,7 @@ const AddIngestion = ({
           markDeletedTables: markDeletedTables,
           markAllDeletedTables: markAllDeletedTables,
           type: ConfigType.DatabaseMetadata,
+          viewParsingTimeoutLimit: viewParsingTimeoutLimit,
         };
       }
       case ServiceCategory.MESSAGING_SERVICES: {
@@ -493,7 +499,7 @@ const AddIngestion = ({
     }
   };
 
-  const getConfigData = (type: PipelineType): ConfigClass => {
+  const getConfigData = (type: PipelineType): Pipeline => {
     const {
       databaseFilterPattern,
       dbtConfigSource,
@@ -513,6 +519,8 @@ const AddIngestion = ({
       timeoutSeconds,
       processPii,
       confidence,
+      filterCondition,
+      parsingTimeoutLimit,
     } = state;
     switch (type) {
       case PipelineType.Usage: {
@@ -521,6 +529,7 @@ const AddIngestion = ({
           resultLimit: resultLimit,
           stageFileLocation: stageFileLocation,
           type: usageIngestionType,
+          filterCondition: filterCondition,
         };
       }
       case PipelineType.Lineage: {
@@ -528,6 +537,8 @@ const AddIngestion = ({
           queryLogDuration: queryLogDuration,
           resultLimit: resultLimit,
           type: lineageIngestionType,
+          filterCondition: filterCondition,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
       case PipelineType.Profiler: {
@@ -564,7 +575,7 @@ const AddIngestion = ({
               'dbtClassificationName',
               'includeTags',
             ]),
-          } as ConfigClass),
+          } as Pipeline),
           type: ConfigType.Dbt,
           dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
           includeTags: dbtConfigSource?.includeTags,
@@ -572,6 +583,7 @@ const AddIngestion = ({
           databaseFilterPattern: databaseFilterPattern,
           schemaFilterPattern: schemaFilterPattern,
           tableFilterPattern: tableFilterPattern,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
 
@@ -659,7 +671,7 @@ const AddIngestion = ({
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(data.sourceConfig.config as ConfigClass),
+            ...(data.sourceConfig.config as Pipeline),
             ...getConfigData(pipelineType),
           },
         },
@@ -718,9 +730,7 @@ const AddIngestion = ({
 
     return (
       <span>
-        <span className="tw-mr-1 tw-font-semibold">
-          {`"${state.ingestionName}"`}
-        </span>
+        <span className="font-medium">{`"${state.ingestionName}"`}</span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}
         </span>
@@ -743,7 +753,9 @@ const AddIngestion = ({
 
   return (
     <div data-testid="add-ingestion-container">
-      <h6 className="tw-heading tw-text-base">{heading}</h6>
+      <Typography.Title className="font-normal" level={5}>
+        {heading}
+      </Typography.Title>
 
       <IngestionStepper
         activeStep={activeIngestionStep}
@@ -751,7 +763,7 @@ const AddIngestion = ({
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
-      <div className="tw-pt-7">
+      <div className="p-t-lg">
         {activeIngestionStep === 1 && (
           <ConfigureIngestion
             data={state}

@@ -8,20 +8,11 @@ site_menu:
     color: violet-70
     icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
-    url: /quick-start/local-deployment
+    url: /quick-start/local-docker-deployment
+  - category: Quickstart / Try OpenMetadata in Kubernetes
+    url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
-
-  - category: Releases
-    url: /releases
-    color: violet-70
-    icon: overview
-  - category: Releases / Latest Release
-    url: /releases/latest-release
-  - category: Releases / Roadmap
-    url: /releases/roadmap
-  - category: Releases / All Releases
-    url: /releases/all-releases
 
   - category: Deployment
     url: /deployment
@@ -34,8 +25,6 @@ site_menu:
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
-  - category: Deployment / Docker Deployment / Volumes
-    url: /deployment/docker/volumes
   - category: Deployment / Docker Deployment / Enable Security
     url: /deployment/docker/security
 
@@ -48,13 +37,13 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
   - category: Deployment / Kubernetes Deployment / On Premises
-    url: /deployment/kubernetes/onprem
+    url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
-    url: /deployment/kubernetes/gke-troubleshooting
+  - category: Deployment / Kubernetes Deployment / FAQs
+    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
@@ -201,6 +190,19 @@ site_menu:
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
+  
+  - category: Releases
+    url: /releases
+    color: violet-70
+    icon: overview
+  - category: Releases / Latest Release
+    url: /releases/latest-release
+  - category: Releases / Supported Releases
+    url: /releases/supported
+  - category: Releases / Roadmap
+    url: /releases/roadmap
+  - category: Releases / All Releases
+    url: /releases/all-releases
 
   - category: Connectors
     url: /connectors
@@ -1438,6 +1440,12 @@ site_menu:
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
+  - category: Developers / APIs
+    url: /developers/apis
+  - category: Developers / APIs / Implementation Notes
+    url: /developers/apis/implementation-notes
+  - category: Developers / APIs / API Organization
+    url: /developers/apis/api-organization
 
   - category: SDK
     url: /sdk

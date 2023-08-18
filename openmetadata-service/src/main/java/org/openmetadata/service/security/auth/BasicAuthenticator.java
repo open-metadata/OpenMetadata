@@ -31,13 +31,11 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_E
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -104,7 +102,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User registerUser(RegistrationRequest newRegistrationRequest) throws IOException {
+  public User registerUser(RegistrationRequest newRegistrationRequest) {
     if (isSelfSignUpAvailable) {
       String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
       String[] tokens = newRegistrationRequest.getEmail().split("@");
@@ -128,7 +126,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
+  public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
     User registeredUser =
         userRepository.get(null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
@@ -167,11 +165,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
-              EmailUtil.getInstance().buildBaseUrl(uriInfo.getRequestUri()),
-              user.getFullyQualifiedName(),
-              mailVerificationToken);
+              EmailUtil.buildBaseUrl(uriInfo.getRequestUri()), user.getFullyQualifiedName(), mailVerificationToken);
       try {
-        EmailUtil.getInstance().sendEmailVerification(emailVerificationLink, user);
+        EmailUtil.sendEmailVerification(emailVerificationLink, user);
       } catch (TemplateException e) {
         LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
         throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
@@ -190,11 +186,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
-            EmailUtil.getInstance().buildBaseUrl(uriInfo.getRequestUri()),
-            user.getFullyQualifiedName(),
-            mailVerificationToken);
+            EmailUtil.buildBaseUrl(uriInfo.getRequestUri()), user.getFullyQualifiedName(), mailVerificationToken);
     try {
-      EmailUtil.getInstance().sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
+      EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
     } catch (TemplateException e) {
       LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
       throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
@@ -208,7 +202,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest request) throws IOException {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
-    List<String> fields = userRepository.getAllowedFieldsCopy();
+    Set<String> fields = userRepository.getAllowedFieldsCopy();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
         userRepository.getByName(
@@ -236,7 +230,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update user about Password Change
     try {
-      EmailUtil.getInstance().sendAccountStatus(storedUser, "Update Password", "Change Successful");
+      EmailUtil.sendAccountStatus(storedUser, "Update Password", "Change Successful");
     } catch (TemplateException ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
@@ -286,7 +280,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       sendInviteMailToUser(
           uriInfo,
           response.getEntity(),
-          String.format("%s: Password Update", EmailUtil.getInstance().getEmailingEntity()),
+          String.format("%s: Password Update", EmailUtil.getEmailingEntity()),
           ADMIN_CREATE,
           request.getNewPassword());
     }
@@ -299,19 +293,18 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     switch (requestType) {
       case ADMIN_CREATE:
         Map<String, Object> templatePopulator = new HashMap<>();
-        templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
+        templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getEmailingEntity());
+        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getSupportUrl());
         templatePopulator.put(EmailUtil.USERNAME, user.getName());
         templatePopulator.put(EmailUtil.PASSWORD, pwd);
-        templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
+        templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getOMUrl());
         try {
-          EmailUtil.getInstance()
-              .sendMail(
-                  subject,
-                  templatePopulator,
-                  user.getEmail(),
-                  EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-                  EmailUtil.INVITE_RANDOM_PWD);
+          EmailUtil.sendMail(
+              subject,
+              templatePopulator,
+              user.getEmail(),
+              EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+              EmailUtil.INVITE_RANDOM_PWD);
         } catch (TemplateException ex) {
           LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage(), ex);
         }
@@ -325,7 +318,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
+  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
@@ -335,7 +328,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+  public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
       throw new BadRequestException("Token Cannot be Null or Empty String");
     }
@@ -374,8 +367,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest)
-      throws JsonProcessingException {
+  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest) {
     String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
     RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
@@ -441,13 +433,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
-      EmailUtil.getInstance()
-          .sendAccountStatus(
-              storedUser,
-              "Multiple Failed Login Attempts.",
-              String.format(
-                  "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
-                  loginConfiguration.getAccessBlockTime()));
+      EmailUtil.sendAccountStatus(
+          storedUser,
+          "Multiple Failed Login Attempts.",
+          String.format(
+              "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
+              loginConfiguration.getAccessBlockTime()));
     }
   }
 
@@ -471,17 +462,17 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public User lookUserInProvider(String userName) {
-    User storedUser = null;
+    User storedUser;
     try {
       if (userName.contains("@")) {
         // lookup by User Email
         storedUser =
             userRepository.getByEmail(
-                null, userName, new EntityUtil.Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+                null, userName, new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
       } else {
         storedUser =
             userRepository.getByName(
-                null, userName, new EntityUtil.Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+                null, userName, new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
       }
 
       if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {

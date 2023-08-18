@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { TabSpecificField } from '../enums/entity.enum';
 import {
@@ -25,102 +24,9 @@ import { Icons } from './SvgUtils';
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
 ${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificField.EXTENSION}`;
 
-export const pipelineDetailsTabs = [
-  {
-    name: t('label.detail-plural'),
-    path: 'details',
-  },
-  {
-    name: t('label.activity-feed-and-task-plural'),
-    path: 'activity_feed',
-    field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
-    name: t('label.execution-plural'),
-    path: 'executions',
-    field: TabSpecificField.EXECUTIONS,
-  },
-  {
-    name: t('label.lineage'),
-    path: 'lineage',
-    field: TabSpecificField.LINEAGE,
-  },
-  {
-    name: t('label.custom-property-plural'),
-    path: 'custom_properties',
-  },
-];
-
-export const getCurrentPipelineTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'activity_feed':
-      currentTab = 2;
-
-      break;
-
-    case 'executions':
-      currentTab = 3;
-
-      break;
-
-    case 'lineage':
-      currentTab = 4;
-
-      break;
-    case 'custom_properties':
-      currentTab = 5;
-
-      break;
-
-    case 'details':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
-
-export const getModifiedPipelineStatus = (
-  status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = {}
-) => {
-  const data =
-    pipelineStatus?.taskStatus?.map((task) => ({
-      executionDate: pipelineStatus.timestamp,
-      executionStatus: task.executionStatus,
-      name: task.name,
-    })) || [];
-
-  if (!status) {
-    return data;
-  } else {
-    return data?.filter((d) => d?.executionStatus === status);
-  }
-};
-
-export const getFilteredPipelineStatus = (
-  status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = {}
-) => {
-  if (!status) {
-    return pipelineStatus;
-  } else {
-    return pipelineStatus?.executionStatus === status;
-  }
-};
-
 export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus || '';
 };
-
-export const STATUS_OPTIONS = [
-  { value: StatusType.Successful, label: StatusType.Successful },
-  { value: StatusType.Failed, label: StatusType.Failed },
-  { value: StatusType.Pending, label: StatusType.Pending },
-];
 
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {

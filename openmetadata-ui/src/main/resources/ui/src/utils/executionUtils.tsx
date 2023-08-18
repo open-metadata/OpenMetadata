@@ -39,11 +39,7 @@ export interface ViewDataInterface {
 
 export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
   <Space>
-    <SVGIcons
-      alt="result"
-      className="tw-w-4"
-      icon={getStatusBadgeIcon(status)}
-    />
+    <SVGIcons alt="result" className="w-4" icon={getStatusBadgeIcon(status)} />
     <p>
       {status === StatusType.Successful
         ? MenuOptions[StatusType.Successful]
@@ -103,18 +99,6 @@ export const getTreeViewData = (
   return groupBy(taskStatusArr, 'name');
 };
 
-export const getStatusLabel = (status: string) => {
-  switch (status) {
-    case StatusType.Successful:
-    case StatusType.Pending:
-    case StatusType.Failed:
-      return MenuOptions[status];
-
-    default:
-      return;
-  }
-};
-
 export const getExecutionElementByKey = (
   key: string,
   viewElements: {
@@ -156,7 +140,7 @@ export const getTreeData = (
                 }>
                 <SVGIcons
                   alt="result"
-                  className="tw-w-6 mr-2 mb-2"
+                  className="w-6"
                   icon={getStatusBadgeIcon(status.executionStatus)}
                 />
               </Tooltip>

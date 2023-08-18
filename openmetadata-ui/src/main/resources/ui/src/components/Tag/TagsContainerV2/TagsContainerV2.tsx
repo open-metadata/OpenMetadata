@@ -34,7 +34,7 @@ import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg'
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
-import TagsViewer from '../TagsViewer/tags-viewer';
+import TagsViewer from '../TagsViewer/TagsViewer';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
@@ -42,9 +42,9 @@ const TagsContainerV2 = ({
   showTaskHandler = true,
   selectedTags,
   entityType,
-  entityThreadLink,
   entityFqn,
   tagType,
+  displayType,
   showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
@@ -155,22 +155,24 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <span onClick={handleAddClick}>
+        <Col className="m-t-xss" onClick={handleAddClick}>
           <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-        </span>
+        </Col>
       ) : null,
     [showAddTagButton]
   );
 
   const renderTags = useMemo(
     () => (
-      <TagsViewer
-        showNoDataPlaceholder={showNoDataPlaceholder}
-        tags={tags?.[tagType] ?? []}
-        type="border"
-      />
+      <Col>
+        <TagsViewer
+          displayType={displayType}
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          tags={tags?.[tagType] ?? []}
+        />
+      </Col>
     ),
-    [showNoDataPlaceholder, tags?.[tagType]]
+    [displayType, showNoDataPlaceholder, tags?.[tagType]]
   );
 
   const tagsSelectContainer = useMemo(() => {
@@ -242,21 +244,14 @@ const TagsContainerV2 = ({
             width={14}
             onClick={() =>
               onThreadLinkSelect?.(
-                entityThreadLink ??
-                  getEntityFeedLink(entityType, entityFqn, 'tags')
+                getEntityFeedLink(entityType, entityFqn, 'tags')
               )
             }
           />
         </Tooltip>
       </Col>
     ),
-    [
-      entityType,
-      entityFqn,
-      entityThreadLink,
-      getEntityFeedLink,
-      onThreadLinkSelect,
-    ]
+    [entityType, entityFqn, onThreadLinkSelect]
   );
 
   const header = useMemo(() => {
@@ -329,11 +324,11 @@ const TagsContainerV2 = ({
       {header}
 
       {!isEditTags && (
-        <Space wrap data-testid="entity-tags" size={4}>
+        <Row data-testid="entity-tags">
           {addTagButton}
           {renderTags}
-          {showInlineEditButton && editTagButton}
-        </Space>
+          {showInlineEditButton && <Col>{editTagButton}</Col>}
+        </Row>
       )}
       {isEditTags && tagsSelectContainer}
 

@@ -49,8 +49,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -61,6 +63,7 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
+import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -333,22 +336,15 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
-    // Replace pipeline status for a date
-    PipelineStatus newPipelineStatus1 =
-        new PipelineStatus()
-            .withExecutionStatus(StatusType.Pending)
-            .withTimestamp(TestUtils.dateToTimestamp("2022-01-16"))
-            .withTaskStatus(taskStatus);
-    putResponse = putPipelineStatusData(pipeline.getFullyQualifiedName(), newPipelineStatus1, ADMIN_AUTH_HEADERS);
     // Validate put response
-    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus1);
+    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus);
     pipelineStatues =
         getPipelineStatues(
             pipeline.getFullyQualifiedName(),
             TestUtils.dateToTimestamp("2022-01-15"),
             TestUtils.dateToTimestamp("2022-01-16"),
             ADMIN_AUTH_HEADERS);
-    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus1), 2);
+    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
     String dateStr = "2021-09-";
     List<PipelineStatus> pipelineStatusList = new ArrayList<>();
@@ -537,6 +533,18 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
     pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(2, pipeline.getTasks().size());
+  }
+
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a pipeline, carry it forward from the pipeline service
+    PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
+    CreatePipelineService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    PipelineService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a pipeline without domain and ensure it inherits domain from the parent
+    CreatePipeline create = createRequest("pipeline").withService(service.getFullyQualifiedName());
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Override

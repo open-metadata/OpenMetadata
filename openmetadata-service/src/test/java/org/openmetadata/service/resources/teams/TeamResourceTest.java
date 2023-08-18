@@ -54,7 +54,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -248,23 +247,22 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team div2 = createWithParents("div2", DIVISION, bu1.getEntityReference());
     Team dep3 = createWithParents("dep3", DEPARTMENT, div2.getEntityReference());
 
-    // Ensure parent has all the newly created children
+    // Ensure organization has all the newly created children
     ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,parents", ADMIN_AUTH_HEADERS);
     assertEntityReferences(new ArrayList<>(List.of(bu1.getEntityReference())), ORG_TEAM.getChildren());
 
-    // Ensure parent has all the newly created children
+    // Ensure bu1 has all the newly created children
     bu1 = getEntity(bu1.getId(), "children", ADMIN_AUTH_HEADERS);
     assertEntityReferences(new ArrayList<>(List.of(div2.getEntityReference())), bu1.getChildren());
 
     div2 = getEntity(div2.getId(), "children", ADMIN_AUTH_HEADERS);
     assertEntityReferences(new ArrayList<>(List.of(dep3.getEntityReference())), div2.getChildren());
 
-    // Recursive delete parent Team bu1
+    // Recursively soft delete bu1 and children
     deleteAndCheckEntity(bu1, true, false, ADMIN_AUTH_HEADERS);
 
-    Double expectedVersion = EntityUtil.nextVersion(div2.getVersion());
-
     // Validate that the entity version is updated after soft delete
+    Double expectedVersion = EntityUtil.nextVersion(div2.getVersion());
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", Include.DELETED.value());
 
@@ -289,7 +287,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException {
     // Create team without any attributes
     Team team = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // Patching as a non-admin should be disallowed
@@ -813,6 +811,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertTrue(result.getImportResultsCsv().contains(error));
   }
 
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a user term, carry it forward from the parent team
+    CreateTeam createTeam = createRequest(test).withDomain(DOMAIN.getFullyQualifiedName()).withTeamType(DEPARTMENT);
+    Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // Create a children team without domain and ensure it inherits domain from the parent
+    createTeam = createRequest("team1").withParents(listOf(team.getId()));
+    assertDomainInheritance(createTeam, DOMAIN.getEntityReference());
+  }
+
   private static void validateTeam(
       Team team,
       String expectedDescription,
@@ -939,7 +948,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private Team createWithParents(String teamName, TeamType teamType, Boolean isJoinable, EntityReference... parents)
       throws HttpResponseException {
     List<EntityReference> parentList = List.of(parents);
-    List<UUID> parentIds = EntityUtil.toIds(parentList);
+    List<UUID> parentIds = EntityUtil.refToIds(parentList);
     Team team =
         createEntity(
             createRequest(teamName).withParents(parentIds).withTeamType(teamType).withIsJoinable(isJoinable),
@@ -951,7 +960,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private Team createWithChildren(String teamName, TeamType teamType, EntityReference... children)
       throws HttpResponseException {
     List<EntityReference> childrenList = List.of(children);
-    List<UUID> childIds = EntityUtil.toIds(childrenList);
+    List<UUID> childIds = EntityUtil.refToIds(childrenList);
     Team team = createEntity(createRequest(teamName).withChildren(childIds).withTeamType(teamType), ADMIN_AUTH_HEADERS);
     assertChildren(team, childrenList);
     return team;

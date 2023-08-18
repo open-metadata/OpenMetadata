@@ -22,14 +22,21 @@ import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
 import { TAG_START_WITH } from 'constants/Tag.constants';
 import { reduceColorOpacity } from 'utils/CommonUtils';
-import { ReactComponent as IconPage } from '../../../assets/svg/ic-flat-doc.svg';
+import { getEncodedFqn } from 'utils/StringsUtils';
+import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import Fqn from '../../../utils/Fqn';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
 const color = '';
 
-const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
+const TagsV1 = ({
+  tag,
+  startWith,
+  className,
+  showOnlyName = false,
+}: TagsV1Props) => {
   const history = useHistory();
 
   const isGlossaryTag = useMemo(
@@ -40,7 +47,7 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
   const startIcon = useMemo(
     () =>
       isGlossaryTag ? (
-        <IconPage
+        <IconTerm
           className="flex-shrink"
           data-testid="glossary-icon"
           height={12}
@@ -73,8 +80,10 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
   const redirectLink = useCallback(
     () =>
       tag.source === TagSource.Glossary
-        ? history.push(`${ROUTES.GLOSSARY}/${tag.tagFQN}`)
-        : history.push(`${ROUTES.TAGS}/${tag.tagFQN.split('.')[0]}`),
+        ? history.push(`${ROUTES.GLOSSARY}/${getEncodedFqn(tag.tagFQN)}`)
+        : history.push(
+            `${ROUTES.TAGS}/${getEncodedFqn(Fqn.split(tag.tagFQN)[0])}`
+          ),
     [tag.source, tag.tagFQN]
   );
 
@@ -88,16 +97,17 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
 
   const tagContent = useMemo(
     () => (
-      <div className="d-flex">
+      <div className="d-flex w-full">
         {tagColorBar}
-        <span className="d-flex items-center p-x-xs">
+        <div className="d-flex items-center p-x-xs w-full">
           <span className="m-r-xss">{startIcon}</span>
           <Typography.Paragraph
+            ellipsis
             className="m-0 tags-label"
             data-testid={`tag-${tag.tagFQN}`}>
             {getTagDisplay(tagName)}
           </Typography.Paragraph>
-        </span>
+        </div>
       </div>
     ),
     [startIcon, tagName, tag.tagFQN, tagColorBar]
@@ -106,14 +116,14 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
   const tagChip = useMemo(
     () => (
       <Tag
-        className={classNames('tag-chip tag-chip-content')}
+        className={classNames(className, 'tag-chip tag-chip-content')}
         data-testid="tags"
         style={{ backgroundColor: reduceColorOpacity(color, 0.1) }}
         onClick={() => redirectLink()}>
         {tagContent}
       </Tag>
     ),
-    [color, tagContent]
+    [color, tagContent, className]
   );
 
   const addTagChip = useMemo(
@@ -131,9 +141,11 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
     [tagName]
   );
 
-  return startWith === TAG_START_WITH.PLUS ? (
-    addTagChip
-  ) : (
+  if (startWith === TAG_START_WITH.PLUS) {
+    return addTagChip;
+  }
+
+  return (
     <Tooltip
       className="cursor-pointer"
       mouseEnterDelay={1.5}

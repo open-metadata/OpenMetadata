@@ -254,7 +254,24 @@ export const checkmust_notPaths = (
   });
 };
 
-export const addOwner = (searchTerm, ownerName) => {
+export const removeOwner = () => {
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_1.term,
+    SEARCH_ENTITY_TABLE.table_1.serviceName,
+    SEARCH_ENTITY_TABLE.table_1.entity
+  );
+  interceptURL(
+    'PATCH',
+    `/api/v1/${SEARCH_ENTITY_TABLE.table_1.entity}/*`,
+    'patchOwner'
+  );
+  cy.get('[data-testid="edit-owner"]').click();
+  cy.get('[data-testid="remove-owner"]').click();
+  verifyResponseStatusCode('@patchOwner', 200);
+  cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
+};
+
+export const addOwner = (ownerName) => {
   visitEntityDetailsPage(
     SEARCH_ENTITY_TABLE.table_1.term,
     SEARCH_ENTITY_TABLE.table_1.serviceName,
@@ -267,16 +284,23 @@ export const addOwner = (searchTerm, ownerName) => {
     'waitForTeams'
   );
 
-  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+  cy.get('[data-testid="edit-owner"]').click();
 
   verifyResponseStatusCode('@waitForTeams', 200);
-  // Clicking on users tab
-  cy.get('.user-team-select-popover')
-    .contains('Users')
-    .should('exist')
-    .should('be.visible')
-    .click();
-  cy.wait(3000);
+  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+
+  cy.get('.ant-tabs [id*=tab-users]').click();
+  verifyResponseStatusCode('@getUsers', 200);
+
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI(ownerName)}*`,
+    'searchOwner'
+  );
+
+  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
+
+  verifyResponseStatusCode('@searchOwner', 200);
 
   interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
 
@@ -326,11 +350,8 @@ export const addTag = (tag) => {
     SEARCH_ENTITY_TABLE.table_3.entity
   );
 
-  cy.get(
-    '[data-testid="entity-tags"] [data-testid="tags"] [data-testid="add-tag"]'
-  )
+  cy.get('[data-testid="entity-right-panel"] [data-testid="entity-tags"]')
     .eq(0)
-    .should('be.visible')
     .scrollIntoView()
     .click();
 
@@ -347,8 +368,7 @@ export const addTag = (tag) => {
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-  cy.get('[data-testid="entity-tags"]')
-    .scrollIntoView()
+  cy.get('[data-testid="entity-right-panel"] [data-testid="entity-tags"]')
     .should('be.visible')
     .contains(tag);
 };

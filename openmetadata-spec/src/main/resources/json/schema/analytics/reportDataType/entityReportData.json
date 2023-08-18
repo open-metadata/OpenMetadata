@@ -6,6 +6,10 @@
   "javaType": "org.openmetadata.schema.analytics.EntityReportData",
   "description": "Refined data for Entity Report.",
   "properties": {
+    "serviceName": {
+      "type": "string",
+      "description": "Name of the service"
+    },
     "entityType": {
       "type": "string",
       "description": "type of the entity"

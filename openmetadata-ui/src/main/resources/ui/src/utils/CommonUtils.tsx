@@ -36,7 +36,6 @@ import {
 import {
   CurrentState,
   ExtraInfo,
-  FormattedTableData,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -65,10 +64,7 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
-import {
-  UrlEntityCharRegEx,
-  validEmailRegEx,
-} from '../constants/regex.constants';
+import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
@@ -77,11 +73,10 @@ import { PipelineType } from '../generated/entity/services/ingestionPipelines/in
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
+import { history } from './HistoryUtils';
 import { serviceTypeLogo } from './ServiceUtils';
-import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -100,10 +95,6 @@ export const arraySorterByKey = <T extends object>(
         : 0) * sortOrder
     );
   };
-};
-
-export const isEven = (value: number): boolean => {
-  return value % 2 === 0;
 };
 
 export const getPartialNameFromFQN = (
@@ -127,6 +118,15 @@ export const getPartialNameFromFQN = (
 
   return arrPartialName.join(joinSeperator);
 };
+
+/**
+ * Retrieves a partial name from a fully qualified name (FQN) for tables.
+ *
+ * @param {string} fqn - The fully qualified name. It should be a decoded string.
+ * @param {Array<FqnPart>} fqnParts - The parts of the FQN to include in the partial name. Defaults to an empty array.
+ * @param {string} joinSeparator - The separator used to join the parts of the partial name. Defaults to '/'.
+ * @return {string} The partial name derived from the FQN.
+ */
 
 export const getPartialNameFromTableFQN = (
   fqn: string,
@@ -213,13 +213,6 @@ export const hasEditAccess = (type: string, id: string) => {
   }
 };
 
-export const getTabClasses = (
-  tab: number | string,
-  activeTab: number | string
-) => {
-  return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
-};
-
 export const getCountBadge = (
   count = 0,
   className = '',
@@ -234,7 +227,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
         clsBG,
         className
       )}>
@@ -344,15 +337,11 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   setRecentlyViewedData(recentlyViewed.data);
 };
 
-export const getActiveCatClass = (name: string, activeName = '') => {
-  return activeName === name ? 'activeCategory' : '';
-};
-
 export const errorMsg = (value: string) => {
   return (
-    <div className="tw-mt-1">
+    <div>
       <strong
-        className="tw-text-red-500 tw-text-xs tw-italic"
+        className="text-xs font-italic text-failure"
         data-testid="error-message">
         {value}
       </strong>
@@ -363,22 +352,9 @@ export const errorMsg = (value: string) => {
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
     {label}{' '}
-    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+    <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
-
-export const getSeparator = (
-  title: string | JSX.Element,
-  hrMarginTop = 'tw-mt-2.5'
-) => {
-  return (
-    <span className="d-flex tw-py-2 text-grey-muted">
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-    </span>
-  );
-};
 
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
@@ -416,20 +392,6 @@ export const isValidUrl = (href?: string) => {
   } catch {
     return false;
   }
-};
-
-/**
- *
- * @param email - email address string
- * @returns - True|False
- */
-export const isValidEmail = (email?: string) => {
-  let isValid = false;
-  if (email && email.match(validEmailRegEx)) {
-    isValid = true;
-  }
-
-  return isValid;
 };
 
 export const getEntityMissingError = (entityType: string, fqn: string) => {
@@ -554,10 +516,7 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
-  conversationCallback: (
-    value: React.SetStateAction<EntityFieldThreadCount[]>
-  ) => void,
-  entityCallback: (value: React.SetStateAction<number>) => void
+  conversationCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
   getFeedCount(
@@ -566,20 +525,7 @@ export const getFeedCounts = (
   )
     .then((res) => {
       if (res) {
-        conversationCallback(res.counts);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
-
-  // To get all thread count (task + conversation)
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        entityCallback(res.totalCount);
+        conversationCallback(res.totalCount);
       } else {
         throw t('server.entity-feed-fetch-error');
       }
@@ -722,17 +668,12 @@ export const getLoadingStatus = (
   );
 };
 
-export const refreshPage = () => window.location.reload();
+export const refreshPage = () => {
+  history.go(0);
+};
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
-
-export const getTierFromEntityInfo = (entity: FormattedTableData) => {
-  return (
-    entity.tier?.tagFQN ||
-    getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
-  )?.split(FQN_SEPARATOR_CHAR)[1];
-};
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
@@ -793,36 +734,6 @@ export const Transi18next = ({
     {renderElement}
   </Trans>
 );
-
-/**
- * It returns a link to the documentation for the given filter pattern type
- * @param {FilterPatternEnum} type - The type of filter pattern.
- * @returns A string
- */
-export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
-  switch (type) {
-    case FilterPatternEnum.DATABASE:
-    case FilterPatternEnum.SCHEMA:
-    case FilterPatternEnum.TABLE:
-      return `https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/${FilterPatternEnum.DATABASE}#${type}-filter-pattern`;
-
-    case FilterPatternEnum.DASHBOARD:
-    case FilterPatternEnum.CHART:
-      return 'https://docs.open-metadata.org/connectors/dashboard/metabase#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.TOPIC:
-      return 'https://docs.open-metadata.org/connectors/messaging/kafka#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.PIPELINE:
-      return 'https://docs.open-metadata.org/connectors/pipeline/airflow#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.MLMODEL:
-      return 'https://docs.open-metadata.org/connectors/ml-model/mlflow';
-
-    default:
-      return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
-  }
-};
 
 /**
  * It takes a string and returns a string

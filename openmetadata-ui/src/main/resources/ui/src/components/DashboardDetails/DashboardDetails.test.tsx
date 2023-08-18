@@ -119,19 +119,11 @@ jest.mock('components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage</p>);
-});
-
-jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
-  return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
-});
-
 jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
 jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
@@ -154,7 +146,6 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   pluralize: jest.fn().mockReturnValue('2 charts'),
-  isEven: jest.fn().mockReturnValue(true),
   getEntityDeleteMessage: jest.fn(),
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));

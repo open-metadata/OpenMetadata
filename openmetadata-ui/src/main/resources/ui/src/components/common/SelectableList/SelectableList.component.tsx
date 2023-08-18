@@ -34,6 +34,7 @@ export const SelectableList = ({
   onCancel,
   searchPlaceholder,
   customTagRenderer,
+  searchBarDataTestId,
 }: SelectableListProps) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -203,6 +204,7 @@ export const SelectableList = ({
         <Searchbar
           removeMargin
           placeholder={searchPlaceholder ?? t('label.search')}
+          searchBarDataTestId={searchBarDataTestId}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearch}
@@ -218,7 +220,7 @@ export const SelectableList = ({
         onScroll={onScroll}>
         {(item) => (
           <List.Item
-            className="cursor-pointer"
+            className="selectable-list-item cursor-pointer"
             extra={
               multiSelect ? (
                 <Checkbox checked={selectedItemsInternal.has(item.id)} />
@@ -252,7 +254,6 @@ const RemoveIcon = ({ removeOwner }: { removeOwner?: () => void }) => {
         entity: t('label.owner-lowercase'),
       })}>
       <SVGIcons
-        color="#E41E0B"
         data-testid="remove-owner"
         icon={Icons.ICON_REMOVE_COLORED}
         onClick={(e) => {

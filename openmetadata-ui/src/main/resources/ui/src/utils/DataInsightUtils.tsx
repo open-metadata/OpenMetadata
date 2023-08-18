@@ -40,7 +40,6 @@ import {
 } from '../constants/constants';
 import {
   ENTITIES_SUMMARY_LIST,
-  KPI_DATE_PICKER_FORMAT,
   TIER_DATA,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
@@ -55,7 +54,6 @@ import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntities
 import {
   ChartValue,
   DataInsightChartTooltipProps,
-  KpiDates,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
 import {
@@ -173,7 +171,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         {payload.map((entry, index) => (
           <li
-            className="d-flex items-center justify-between tw-gap-6 tw-pb-1.5 text-sm"
+            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
             key={`item-${index}`}>
             <span className="flex items-center text-grey-muted">
               <Surface className="mr-2" height={12} version="1.1" width={12}>
@@ -647,9 +645,6 @@ export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   return current && current.isBefore(moment().subtract(1, 'day'));
 };
 
-export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
-  moment(timestamp).format(KPI_DATE_PICKER_FORMAT);
-
 export const getKpiTargetValueByMetricType = (
   metricType: KpiTargetType,
   metricValue: number
@@ -675,10 +670,3 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
 
 export const getDataInsightPathWithFqn = (fqn: string) =>
   ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
-
-export const getKPIFormattedDates = (kpiDates: KpiDates): KpiDates => {
-  return {
-    startDate: `${kpiDates.startDate} 00:00`,
-    endDate: `${kpiDates.endDate} 23:59`,
-  };
-};

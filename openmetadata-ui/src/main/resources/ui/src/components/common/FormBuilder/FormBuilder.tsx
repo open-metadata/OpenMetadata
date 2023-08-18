@@ -27,7 +27,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
-import { customValidate, transformErrors } from 'utils/formUtils';
+import { transformErrors } from 'utils/formUtils';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import Loader from '../../Loader/Loader';
@@ -114,7 +114,6 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
-      customValidate={customValidate}
       formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
@@ -135,15 +134,15 @@ const FormBuilder: FunctionComponent<Props> = ({
       onSubmit={onSubmit}
       {...props}>
       {isEmpty(schema) && (
-        <div className="text-grey-muted tw-text-center">
+        <div className="text-grey-muted text-center">
           {t('message.no-config-available')}
         </div>
       )}
       {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
-          className="d-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
+          className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
           data-testid="ip-address">
-          <div className="tw-self-center">
+          <div className="self-center">
             {t('message.airflow-host-ip-address', { hostIp })}
           </div>
         </div>
@@ -160,9 +159,9 @@ const FormBuilder: FunctionComponent<Props> = ({
             onValidateFormRequiredFields={handleRequiredFieldsValidation}
           />
         )}
-      <div className="tw-mt-6 d-flex tw-justify-between">
+      <div className="m-t-lg d-flex justify-between">
         <div />
-        <div className="tw-text-right" data-testid="buttons">
+        <div className="text-right" data-testid="buttons">
           <Button type="link" onClick={handleCancel}>
             {cancelText}
           </Button>

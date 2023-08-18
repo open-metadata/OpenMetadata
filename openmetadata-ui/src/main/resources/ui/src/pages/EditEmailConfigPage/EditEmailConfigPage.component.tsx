@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Skeleton } from 'antd';
+import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
@@ -145,7 +145,7 @@ function EditEmailConfigPage() {
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
+      <div className="m-t-md">
         {loading ? (
           <Skeleton title paragraph={{ rows: 8 }} />
         ) : (
@@ -156,7 +156,7 @@ function EditEmailConfigPage() {
             onSubmit={updateEmailConfigValues}
           />
         )}
-      </Card>
+      </div>
     </div>
   );
 

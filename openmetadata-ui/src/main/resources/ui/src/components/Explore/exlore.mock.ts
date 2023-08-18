@@ -24,7 +24,7 @@ import {
 import { SearchResponse } from '../../interface/search.interface';
 import { ExploreSearchIndex } from './explore.interface';
 
-export const mockResponse: SearchResponse<ExploreSearchIndex> = {
+export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
   hits: {
     total: {
       value: 15,
