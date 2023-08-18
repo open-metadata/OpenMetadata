@@ -211,10 +211,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     visitEntityDetailsPage(
       ENTITIES.table.term,
       ENTITIES.table.serviceName,
-      ENTITIES.table.entity,
-      undefined,
-      undefined,
-      1
+      ENTITIES.table.entity
     );
 
     cy.get('[data-testid="add-tag"]')
@@ -228,10 +225,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     visitEntityDetailsPage(
       ENTITIES.dashboard.term,
       ENTITIES.dashboard.serviceName,
-      ENTITIES.dashboard.entity,
-      undefined,
-      undefined,
-      1
+      ENTITIES.dashboard.entity
     );
 
     cy.get('[data-testid="add-tag"]')

@@ -29,8 +29,6 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
-import io.dropwizard.web.WebBundle;
-import io.dropwizard.web.conf.WebConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.socket.engineio.server.EngineIoServerOptions;
@@ -71,6 +69,8 @@ import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.config.OMWebBundle;
+import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
@@ -213,7 +213,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerSamlHandlers(catalogConfig, environment);
 
     // Handle Asset Using Servlet
-    OpenMetadataAssetServlet assetServlet = new OpenMetadataAssetServlet("/assets", "/", "index.html");
+    OpenMetadataAssetServlet assetServlet =
+        new OpenMetadataAssetServlet("/assets", "/", "index.html", catalogConfig.getWebConfiguration());
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
@@ -312,9 +313,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         });
     bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
     bootstrap.addBundle(
-        new WebBundle<>() {
+        new OMWebBundle<>() {
           @Override
-          public WebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+          public OMWebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
             return configuration.getWebConfiguration();
           }
         });
