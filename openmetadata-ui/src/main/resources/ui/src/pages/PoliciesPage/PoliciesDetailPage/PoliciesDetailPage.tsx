@@ -103,11 +103,11 @@ const PoliciesDetailPage = () => {
         url: policiesPath,
       },
       {
-        name: fqn,
+        name: getEntityName(policy),
         url: '',
       },
     ],
-    [fqn]
+    [policy]
   );
 
   const fetchPolicyPermission = async () => {
@@ -368,7 +368,14 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {getEntityName(policy)}
+              </Typography.Title>
               <Description
+                className="m-b-md"
                 description={policy.description || ''}
                 entityFqn={policy.fullyQualifiedName}
                 entityName={getEntityName(policy)}

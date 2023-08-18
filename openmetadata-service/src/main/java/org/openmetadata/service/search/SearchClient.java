@@ -54,6 +54,8 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
+  Response searchBySourceUrl(String sourceUrl) throws IOException;
+
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;

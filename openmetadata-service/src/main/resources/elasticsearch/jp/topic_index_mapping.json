@@ -94,6 +94,9 @@
       "href": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "text"
+      },
       "messageSchema": {
         "properties": {
           "schemaType": {
