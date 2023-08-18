@@ -387,6 +387,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return copy(new DatabaseSchema(), create, user)
         .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
         .withTags(create.getTags())
+        .withSourceUrl(create.getSourceUrl())
         .withRetentionPeriod(create.getRetentionPeriod());
   }
 }

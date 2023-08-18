@@ -144,6 +144,7 @@ class S3Source(StorageServiceSource):
             dataModel=container_details.data_model,
             service=self.context.objectstore_service.fullyQualifiedName,
             parent=container_details.parent,
+            sourceUrl=container_details.sourceUrl,
         )
 
     def _generate_container_details(
@@ -184,6 +185,10 @@ class S3Source(StorageServiceSource):
                         isPartitioned=metadata_entry.isPartitioned, columns=columns
                     ),
                     parent=parent,
+                    sourceUrl=self._get_object_source_url(
+                        bucket_name=bucket_name,
+                        prefix=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+                    ),
                 )
         return None
 
@@ -292,6 +297,7 @@ class S3Source(StorageServiceSource):
             ),
             file_formats=[],
             data_model=None,
+            sourceUrl=self._get_bucket_source_url(bucket_name=bucket_response.name),
         )
 
     def _get_sample_file_path(
@@ -350,3 +356,47 @@ class S3Source(StorageServiceSource):
                 f"Failed when trying to check if S3 prefix {prefix} exists in bucket {bucket_name}"
             )
             return False
+
+    def get_aws_bucket_region(self, bucket_name: str) -> str:
+        """
+        Method to fetch the bucket region
+        """
+        region = None
+        try:
+            region_resp = self.s3_client.get_bucket_location(Bucket=bucket_name)
+            region = region_resp.get("LocationConstraint")
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get the region for bucket: {bucket_name}")
+        return region or self.service_connection.awsConfig.awsRegion
+
+    def _get_bucket_source_url(self, bucket_name: str) -> Optional[str]:
+        """
+        Method to get the source url of s3 bucket
+        """
+        try:
+            region = self.get_aws_bucket_region(bucket_name=bucket_name)
+            return (
+                f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
+                f"?region={region}&tab=objects"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
+        return None
+
+    def _get_object_source_url(self, bucket_name: str, prefix: str) -> Optional[str]:
+        """
+        Method to get the source url of s3 bucket
+        """
+        try:
+            region = self.get_aws_bucket_region(bucket_name=bucket_name)
+            return (
+                f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
+                f"?region={region}&prefix={prefix}/"
+                f"&showversions=false"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
+        return None

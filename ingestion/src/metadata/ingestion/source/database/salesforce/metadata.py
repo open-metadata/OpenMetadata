@@ -193,6 +193,9 @@ class SalesforceSource(DatabaseServiceSource):
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
+                sourceUrl=self.get_source_url(
+                    table_name=table_name,
+                ),
             )
             yield table_request
             self.register_record(table_request=table_request)
@@ -260,6 +263,22 @@ class SalesforceSource(DatabaseServiceSource):
 
     def prepare(self):
         pass
+
+    def get_source_url(
+        self,
+        table_name: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for salesforce
+        """
+        try:
+            instance_url = self.client.sf_instance
+            if instance_url:
+                return f"https://{instance_url}/lightning/o/{table_name}/list"
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url for {table_name}: {exc}")
+        return None
 
     def close(self):
         pass
