@@ -110,7 +110,12 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
       const userData = res as User;
       const profile = userData.profile?.images?.image512 || '';
 
-      AppState.updateUserProfilePic(userData.id, userData.name, profile);
+      AppState.updateUserProfilePic(
+        userData.id,
+        userData.name,
+        profile,
+        userData.displayName
+      );
     })
     .catch((err: AxiosError) => {
       // ignore exception

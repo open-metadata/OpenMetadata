@@ -563,6 +563,8 @@ const TableDetailsPageV1 = () => {
           ) : (
             <SampleDataTableComponent
               isTableDeleted={tableDetails?.deleted}
+              ownerId={tableDetails?.owner?.id ?? ''}
+              permissions={tablePermissions}
               tableId={tableDetails?.id ?? ''}
             />
           ),

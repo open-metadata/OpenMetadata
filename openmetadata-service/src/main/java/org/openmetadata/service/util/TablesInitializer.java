@@ -29,10 +29,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
-import java.util.Set;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -50,19 +47,18 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.MigrationFile;
-import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.reflections.Reflections;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
-  private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
+  private static final String OPTION_FLYWAY_SCRIPT_ROOT_PATH = "flyway-sql-root";
+
+  private static final String OPTION_NATIVE_SQL_ROOT_PATH = "native-sql-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
   private static final String OPTION_FORCE_MIGRATIONS = "force";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
@@ -73,7 +69,9 @@ public final class TablesInitializer {
   static {
     OPTIONS = new Options();
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
-    OPTIONS.addOption("s", OPTION_SCRIPT_ROOT_PATH, true, "Root directory of script path");
+    OPTIONS.addOption("s", OPTION_FLYWAY_SCRIPT_ROOT_PATH, true, "Root directory of flyway sql script path");
+    OPTIONS.addOption("n", OPTION_NATIVE_SQL_ROOT_PATH, true, "Root directory of native sql script path");
+
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(
         OPTION_FORCE_MIGRATIONS,
@@ -119,7 +117,9 @@ public final class TablesInitializer {
   public static void main(String[] args) throws Exception {
     CommandLineParser parser = new DefaultParser();
     CommandLine commandLine = parser.parse(OPTIONS, args);
-    if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH) || !commandLine.hasOption(OPTION_SCRIPT_ROOT_PATH)) {
+    if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH)
+        || !commandLine.hasOption(OPTION_NATIVE_SQL_ROOT_PATH)
+        || !commandLine.hasOption(OPTION_FLYWAY_SCRIPT_ROOT_PATH)) {
       usage();
       System.exit(1);
     }
@@ -190,7 +190,8 @@ public final class TablesInitializer {
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
     }
-    String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
+    String nativeSQLScriptRootPath = commandLine.getOptionValue(OPTION_NATIVE_SQL_ROOT_PATH);
+    String scriptRootPath = commandLine.getOptionValue(OPTION_FLYWAY_SCRIPT_ROOT_PATH);
     Flyway flyway =
         get(
             jdbcUrl,
@@ -200,7 +201,7 @@ public final class TablesInitializer {
             config.getDataSourceFactory().getDriverClass(),
             !disableValidateOnMigrate);
     try {
-      execute(config, flyway, schemaMigrationOptionSpecified);
+      execute(config, flyway, schemaMigrationOptionSpecified, nativeSQLScriptRootPath);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
       printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
@@ -239,7 +240,10 @@ public final class TablesInitializer {
   }
 
   private static void execute(
-      OpenMetadataApplicationConfig config, Flyway flyway, SchemaMigrationOption schemaMigrationOption)
+      OpenMetadataApplicationConfig config,
+      Flyway flyway,
+      SchemaMigrationOption schemaMigrationOption,
+      String nativeSQLRootPath)
       throws SQLException {
     final Jdbi jdbi =
         Jdbi.create(
@@ -274,13 +278,19 @@ public final class TablesInitializer {
         }
         flyway.migrate();
         validateAndRunSystemDataMigrations(
-            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), forceMigrations);
+            jdbi,
+            ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
+            nativeSQLRootPath,
+            forceMigrations);
         break;
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
-            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), forceMigrations);
+            jdbi,
+            ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
+            nativeSQLRootPath,
+            forceMigrations);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -330,32 +340,11 @@ public final class TablesInitializer {
     }
   }
 
-  public static void validateAndRunSystemDataMigrations(Jdbi jdbi, ConnectionType connType, boolean forceMigrations) {
+  public static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
-    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
-    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, forceMigrations);
+    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
     workflow.runMigrationWorkflows();
-  }
-
-  public static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
-    List<MigrationStep> migrations = new ArrayList<>();
-    try {
-      String prefix =
-          connType.equals(ConnectionType.MYSQL)
-              ? "org.openmetadata.service.migration.versions.mysql"
-              : "org.openmetadata.service.migration.versions.postgres";
-      Reflections reflections = new Reflections(prefix);
-      Set<Class<?>> migrationClasses = reflections.getTypesAnnotatedWith(MigrationFile.class);
-      for (Class<?> clazz : migrationClasses) {
-        MigrationStep step =
-            Class.forName(clazz.getCanonicalName()).asSubclass(MigrationStep.class).getConstructor().newInstance();
-        migrations.add(step);
-      }
-    } catch (Exception ex) {
-      printToConsoleMandatory("Failure in list System Migration Files");
-      throw new RuntimeException(ex);
-    }
-    return migrations;
   }
 
   private static void printError(String message) {

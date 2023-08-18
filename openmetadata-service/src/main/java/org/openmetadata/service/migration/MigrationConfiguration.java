@@ -5,5 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class MigrationConfiguration {
-  @NotEmpty @Getter @Setter private String path;
+  @NotEmpty @Getter @Setter private String flywayPath;
+  @NotEmpty @Getter @Setter private String nativePath;
 }
