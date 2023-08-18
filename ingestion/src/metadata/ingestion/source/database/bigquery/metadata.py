@@ -56,9 +56,13 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,
+    BIGQUERY_TABLE_AND_TYPE,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
@@ -69,6 +73,11 @@ from metadata.utils.tag_utils import (
     get_tag_label,
     get_tag_labels,
 )
+
+_bigquery_table_types = {
+    "BASE TABLE": TableType.Regular,
+    "EXTERNAL": TableType.External,
+}
 
 
 class BQJSON(String):
@@ -198,6 +207,29 @@ class BigquerySource(CommonDbSourceService):
         _, project_ids = auth.default()
         return project_ids
 
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        return [
+            TableNameAndType(
+                name=table_name,
+                type_=_bigquery_table_types.get(table_type, TableType.Regular),
+            )
+            for table_name, table_type in self.engine.execute(
+                BIGQUERY_TABLE_AND_TYPE.format(schema_name)
+            )
+            or []
+        ]
+
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         """
         Build tag context
@@ -322,10 +354,7 @@ class BigquerySource(CommonDbSourceService):
     def get_database_names(self) -> Iterable[str]:
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsPath
-        ):
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
-        elif isinstance(
+        ) or isinstance(
             self.service_connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             self.set_inspector(database_name=self.project_ids)
