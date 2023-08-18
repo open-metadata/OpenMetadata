@@ -76,3 +76,6 @@ CREATE TABLE IF NOT EXISTS search_index_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
     );
+
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(json::jsonb, '{airflowConfig.retries}', '0', true);
