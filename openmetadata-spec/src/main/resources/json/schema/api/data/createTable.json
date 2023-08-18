@@ -88,6 +88,10 @@
       "items" : {
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
+    },
+    "tableProperties": {
+      "description": "Field to maintain the properties of table, for example. compression, file format etc.",
+      "$ref": "../../entity/data/table.json#/definitions/tableProperties"
     }
   },
   "required": ["name", "columns", "databaseSchema"],
