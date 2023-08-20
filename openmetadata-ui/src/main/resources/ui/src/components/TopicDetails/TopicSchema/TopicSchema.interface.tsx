@@ -30,6 +30,8 @@ export interface TopicSchemaFieldsProps
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
+  isVersionView?: boolean;
+  schemaTypePlaceholder?: ReactNode;
   defaultExpandAllRows?: boolean;
   showSchemaDisplayTypeSwitch?: boolean;
   entityFieldThreads: EntityFieldThreads[];

@@ -247,6 +247,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                entityType={EntityType.DASHBOARD}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 tierDisplayName={tierDisplayName}
