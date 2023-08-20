@@ -323,19 +323,13 @@ export const testServiceCreationAndIngestion = ({
   cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
 
   if (isDatabaseService(type)) {
-    cy.get('[data-testid="configure-ingestion-container"]').should(
-      'be.visible'
-    );
-
     // Set mark-deleted slider to off to disable it.
-    cy.get('[data-testid="toggle-button-mark-deleted"]')
-      .should('exist')
-      .click();
+    cy.get('#root\\/markDeletedTables').click();
   }
 
   addIngestionInput && addIngestionInput();
 
-  cy.get('[data-testid="next-button"]').should('exist').click();
+  cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
 
   scheduleIngestion();
 
