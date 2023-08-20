@@ -8,7 +8,7 @@ slug: /connectors/database/mysql/yaml
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
@@ -16,10 +16,10 @@ slug: /connectors/database/mysql/yaml
 | Data Quality       | {% icon iconName="check" /%} |
 | Lineage            | Partially via Views          |
 | DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | MySQL >= 8.0.0                         |
+| Supported Versions | MySQL >= 8.0.0               |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | Partially via Views          |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |

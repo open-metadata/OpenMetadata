@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
 
 # Thread
 
-*This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.*
+*This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contain links that mention Users or other Data Assets.*
 
 ## Properties
 
@@ -20,7 +20,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
 - **`resolved`** *(boolean)*: When `true` indicates the thread has been resolved. Default: `False`.
-- **`message`** *(string)*: The main message of the thread in markdown format.
+- **`message`** *(string)*: The main message of the thread in Markdown format.
 - **`postsCount`** *(integer)*: The total count of posts in the thread. Default: `0`.
 - **`posts`** *(array)*
   - **Items**: Refer to *#/definitions/post*.

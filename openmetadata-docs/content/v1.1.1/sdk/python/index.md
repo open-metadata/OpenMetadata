@@ -82,7 +82,7 @@ The same would happen if, inside the actual OpenMetadata code, there was not a w
 ## Using Generated Sources
 As OpenMetadata is a data-centric solution, we need to make sure we have the right ingredients at all times. That is why we have developed a high-level Python API, using pydantic models automatically generated from the JSON Schemas.
 
-> OBS: If you are using a [published](https://pypi.org/project/openmetadata-ingestion/) version of the Ingestion Framework, you are already good to go, as we package the code with the metadata.generated module. If you are developing a new feature, you can get more information [here](/developers).
+> OBS: If you are using a [published](https://pypi.org/project/openmetadata-ingestion/) version of the Ingestion Framework, you are already good to go, as we package the code with the `metadata.generated` module. If you are developing a new feature, you can get more information [here](/developers).
 
 This API wrapper helps developers and consumers in:
 

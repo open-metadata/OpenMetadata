@@ -16,7 +16,7 @@ Once on the alert page click on the purple button `Create alert` in the top righ
 Configure you alert.
 
 As with most configuration in OpenMetadata you will first need to add a Name and a Description for your alert. Once this is completed, we can move on to the configuration. You have 3 steps to configure your alert:
-1. **Trigger**: this will determine how your alert should be trigger. You can select your alert to be triggered when events happen against all the existing assets or only specific ones
+1. **Trigger**: this will determine how your alert should be triggered. You can select your alert to be triggered when events happen against all the existing assets or only specific ones
 2. **Filter**: in this section, you can add specific event filters. The filter input will determine what event will trigger an alert to be sent. Setting `Allow` against a condition will result in an alert being sent if the condition is met while setting `Deny` will silence this condition (i.e. alert won't be sent for the denied event).
 3. **Destination**: you will determine where your alert should be sent in this section. We provide 4 destinations
     - Slack

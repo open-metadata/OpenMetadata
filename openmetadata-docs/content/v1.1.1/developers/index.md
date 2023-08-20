@@ -34,6 +34,6 @@ Here are the articles in this section:
     icon="play_arrow"
     bold="Webhooks"
     href="/developers/webhooks" %}
-    Presentation on how to setup webhooks within OpenMetadata
+    Presentation on how to set up webhooks within OpenMetadata
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}

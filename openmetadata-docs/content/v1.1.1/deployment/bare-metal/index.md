@@ -24,7 +24,7 @@ Java?](https://java.com/en/download/help/download_options.html#mac).
 
 ## MySQL (version 8.0.0 or greater)
 
-To install MySQL see the instructions for your operating system (OS) at [Installing and Upgrading MySQL](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/installing.html) 
+To install MySQL, see the instructions for your operating system (OS) at [Installing and Upgrading MySQL](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/installing.html) 
 or visit one of the following OS-specific guides.
 
 - [Installing MySQL on Linux](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/linux-installation.html)
@@ -41,7 +41,7 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 ## Postgres (version between 12.0 or greater)
 
-To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
+To install Postgres, see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
 {%note%}
 
 Make sure to configure required databases and users for OpenMetadata. 
@@ -125,7 +125,7 @@ To do this you will need to add one or more entries to the configuration file fo
 
 ### Nginx
 
-To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the http context of your Nginx
+To use OpenMetadata behind Nginx reverse proxy, add an entry resembling the following the http context of your Nginx
 configuration file for each OpenMetadata instance.
 
 ```commandline

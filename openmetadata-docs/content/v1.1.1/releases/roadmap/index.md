@@ -37,7 +37,7 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Alerts & Notifications" %}
 - Durable queue to store ChangeEvents guranteeing at-least-once semantics
-- Live BulkActions on ElasticSearch to handle Tag category deletion, owner chagne propagation etc..
+- Live BulkActions on ElasticSearch to handle Tag category deletion, owner change propagation, etc.
 - Support to get notificaitons via email when a user is mentioned 
 {% /tile %}
 
@@ -81,7 +81,7 @@ You can check the latest release [here](/releases/all-releases).
 {% tilesContainer %}
 
 {% tile title="Entities" %}
-- Asset Deprecation, owners can mark assets as deprecated along with a notice of whats the new asset to use. Search will exclude deprecated assets
+- Asset Deprecation, owners can mark assets as deprecated along with a notice of what new asset to use instead. Search will exclude deprecated assets
 {% /tile %}
 
 {% tile title="Data Quality" %}

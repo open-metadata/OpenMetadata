@@ -4,7 +4,7 @@ slug: /features/data-insight
 ---
 
 # Data Insights
-Platform adoption is an important element for teams implementing OpenMetadata. With the data insights feature organization can drive the adoption of OpenMetadata by monitoring its usage and setting up company wide KPIs.
+Platform adoption is an important element for teams implementing OpenMetadata. With the data insights feature organization can drive the adoption of OpenMetadata by monitoring its usage and setting up company-wide KPIs.
 
 ## Data Insight Reports
 OpenMetadata offers a suite of reports providing platform analytics around specific areas.
@@ -122,7 +122,7 @@ Add any elasticsearch configuration relevant to your setup. Note that if you are
     caption="Data Insight Ingestion ES Config"
  /%}
 
-Choose a schedule exection time for your workflow. The schedule time is displayed in UTC. We recommend to run this workflow overnight or when activity on the platform is at its lowest to ensure accurate data.
+Choose a schedule execution time for your workflow. The schedule time is displayed in UTC. We recommend running this workflow overnight or when activity on the platform is at its lowest to ensure accurate data.
 
 {% image
     src="/images/v1.1.1/features/data-insight/data-insight-ingestion-schedule.png"

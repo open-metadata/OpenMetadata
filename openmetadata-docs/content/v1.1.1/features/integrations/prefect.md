@@ -31,7 +31,7 @@ docker --version
 
 If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
 
-**Note**: You must **allocate at least 6GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
+**Note**: You must **allocate at least 6 GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
 
 Preferences -> Resources -> Advanced
 

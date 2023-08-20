@@ -131,6 +131,6 @@ After runing the ingestion workflow with dbt you can see the created user or tea
 
 {% note %}
 
-If a table already has a owner linked to it, owner from the dbt will not update the current owner.
+If a table already has an owner linked to it, owner from the dbt will not update the current owner.
 
 {% /note %}

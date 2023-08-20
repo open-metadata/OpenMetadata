@@ -102,7 +102,7 @@ enabling you to choose whether to maintain metadata for deleted entities.
 
 
 ## Importance & Owners
-Tier tags enable you to annotate assets with their importance relative to other assets. The Explore UI enables you to 
+Tier tags enable you to annotate assets with their importance relative to other assets. The `Explore UI` enables you to 
 filter assets based on importance.
 
 Use ownership metadata to determine the primary points of contact for any assets of interest in order to get help with 

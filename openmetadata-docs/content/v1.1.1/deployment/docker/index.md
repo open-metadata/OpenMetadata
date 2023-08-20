@@ -5,7 +5,7 @@ slug: /deployment/docker
 
 # Docker Deployment
 
-This guide will help you setup the OpenMetadata Application using Docker Deployment.
+This guide will help you set up the OpenMetadata Application using Docker Deployment.
 Before starting with the deployment make sure you follow all the below Prerequisites.
 
 ## Docker Deployment Architecture
@@ -15,7 +15,7 @@ Before starting with the deployment make sure you follow all the below Prerequis
 
 ### Configure OpenMetadata to use External Database and Search Engine
 
-For Production Deployment using Docker, we recommend to bring your own Databases and ElasticSearch Engine and not rely on quickstart packages.
+For Production Deployment using Docker, we recommend bringing your own Databases and ElasticSearch Engine and not rely on quickstart packages.
 
 
 {% partial file="/v1.1.1/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
@@ -86,9 +86,9 @@ Create a new directory for OpenMetadata and navigate into that directory.
 mkdir openmetadata-docker && cd openmetadata-docker
 ```
 
-### 2. Download Docker Compose Files from Github Releases
+### 2. Download Docker Compose Files from GitHub Releases
 
-Download the Docker Compose files from [Latest Github Releases](https://github.com/open-metadata/OpenMetadata/releases/latest). 
+Download the Docker Compose files from the [Latest GitHub Releases](https://github.com/open-metadata/OpenMetadata/releases/latest). 
 
 The Docker compose file name will be `docker-compose-openmetadata-server.yml`.
 
@@ -218,7 +218,7 @@ You may put one or more OpenMetadata instances behind a load balancer for revers
 
 ### Nginx
 
-To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the http context of your Nginx configuration file for each OpenMetadata instance.
+To use OpenMetadata behind Nginx reverse proxy, add an entry resembling the following the http context of your Nginx configuration file for each OpenMetadata instance.
 
 ```
 server {
