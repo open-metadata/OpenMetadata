@@ -13,7 +13,7 @@
 
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
-import { ScheduleIntervalProps } from '../addIngestion.interface';
+import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 import ScheduleInterval from './ScheduleInterval';
 
 jest.mock('../../common/CronEditor/CronEditor', () => {
@@ -22,7 +22,7 @@ jest.mock('../../common/CronEditor/CronEditor', () => {
 
 const mockScheduleIntervalProps: ScheduleIntervalProps = {
   status: 'initial',
-  repeatFrequency: '',
+  scheduleInterval: '',
   onBack: jest.fn(),
   onDeploy: jest.fn(),
   submitButtonLabel: 'Add',

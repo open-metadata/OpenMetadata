@@ -89,9 +89,10 @@ const EntityVersionTimeLine: React.FC<Props> = ({
             ) && versionType === 'all'
           );
         };
+        const versionText = `v${parseFloat(currV?.version).toFixed(1)}`;
 
         return (
-          <Fragment key={i}>
+          <Fragment key={currV.version}>
             {i === 0 ? (
               <div className="timeline-content cursor-pointer">
                 <div className="timeline-wrapper">
@@ -113,7 +114,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                       major: majorVersionChecks(),
                     }
                   )}
-                  data-testid="select-version"
+                  data-testid={`version-selector-${versionText}`}
                 />
                 <span className={classNames('timeline-line')} />
               </div>
@@ -122,7 +123,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   className={classNames('d-flex font-medium', {
                     'text-primary': toString(currV?.version) === currentVersion,
                   })}>
-                  <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
+                  <span>{versionText}</span>
                   {majorVersionChecks() ? (
                     <span
                       className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
