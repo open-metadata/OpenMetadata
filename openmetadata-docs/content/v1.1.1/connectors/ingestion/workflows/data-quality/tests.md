@@ -235,9 +235,9 @@ Validate a list of table column name matches an expected set of columns
 
 | Condition                                                                                                                                                | Status    |
 |----------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| [`ordered=False`] `columnNames` **matches** the list of column names in the table **regarless of the order**                                             | Success ✅ |
+| [`ordered=False`] `columnNames` **matches** the list of column names in the table **regardless of the order**                                             | Success ✅ |
 | [`ordered=True`] `columnNames` **matches** the list of column names in the table **in the corresponding order** (e.g. `["a","b"] == ["a","b"]`           | Success ✅ |
-| [`ordered=fALSE`] `columnNames` **does no match** the list of column names in the table **regarless of the order**                                       | Failed ❌  |
+| [`ordered=fALSE`] `columnNames` **does no match** the list of column names in the table **regardless of the order**                                       | Failed ❌  |
 | [`ordered=True`] `columnNames` **does no match** the list of column names in the table **and/or the corresponding order** (e.g. `["a","b"] != ["b","a"]` | Failed ❌  |
 
 **YAML Config**
@@ -332,7 +332,7 @@ Validate the number of rows inserted for the defined period is between the expec
 
 {% note %}
 
-The Table Row Inserted Count To Be Between cannot be executed against tables that have configured a partition in OpenMetadata. The logic of the test performed will be similar to executiong a Table Row Count to be Between test against a table with a partition configured.
+The Table Row Inserted Count To Be Between cannot be executed against tables that have configured a partition in OpenMetadata. The logic of the test performed will be similar to executing a Table Row Count to be Between test against a table with a partition configured.
 
 {% /note %}
 

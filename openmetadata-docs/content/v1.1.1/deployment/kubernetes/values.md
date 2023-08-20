@@ -177,60 +177,60 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 
 {%table%}
 
-| Key | Type | Default |
-|-----|------|---------|
-| affinity | object | `{}` |
-| commonLabels | object | `{}` |
-| extraEnvs | Extra [environment variables][] which will be appended to the `env:` definition for the container | `[]` |
-| extraInitContainers | Templatable string of additional `initContainers` to be passed to `tpl` function | `[]` |
-| extraVolumes | Templatable string of additional `volumes` to be passed to the `tpl` function | `[]` |
-| extraVolumeMounts | Templatable string of additional `volumeMounts` to be passed to the `tpl` function | `[]` |
-| fullnameOverride | string | `"openmetadata"` |
-| image.pullPolicy | string | `"Always"` |
-| image.repository | string | `"docker.getcollate.io/openmetadata/server"` |
-| image.tag | string | `1.1.1` |
-| imagePullSecrets | list | `[]` |
-| ingress.annotations | object | `{}` |
-| ingress.className | string | `""` |
-| ingress.enabled | bool | `false` |
-| ingress.hosts[0].host | string | `"open-metadata.local"` |
-| ingress.hosts[0].paths[0].path | string | `"/"` |
-| ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |
-| ingress.tls | list | `[]` |
-| livenessProbe.initialDelaySeconds | int | `60` |
-| livenessProbe.periodSeconds | int | `30` |
-| livenessProbe.failureThreshold | int | `5` |
-| livenessProbe.httpGet.path | string | `/healthcheck` |
-| livenessProbe.httpGet.port | string | `http-admin` |
-| nameOverride | string | `""` |
-| nodeSelector | object | `{}` |
-| podAnnotations | object | `{}` |
-| podSecurityContext | object | `{}` |
-| readinessProbe.initialDelaySeconds | int | `60` |
-| readinessProbe.periodSeconds | int | `30` |
-| readinessProbe.failureThreshold | int | `5` |
-| readinessProbe.httpGet.path | string | `/` |
-| readinessProbe.httpGet.port | string | `http` |
-| replicaCount | int | `1` |
-| resources | object | `{}` |
-| securityContext | object | `{}` |
-| service.adminPort | string | `8586` |
-| service.annotations | object | `{}` |
-| service.port | int | `8585` |
-| service.type | string | `"ClusterIP"` |
-| serviceAccount.annotations | object | `{}` |
-| serviceAccount.create | bool | `true` |
-| serviceAccount.name | string | `nil` |
-| serviceMonitor.annotations | object | `{}` |
-| serviceMonitor.enabled | bool | `false` |
-| serviceMonitor.interval | string | `30s` |
-| sidecars | list | `[]` |
-| startupProbe.periodSeconds | int | `60` |
-| startupProbe.failureThreshold | int | `5` |
-| startupProbe.httpGet.path | string | `/healthcheck` |
-| startupProbe.httpGet.port | string | `http-admin` |
-| startupProbe.successThreshold | int | `1` |
-| tolerations | list | `[]` |
-| networkPolicy.enabled | bool |`false` |
+| Key                                | Type                                                                                              | Default                                      |
+|------------------------------------|---------------------------------------------------------------------------------------------------|----------------------------------------------|
+| affinity                           | object                                                                                            | `{}`                                         |
+| commonLabels                       | object                                                                                            | `{}`                                         |
+| extraEnvs                          | Extra [environment variables][] which will be appended to the `env:` definition for the container | `[]`                                         |
+| extraInitContainers                | Templatable string of additional `initContainers` to be passed to `tpl` function                  | `[]`                                         |
+| extraVolumes                       | Templatable string of additional `volumes` to be passed to the `tpl` function                     | `[]`                                         |
+| extraVolumeMounts                  | Templatable string of additional `volumeMounts` to be passed to the `tpl` function                | `[]`                                         |
+| fullnameOverride                   | string                                                                                            | `"openmetadata"`                             |
+| image.pullPolicy                   | string                                                                                            | `"Always"`                                   |
+| image.repository                   | string                                                                                            | `"docker.getcollate.io/openmetadata/server"` |
+| image.tag                          | string                                                                                            | `1.1.1`                                      |
+| imagePullSecrets                   | list                                                                                              | `[]`                                         |
+| ingress.annotations                | object                                                                                            | `{}`                                         |
+| ingress.className                  | string                                                                                            | `""`                                         |
+| ingress.enabled                    | bool                                                                                              | `false`                                      |
+| ingress.hosts[0].host              | string                                                                                            | `"open-metadata.local"`                      |
+| ingress.hosts[0].paths[0].path     | string                                                                                            | `"/"`                                        |
+| ingress.hosts[0].paths[0].pathType | string                                                                                            | `"ImplementationSpecific"`                   |
+| ingress.tls                        | list                                                                                              | `[]`                                         |
+| livenessProbe.initialDelaySeconds  | int                                                                                               | `60`                                         |
+| livenessProbe.periodSeconds        | int                                                                                               | `30`                                         |
+| livenessProbe.failureThreshold     | int                                                                                               | `5`                                          |
+| livenessProbe.httpGet.path         | string                                                                                            | `/healthcheck`                               |
+| livenessProbe.httpGet.port         | string                                                                                            | `http-admin`                                 |
+| nameOverride                       | string                                                                                            | `""`                                         |
+| nodeSelector                       | object                                                                                            | `{}`                                         |
+| podAnnotations                     | object                                                                                            | `{}`                                         |
+| podSecurityContext                 | object                                                                                            | `{}`                                         |
+| readinessProbe.initialDelaySeconds | int                                                                                               | `60`                                         |
+| readinessProbe.periodSeconds       | int                                                                                               | `30`                                         |
+| readinessProbe.failureThreshold    | int                                                                                               | `5`                                          |
+| readinessProbe.httpGet.path        | string                                                                                            | `/`                                          |
+| readinessProbe.httpGet.port        | string                                                                                            | `http`                                       |
+| replicaCount                       | int                                                                                               | `1`                                          |
+| resources                          | object                                                                                            | `{}`                                         |
+| securityContext                    | object                                                                                            | `{}`                                         |
+| service.adminPort                  | string                                                                                            | `8586`                                       |
+| service.annotations                | object                                                                                            | `{}`                                         |
+| service.port                       | int                                                                                               | `8585`                                       |
+| service.type                       | string                                                                                            | `"ClusterIP"`                                |
+| serviceAccount.annotations         | object                                                                                            | `{}`                                         |
+| serviceAccount.create              | bool                                                                                              | `true`                                       |
+| serviceAccount.name                | string                                                                                            | `nil`                                        |
+| serviceMonitor.annotations         | object                                                                                            | `{}`                                         |
+| serviceMonitor.enabled             | bool                                                                                              | `false`                                      |
+| serviceMonitor.interval            | string                                                                                            | `30s`                                        |
+| sidecars                           | list                                                                                              | `[]`                                         |
+| startupProbe.periodSeconds         | int                                                                                               | `60`                                         |
+| startupProbe.failureThreshold      | int                                                                                               | `5`                                          |
+| startupProbe.httpGet.path          | string                                                                                            | `/healthcheck`                               |
+| startupProbe.httpGet.port          | string                                                                                            | `http-admin`                                 |
+| startupProbe.successThreshold      | int                                                                                               | `1`                                          |
+| tolerations                        | list                                                                                              | `[]`                                         |
+| networkPolicy.enabled              | bool                                                                                              | `false`                                      |
 
 {%/table%}

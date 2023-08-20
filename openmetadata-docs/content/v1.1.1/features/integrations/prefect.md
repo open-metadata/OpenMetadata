@@ -177,10 +177,10 @@ Apart from Prefect, `prefect-openmetadata` comes prepackaged with the `openmetad
 ### 5. Prepare your metadata ingestion spec
 If you followed the first step of this tutorial, then you cloned the `prefect-openmetadata` repository. This repository contains a directory **example-data** which you can use to ingest sample data into your `OpenMetadata` backend using Prefect.
 
-[This documentation page](https://prefecthq.github.io/prefect-openmetadata/run_ingestion_flow/) contains an example configuration you can use in your flow to ingest that sample data.
+[This documentation page](https://prefetchq.github.io/prefect-openmetadata/run_ingestion_flow/) contains an example configuration you can use in your flow to ingest that sample data.
 
 ### 6. Run ingestion workflow locally
-Now you can paste the config from above as a string into your flow definition and run it. [This documentation page](https://prefecthq.github.io/prefect-openmetadata/run_ingestion_flow/) explains in detail how that works.
+Now you can paste the config from above as a string into your flow definition and run it. [This documentation page](https://prefetchq.github.io/prefect-openmetadata/run_ingestion_flow/) explains in detail how that works.
 In short, we only have to:
 
 1. Import the flow function,
@@ -206,7 +206,7 @@ If you navigate to the URL [http://localhost:4200](http://localhost:4200), you�
 ### 7. Schedule and deploy your metadata ingestion flows with Prefect
 Ingesting your data via manually executed scripts is great for initial exploration, but in order to build a reliable metadata platform, you need to run those workflows on a regular cadence. That’s where you can leverage Prefect [schedules](https://orion-docs.prefect.io/concepts/schedules/) and [deployments](https://orion-docs.prefect.io/concepts/deployments/).
 
-[This documentation page](https://prefecthq.github.io/prefect-openmetadata/schedule_ingestion_flow/) demonstrates how you can configure a DeploymentSpec to deploy your flow and ensure that your metadata gets refreshed on schedule.
+[This documentation page](https://prefetchq.github.io/prefect-openmetadata/schedule_ingestion_flow/) demonstrates how you can configure a DeploymentSpec to deploy your flow and ensure that your metadata gets refreshed on schedule.
 
 ### 8. Deploy the execution layer to run your flows
 So far, we’ve looked at how you can **create** and **schedule** your workflow; but where does this code actually run? This is a place where the concepts of [storage](https://orion-docs.prefect.io/concepts/storage/), [work queues, and agents](https://orion-docs.prefect.io/concepts/work-queues/) become important. But don’t worry - all you need to know to get started is running one CLI command for each of those concepts.

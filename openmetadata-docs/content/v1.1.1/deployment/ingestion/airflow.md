@@ -94,7 +94,7 @@ either you use the `PythonVirtualenvOperator`, or read below on how to run the i
 ## Docker Operator
 
 From version 0.12.1 we are shipping a new image `openmetadata/ingestion-base`, which only contains the `openmetadata-ingestion`
-package and can then be used to handle ingestions in an isolated environment.
+package and can then be used to handle ingestion in an isolated environment.
 
 This is useful to prepare DAGs without any installation required on the environment, although it needs for the host
 to have access to the Docker commands.

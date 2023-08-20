@@ -351,7 +351,6 @@ This is a sample config for Elasticsearch Reindex:
 
 ```yaml
 source:
-source:
   type: metadata_elasticsearch
   serviceName: openMetadata
   serviceConnection:

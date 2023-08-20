@@ -365,7 +365,7 @@ user = metadata.create_or_update(
 )
 ```
 
-Update our instace of `create_table` to add the `owner` field (we need to use the `Create` class as we'll run a `PUT`), and update the Entity:
+Update our instance  of `create_table` to add the `owner` field (we need to use the `Create` class as we'll run a `PUT`), and update the Entity:
 
 ```python
 create_table.owner = EntityReference(id=user.id, type="user")

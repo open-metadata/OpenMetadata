@@ -29,7 +29,7 @@ can find that [here](/main-concepts/high-level-design).
 ## System Context
 
 Everything in OpenMetadata is centralized and managed via the API. Then, the Workflow's lifecycle is also fully managed
-via the OpenMetadata server APIs. Morover, the `IngestionPipeline` Entity is also defined in a JSON Schema that you
+via the OpenMetadata server APIs. More over, the `IngestionPipeline` Entity is also defined in a JSON Schema that you
 can find [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json).
 
 {% image

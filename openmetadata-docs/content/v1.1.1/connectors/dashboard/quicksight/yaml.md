@@ -32,16 +32,16 @@ To deploy OpenMetadata, check the Deployment guides.
 AWS QuickSight Permissions
 To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
 
-| # | AWS QuickSight Permission |
-| :---------- | :---------- |
-| 1 | DescribeDashboard |
-| 2 | ListAnalyses |
-| 3 | ListDataSources |
-| 4 | ListDashboards |
-| 5 | DescribeAnalysis |
-| 6 | DescribeDataSet |
-| 7 | ListDataSets |
-| 8 | DescribeDataSource |
+| #   | AWS QuickSight Permission |
+|:----|:--------------------------|
+| 1   | DescribeDashboard         |
+| 2   | ListAnalyses              |
+| 3   | ListDataSources           |
+| 4   | ListDashboards            |
+| 5   | DescribeAnalysis          |
+| 6   | DescribeDataSet           |
+| 7   | ListDataSets              |
+| 8   | DescribeDataSource        |
 
 Here is how to add Permissions to an IAM user.
 
