@@ -38,13 +38,13 @@ function SummaryListItem({
             data-testid="title-container"
             span={24}>
             {isColumnsData &&
-              prepareConstraintIcon(
-                entityDetails.name,
-                entityDetails.columnConstraint,
-                entityDetails.tableConstraints,
-                'm-r-xss',
-                '14px'
-              )}
+              prepareConstraintIcon({
+                columnName: entityDetails.name,
+                columnConstraint: entityDetails.columnConstraint,
+                tableConstraints: entityDetails.tableConstraints,
+                iconClassName: 'm-r-xss',
+                iconWidth: '14px',
+              })}
             {entityDetails.title}
 
             {entityDetails.type && (
