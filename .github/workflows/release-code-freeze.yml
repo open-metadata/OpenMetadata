@@ -26,7 +26,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-    PAT: ${{ secrets.YOUR_PERSONAL_ACCESS_TOKEN }}
+    PAT: ${{ secrets.PAT }}
     steps:
       - uses: actions/checkout@v3
 
