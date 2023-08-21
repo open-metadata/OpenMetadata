@@ -89,9 +89,9 @@
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
-    "tableProperties": {
-      "description": "Field to maintain the properties of table, for example. compression, file format etc.",
-      "$ref": "../../entity/data/table.json#/definitions/tableProperties"
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "$ref": "../../entity/data/table.json#/definitions/fileFormat"
     }
   },
   "required": ["name", "columns", "databaseSchema"],

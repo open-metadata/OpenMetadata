@@ -861,12 +861,10 @@
       ],
       "additionalProperties": false
     },
-    "tableProperties": {
-      "description": "Field to maintain the properties of table, for example. compression, file format etc.",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "type": "string",
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
     }
   },
   "properties": {
@@ -1031,9 +1029,9 @@
       "description": "List of of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "tableProperties": {
-      "description": "Field to maintain the properties of table, for example. compression, file format etc.",
-      "$ref": "#/definitions/tableProperties"
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "$ref" : "#/definitions/fileFormat"
     }
   },
   "required": [

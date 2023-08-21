@@ -371,10 +371,6 @@ class DatalakeSource(DatabaseServiceSource):
                     bucket_name=schema_name,
                 ),
             )
-            file_format = get_file_format_type(table_name)
-            table_properties = None
-            if file_format:
-                table_properties = {"fileFormat": file_format}
 
             # If no data_frame (due to unsupported type), ignore
             columns = self.get_columns(data_frame[0]) if data_frame else None
@@ -385,7 +381,7 @@ class DatalakeSource(DatabaseServiceSource):
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
-                    tableProperties=table_properties,
+                    fileFormat=get_file_format_type(table_name),
                 )
                 yield table_request
                 self.register_record(table_request=table_request)

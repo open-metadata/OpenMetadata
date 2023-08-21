@@ -979,7 +979,6 @@ public class TableRepository extends EntityRepository<Table> {
       DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateConstraints(origTable, updatedTable);
-      updateTableProperties(origTable, updatedTable);
       updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
@@ -998,10 +997,6 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange(
           "tableConstraints", origConstraints, updatedConstraints, added, deleted, EntityUtil.tableConstraintMatch);
-    }
-
-    public void updateTableProperties(Table original, Table updated) {
-      recordChange("tableProperties", original.getTableProperties(), updated.getTableProperties());
     }
   }
 }
