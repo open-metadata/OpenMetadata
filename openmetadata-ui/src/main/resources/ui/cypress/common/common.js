@@ -169,7 +169,7 @@ export const handleIngestionRetry = (
   checkSuccessState();
 };
 
-export const scheduleIngestion = () => {
+export const scheduleIngestion = (hasRetryCount = true) => {
   interceptURL(
     'POST',
     '/api/v1/services/ingestionPipelines',
@@ -189,7 +189,9 @@ export const scheduleIngestion = () => {
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
 
-  cy.get('#retries').scrollIntoView().clear().type(RETRIES_COUNT);
+  if (hasRetryCount) {
+    cy.get('#retries').scrollIntoView().clear().type(RETRIES_COUNT);
+  }
 
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
