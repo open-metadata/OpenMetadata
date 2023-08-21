@@ -247,3 +247,62 @@ generate-schema-docs:  ## Generates markdown files for documenting the JSON Sche
 	python -m pip install "jsonschema2md"
 	python scripts/generate_docs_schemas.py
 	
+
+.PHONY: update_all
+
+update_all: ## To update all the release related files
+	@$(MAKE) update_maven
+	@$(MAKE) update_github_action_paths 
+	@$(MAKE) update_python_release_paths
+	@$(MAKE) update_dockerfile_version
+	@$(MAKE) update_ingestion_dockerfile_version
+	@echo "All updates completed!"
+
+.PHONY: update_maven
+update_maven: #Update the common and pom.xml maven version
+	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."
+	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
+
+.PHONY: update_github_action_paths
+update_github_action_paths: ## To update the github action ci docker files
+	@file_paths="../.github/workflows/docker-openmetadata-db.yml \
+                ../.github/workflows/docker-openmetadata-ingestion-base.yml \
+                ../.github/workflows/docker-openmetadata-ingestion.yml \
+                ../.github/workflows/docker-openmetadata-postgres.yml \
+                ../.github/workflows/docker-openmetadata-server.yml"; \
+	echo "Updating docker github action release version to $(RELEASE_VERSION)... ; \
+	for file_path in $$file_paths; do \
+	    python3 update_version.py 1 $$file_path -s $(RELEASE_VERSION) ; \
+	done
+
+.PHONY: update_python_release_paths
+update_python_release_paths: ## To update all the python setup files version
+	@file_paths="../ingestion/setup.py ../openmetadata-airflow-apis/setup.py"; \
+	echo "Updating python setup release version to $(RELEASE_VERSION)... ; \
+	for file_path in $$file_paths; do \
+	    python3 update_version.py 2 $$file_path -s $(RELEASE_VERSION) ; \
+	done
+
+.PHONY: update_dockerfile_version
+update_dockerfile_version: ## To update the dockerfiles version
+	@file_paths="../docker/docker-compose-ingestion/docker-compose-ingestion-postgres.yml \
+                ../docker/docker-compose-ingestion/docker-compose-ingestion.yml \
+                ../docker/docker-compose-openmetadata/docker-compose-openmetadata-postgres.yml \
+                ../docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
+                ../docker/docker-compose-quickstart/Dockerfile \
+                ../docker/docker-compose-quickstart/docker-compose-postgres.yml \
+                ../docker/docker-compose-quickstart/docker-compose.yml"; \
+	echo "Updating dockerfile release version in docker repo to $(RELEASE_VERSION)... ; \
+	for file_path in $$file_paths; do \
+	    python3 update_version.py 3 $$file_path -s $(RELEASE_VERSION) ; \
+	done
+	
+
+.PHONY: update_ingestion_dockerfile_version
+update_ingestion_dockerfile_version: ## To update the ingestion dockerfiles version
+	@file_paths="../ingestion/Dockerfile" \
+    			../ingestion/operators/docker/Dockerfile"
+	echo "Updating dockerfile ingestion release version to $(RELEASE_VERSION)... ; \
+	for file_path in $$file_paths; do \
+	    python3 update_version.py 4 $$file_path -s $(RELEASE_VERSION) ; \
+	done
