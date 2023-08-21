@@ -5,7 +5,7 @@ slug: /deployment/docker
 
 # Docker Deployment
 
-This guide will help you setup the OpenMetadata Application using Docker Deployment.
+This guide will help you set up the OpenMetadata Application using Docker Deployment.
 Before starting with the deployment make sure you follow all the below Prerequisites.
 
 ## Docker Deployment Architecture
@@ -15,7 +15,7 @@ Before starting with the deployment make sure you follow all the below Prerequis
 
 ### Configure OpenMetadata to use External Database and Search Engine
 
-For Production Deployment using Docker, we recommend to bring your own Databases and ElasticSearch Engine and not rely on quickstart packages.
+For Production Deployment using Docker, we recommend bringing your own Databases and ElasticSearch Engine and not rely on quickstart packages.
 
 
 {% partial file="/v1.1.1/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
@@ -86,9 +86,9 @@ Create a new directory for OpenMetadata and navigate into that directory.
 mkdir openmetadata-docker && cd openmetadata-docker
 ```
 
-### 2. Download Docker Compose Files from Github Releases
+### 2. Download Docker Compose Files from GitHub Releases
 
-Download the Docker Compose files from [Latest Github Releases](https://github.com/open-metadata/OpenMetadata/releases/latest). 
+Download the Docker Compose files from the [Latest GitHub Releases](https://github.com/open-metadata/OpenMetadata/releases/latest). 
 
 The Docker compose file name will be `docker-compose-openmetadata-server.yml`.
 
@@ -218,7 +218,7 @@ You may put one or more OpenMetadata instances behind a load balancer for revers
 
 ### Nginx
 
-To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the http context of your Nginx configuration file for each OpenMetadata instance.
+To use OpenMetadata behind Nginx reverse proxy, add an entry resembling the following the http context of your Nginx configuration file for each OpenMetadata instance.
 
 ```
 server {
@@ -238,14 +238,14 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or greater
-- Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
+- Amazon OpenSearch (ElasticSearch) engine version up to 7.10 or Amazon OpenSearch engine version up to 1.3
 - Amazon RDS (PostgreSQL) engine version 12 or greater
 
 Note:-
     When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,
 as you can see in the ElasticSearch configuration example.
 
-For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
+For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata Docker Compose backed systems to connect with Database and ElasticSearch.
 

@@ -6,7 +6,7 @@ slug: /connectors/ingestion/workflows/metadata/filter-patterns
 # Metadata Ingestion Filter Patterns
 
 The ingestion filter patterns are very useful when you have a lot of metadata available in your data source but 
-some metadata might not be useful or relevent to produce any insights or discover data for ex. you might want to
+some metadata might not be useful or relevant to produce any insights or discover data for ex. you might want to
 filter out the log tables while ingesting metadata.
 
 Configuring these metadata filters with OpenMetadata is very easy, which uses regex for matching and filtering the metadata. 

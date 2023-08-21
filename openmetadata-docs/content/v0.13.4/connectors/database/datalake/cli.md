@@ -124,7 +124,7 @@ The workflow is modeled around the following JSON Schema.
 * **awsAccessKeyId**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
 * **awsRegion**: Specify the region in which your DynamoDB is located. This setting is required even if you have configured a local AWS profile.
-* **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+* **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 {% /codeInfo %}
 
@@ -141,7 +141,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the they support regex as include or exclude. E.g.,
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the they support regex as include or exclude. E.g.,
 
 {% /codeInfo %}
 
@@ -274,7 +274,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the they support regex as include or exclude. E.g.,
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the they support regex as include or exclude. E.g.,
 
 {% /codeInfo %}
 
@@ -405,7 +405,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the they support regex as include or exclude. E.g.,
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the they support regex as include or exclude. E.g.,
 
 {% /codeInfo %}
 

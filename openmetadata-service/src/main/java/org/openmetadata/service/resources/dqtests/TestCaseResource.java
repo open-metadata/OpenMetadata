@@ -39,7 +39,6 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -640,32 +639,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
-  }
-
-  @GET
-  @Path("/executionSummary")
-  @Operation(
-      operationId = "getExecutionSummaryOfTestCases",
-      summary = "Get the execution summary of test cases",
-      description = "Get the execution summary of test cases.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Tests Execution Summary",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
-      })
-  public TestSummary getTestsExecutionSummary(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "get summary for a specific test suite",
-              schema = @Schema(type = "String", format = "uuid"))
-          @QueryParam("testSuiteId")
-          UUID testSuiteId) {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getTestSummary(testSuiteId);
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {

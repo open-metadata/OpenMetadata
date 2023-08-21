@@ -8,7 +8,7 @@ slug: /connectors/database/redshift/yaml
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/redshift/yaml
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
@@ -99,7 +99,7 @@ This is a sample config for Redshift:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Snoflake. It should have enough privileges to read all the metadata.
+**username**: Specify the User to connect to Snowflake. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
 
@@ -141,7 +141,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

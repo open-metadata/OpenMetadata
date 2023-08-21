@@ -23,7 +23,7 @@ This document will explain how to create an Okta app and configure it for OAuth.
 
 ### Step 1: Create an Okta Account
 - Go to [Create Okta Account](https://developer.okta.com/signup/).
-- Provide the required input and click on Sign Up.
+- Provide the required inputs and click on Sign Up.
 - Else you can continue with Google or GitHub.
 
 ### Step 2: Create the OIDC App Integration.

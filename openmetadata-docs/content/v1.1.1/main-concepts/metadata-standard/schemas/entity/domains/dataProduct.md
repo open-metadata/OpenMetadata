@@ -20,7 +20,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/domains/dataproduct
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`owner`**: Owner of this Data Product. Refer to *../../type/entityReference.json*.
 - **`experts`**: List of of users who are experts for this Data Product. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*. Default: `None`.
-- **`domain`**: Domain or sub-domain to which this Data Product belongs to. Refer to *../../type/entityReference.json*.
+- **`domain`**: Domain or subdomain to which this Data Product belongs to. Refer to *../../type/entityReference.json*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 
 

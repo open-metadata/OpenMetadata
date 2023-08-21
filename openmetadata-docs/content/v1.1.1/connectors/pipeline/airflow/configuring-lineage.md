@@ -77,7 +77,7 @@ What it's important to consider here is that when we are ingesting Airflow linea
 Table A (node) -> DAG (edge) -> Table B (node)
 ```
 
-Where tables are nodes and DAGs (Pipelines) are considered edges. This means that the correct way of setting this
+Where tables are nodes and DAGs (Pipelines) are considered edges. This means that the correct way of setting these
 parameters is by making sure that we are informing both `inlets` and `outlets`, so that we have the nodes to build
 the relationship.
 
@@ -97,5 +97,5 @@ and
 Table X (node) -> DAG (edge) -> Table Y (node)
 ```
 
-It does not matter in which task of the DAG these inlet/outlet information is specified. During the ingestion process we
+It does not matter in which task of the DAG these inlets and outlets information is specified. During the ingestion process we
 group all these details at the DAG level.
