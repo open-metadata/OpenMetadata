@@ -111,8 +111,8 @@ Now run/debug the application.
 ## Troubleshooting
 - If you see blank page at [http://localhost:8585](http://localhost:8585), please check the logs at logs/openmetadata.log. You might be encountering one of the following errors:
   - `connection refused` or `unreachable` - please confirm that MySQL and ES are reachable outside of docker by running `docker ps` and checking that ports 3306 and 9200 are listening on 0.0.0.0
-    - If ElasticSearch in Docker on Mac is crashing, try changing Preferences -> Resources -> Memory to 4GB
-    - If ElasticSearch logs show `high disk watermark [90%] exceeded`, try changing Preferences -> Resources -> Disk Image Size to at least 16GB
+    - If ElasticSearch in Docker on Mac is crashing, try changing Preferences -> Resources -> Memory to 4 GB
+    - If ElasticSearch logs show `high disk watermark [90%] exceeded`, try changing Preferences -> Resources -> Disk Image Size to at least 16 GB
   - `Public Key Retrieval is not allowed` - verify that the JDBC connect URL in `conf/openmetadata.yaml` is configured with the parameter `allowPublicKeyRetrieval=true `
   - Browser console shows javascript errors, try doing a [clean build](/developers/contribute/build-code-and-run-tests/openmetadata-server#create-a-distribution-packaging). Some npm packages may not have been built properly.
 

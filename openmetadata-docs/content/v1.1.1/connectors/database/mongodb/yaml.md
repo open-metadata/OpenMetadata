@@ -8,19 +8,19 @@ slug: /connectors/database/mongodb/yaml
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | {% icon iconName="cross" /%}          |
+| Lineage            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}          |
+|:-------------|:-----------------------------|
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 
@@ -118,7 +118,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

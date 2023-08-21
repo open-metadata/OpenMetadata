@@ -25,7 +25,8 @@ import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
-import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
+import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
@@ -33,8 +34,11 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
-import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
+import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
+import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -116,39 +120,50 @@ export const getTagsWithoutTier = (
   );
 };
 
-export const getConstraintIcon = (
+export const getConstraintIcon = ({
   constraint = '',
   className = '',
   width = '16px',
-  isConstraintUpdated?: boolean
-) => {
-  let title: string, icon: SvgComponent;
+  isConstraintAdded,
+  isConstraintDeleted,
+}: {
+  constraint?: string;
+  className?: string;
+  width?: string;
+  isConstraintAdded?: boolean;
+  isConstraintDeleted?: boolean;
+}) => {
+  let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = t('label.primary-key');
-        icon = IconKey;
+        icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
+        dataTestId = 'primary-key';
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = t('label.unique');
-        icon = IconUnique;
+        icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
+        dataTestId = 'unique';
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = t('label.not-null');
-        icon = IconNotNull;
+        icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
+        dataTestId = 'not-null';
       }
 
       break;
     case ConstraintTypes.FOREIGN_KEY:
       {
         title = t('label.foreign-key');
-        icon = IconForeignKey;
+        icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
+        dataTestId = 'foreign-key';
       }
 
       break;
@@ -164,8 +179,12 @@ export const getConstraintIcon = (
       trigger="hover">
       <Icon
         alt={title}
-        className={classNames({ 'diff-added': isConstraintUpdated })}
+        className={classNames({
+          'diff-added': isConstraintAdded,
+          'diff-removed': isConstraintDeleted,
+        })}
         component={icon}
+        data-testid={`constraint-icon-${dataTestId}`}
         style={{ fontSize: width }}
       />
     </Tooltip>
@@ -427,35 +446,53 @@ export function getTableExpandableConfig<T>(
   return expandableConfig;
 }
 
-export const prepareConstraintIcon = (
-  columnName: string,
-  columnConstraint?: string,
-  tableConstraints?: TableConstraint[],
-  iconClassName?: string,
-  iconWidth?: string,
-  isConstraintUpdated?: boolean
-) => {
-  // get the table constraint for column
-  const tableConstraint = tableConstraints?.find((constraint) =>
+export const prepareConstraintIcon = ({
+  columnName,
+  columnConstraint,
+  tableConstraints,
+  iconClassName,
+  iconWidth,
+  isColumnConstraintAdded,
+  isColumnConstraintDeleted,
+  isTableConstraintAdded,
+  isTableConstraintDeleted,
+}: {
+  columnName: string;
+  columnConstraint?: string;
+  tableConstraints?: TableConstraint[];
+  iconClassName?: string;
+  iconWidth?: string;
+  isColumnConstraintAdded?: boolean;
+  isColumnConstraintDeleted?: boolean;
+  isTableConstraintAdded?: boolean;
+  isTableConstraintDeleted?: boolean;
+}) => {
+  // get the table constraints for column
+  const filteredTableConstraints = tableConstraints?.filter((constraint) =>
     constraint.columns?.includes(columnName)
   );
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(
-        columnConstraint,
-        iconClassName || 'm-r-xs',
-        iconWidth,
-        isConstraintUpdated
-      )
+    ? getConstraintIcon({
+        constraint: columnConstraint,
+        className: iconClassName || 'm-r-xs',
+        width: iconWidth,
+        isConstraintAdded: isColumnConstraintAdded,
+        isConstraintDeleted: isColumnConstraintDeleted,
+      })
     : null;
 
   // prepare table constraint element
-  const tableConstraintEl = tableConstraint
-    ? getConstraintIcon(
-        tableConstraint.constraintType,
-        iconClassName || 'm-r-xs',
-        iconWidth
+  const tableConstraintEl = filteredTableConstraints
+    ? filteredTableConstraints.map((tableConstraint) =>
+        getConstraintIcon({
+          constraint: tableConstraint.constraintType,
+          className: iconClassName || 'm-r-xs',
+          width: iconWidth,
+          isConstraintAdded: isTableConstraintAdded,
+          isConstraintDeleted: isTableConstraintDeleted,
+        })
       )
     : null;
 

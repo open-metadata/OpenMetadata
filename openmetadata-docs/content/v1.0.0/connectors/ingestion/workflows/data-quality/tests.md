@@ -235,9 +235,9 @@ Validate a list of table column name matches an expected set of columns
 
 | Condition      | Status |
 | ----------- | ----------- |
-|[`ordered=False`] `columnNames` **matches** the list of column names in the table **regarless of the order**|Success ✅|
+|[`ordered=False`] `columnNames` **matches** the list of column names in the table **regardless of the order**|Success ✅|
 |[`ordered=True`] `columnNames` **matches** the list of column names in the table **in the corresponding order** (e.g. `["a","b"] == ["a","b"]`| Success ✅|
-|[`ordered=fALSE`] `columnNames` **does no match** the list of column names in the table **regarless of the order**|Failed ❌|
+|[`ordered=fALSE`] `columnNames` **does no match** the list of column names in the table **regardless of the order**|Failed ❌|
 |[`ordered=True`] `columnNames` **does no match** the list of column names in the table **and/or the corresponding order** (e.g. `["a","b"] != ["b","a"]`|Failed ❌|
 
 **YAML Config**

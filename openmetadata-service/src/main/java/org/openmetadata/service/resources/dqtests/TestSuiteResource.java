@@ -38,6 +38,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -250,6 +251,33 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @PathParam("version")
           String version) {
     return super.getVersionInternal(securityContext, id, version);
+  }
+
+  @GET
+  @Path("/executionSummary")
+  @Operation(
+      operationId = "getExecutionSummaryOfTestSuites",
+      summary = "Get the execution summary of test suites",
+      description = "Get the execution summary of test suites.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tests Execution Summary",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
+      })
+  public TestSummary getTestsExecutionSummary(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "get summary for a specific test suite",
+              schema = @Schema(type = "String", format = "uuid"))
+          @QueryParam("testSuiteId")
+          UUID testSuiteId) {
+    ResourceContext resourceContext;
+    resourceContext = getResourceContext();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getTestSummary(testSuiteId);
   }
 
   @POST

@@ -40,7 +40,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`tableProfilerConfig`**: Table Profiler Config to include or exclude columns from profiling. Refer to *#/definitions/tableProfilerConfig*.
 - **`profile`**: Latest Data profile for a table. Refer to *#/definitions/tableProfile*. Default: `None`.
 - **`testSuite`**: Executable test suite associated with this table. Refer to *../../tests/testSuite.json*.
-- **`dataModel`**: This captures information about how the table is modeled. Currently only DBT model is supported. Refer to *#/definitions/dataModel*.
+- **`dataModel`**: This captures information about how the table is modeled. Currently, only DBT model is supported. Refer to *#/definitions/dataModel*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`retentionPeriod`**: Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists. Refer to *../../type/basic.json#/definitions/duration*.
@@ -116,9 +116,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`valuesCount`** *(number)*: Total count of the values in this column.
   - **`valuesPercentage`** *(number)*: Percentage of values in this column with respect to row count.
   - **`validCount`** *(number)*: Total count of valid values in this column.
-  - **`duplicateCount`** *(number)*: No.of Rows that contain duplicates in a column.
-  - **`nullCount`** *(number)*: No.of null values in a column.
-  - **`nullProportion`** *(number)*: No.of null value proportion in columns.
+  - **`duplicateCount`** *(number)*: Number of Rows that contain duplicates in a column.
+  - **`nullCount`** *(number)*: Number of null values in a column.
+  - **`nullProportion`** *(number)*: Number of null value proportion in columns.
   - **`missingPercentage`** *(number)*: Missing Percentage is calculated by taking percentage of validCount/valuesCount.
   - **`missingCount`** *(number)*: Missing count is calculated by subtracting valuesCount - validCount.
   - **`uniqueCount`** *(number)*: No. of unique values in the column.
@@ -137,7 +137,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`firstQuartile`** *(number)*: First quartile of a column.
   - **`thirdQuartile`** *(number)*: First quartile of a column.
   - **`interQuartileRange`** *(number)*: Inter quartile range of a column.
-  - **`nonParametricSkew`** *(number)*: Non parametric skew of a column.
+  - **`nonParametricSkew`** *(number)*: Non-parametric skew of a column.
   - **`histogram`**: Histogram of a column. Cannot contain additional properties.
     - **`boundaries`** *(array)*: Boundaries of Histogram.
     - **`frequencies`** *(array)*: Frequencies of Histogram.
@@ -174,12 +174,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`timestamp`**: Timestamp on which profile is taken. Refer to *../../type/basic.json#/definitions/timestamp*.
   - **`profileSample`** *(number)*: Percentage of data or no. of rows we want to execute the profiler and tests on. Default: `None`.
   - **`profileSampleType`**: Refer to *#/definitions/profileSampleType*.
-  - **`columnCount`** *(number)*: No.of columns in the table.
-  - **`rowCount`** *(number)*: No.of rows in the table. This is always executed on the whole table.
+  - **`columnCount`** *(number)*: Number of columns in the table.
+  - **`rowCount`** *(number)*: Number of rows in the table. This is always executed on the whole table.
   - **`sizeInByte`** *(number)*: Table size in GB.
   - **`createDateTime`** *(string)*: Table creation time.
 - **`modelType`**: Must be one of: `['DBT']`.
-- **`dataModel`** *(object)*: This captures information about how the table is modeled. Currently only DBT model is supported. Cannot contain additional properties.
+- **`dataModel`** *(object)*: This captures information about how the table is modeled. Currently, only DBT model is supported. Cannot contain additional properties.
   - **`modelType`**: Refer to *#/definitions/modelType*.
   - **`description`**: Description of the Table from the model. Refer to *../../type/basic.json#/definitions/markdown*.
   - **`path`** *(string)*: Path to sql definition file.

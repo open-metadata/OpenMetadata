@@ -149,7 +149,7 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
 
 export const getTestCaseExecutionSummary = async (testSuiteId?: string) => {
   const response = await APIClient.get<TestSummary>(
-    `${testCaseUrl}/executionSummary`,
+    `${testSuiteUrl}/executionSummary`,
     { params: { testSuiteId } }
   );
 
