@@ -87,7 +87,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getDecodedFqn, getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import TagsForm from './TagsForm';
 import { DeleteTagsType } from './TagsPage.interface';
@@ -643,7 +643,9 @@ const TagsPage = () => {
      */
     if (tagCategoryName) {
       const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
-      fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
+      fetchCurrentClassification(
+        isTier ? TIER_CATEGORY : getDecodedFqn(tagCategoryName)
+      );
     }
   }, [tagCategoryName]);
 
@@ -657,8 +659,10 @@ const TagsPage = () => {
 
   useEffect(() => {
     currentClassification &&
-      fetchClassificationChildren(currentClassification?.name ?? '');
-  }, [currentClassification?.name]);
+      fetchClassificationChildren(
+        currentClassification?.fullyQualifiedName ?? ''
+      );
+  }, [currentClassification?.fullyQualifiedName]);
 
   const onClickClassifications = (category: Classification) => {
     setCurrentClassification(category);
