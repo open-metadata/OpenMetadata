@@ -191,7 +191,6 @@ const ContainerPage = () => {
     isUserFollowing,
     tags,
     tier,
-    entityFqn,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
