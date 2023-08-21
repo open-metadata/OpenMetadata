@@ -265,11 +265,13 @@ update_maven: #Update the common and pom.xml maven version
 
 .PHONY: update_github_action_paths
 update_github_action_paths: ## To update the github action ci docker files
-	@file_paths="../.github/workflows/docker-openmetadata-db.yml \
-                ../.github/workflows/docker-openmetadata-ingestion-base.yml \
-                ../.github/workflows/docker-openmetadata-ingestion.yml \
-                ../.github/workflows/docker-openmetadata-postgres.yml \
-                ../.github/workflows/docker-openmetadata-server.yml"; \
+	@file_paths=\
+  			.github/workflows/docker-openmetadata-db.yml \
+  			.github/workflows/docker-openmetadata-ingestion-base.yml \
+  			.github/workflows/docker-openmetadata-ingestion.yml \
+  			.github/workflows/docker-openmetadata-postgres.yml \
+  			.github/workflows/docker-openmetadata-server.yml
+
 	echo "Updating docker github action release version to $(RELEASE_VERSION)... ; \
 	for file_path in $$file_paths; do \
 	    python3 update_version.py 1 $$file_path -s $(RELEASE_VERSION) ; \
