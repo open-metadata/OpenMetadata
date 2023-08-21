@@ -1090,71 +1090,155 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
-export const followAndOwnTheEntity = (termObj) => {
-  // search for the term and redirect to the respective entity tab
+export const addOwner = (ownerName, entity, isGlossaryPage) => {
+  cy.get('[data-testid="edit-owner"]').click();
 
-  visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
-  // go to manage tab and search for logged in user and set the owner
+  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+  cy.get('.ant-tabs [id*=tab-users]').click();
+  verifyResponseStatusCode('@getUsers', 200);
+
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-    'getTeams'
+    `api/v1/search/query?q=*${encodeURI(ownerName)}*`,
+    'searchOwner'
   );
-  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
-  verifyResponseStatusCode('@getTeams', 200);
-  // Clicking on users tab
-  cy.get('.user-team-select-popover')
-    .contains('Users')
-    .should('exist')
-    .should('be.visible')
+  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
+
+  verifyResponseStatusCode('@searchOwner', 200);
+
+  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
+
+  cy.get(`.ant-popover [title="${ownerName}"]`).click();
+  verifyResponseStatusCode('@patchOwner', 200);
+  if (isGlossaryPage) {
+    cy.get('[data-testid="glossary-owner-name"]').should('contain', ownerName);
+  } else {
+    cy.get('[data-testid="owner-link"]').should('contain', ownerName);
+  }
+};
+
+export const removeOwner = (entity, isGlossaryPage) => {
+  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
+
+  cy.get('[data-testid="edit-owner"]').click();
+
+  cy.get('[data-testid="remove-owner"]').click();
+  verifyResponseStatusCode('@patchOwner', 200);
+  if (isGlossaryPage) {
+    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
+      'be.visible'
+    );
+  } else {
+    cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
+  }
+};
+
+export const addTier = (tier, entity) => {
+  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTier');
+
+  interceptURL('GET', '/api/v1/tags?parent=Tier&limit=10', 'fetchTier');
+  cy.get('[data-testid="edit-tier"]').click();
+  verifyResponseStatusCode('@fetchTier', 200);
+  cy.get('[data-testid="radio-btn-Tier1"]').click({ waitForAnimations: true });
+  verifyResponseStatusCode('@patchTier', 200);
+  cy.get('[data-testid="radio-btn-Tier1"]').should('be.checked');
+
+  cy.clickOutside();
+  cy.get('[data-testid="Tier"]').should('contain', tier);
+};
+
+export const removeTier = (entity) => {
+  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTier');
+
+  cy.get('[data-testid="edit-tier"]').click();
+  cy.get('[data-testid="clear-tier"]').should('be.visible').click();
+
+  verifyResponseStatusCode('@patchTier', 200);
+  cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
+};
+
+export const deleteEntity = (
+  entityName,
+  serviceName,
+  entity,
+  entityType,
+  successMessageEntityName,
+  deletionType = 'hard'
+) => {
+  visitEntityDetailsPage(
+    entityName,
+    serviceName,
+    entity,
+    undefined,
+    entityType
+  );
+
+  cy.get('[data-testid="manage-button"]').click();
+
+  cy.get('[data-testid="delete-button-title"]').click();
+
+  cy.get('.ant-modal-header').should('contain', `Delete ${entityName}`);
+
+  cy.get(`[data-testid="${deletionType}-delete-option"]`).click();
+
+  cy.get('[data-testid="confirm-button"]').should('be.disabled');
+  cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
+
+  interceptURL(
+    'DELETE',
+    `api/v1/${entity}/*?hardDelete=${deletionType === 'hard'}&recursive=false`,
+    `${deletionType}DeleteTable`
+  );
+  cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
+  cy.get('[data-testid="confirm-button"]').click();
+  verifyResponseStatusCode(`@${deletionType}DeleteTable`, 200);
+
+  toastNotification(`${successMessageEntityName} deleted successfully!`, false);
+};
+
+export const visitDataModelPage = (dataModelFQN, dataModelName) => {
+  interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
+
+  cy.get('[data-testid="appbar-item-settings"]').click();
+
+  verifyResponseStatusCode('@getOrganization', 200);
+
+  interceptURL('GET', '/api/v1/services/dashboardServices*', 'getServices');
+
+  cy.get('[data-menu-id*="services.dashboards"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@getServices', 200);
+
+  interceptURL(
+    'GET',
+    'api/v1/services/dashboardServices/name/sample_looker?fields=*',
+    'getDashboardDetails'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/dashboard/datamodels?service=sample_looker&fields=*',
+    'getDataModels'
+  );
+
+  cy.get('[data-testid="service-name-sample_looker"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@getDashboardDetails', 200);
+  verifyResponseStatusCode('@getDataModels', 200);
+
+  cy.get('[data-testid="data-model"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@getDataModels', 200);
+
+  interceptURL(
+    'GET',
+    `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
+    'getDataModelDetails'
+  );
+
+  cy.get(`[data-testid="data-model-${dataModelName}"]`)
+    .scrollIntoView()
     .click();
 
-  cy.get('[data-testid="selectable-list"]')
-    .eq(1)
-    .should('exist')
-    .should('be.visible')
-    .find('[title="admin"]')
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="owner-link"]')
-    .scrollIntoView()
-    .invoke('text')
-    .then((text) => {
-      expect(text).equal('admin');
-    });
-
-  interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
-  cy.get('[data-testid="follow-button"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-  verifyResponseStatusCode('@waitAfterFollow', 200);
-
-  cy.clickOnLogo();
-
-  cy.get('[data-testid="message-container"]')
-    .first()
-    .contains(`Followed ${termObj.entity.slice(0, -1)}`)
-    .should('be.visible');
-
-  // checks newly generated feed for follow and setting owner
-  cy.get('[data-testid="message-container"]')
-    .eq(1)
-    .scrollIntoView()
-    .contains('Added owner: admin')
-    .should('be.visible');
-
-  // Check followed entity on mydata page
-  cy.get('[data-testid="following-data-container"]')
-    .find(`[data-testid="following-${termObj.displayName}"]`)
-    .should('be.visible');
-
-  // Check owned entity
-  cy.get('[data-testid="my-data-container"]')
-    .find(`[data-testid="My data-${termObj.displayName}"]`)
-    .should('be.visible');
-
-  cy.clickOnLogo();
+  verifyResponseStatusCode('@getDataModelDetails', 200);
 };
