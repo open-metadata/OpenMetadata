@@ -109,6 +109,9 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     try:
         metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+
+        # check we can access OM server
+        metadata.health_check()
     except Exception as exc:
         raise ClientInitializationError(
             f"Failed to initialize the OpenMetadata client due to: {exc}."
@@ -122,8 +125,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     entity_class = None
     try:
         if service_type == "testSuite":
-            # check we can access OM server
-            metadata.health_check()
             return WorkflowSource(
                 type=service_type,
                 serviceName=ingestion_pipeline.service.name,
@@ -134,37 +135,51 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         if service_type == "databaseService":
             entity_class = DatabaseService
             service: DatabaseService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
+                entity=entity_class,
+                fqn=ingestion_pipeline.service.name,
+                nullable=False,
             )
         elif service_type == "pipelineService":
             entity_class = PipelineService
             service: PipelineService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
+                entity=entity_class,
+                fqn=ingestion_pipeline.service.name,
+                nullable=False,
             )
         elif service_type == "dashboardService":
             entity_class = DashboardService
             service: DashboardService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
+                entity=entity_class,
+                fqn=ingestion_pipeline.service.name,
+                nullable=False,
             )
         elif service_type == "messagingService":
             entity_class = MessagingService
             service: MessagingService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
+                entity=entity_class,
+                fqn=ingestion_pipeline.service.name,
+                nullable=False,
             )
         elif service_type == "mlmodelService":
             entity_class = MlModelService
             service: MlModelService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
+                entity=entity_class,
+                fqn=ingestion_pipeline.service.name,
+                nullable=False,
             )
         elif service_type == "metadataService":
             entity_class = MetadataService
             service: MetadataService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
+                entity=entity_class,
+                fqn=ingestion_pipeline.service.name,
+                nullable=False,
             )
         elif service_type == "storageService":
             entity_class = StorageService
             service: StorageService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
+                entity=entity_class,
+                fqn=ingestion_pipeline.service.name,
+                nullable=False,
             )
         else:
             raise InvalidServiceException(f"Invalid Service Type: {service_type}")
