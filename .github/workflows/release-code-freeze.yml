@@ -25,8 +25,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    env:
-    PAT: ${{ secrets.PAT }}
+
     steps:
       - uses: actions/checkout@v3
 
@@ -41,7 +40,8 @@ jobs:
         #   gpg-private-key: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
         #   gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-          
+      - name: Set up environment
+        run: echo "PAT=${{ secrets.PAT }}" >> $GITHUB_ENV
       - name: Maven version
         run: mvn --version
 
