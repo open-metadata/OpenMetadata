@@ -8,7 +8,7 @@ slug: /connectors/database/mysql
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
@@ -16,10 +16,10 @@ slug: /connectors/database/mysql
 | Data Quality       | {% icon iconName="check" /%} |
 | Lineage            | Partially via Views          |
 | DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | MySQL >= 8.0.0                         |
+| Supported Versions | MySQL >= 8.0.0               |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | Partially via Views          |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
@@ -41,7 +41,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 ## Requirements
 
 ### Metadata
-Note that We support MySQL (version 8.0.0 or greater) and the user should have access to the `INFORMATION_SCHEMA` table.  By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+Note that We support MySQL (version 8.0.0 or greater) and the user should have access to the `INFORMATION_SCHEMA` table.  By default, a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
 -- Create user. If <hostName> is ommited, defaults to '%'
@@ -113,7 +113,7 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
     Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
 
-    - **Profile Name**: A named profile is a collection of settings and credentials that you can apply to a AWS CLI command.
+    - **Profile Name**: A named profile is a collection of settings and credentials that you can apply to an AWS CLI command.
       When you specify a profile to run a command, the settings and credentials are used to run that command.
       Multiple named profiles can be stored in the config and credentials files.
 

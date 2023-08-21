@@ -15,7 +15,7 @@ slug: /main-concepts/metadata-standard/schemas/api/teams/createuser
 - **`email`**: Refer to *../../type/basic.json#/definitions/email*.
 - **`timezone`** *(string)*: Timezone of the user.
 - **`isBot`** *(boolean)*: When true indicates user is a bot with appropriate privileges.
-- **`botName`** *(string)*: User bot name if we want to associate this bot with an specific bot.
+- **`botName`** *(string)*: User bot name if we want to associate this bot with a specific bot.
 - **`isAdmin`** *(boolean)*: When true indicates user is an administrator for the system with superuser privileges. Default: `False`.
 - **`profile`**: Refer to *../../type/profile.json*. Default: `None`.
 - **`teams`** *(array)*: Teams that the user belongs to. Default: `None`.

@@ -60,7 +60,7 @@ If you want to run the Usage Connector, you'll also need to install:
 ```bash
 pip3 install "openmetadata-ingestion[snowflake-usage]"
 ```
-To ingest basic metadata snowflake user must have the following priviledges:
+To ingest basic metadata snowflake user must have the following privileges:
   - `USAGE` Privilege on Warehouse
   - `USAGE` Privilege on Database
   - `USAGE` Privilege on Schema
@@ -209,7 +209,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

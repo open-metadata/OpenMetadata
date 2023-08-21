@@ -8,19 +8,19 @@ slug: /connectors/database/mongodb
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | {% icon iconName="cross" /%}          |
+| Lineage            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}          |
+|:-------------|:-----------------------------|
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 

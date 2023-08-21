@@ -291,8 +291,8 @@ class ProfilerWorkflowTest(TestCase):
         assert profile.rowCount == 4.0
         assert profile.profileSampleType == ProfileSampleType.ROWS
 
-    def test_worflow_sample_profile(self):
-        """Test the worflow sample profile gets propagated down to the table profileSample"""
+    def test_workflow_sample_profile(self):
+        """Test the workflow sample profile gets propagated down to the table profileSample"""
         workflow_config = deepcopy(ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {

@@ -61,7 +61,7 @@ authorizerConfiguration:
 For the Basic auth we need to set:
 
 - `adminPrincipals`: admin usernames to bootstrap the server with, comma-separated values.
-- `allowedEmailRegistrationDomains`: This controls what all domain are allowed for email registration can be your {princialDomain} as well, for example gmail.com, outlook.comm etc.
+- `allowedEmailRegistrationDomains`: This controls what all domain are allowed for email registration can be your {principalDomain} as well, for example gmail.com, outlook.comm etc.
 - `principalDomain`: This controls what all domain are allowed for email registration, for example gmail.com, outlook.comm etc.
 
 {% note %}

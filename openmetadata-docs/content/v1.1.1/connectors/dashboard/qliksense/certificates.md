@@ -13,7 +13,7 @@ In this document we will explain how you can generate these certificates so that
 
 # Step 1: Open Qlik Management Console (QMC)
 
-Open your Qlik Management Console (QMC) and navigate to certificates section.
+Open your Qlik Management Console (QMC) and navigate to the certificates section.
 
 {% image
   src="/images/v1.1.1/connectors/qliksense/qlik-certificate-nav.png"
@@ -27,7 +27,7 @@ Open your Qlik Management Console (QMC) and navigate to certificates section.
 
 2. Using a password is optional. If you choose to use a password, the same password applies to exported client and server certificates.
     a. Type a password in the Certificate password box.
-    b. Repeat the password in the Retype password box.
+    b. Repeat the password in Retype password box.
     The passwords must match.
 
 3. Select Include secret key if you want to add a secret key to the public key.

@@ -32,13 +32,13 @@ As with most configuration in OpenMetadata you will first need to add a Name and
 
 ## Configuration Details for Destinations
 ### Slack
-For slack configuration you will need to get the endpoint URL of the channel where you wish to send the alerts. Additionally, you can conigure the following parameter:
+For slack configuration you will need to get the endpoint URL of the channel where you wish to send the alerts. Additionally, you can configure  the following parameter:
 - **Batch Size**: size of the batch that will be sent to the endpoint.
 - **Connection Timeout**: timeout for the connection.
 - **Secret Key**: Secret key can be used to secure the webhook connection.
 
 ### MS Teams
-For MS Teams configuration you will need to get the endpoint URL if the chanel where you wish to send the alerts. You can find this by going to the Teams channel where you want the posts to appear, clicking the three dots `...`, and clicking "Connectors".  Then add the "Incoming Webhook" connector.  Copy this connector's URL and supply it here to OpenMetadata.  It may be in the form of `https://your-domain.webhook.office.com/webhookb2/...@.../IncomingWebhook/.../...`.  For more on MS Teams webhooks, see [Create an Incoming Webhook](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook). Additionally, you can conigure the following parameter:
+For MS Teams configuration you will need to get the endpoint URL if the chanel where you wish to send the alerts. You can find this by going to the Teams channel where you want the posts to appear, clicking the three dots `...`, and clicking "Connectors".  Then add the "Incoming Webhook" connector.  Copy this connector's URL and supply it here to OpenMetadata.  It may be in the form of `https://your-domain.webhook.office.com/webhookb2/...@.../IncomingWebhook/.../...`.  For more on MS Teams webhooks, see [Create an Incoming Webhook](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook). Additionally, you can configure  the following parameter:
 - **Batch Size**: size of the batch that will be sent to the endpoint.
 - **Connection Timeout**: timeout for the connection.
 - **Secret Key**: Secret key can be used to secure the webhook connection.
@@ -61,7 +61,7 @@ email:
 ```
 
 ### Webhook
-To set up a webhook you can simply use the endpoint URL where you want your alert to be sent. Additionally, you can conigure the following parameter:
+To set up a webhook you can simply use the endpoint URL where you want your alert to be sent. Additionally, you can configure  the following parameter:
 - **Batch Size**: size of the batch that will be sent to the endpoint.
 - **Connection Timeout**: timeout for the connection.
 - **Secret Key**: Secret key can be used to secure the webhook connection.
