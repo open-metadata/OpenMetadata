@@ -267,6 +267,7 @@ update_maven: #Update the common and pom.xml maven version
 update_github_action_paths:
 	@echo "Current user: $(shell whoami)"
 	@echo "Current working directory: $(shell pwd)"
+        @echo "List of files: $(shell ls -la)"
 	@file_paths=\
 	  .github/workflows/docker-openmetadata-db.yml \
 	  .github/workflows/docker-openmetadata-ingestion-base.yml \
