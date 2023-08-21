@@ -49,11 +49,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev
-
+          
+      - name: Maven version
+        run: |
+          mvn -v
 
       - name: Set environment variable
         run: echo "RELEASE_VERSION=${{ github.event.inputs.RELEASE_VERSION }}" >> $GITHUB_ENV
 
       - name: Update Version
         run: |
-          mvn update_all
+          mvn update_github_action_paths
