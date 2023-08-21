@@ -16,7 +16,6 @@ import traceback
 from typing import Iterable, List, Optional, Tuple
 
 from google import auth
-from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
@@ -43,9 +42,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcpCredentials import (
-    GcpCredentialsPath,
-)
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     MultipleProjectId,
@@ -64,6 +60,7 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.utils import fqn
+from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -346,7 +343,20 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-        self.client = Client(project=database_name)
+
+        # TODO support location property in JSON Schema
+        # TODO support OAuth 2.0 scopes
+        impersonate_service_account = (
+            self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+        )
+        lifetime = (
+            self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+        )
+        self.client = get_bigquery_client(
+            project_id=database_name,
+            impersonate_service_account=impersonate_service_account,
+            lifetime=lifetime,
+        )
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ):
@@ -356,14 +366,7 @@ class BigquerySource(CommonDbSourceService):
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        if isinstance(
-            self.service_connection.credentials.gcpConfig, GcpCredentialsPath
-        ) or isinstance(
-            self.service_connection.credentials.gcpConfig.projectId, SingleProjectId
-        ):
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
-        elif hasattr(
+        if hasattr(
             self.service_connection.credentials.gcpConfig, "projectId"
         ) and isinstance(
             self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId

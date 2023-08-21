@@ -39,8 +39,7 @@ caption="Generate New Token to edit" /%}
 
 - Select your configured SSO from the list. In this case, `Google SSO`.
 
-{% image
-src="/images/v1.1.1/how-to-guides/feature-configurations/bots/select-google-sso.png"
+{% image src="/images/v1.1.1/how-to-guides/feature-configurations/bots/select-google-sso.png"
 alt="select-google-sso"
 caption="Select 'Google SSO'" /%}
 

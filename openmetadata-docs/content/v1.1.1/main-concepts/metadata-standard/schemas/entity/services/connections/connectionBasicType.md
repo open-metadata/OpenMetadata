@@ -19,8 +19,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/conne
 - **`supportsProfiler`** *(boolean)*: Supports Profiler. Default: `True`.
 - **`supportsDatabase`** *(boolean)*: The source service supports the database concept in its hierarchy. Default: `True`.
 - **`supportsQueryComment`** *(boolean)*: For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata. Default: `True`.
-- **`supportsDataInsightExtraction`** *(boolean)*: Support Metadata To Elastic Search. Default: `True`.
-- **`supportsElasticSearchReindexingExtraction`** *(boolean)*: Support Elastic Search Reindexing. Default: `True`.
+- **`supportsDataInsightExtraction`** *(boolean)*: Support Metadata To ElasticSearch. Default: `True`.
+- **`supportsElasticSearchReindexingExtraction`** *(boolean)*: Support ElasticSearch Reindexing. Default: `True`.
 - **`supportsDBTExtraction`** *(boolean)*: Supports DBT Extraction. Default: `True`.
 
 

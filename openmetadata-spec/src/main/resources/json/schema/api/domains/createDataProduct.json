@@ -34,7 +34,7 @@
       "default": null
     },
     "experts": {
-      "description": "List of of user/login names of users who are experts in this DataProduct.",
+      "description": "List of user/login names of users who are experts in this DataProduct.",
       "type" : "array",
       "items": {
         "type" : "string"

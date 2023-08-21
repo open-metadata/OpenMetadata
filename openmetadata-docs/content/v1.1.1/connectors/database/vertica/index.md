@@ -8,7 +8,7 @@ slug: /connectors/database/vertica
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
@@ -16,10 +16,10 @@ slug: /connectors/database/vertica
 | Data Quality       | {% icon iconName="check" /%} |
 | Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Vertica >= 9.2                    |
+| Supported Versions | Vertica >= 9.2               |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |

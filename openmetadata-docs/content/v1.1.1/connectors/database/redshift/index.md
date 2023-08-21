@@ -8,7 +8,7 @@ slug: /connectors/database/redshift
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/redshift
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |

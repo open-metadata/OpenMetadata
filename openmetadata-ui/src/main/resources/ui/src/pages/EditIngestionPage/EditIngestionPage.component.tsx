@@ -260,12 +260,6 @@ const EditIngestionPage = () => {
     setSlashedBreadcrumb(breadCrumbsArray);
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
-  useEffect(() => {
-    if (ingestionType === PipelineType.Dbt) {
-      setActiveIngestionStep(2);
-    }
-  }, [ingestionType]);
-
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />

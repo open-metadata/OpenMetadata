@@ -378,7 +378,7 @@ export const HTTP_CONFIG_SOURCE = {
     'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/catalog.json',
   DBT_MANIFEST_HTTP_PATH:
     'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/manifest.json',
-  DBT_RUN_RESTLTS_FILE_PATH:
+  DBT_RUN_RESULTS_FILE_PATH:
     'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/run_results.json',
 };
 
@@ -386,7 +386,7 @@ export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
-  dbtLineageNodeLabel: 'stg_customers',
+  dbtLineageNodeLabel: 'customers',
   dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',

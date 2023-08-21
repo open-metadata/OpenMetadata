@@ -76,6 +76,6 @@ Now In this page you can create new `token`.
 
 {% image
 src="/images/v1.1.1/connectors/databricks/Generate-token.png"
-alt="Generate tocken"
-caption="Generate tocken" /%}
+alt="Generate token"
+caption="Generate token" /%}
 

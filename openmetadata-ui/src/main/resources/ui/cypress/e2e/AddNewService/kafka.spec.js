@@ -52,12 +52,9 @@ describe('Kafka Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="topic-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-topic"]')
-        .should('be.visible')
+      cy.get('#root\\/topicFilterPattern\\/includes')
+        .scrollIntoView()
+
         .type(`${topicName}{enter}`);
     };
 
