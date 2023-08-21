@@ -19,17 +19,14 @@ on:
           required: true
         PYTHON_RELEASE_VERSION:
           description: "Provide python Release version"
-          required: true
-    release:
-      types: [published]   
+          required: true   
 
-permissions:
-  contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: publish
+    env:
+    PAT: ${{ secrets.YOUR_PERSONAL_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v3
 
