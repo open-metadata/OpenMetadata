@@ -219,10 +219,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
     ]
   );
 
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
-
   return (
     <>
       {isVersionLoading ? (

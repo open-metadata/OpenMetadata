@@ -114,35 +114,6 @@ describe('MlModelVersion tests', () => {
     expect(customPropertyTabLabel).toBeNull();
   });
 
-  it('Should display ErrorPlaceholder if no viewing permission', async () => {
-    await act(async () => {
-      render(
-        <MlModelVersion
-          {...mlModelVersionMockProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />
-      );
-    });
-
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-    const loader = screen.queryByText('Loader');
-    const dataAssetsVersionHeader = screen.queryByText(
-      'DataAssetsVersionHeader'
-    );
-    const featureTabLabel = screen.queryByText('label.feature-plural');
-    const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
-    expect(loader).toBeNull();
-    expect(entityVersionTimeLine).toBeNull();
-    expect(dataAssetsVersionHeader).toBeNull();
-    expect(featureTabLabel).toBeNull();
-    expect(customPropertyTabLabel).toBeNull();
-  });
-
   it('No data placeholder should be displayed if no mlFeatures are present in the mlModel data', async () => {
     await act(async () => {
       render(

@@ -184,10 +184,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
     [description, messageSchemaDiff, currentVersionData, entityPermissions]
   );
 
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
-
   return (
     <>
       {isVersionLoading ? (
