@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, findByText, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import EntityVersionPage from './EntityVersionPage.component';
@@ -97,16 +98,25 @@ jest.mock('rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: jest
+      .fn()
+      .mockImplementation(() => ENTITY_PERMISSIONS),
+  })),
+}));
+
 describe('Test EntityVersionPage component', () => {
   it('Checks if the TableVersion component renderst if respective data pass', async () => {
     await act(async () => {
       render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-      const tableVersion = await screen.findByText(/TableVersion component/i);
-
-      expect(tableVersion).toBeInTheDocument();
     });
+
+    const tableVersion = await screen.findByText(/TableVersion component/i);
+
+    expect(tableVersion).toBeInTheDocument();
   });
 
   it('Checks if the DashboardVersion component render if respective data pass', async () => {
@@ -117,17 +127,16 @@ describe('Test EntityVersionPage component', () => {
     };
 
     await act(async () => {
-      const { container } = render(<EntityVersionPage />, {
+      render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-
-      const DashboardVersion = await findByText(
-        container,
-        /DashboardVersion component/i
-      );
-
-      expect(DashboardVersion).toBeInTheDocument();
     });
+
+    const DashboardVersion = await screen.findByText(
+      /DashboardVersion component/i
+    );
+
+    expect(DashboardVersion).toBeInTheDocument();
   });
 
   it('Checks if the PipelineVersion component render if respective data pass', async () => {
@@ -138,17 +147,16 @@ describe('Test EntityVersionPage component', () => {
     };
 
     await act(async () => {
-      const { container } = render(<EntityVersionPage />, {
+      render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-
-      const PipelineVersion = await findByText(
-        container,
-        /PipelineVersion component/i
-      );
-
-      expect(PipelineVersion).toBeInTheDocument();
     });
+
+    const PipelineVersion = await screen.findByText(
+      /PipelineVersion component/i
+    );
+
+    expect(PipelineVersion).toBeInTheDocument();
   });
 
   it('Checks if the TopicVersion component render if respective data pass', async () => {
@@ -159,17 +167,14 @@ describe('Test EntityVersionPage component', () => {
     };
 
     await act(async () => {
-      const { container } = render(<EntityVersionPage />, {
+      render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-
-      const TopicVersion = await findByText(
-        container,
-        /TopicVersion component/i
-      );
-
-      expect(TopicVersion).toBeInTheDocument();
     });
+
+    const TopicVersion = await screen.findByText(/TopicVersion component/i);
+
+    expect(TopicVersion).toBeInTheDocument();
   });
 
   it('Should render the mlModel Version Component', async () => {
@@ -180,17 +185,14 @@ describe('Test EntityVersionPage component', () => {
     };
 
     await act(async () => {
-      const { container } = render(<EntityVersionPage />, {
+      render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-
-      const MlModelVersion = await findByText(
-        container,
-        /MlModelVersion component/i
-      );
-
-      expect(MlModelVersion).toBeInTheDocument();
     });
+
+    const MlModelVersion = await screen.findByText(/MlModelVersion component/i);
+
+    expect(MlModelVersion).toBeInTheDocument();
   });
 
   it('Should render the container Version Component', async () => {
@@ -201,17 +203,16 @@ describe('Test EntityVersionPage component', () => {
     };
 
     await act(async () => {
-      const { container } = render(<EntityVersionPage />, {
+      render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-
-      const ContainerVersion = await findByText(
-        container,
-        /ContainerVersion component/i
-      );
-
-      expect(ContainerVersion).toBeInTheDocument();
     });
+
+    const ContainerVersion = await screen.findByText(
+      /ContainerVersion component/i
+    );
+
+    expect(ContainerVersion).toBeInTheDocument();
   });
 
   it('Should render the DataModel Version Component', async () => {
@@ -222,16 +223,15 @@ describe('Test EntityVersionPage component', () => {
     };
 
     await act(async () => {
-      const { container } = render(<EntityVersionPage />, {
+      render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-
-      const ContainerVersion = await findByText(
-        container,
-        /DataModelVersion component/i
-      );
-
-      expect(ContainerVersion).toBeInTheDocument();
     });
+
+    const ContainerVersion = await screen.findByText(
+      /DataModelVersion component/i
+    );
+
+    expect(ContainerVersion).toBeInTheDocument();
   });
 });
