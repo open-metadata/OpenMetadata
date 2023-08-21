@@ -303,7 +303,11 @@ const AddIngestion = ({
               initialValue={retries}
               label={t('label.number-of-retries')}
               name="retries">
-              <Input min={0} type="number" />
+              <Input
+                min={0}
+                type="number"
+                onFocus={() => onFocus('root/retries')}
+              />
             </Form.Item>
           </ScheduleInterval>
         )}
