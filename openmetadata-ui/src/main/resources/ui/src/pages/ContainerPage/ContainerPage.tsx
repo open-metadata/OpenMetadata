@@ -492,7 +492,7 @@ const ContainerPage = () => {
 
                 <ContainerDataModel
                   dataModel={containerData?.dataModel}
-                  entityFqn={entityFqn}
+                  entityFqn={containerName}
                   hasDescriptionEditAccess={hasEditDescriptionPermission}
                   hasTagEditAccess={hasEditTagsPermission}
                   isReadOnly={Boolean(deleted)}
