@@ -105,9 +105,9 @@ def main():
         print("Usage: python3 update_version.py <action_type> <file_path> -s <release_version>")
         sys.exit(1)
 
-    action_type = int(sys.argv[1])
-    file_path = sys.argv[2]
-    release_version = sys.argv[4]
+    action_type = int(sys.argv[0])
+    file_path = sys.argv[1]
+    release_version = sys.argv[3]
 
     if action_type == 1:
         update_github_action(file_path, release_version)
