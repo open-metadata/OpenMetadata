@@ -41,7 +41,11 @@ class JWTTokenGeneratorTest {
 
   @Test
   void testGenerateJWTToken() {
-    User user = new User().withEmail("Admin@open-metadata.org").withName("Admin").withDisplayName("ingestion-bot");
+    User user =
+        new User()
+            .withEmail("ingestion-bot@open-metadata.org")
+            .withName("ingestion-bot")
+            .withDisplayName("ingestion-bot");
     JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
     DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     assertEquals("ingestion-bot", jwt.getClaims().get("sub").asString());
