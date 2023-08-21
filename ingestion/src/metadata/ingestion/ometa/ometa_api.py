@@ -202,6 +202,24 @@ class OpenMetadata(
 
         return self.data_path
 
+    def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
+        """
+        imports and returns the Create Type from an Entity Type T.
+        We are following the expected path structure to import
+        on-the-fly the necessary class and pass it to the consumer
+        """
+        file_name = f"create{entity.__name__}"
+
+        class_path = ".".join(
+            [self.class_root, self.api_path, self.get_module_path(entity), file_name]
+        )
+
+        class_name = f"Create{entity.__name__}Request"
+        create_class = getattr(
+            __import__(class_path, globals(), locals(), [class_name]), class_name
+        )
+        return create_class
+
     @staticmethod
     def update_file_name(create: Type[C], file_name: str) -> str:
         """
@@ -372,7 +390,7 @@ class OpenMetadata(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
-        after: str = None,
+        after: Optional[str] = None,
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
