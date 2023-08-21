@@ -1168,9 +1168,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public CreateUser createRequest(String name) {
     // user part of the email should be less than 64 in length
-    String emailUser = nullOrEmpty(name) ? UUID.randomUUID().toString() : name;
+    String entityName = name.toLowerCase();
+    String emailUser = nullOrEmpty(entityName) ? UUID.randomUUID().toString().toLowerCase() : entityName;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
-    return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
+    return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
   }
 
   @Override
