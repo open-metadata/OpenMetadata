@@ -264,19 +264,23 @@ update_maven: #Update the common and pom.xml maven version
 	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
 
 .PHONY: update_github_action_paths
-update_github_action_paths: ## To update the github action ci docker files
+update_github_action_paths:
+	@echo "Current user: $(shell whoami)"
+	@echo "Current working directory: $(shell pwd)"
 	@file_paths=\
-  			.github/workflows/docker-openmetadata-db.yml \
-  			.github/workflows/docker-openmetadata-ingestion-base.yml \
-  			.github/workflows/docker-openmetadata-ingestion.yml \
-  			.github/workflows/docker-openmetadata-postgres.yml \
-  			.github/workflows/docker-openmetadata-server.yml
-
-	echo "Updating docker github action release version to $(RELEASE_VERSION)... ; \
+	  .github/workflows/docker-openmetadata-db.yml \
+	  .github/workflows/docker-openmetadata-ingestion-base.yml \
+	  .github/workflows/docker-openmetadata-ingestion.yml \
+	  .github/workflows/docker-openmetadata-postgres.yml \
+	  .github/workflows/docker-openmetadata-server.yml; \
 	for file_path in $$file_paths; do \
-	    chmod +r $$file_path
-	    python3 update_version.py 1 $$file_path -s $(RELEASE_VERSION) ; \
+	  chmod +r $$file_path; \
 	done
+	for file_path in $$file_paths; do \
+	  ls -l $$file_path; \
+	  python3 update_version.py 1 $$file_path -s $(RELEASE_VERSION); \
+	done
+
 
 .PHONY: update_python_release_paths
 update_python_release_paths: ## To update all the python setup files version
