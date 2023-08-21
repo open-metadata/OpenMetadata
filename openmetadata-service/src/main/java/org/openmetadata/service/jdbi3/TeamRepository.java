@@ -86,6 +86,7 @@ public class TeamRepository extends EntityRepository<Team> {
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
+    supportsSearchIndex = true;
   }
 
   @Override

@@ -65,6 +65,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

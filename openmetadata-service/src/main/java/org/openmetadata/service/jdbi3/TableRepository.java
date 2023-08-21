@@ -76,6 +76,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -103,6 +104,8 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_COLUMN_EXTENSION = "table.column.";
   public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
 
+  public static SearchClient searchClient;
+
   public TableRepository(CollectionDAO daoCollection) {
     super(
         TableResource.COLLECTION_PATH,
@@ -112,6 +115,7 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

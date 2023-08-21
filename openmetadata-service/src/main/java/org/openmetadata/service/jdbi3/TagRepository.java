@@ -13,14 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.service.util.EntityUtil.getId;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -31,15 +23,26 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.getId;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
   public TagRepository(CollectionDAO dao) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -93,6 +96,13 @@ public class TagRepository extends EntityRepository<Tag> {
   protected void postDelete(Tag entity) {
     // Cleanup all the tag labels using this tag
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
+    String scriptTxt =
+        "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+    try {
+      searchClient.updateSearchEntityDeleted(entity.getEntityReference(),scriptTxt,"tags.tagFQN");
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -108,6 +118,12 @@ public class TagRepository extends EntityRepository<Tag> {
   public Tag clearFields(Tag tag, Fields fields) {
     return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
   }
+
+//  @Override
+//  protected void postCreate(Tag tag) {
+//
+//  }
+
 
   private Integer getUsageCount(Tag tag) {
     return tag.getUsageCount() != null

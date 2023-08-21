@@ -38,6 +38,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao,
         "",
         "");
+    supportsSearchIndex = true;
   }
 
   @Override

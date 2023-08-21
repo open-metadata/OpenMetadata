@@ -31,6 +31,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DatabaseRepository extends EntityRepository<Database> {
   public DatabaseRepository(CollectionDAO dao) {
     super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override

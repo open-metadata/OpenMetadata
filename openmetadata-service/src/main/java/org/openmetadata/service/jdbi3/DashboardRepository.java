@@ -24,7 +24,10 @@ import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
@@ -47,6 +50,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dao,
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

@@ -19,6 +19,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
 
   public WebAnalyticEventRepository(CollectionDAO dao) {
     super(COLLECTION_PATH, WEB_ANALYTIC_EVENT, WebAnalyticEvent.class, dao.webAnalyticEventDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override

@@ -61,6 +61,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao,
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

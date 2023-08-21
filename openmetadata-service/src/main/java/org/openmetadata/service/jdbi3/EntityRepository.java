@@ -40,6 +40,7 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -123,8 +124,10 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
+import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -168,6 +171,7 @@ import org.openmetadata.service.util.ResultList;
  */
 @Slf4j
 public abstract class EntityRepository<T extends EntityInterface> {
+
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
           .maximumSize(5000)
@@ -184,7 +188,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final Class<T> entityClass;
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
-  protected final CollectionDAO daoCollection;
+  @Getter protected final CollectionDAO daoCollection;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -202,6 +206,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
 
+  protected boolean supportsSearchIndex = false;
   EntityRepository(
       String collectionPath,
       String entityType,
@@ -726,6 +731,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
+    if (supportsSearchIndex) {
+      try {
+        searchClient.updateSearchEntityCreated(entity.getEntityReference());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
     // Override to perform any operation required after creation.
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
@@ -873,6 +885,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void postDelete(T entity) {
+//    if (supportsSearchIndex){
+//      try {
+//        searchClient.updateSearchEntityDeleted(entity.getEntityReference(),"","");
+//      } catch (IOException e) {
+//        throw new RuntimeException(e);
+//      }
+//    }
     // Override this method to perform any operation required after deletion.
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
