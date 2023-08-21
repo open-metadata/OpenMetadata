@@ -28,3 +28,14 @@ jsonb_build_object('password',json#>'{connection,config,password}')
 )
 WHERE serviceType = 'Trino'
   and json#>'{connection,config,password}' is not null;
+
+-- Update table and column profile timestamps to be in milliseconds
+UPDATE entity_extension_time_series
+SET json = jsonb_set(
+	json,
+	'{timestamp}',
+	to_jsonb(cast(json#>'{timestamp}' as int8) *1000)
+)
+WHERE
+	extension  in ('table.tableProfile', 'table.columnProfile');
+;
