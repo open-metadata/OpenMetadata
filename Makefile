@@ -275,10 +275,7 @@ update_github_action_paths:
 	  .github/workflows/docker-openmetadata-server.yml; \
 	for file_path in $$file_paths; do \
 	  chmod +r $$file_path; \
-	done
-	for file_path in $$file_paths; do \
-	  ls -l $$file_path; \
-	  python3 update_version.py 1 $$file_path -s $(RELEASE_VERSION); \
+          cat $$file_path; \
 	done
 
 
