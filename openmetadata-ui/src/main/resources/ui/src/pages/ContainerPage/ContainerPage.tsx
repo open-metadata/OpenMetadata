@@ -339,27 +339,29 @@ const ContainerPage = () => {
 
   const handleUpdateTier = async (updatedTier?: string) => {
     try {
-      if (updatedTier) {
-        const { tags: newTags, version } = await handleUpdateContainerData({
-          ...(containerData as Container),
-          tags: [
-            ...getTagsWithoutTier(containerData?.tags ?? []),
-            {
-              tagFQN: updatedTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: TagSource.Classification,
-            },
-          ],
-        });
+      const { tags: newTags, version } = await handleUpdateContainerData({
+        ...(containerData as Container),
+        tags: [
+          ...getTagsWithoutTier(containerData?.tags ?? []),
+          ...(updatedTier
+            ? [
+                {
+                  tagFQN: updatedTier,
+                  labelType: LabelType.Manual,
+                  state: State.Confirmed,
+                  source: TagSource.Classification,
+                },
+              ]
+            : []),
+        ],
+      });
 
-        setContainerData((prev) => ({
-          ...(prev as Container),
-          tags: newTags,
-          version,
-        }));
-        getEntityFeedCount();
-      }
+      setContainerData((prev) => ({
+        ...(prev as Container),
+        tags: newTags,
+        version,
+      }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
