@@ -274,6 +274,7 @@ update_github_action_paths: ## To update the github action ci docker files
 
 	echo "Updating docker github action release version to $(RELEASE_VERSION)... ; \
 	for file_path in $$file_paths; do \
+	    chmod +r $$file_path
 	    python3 update_version.py 1 $$file_path -s $(RELEASE_VERSION) ; \
 	done
 
