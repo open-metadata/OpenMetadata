@@ -235,7 +235,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public boolean checkEmailAlreadyExists(String emailId) {
-    return daoCollection.userDAO().checkEmailExists(emailId) > 0;
+    String lowerCaseEmail = emailId.toLowerCase();
+    return daoCollection.userDAO().checkEmailExists(lowerCaseEmail) > 0;
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {

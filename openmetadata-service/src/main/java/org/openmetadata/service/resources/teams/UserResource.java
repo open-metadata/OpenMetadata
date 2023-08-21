@@ -500,7 +500,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
             .build();
       }
-      user.setName(user.getEmail().split("@")[0]);
+      String userName = user.getEmail().toLowerCase().split("@")[0];
+      user.setName(userName);
       if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
@@ -786,7 +787,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name.toLowerCase(), false, hardDelete);
   }
 
   @PUT
@@ -859,7 +860,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("user")
           String user)
       throws IOException {
-    User registeredUser = repository.getByName(uriInfo, user, getFields("isEmailVerified"));
+    User registeredUser = repository.getByName(uriInfo, user.toLowerCase(), getFields("isEmailVerified"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
     }
@@ -880,7 +881,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
-    String userName = request.getEmail().split("@")[0];
+    String userName = request.getEmail().toLowerCase().split("@")[0];
     User registeredUser;
     try {
       registeredUser =
@@ -976,7 +977,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) {
-    User user = repository.getByName(uriInfo, request.getEmail().split("@")[0], getFields("isEmailVerified"));
+    User user =
+        repository.getByName(uriInfo, request.getEmail().toLowerCase().split("@")[0], getFields("isEmailVerified"));
     return Response.status(Response.Status.OK).entity(user.getIsEmailVerified()).build();
   }
 
@@ -1050,7 +1052,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
+    User user = repository.getByName(null, userName.toLowerCase(), getFields("id"), Include.NON_DELETED, true);
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1087,7 +1089,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
+    User user = repository.getByName(null, userName.toLowerCase(), getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
       tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     } else {
@@ -1204,11 +1206,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) {
+    String userName = create.getName().toLowerCase();
+    String email = create.getEmail().toLowerCase();
     return new User()
         .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withFullyQualifiedName(create.getName())
-        .withEmail(create.getEmail())
+        .withName(userName)
+        .withFullyQualifiedName(userName)
+        .withEmail(email)
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
@@ -1222,14 +1226,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   public void validateEmailAlreadyExists(String email) {
-    if (repository.checkEmailAlreadyExists(email)) {
+    if (repository.checkEmailAlreadyExists(email.toLowerCase())) {
       throw new CustomExceptionMessage(BAD_REQUEST, "User with Email Already Exists");
     }
   }
 
   private Response createOrUpdateBot(User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext) {
     User original = retrieveBotUser(user, uriInfo);
-    String botName = create.getBotName();
+    String botName = create.getBotName().toLowerCase();
     EntityInterface bot = retrieveBot(botName);
     // check if the bot user exists
     if (original != null && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {

@@ -123,8 +123,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   private User checkAndCreateUser(String email) {
     // Check if the user exists in OM Database
+    String lowerCaseEmail = email.toLowerCase();
     try {
-      return userRepository.getByName(null, email.split("@")[0], userRepository.getFields("id,name,email"));
+      return userRepository.getByName(null, lowerCaseEmail.split("@")[0], userRepository.getFields("id,name,email"));
     } catch (EntityNotFoundException ex) {
       // User does not exist
       return userRepository.create(null, getUserForLdap(email));
@@ -155,6 +156,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
       throws TemplateException, IOException {
+    // TODO: fix the username lowercase and password
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
@@ -210,7 +212,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   private User getUserForLdap(String email) {
-    String userName = email.split("@")[0];
+    String userName = email.toLowerCase().split("@")[0];
     return new User()
         .withId(UUID.randomUUID())
         .withName(userName)

@@ -203,10 +203,10 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
     Set<String> fields = userRepository.getAllowedFieldsCopy();
+    String userName = request.getUsername().toLowerCase();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
-        userRepository.getByName(
-            uriInfo, request.getUsername(), new EntityUtil.Fields(fields, String.join(",", fields)));
+        userRepository.getByName(uriInfo, userName, new EntityUtil.Fields(fields, String.join(",", fields)));
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
       throw new CustomExceptionMessage(BAD_REQUEST, "Token does not belong to the user.");
@@ -235,20 +235,21 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
     }
-    loginAttemptCache.recordSuccessfulLogin(request.getUsername());
+    loginAttemptCache.recordSuccessfulLogin(userName);
   }
 
   @Override
   public void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest request)
       throws IOException {
     // passwords validity
+    String lowerCaseUserName = userName.toLowerCase();
     if (!request.getNewPassword().equals(request.getConfirmPassword())) {
       throw new IllegalArgumentException("Password and Confirm Password should match");
     }
     PasswordUtil.validatePassword(request.getNewPassword());
 
     // Fetch user
-    User storedUser = userRepository.getByName(uriInfo, userName, userRepository.getFieldsWithUserAuth("*"));
+    User storedUser = userRepository.getByName(uriInfo, lowerCaseUserName, userRepository.getFieldsWithUserAuth("*"));
 
     // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
     // for the user is null
@@ -272,7 +273,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
     RestUtil.PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
     // remove login/details from cache
-    loginAttemptCache.recordSuccessfulLogin(userName);
+    loginAttemptCache.recordSuccessfulLogin(lowerCaseUserName);
 
     // in case admin updates , send email to user
     if (request.getRequestType() == USER && isEmailServiceEnabled) {
@@ -414,7 +415,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    String userName = loginRequest.getEmail();
+    String userName = loginRequest.getEmail().toLowerCase();
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(userName, storedUser, loginRequest.getPassword());

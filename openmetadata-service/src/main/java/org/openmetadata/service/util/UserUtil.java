@@ -50,7 +50,7 @@ public final class UserUtil {
   public static void addUsers(AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
     try {
       for (String username : adminUsers) {
-        createOrUpdateUser(authProvider, username, domain, isAdmin);
+        createOrUpdateUser(authProvider, username.toLowerCase(), domain, isAdmin);
       }
     } catch (Exception ex) {
       LOG.error("[BootstrapUser] Encountered Exception while bootstrapping admin user", ex);
