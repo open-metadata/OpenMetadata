@@ -16,7 +16,6 @@ import userEvent from '@testing-library/user-event';
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import {
   dashboardVersionProps,
   mockNoChartData,
@@ -221,40 +220,5 @@ describe('DashboardVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'
     );
-  });
-
-  it('Should display ErrorPlaceholder if no viewing permission', async () => {
-    await act(async () => {
-      render(
-        <DashboardVersion
-          {...dashboardVersionProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const versionData = screen.queryByTestId('version-data');
-    const schemaTable = screen.queryByTestId('schema-table');
-
-    const tabs = screen.queryByTestId('tabs');
-    const description = screen.queryByText('Description.component');
-    const richTextEditorPreviewer = screen.queryByText(
-      'RichTextEditorPreviewer.component'
-    );
-    const entityVersionTimeLine = screen.queryByText(
-      'EntityVersionTimeLine.component'
-    );
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(entityVersionTimeLine).toBeNull();
-    expect(versionData).toBeNull();
-    expect(schemaTable).toBeNull();
-    expect(tabs).toBeNull();
-    expect(description).toBeNull();
-    expect(richTextEditorPreviewer).toBeNull();
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });

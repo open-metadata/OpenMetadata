@@ -219,9 +219,8 @@ def get_table_names(self, connection, schema=None, **kw):
             f"NOT IN ({exclude_tablespace}) AND "
         )
     sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace)
-
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
-    return [self.normalize_name(row[0]) for row in cursor]
+    return [row[0] for row in cursor]
 
 
 def get_mview_names(self, schema=None):

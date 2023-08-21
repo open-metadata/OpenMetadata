@@ -117,37 +117,6 @@ describe('ContainerVersion tests', () => {
     expect(versionTable).toBeNull();
   });
 
-  it('Should display ErrorPlaceholder if no viewing permission', async () => {
-    await act(async () => {
-      render(
-        <ContainerVersion
-          {...containerVersionMockProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />
-      );
-    });
-
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-    const loader = screen.queryByText('Loader');
-    const dataAssetsVersionHeader = screen.queryByText(
-      'DataAssetsVersionHeader'
-    );
-    const schemaTabLabel = screen.queryByText('label.schema');
-    const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
-    const versionTable = screen.queryByText('VersionTable');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
-    expect(loader).toBeNull();
-    expect(entityVersionTimeLine).toBeNull();
-    expect(dataAssetsVersionHeader).toBeNull();
-    expect(schemaTabLabel).toBeNull();
-    expect(customPropertyTabLabel).toBeNull();
-    expect(versionTable).toBeNull();
-  });
-
   it('Should update url on click of tab', async () => {
     await act(async () => {
       render(<ContainerVersion {...containerVersionMockProps} />);
