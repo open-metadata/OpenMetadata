@@ -84,23 +84,21 @@ import re
 #     main()
 
 
-import sys
-
 def update_github_action(file_path, release_version):
     # Logic for updating GitHub action
-    print(f"Updating GitHub action in {file_path} to version {release_version}")
+    print(f"Updating GitHub action in {file_path} to version {release_version} \n")
 
 def update_python_files(file_path, release_version):
     # Logic for updating Python files
-    print(f"Updating Python files in {file_path} to version {release_version}")
+    print(f"Updating Python files in {file_path} to version {release_version} \n")
 
 def update_dockerfile_version(file_path, release_version):
     # Logic for updating Dockerfile version
-    print(f"Updating Dockerfile version in {file_path} to version {release_version}")
+    print(f"Updating Dockerfile version in {file_path} to version {release_version} \n")
 
 def update_ingestion_version(file_path, release_version):
     # Logic for updating ingestion version
-    print(f"Updating ingestion version in {file_path} to version {release_version}")
+    print(f"Updating ingestion version in {file_path} to version {release_version} \n")
 
 def main():
     if len(sys.argv) != 5:
