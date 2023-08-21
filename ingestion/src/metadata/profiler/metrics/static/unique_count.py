@@ -56,7 +56,7 @@ class UniqueCount(QueryMetric):
 
         # Run all queries on top of the sampled data
         col = column(self.col.name, self.col.type)
-        unique_count_query = _unique_count_query_mapper.get(session.bind.dialect.name)(
+        unique_count_query = _unique_count_query_mapper[session.bind.dialect.name](
             col, session, sample
         )
         only_once_cte = unique_count_query.cte("only_once")

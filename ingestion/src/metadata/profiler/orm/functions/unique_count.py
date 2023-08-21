@@ -53,5 +53,5 @@ def _unique_count_query_mssql(col, session, sample):
     )
 
 
-_unique_count_query_mapper = defaultdict(_unique_count_query)
+_unique_count_query_mapper = defaultdict(lambda: _unique_count_query)
 _unique_count_query_mapper[Dialects.MSSQL] = _unique_count_query_mssql
