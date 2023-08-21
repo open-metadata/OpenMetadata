@@ -44,7 +44,6 @@ def get_bigquery_client(
     Returns:
         bigquery.Client: client
     """
-    # pylint: disable=R1705
     if impersonate_service_account is None:
         credentials = get_gcp_default_credentials(quota_project_id=quota_project_id)
     else:
