@@ -47,12 +47,7 @@ describe('TableProfilerChart component test', () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
     act(() => {
-      render(
-        <TableProfilerChart
-          showOperationGraph
-          dateRangeObject={mockDateRangeObject}
-        />
-      );
+      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
     });
 
     expect(
@@ -77,12 +72,7 @@ describe('TableProfilerChart component test', () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
     await act(async () => {
-      render(
-        <TableProfilerChart
-          showOperationGraph
-          dateRangeObject={mockDateRangeObject}
-        />
-      );
+      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
     });
 
     // API should be call once
@@ -111,12 +101,7 @@ describe('TableProfilerChart component test', () => {
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
 
     await act(async () => {
-      render(
-        <TableProfilerChart
-          showOperationGraph
-          dateRangeObject={mockDateRangeObject}
-        />
-      );
+      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
     });
 
     // API should be call with proper Param value
