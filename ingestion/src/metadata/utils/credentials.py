@@ -157,7 +157,8 @@ def generate_http_basic_token(username, password):
 
 
 def get_gcp_default_credentials(
-    quota_project_id: Optional[str] = None, scopes: Optional[List[str]] = None
+    quota_project_id: Optional[str] = None,
+    scopes: Optional[List[str]] = None,
 ) -> auth.credentials.Credentials:
     """Get the default credentials
 
@@ -165,8 +166,7 @@ def get_gcp_default_credentials(
         quota_project_id: quota project ID
         scopes: Google Cloud sscopes
     """
-    if scopes is None:
-        scopes = GOOGLE_CLOUD_SCOPES
+    scopes = scopes or GOOGLE_CLOUD_SCOPES
     credentials, _ = auth.default(quota_project_id=quota_project_id, scopes=scopes)
     return credentials
 
@@ -175,25 +175,18 @@ def get_gcp_impersonate_credentials(
     impersonate_service_account: str,
     quoted_project_id: Optional[str] = None,
     scopes: Optional[List[str]] = None,
-    lifetime: Optional[int] = None,
+    lifetime: Optional[int] = 3600,
 ) -> impersonated_credentials.Credentials:
     """Get the credentials to impersonate"""
-    # Create a impersonated service account
-    if scopes is None:
-        scopes = GOOGLE_CLOUD_SCOPES
-    if lifetime is None:
-        # NOTE The maximum lifetime is 3600 seconds by default.
-        lifetime = 3600
-
+    scopes = scopes or GOOGLE_CLOUD_SCOPES
     source_credentials, _ = auth.default()
-    if quoted_project_id is not None:
+    if quoted_project_id:
         source_credentials, quoted_project_id = auth.default(
             quota_project_id=quoted_project_id
         )
-    target_credentials = impersonated_credentials.Credentials(
+    return impersonated_credentials.Credentials(
         source_credentials=source_credentials,
         target_principal=impersonate_service_account,
         target_scopes=scopes,
         lifetime=lifetime,
     )
-    return target_credentials
