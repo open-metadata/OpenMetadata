@@ -276,7 +276,7 @@ update_github_action_paths:
 	  .github/workflows/docker-openmetadata-server.yml; \
 	for file_path in $$file_paths; do \
 	  chmod +r $$file_path; \
-	  cat $$file_path; \
+	  ls $$file_path; \
 	done
 
 
