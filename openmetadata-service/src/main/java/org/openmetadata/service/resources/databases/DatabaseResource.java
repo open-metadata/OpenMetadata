@@ -74,11 +74,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
+    super.addHref(uriInfo, db);
     Entity.withHref(uriInfo, db.getDatabaseSchemas());
     Entity.withHref(uriInfo, db.getLocation());
-    Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
-    Entity.withHref(uriInfo, db.getDomain());
     return db;
   }
 
@@ -383,6 +382,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   private Database getDatabase(CreateDatabase create, String user) {
     return copy(new Database(), create, user)
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
+        .withSourceUrl(create.getSourceUrl())
         .withRetentionPeriod(create.getRetentionPeriod());
   }
 }

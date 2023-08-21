@@ -13,6 +13,7 @@
 
 import {
   ColumnJoins,
+  FieldChange,
   Table,
   TableConstraint,
 } from '../../generated/entity/data/table';
@@ -21,6 +22,10 @@ export interface VersionTableProps {
   columnName: string;
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
+  addedColumnConstraintDiffs?: FieldChange[];
+  deletedColumnConstraintDiffs?: FieldChange[];
+  addedTableConstraintDiffs?: FieldChange[];
+  deletedTableConstraintDiffs?: FieldChange[];
   constraintUpdatedColumns?: string[];
   tableConstraints?: Array<TableConstraint>;
 }

@@ -84,7 +84,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
-    Entity.withHref(uriInfo, policy.getOwner());
+    super.addHref(uriInfo, policy);
     Entity.withHref(uriInfo, policy.getTeams());
     Entity.withHref(uriInfo, policy.getRoles());
     return policy;

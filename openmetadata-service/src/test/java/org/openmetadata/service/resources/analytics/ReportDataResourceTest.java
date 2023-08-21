@@ -83,7 +83,7 @@ public class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     ReportData reportData =
         new ReportData()
-            .withTimestamp(TestUtils.dateToTimestamp("2022-10-11"))
+            .withTimestamp(TestUtils.dateToTimestamp("2022-10-13"))
             .withReportDataType(ReportData.ReportDataType.ENTITY_REPORT_DATA)
             .withData(entityReportData);
 

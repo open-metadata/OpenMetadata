@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -41,7 +40,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -186,11 +184,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public MlModel setInheritedFields(MlModel mlModel, Fields fields) {
     // If mlModel does not have domain, then inherit it from parent MLModel service
-    if (fields.contains(FIELD_DOMAIN) && mlModel.getDomain() == null) {
-      MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
-      mlModel.withDomain(service.getDomain());
-    }
-    return mlModel;
+    MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
+    return inheritDomain(mlModel, fields, service);
   }
 
   /**
@@ -302,6 +297,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateMlStore(original, updated);
       updateServer(original, updated);
       updateTarget(original, updated);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {

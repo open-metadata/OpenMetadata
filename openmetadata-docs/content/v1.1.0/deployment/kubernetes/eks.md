@@ -8,7 +8,7 @@ slug: /deployment/kubernetes/eks
 OpenMetadata supports the Installation and Running of Application on Elastic Kubernetes Services (EKS) through Helm Charts.
 However, there are some additional configurations which needs to be done as prerequisites for the same.
 
-{%note%}
+{%note noteType="Warning"%}
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
 This guide presumes you have AWS EKS Cluster already available.
@@ -16,6 +16,65 @@ This guide presumes you have AWS EKS Cluster already available.
 {%/note%}
 
 ## Prerequisites
+
+### AWS Services for Database as RDS and Search Engine as ElasticSearch
+
+It is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html) and [Amazon OpenSearch Service](https://docs.aws.amazon.com/opensearch-service/?id=docs_gateway) for Production Deployments.
+
+We support 
+
+- Amazon RDS (MySQL) engine version 8 or greater
+- Amazon RDS (PostgreSQL) engine version between 12 and 14.6
+- Amazon OpenSearch (ElasticSearch) engine version up to 7.10 or Amazon OpenSearch engine version up to 1.3
+
+{%note noteType="Tip"%}
+When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch, as you can see in the ElasticSearch configuration example below.
+{%/note%}
+
+We recommend 
+- Amazon RDS to be in Multiple Availability Zones. 
+- Amazon OpenSearch (or ElasticSearch) Service with Multiple Availability Zones with minimum 2 Nodes.
+
+Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
+      searchType: opensearch
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: true
+        username: <AMAZON_OPENSEARCH_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <AMAZON_RDS_ENDPOINT>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      dbUseSSL: true
+      databaseName: <RDS_DATABASE_NAME>
+      auth:
+        username: <RDS_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
+```
+
+Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 
 ### Create Elastic File System in AWS
 
@@ -35,7 +94,7 @@ The below guide provides Persistent Volumes provisioning as static volumes (mean
 
 ## Provision EFS backed PVs, PVCs for Airflow DAGs and Airflow Logs
 
-Please note that we are using one AWS Elastic File System (EFS) service with sub-directories as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
+Please note that we are using one AWS Elastic File System (EFS) service with subdirectories   as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
 
 In order to create directories inside the AWS Elastic File System (EFS) you would need to follow these [steps](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs-nfs-permissions-per-user-subdirs.html).
 

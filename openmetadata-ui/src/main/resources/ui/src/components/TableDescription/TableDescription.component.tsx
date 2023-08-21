@@ -29,7 +29,6 @@ const TableDescription = ({
   onClick,
   entityType,
   hasEditPermission,
-  entityFieldThreads,
   onThreadLinkSelect,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
@@ -65,7 +64,6 @@ const TableDescription = ({
 
           <EntityTasks
             data={columnData}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityTaskType={EntityField.DESCRIPTION}
             entityType={entityType}

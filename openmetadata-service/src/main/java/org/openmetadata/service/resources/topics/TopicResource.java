@@ -80,10 +80,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
-    Entity.withHref(uriInfo, topic.getOwner());
+    super.addHref(uriInfo, topic);
     Entity.withHref(uriInfo, topic.getService());
-    Entity.withHref(uriInfo, topic.getFollowers());
-    Entity.withHref(uriInfo, topic.getDomain());
     return topic;
   }
 
@@ -481,6 +479,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
+        .withSourceUrl(create.getSourceUrl())
         .withTags(create.getTags());
   }
 }

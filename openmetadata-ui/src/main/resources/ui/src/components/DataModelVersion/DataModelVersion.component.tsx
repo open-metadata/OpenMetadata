@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import VersionTable from 'components/VersionTable/VersionTable.component';
@@ -48,7 +49,6 @@ import {
   isEndsWithField,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
 
@@ -339,6 +339,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  entityType={EntityType.DASHBOARD_DATA_MODEL}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
                   tierDisplayName={tierDisplayName}

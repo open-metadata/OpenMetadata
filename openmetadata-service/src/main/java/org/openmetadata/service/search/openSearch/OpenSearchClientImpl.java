@@ -95,6 +95,8 @@ import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.util.JsonUtils;
 import org.opensearch.OpenSearchException;
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.opensearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.opensearch.action.bulk.BulkItemResponse;
 import org.opensearch.action.bulk.BulkRequest;
@@ -104,6 +106,7 @@ import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.support.WriteRequest;
 import org.opensearch.action.support.master.AcknowledgedResponse;
 import org.opensearch.action.update.UpdateRequest;
+import org.opensearch.client.GetAliasesResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
@@ -192,6 +195,14 @@ public class OpenSearchClientImpl implements SearchClient {
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
+        // creating alias for indexes
+        IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+        IndicesAliasesRequest.AliasActions aliasAction =
+            IndicesAliasesRequest.AliasActions.add()
+                .index(elasticSearchIndexType.indexName)
+                .alias("sourceUrlSearchAlias");
+        aliasesRequest.addAliasAction(aliasAction);
+        client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
       }
       elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
@@ -214,6 +225,14 @@ public class OpenSearchClientImpl implements SearchClient {
       String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
       ENTITY_TO_MAPPING_SCHEMA_MAP.put(
           elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
+      // creating alias for indexes
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      IndicesAliasesRequest.AliasActions aliasAction =
+          IndicesAliasesRequest.AliasActions.add()
+              .index(elasticSearchIndexType.indexName)
+              .alias("sourceUrlSearchAlias");
+      aliasesRequest.addAliasAction(aliasAction);
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
       if (exists) {
         PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
@@ -242,6 +261,20 @@ public class OpenSearchClientImpl implements SearchClient {
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (exists) {
+        // check if the alias is exist or not
+        GetAliasesRequest getAliasesRequest = new GetAliasesRequest("sourceUrlSearchAlias");
+        GetAliasesResponse getAliasesResponse = client.indices().getAlias(getAliasesRequest, RequestOptions.DEFAULT);
+        boolean aliasExists = getAliasesResponse.getAliases().containsKey(elasticSearchIndexType.indexName);
+        // deleting alias for indexes if exists
+        if (aliasExists) {
+          IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+          IndicesAliasesRequest.AliasActions aliasAction =
+              IndicesAliasesRequest.AliasActions.remove()
+                  .index(elasticSearchIndexType.indexName)
+                  .alias("sourceUrlSearchAlias");
+          aliasesRequest.addAliasAction(aliasAction);
+          client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+        }
         DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
         AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
         LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
@@ -357,6 +390,22 @@ public class OpenSearchClientImpl implements SearchClient {
                 new org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
+    return Response.status(OK).entity(response).build();
+  }
+
+  /**
+   * @param sourceUrl
+   * @return
+   */
+  @Override
+  public Response searchBySourceUrl(String sourceUrl) throws IOException {
+    QueryBuilder wildcardQuery = QueryBuilders.queryStringQuery(sourceUrl).field("sourceUrl").escape(true);
+    org.opensearch.action.search.SearchRequest searchRequest =
+        new org.opensearch.action.search.SearchRequest("sourceUrlSearchAlias");
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(wildcardQuery);
+    searchRequest.source(searchSourceBuilder);
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
   }
 
@@ -1577,8 +1626,12 @@ public class OpenSearchClientImpl implements SearchClient {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
         return new OsEntitiesDescriptionAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        return new OsServicesDescriptionAggregator(aggregations, dataInsightChartType);
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         return new OsEntitiesOwnerAggregator(aggregations, dataInsightChartType);
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        return new OsServicesOwnerAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TYPE:
         return new OsTotalEntitiesAggregator(aggregations, dataInsightChartType);
       case TOTAL_ENTITIES_BY_TIER:
@@ -1671,10 +1724,34 @@ public class OpenSearchClientImpl implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
+        termsAggregationBuilder =
+            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
+                .size(1000);
+        sumAggregationBuilder =
+            AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
+                .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
+        return dateHistogramAggregationBuilder.subAggregation(
+            termsAggregationBuilder
+                .subAggregation(sumAggregationBuilder)
+                .subAggregation(sumEntityCountAggregationBuilder));
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
                 .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
+                .size(1000);
+        sumAggregationBuilder =
+            AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
+                .field(DataInsightChartRepository.DATA_HAS_OWNER);
+        return dateHistogramAggregationBuilder.subAggregation(
+            termsAggregationBuilder
+                .subAggregation(sumAggregationBuilder)
+                .subAggregation(sumEntityCountAggregationBuilder));
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
+        termsAggregationBuilder =
+            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
+                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
                 .size(1000);
         sumAggregationBuilder =
             AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)

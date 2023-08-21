@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
@@ -46,7 +45,6 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -111,11 +109,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public Topic setInheritedFields(Topic topic, Fields fields) {
     // If topic does not have domain, then inherit it from parent messaging service
-    if (fields.contains(FIELD_DOMAIN) && topic.getDomain() == null) {
-      MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
-      topic.withDomain(service.getDomain());
-    }
-    return topic;
+    MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
+    return inheritDomain(topic, fields, service);
   }
 
   @Override
@@ -378,6 +373,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       }
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
 
     private void updateCleanupPolicies(Topic original, Topic updated) {

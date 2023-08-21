@@ -137,7 +137,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
@@ -501,6 +501,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
     if (fetchProfiler) {
       fetchLatestProfilerData();
+    } else {
+      setIsLoading(false);
     }
     if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);
@@ -602,13 +604,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isUndefined(profile) && !isDataQuality && (
             <div
-              className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+              className="border d-flex items-center border-warning rounded-4 p-xs m-b-md"
               data-testid="no-profiler-placeholder">
               <NoDataIcon />
-              <p className="tw-mb-0 tw-ml-2">
+              <p className="m-l-xs">
                 {t('message.no-profiler-message')}
                 <Link
-                  className="tw-ml-1"
                   target="_blank"
                   to={{
                     pathname:

@@ -72,7 +72,7 @@ Please see the below image for a sample LDAP Configuration in ApacheDS.
 Advanced LDAP Specific Configuration (Optional):
 
 - `maxPoolSize`: Connection Pool Size to use to connect to LDAP Server.
-- `sslEnabled`: Set to true if the SSL is enable to connect to LDAP Server.
+- `sslEnabled`: Set to true if the SSL is enabled to connect to LDAP Server.
 - `truststoreConfigType`: Truststore type. It is required. Can select from {CustomTrustStore, HostName, JVMDefault, TrustAll}
 - `trustStoreConfig`: Config for the selected truststore type. Please check below note for setting this up.
 

@@ -47,6 +47,7 @@ export enum EntityType {
   SUBSCRIPTION = 'subscription',
   USER_NAME = 'username',
   CHART = 'chart',
+  SAMPLE_DATA = 'sampleData',
 }
 
 export enum AssetsType {

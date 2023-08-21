@@ -8,7 +8,7 @@ slug: /connectors/database/pinotdb
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
@@ -16,10 +16,10 @@ slug: /connectors/database/pinotdb
 | Data Quality       | {% icon iconName="check" /%} |
 | Lineage            | Partially via Views          |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | ---                       |
+| Supported Versions | ---                          |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | Partially via Views          |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |

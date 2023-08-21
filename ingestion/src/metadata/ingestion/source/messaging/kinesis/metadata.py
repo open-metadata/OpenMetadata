@@ -117,6 +117,12 @@ class KinesisSource(MessagingServiceSource):
         try:
             logger.info(f"Fetching topic details {topic_details.topic_name}")
 
+            source_url = (
+                f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/kinesis/home"
+                f"?region={self.service_connection.awsConfig.awsRegion}#/streams/details/"
+                f"{topic_details.topic_name}/monitoring"
+            )
+
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
                 service=self.context.messaging_service.fullyQualifiedName.__root__,
@@ -125,6 +131,7 @@ class KinesisSource(MessagingServiceSource):
                     topic_details.topic_metadata.summary
                 ),
                 maximumMessageSize=self._get_max_message_size(),
+                sourceUrl=source_url,
             )
             self.register_record(topic_request=topic)
             yield topic

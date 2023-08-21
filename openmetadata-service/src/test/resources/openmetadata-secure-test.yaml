@@ -104,7 +104,8 @@ database:
   url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "../bootstrap/sql"
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
 
 #elasticsearch:
 #  host: localhost

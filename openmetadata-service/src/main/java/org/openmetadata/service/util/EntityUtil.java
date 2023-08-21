@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,19 +41,16 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
-import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
@@ -106,7 +102,9 @@ public final class EntityUtil {
   public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
-              && constraint1.getColumns().equals(constraint2.getColumns());
+              && constraint1.getColumns().equals(constraint2.getColumns())
+              && ((constraint1.getReferredColumns() == null && constraint2.getReferredColumns() == null)
+                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
@@ -126,6 +124,10 @@ public final class EntityUtil {
   public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   public static final BiPredicate<Field, Field> schemaFieldMatch =
+      (field1, field2) ->
+          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+
+  public static final BiPredicate<SearchIndexField, SearchIndexField> searchIndexFieldMatch =
       (field1, field2) ->
           field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
 
@@ -193,32 +195,6 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
-  }
-
-  public static TestSummary getTestCaseExecutionSummary(
-      CollectionDAO.EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDAO,
-      List<String> testCaseFQNs,
-      String extensionName) {
-    List<String> testCaseFQNHashes =
-        testCaseFQNs.stream().map(FullyQualifiedName::buildHash).collect(Collectors.toList());
-
-    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
-
-    List<String> jsonList = entityExtensionTimeSeriesDAO.getLatestExtensionByFQNs(testCaseFQNHashes, extensionName);
-
-    HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    for (String json : jsonList) {
-      TestCaseResult testCaseResult;
-      testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-      String status = testCaseResult.getTestCaseStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
-    }
-
-    return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(jsonList.size());
   }
 
   /** Merge two sets of tags */
@@ -370,6 +346,15 @@ public final class EntityUtil {
     return fieldName == null
         ? FullyQualifiedName.build("schemaFields", localFieldName)
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+  }
+  /** Return searchIndex field name of format "fields".fieldName.fieldName */
+  public static String getSearchIndexField(SearchIndex searchIndex, SearchIndexField field, String fieldName) {
+    // Remove topic FQN from schemaField FQN to get the local name
+    String localFieldName =
+        EntityUtil.getLocalColumnName(searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("fields", localFieldName)
+        : FullyQualifiedName.build("fields", localFieldName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */

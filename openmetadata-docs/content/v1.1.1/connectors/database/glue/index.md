@@ -8,7 +8,7 @@ slug: /connectors/database/glue
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/glue
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
@@ -88,7 +88,7 @@ You can find more information on [Using temporary credentials with AWS resources
 
 Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
 
-- **Profile Name**: A named profile is a collection of settings and credentials that you can apply to a AWS CLI command.
+- **Profile Name**: A named profile is a collection of settings and credentials that you can apply to an AWS CLI command.
   When you specify a profile to run a command, the settings and credentials are used to run that command.
   Multiple named profiles can be stored in the config and credentials files.
 

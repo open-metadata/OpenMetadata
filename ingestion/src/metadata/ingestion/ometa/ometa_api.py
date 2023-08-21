@@ -49,6 +49,7 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.report import Report
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
@@ -67,6 +68,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
@@ -93,6 +95,7 @@ from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
+from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
@@ -169,6 +172,7 @@ class OpenMetadata(
     OMetaUserMixin,
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
+    OMetaSearchIndexMixin,
     Generic[T, C],
 ):
     """
@@ -359,6 +363,12 @@ class OpenMetadata(
             return "/containers"
 
         if issubclass(
+            entity,
+            get_args(Union[SearchIndex, self.get_create_entity_type(SearchIndex)]),
+        ):
+            return "/searchIndexes"
+
+        if issubclass(
             entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
         ):
             return "/automations/workflows"
@@ -422,11 +432,9 @@ class OpenMetadata(
 
         if issubclass(
             entity,
-            get_args(
-                Union[StorageService, self.get_create_entity_type(StorageService)]
-            ),
+            get_args(Union[SearchService, self.get_create_entity_type(SearchService)]),
         ):
-            return "/services/storageServices"
+            return "/services/searchServices"
 
         if issubclass(
             entity,
@@ -533,6 +541,7 @@ class OpenMetadata(
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
+            .replace("searchindex", "searchIndex")
         )
 
         class_path = ".".join(

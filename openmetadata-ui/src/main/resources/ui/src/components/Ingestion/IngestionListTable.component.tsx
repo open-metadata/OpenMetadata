@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table, Tooltip, Typography } from 'antd';
+import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Loader from 'components/Loader/Loader';
@@ -71,7 +71,7 @@ function IngestionListTable({
             : t('message.no-permission-to-view')
         }>
         <Typography.Link
-          className="tw-mr-2 overflow-wrap-anywhere"
+          className="m-r-xs overflow-wrap-anywhere"
           data-testid="ingestion-dag-link"
           disabled={!(permissions.ViewAll || permissions.ViewBasic)}
           href={`${airflowEndpoint}/tree?dag_id=${text}`}
@@ -181,7 +181,11 @@ function IngestionListTable({
   );
 
   return (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+    <Space
+      className="m-b-md w-full"
+      data-testid="ingestion-table"
+      direction="vertical"
+      size="large">
       <Table
         bordered
         columns={tableColumn}
@@ -212,7 +216,7 @@ function IngestionListTable({
           totalCount={paging.total}
         />
       )}
-    </div>
+    </Space>
   );
 }
 

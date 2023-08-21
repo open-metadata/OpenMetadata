@@ -6,6 +6,12 @@ source:
       type: Trino
       hostPort: localhost:8080
       username: user
+      # For trino, choose one of basic or jwt auth configurations
+      authType:
+      # # For basic auth
+      #   password: password
+      # # For JWT auth
+      #   jwt: jwt_token
       catalog: catalog_name
       databaseSchema: schema_name
       connectionOptions: {}

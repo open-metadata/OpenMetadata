@@ -89,12 +89,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
+    super.addHref(uriInfo, table);
     Entity.withHref(uriInfo, table.getDatabaseSchema());
     Entity.withHref(uriInfo, table.getDatabase());
     Entity.withHref(uriInfo, table.getService());
-    Entity.withHref(uriInfo, table.getOwner());
-    Entity.withHref(uriInfo, table.getFollowers());
-    Entity.withHref(uriInfo, table.getDomain());
     return table;
   }
 

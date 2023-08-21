@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormProps } from '@rjsf/core';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Divider,
@@ -34,7 +33,6 @@ import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList
 import { UserSelectDropdownProps } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
-import { VALID_OBJECT_KEY_REGEX } from 'constants/regex.constants';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { compact, startCase } from 'lodash';
 import TagSuggestion, {
@@ -232,32 +230,4 @@ export const transformErrors: ErrorTransformer = (errors) => {
   });
 
   return compact(errorRet);
-};
-
-export const customValidate: FormProps['customValidate'] = (
-  formData,
-  errors
-) => {
-  const { connectionArguments = {}, connectionOptions = {} } = formData;
-
-  const connectionArgumentsKeys = Object.keys(connectionArguments);
-  const connectionOptionsKeys = Object.keys(connectionOptions);
-
-  const connectionArgumentsHasError = connectionArgumentsKeys.some(
-    (key) => !VALID_OBJECT_KEY_REGEX.test(key)
-  );
-
-  const connectionOptionsHasError = connectionOptionsKeys.some(
-    (key) => !VALID_OBJECT_KEY_REGEX.test(key)
-  );
-
-  if (connectionArgumentsHasError && errors?.connectionArguments) {
-    errors.connectionArguments?.addError(i18n.t('message.invalid-object-key'));
-  }
-
-  if (connectionOptionsHasError && errors?.connectionOptions) {
-    errors.connectionOptions?.addError(i18n.t('message.invalid-object-key'));
-  }
-
-  return errors;
 };
