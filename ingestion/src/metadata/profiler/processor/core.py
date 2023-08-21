@@ -77,7 +77,6 @@ class Profiler(Generic[TMetric]):
         self,
         *metrics: Type[TMetric],
         profiler_interface: ProfilerInterface,
-        profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
     ):

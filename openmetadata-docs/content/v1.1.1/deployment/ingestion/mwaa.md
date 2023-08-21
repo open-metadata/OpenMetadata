@@ -107,7 +107,7 @@ We will now describe the steps, following the official AWS documentation.
 - The required image is `docker.getcollate.io/openmetadata/ingestion-base:x.y.z`
   - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`
   
-We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
+We have tested this process with a Task Memory of 512 MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 
 When creating the ECS Cluster, take notes on the log groups assigned, as we will need them to prepare the MWAA Executor Role policies.
 
@@ -368,6 +368,6 @@ run the ingestion can be found on the documentation (e.g., [Snowflake](https://d
 You will also need to determine the OpenMetadata ingestion extras and Airflow providers you need. Note that the Openmetadata version needs to match the server version. If we are using the server at 0.12.2, then the ingestion package needs to also be 0.12.2.  An example of the extras would look like this `openmetadata-ingestion[mysql,snowflake,s3]==0.12.2.2`.
 For Airflow providers, you will want to pull the provider versions from [the matching constraints file](https://raw.githubusercontent.com/apache/airflow/constraints-2.4.3/constraints-3.7.txt). Since this example installs Airflow Providers v2.4.3 on Python 3.7, we use that constraints file.
 
-Also note that the ingestion workflow function must be entirely self contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
+Also note that the ingestion workflow function must be entirely self-contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
 
 {% partial file="/v1.1.1/deployment/run-connectors-class.md" /%}

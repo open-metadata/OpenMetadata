@@ -8,7 +8,7 @@ slug: /connectors/database/bigquery/yaml
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/bigquery/yaml
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
@@ -67,19 +67,19 @@ To execute metadata extraction and usage workflow successfully the user or the s
 
 {% multiTablesWrapper %}
 
-| #    | GCP Permission                | Required For            |
-| :--- | :---------------------------- | :---------------------- |
-| 1    | bigquery.datasets.get         | Metadata Ingestion      |
-| 2    | bigquery.tables.get           | Metadata Ingestion      |
-| 3    | bigquery.tables.getData       | Metadata Ingestion      |
-| 4    | bigquery.tables.list          | Metadata Ingestion      |
-| 5    | resourcemanager.projects.get  | Metadata Ingestion      |
-| 6    | bigquery.jobs.create          | Metadata Ingestion      |
-| 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
-| 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
-| 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
-| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
-| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| #   | GCP Permission                | Required For                      |
+|:----|:------------------------------|:----------------------------------|
+| 1   | bigquery.datasets.get         | Metadata Ingestion                |
+| 2   | bigquery.tables.get           | Metadata Ingestion                |
+| 3   | bigquery.tables.getData       | Metadata Ingestion                |
+| 4   | bigquery.tables.list          | Metadata Ingestion                |
+| 5   | resourcemanager.projects.get  | Metadata Ingestion                |
+| 6   | bigquery.jobs.create          | Metadata Ingestion                |
+| 7   | bigquery.jobs.listAll         | Metadata Ingestion                |
+| 8   | datacatalog.taxonomies.get    | Fetch Policy Tags                 |
+| 9   | datacatalog.taxonomies.list   | Fetch Policy Tags                 |
+| 10  | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 11  | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 {% /multiTablesWrapper %}
 
@@ -181,7 +181,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

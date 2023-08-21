@@ -15,7 +15,6 @@ import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
 
 const PIPELINE_NAME = 'cypress_dataInsight_pipeline';
-const REGION_NAME = 'US';
 
 describe('Data Insight settings page should work properly', () => {
   beforeEach(() => {
@@ -56,19 +55,9 @@ describe('Data Insight settings page should work properly', () => {
 
     verifyResponseStatusCode('@serviceDetails', 200);
 
-    cy.get('[data-testid="name"]').clear().type(PIPELINE_NAME);
+    cy.get('#root\\/name').clear().type(PIPELINE_NAME);
 
-    cy.get('[data-testid="next-button"]').click();
-
-    cy.get('#root\\/regionName').type(REGION_NAME);
-
-    cy.get('#root\\/useAwsCredentials').click({ waitForAnimations: true });
-
-    cy.get('#root\\/useAwsCredentials')
-      .invoke('attr', 'aria-checked')
-      .should('eq', 'true');
-
-    cy.get('[data-testid="next-button"]').click();
+    cy.get('[data-testid="submit-btn"]').click();
 
     interceptURL(
       'POST',
@@ -79,13 +68,6 @@ describe('Data Insight settings page should work properly', () => {
     cy.get('[data-testid="deploy-button"]').click();
 
     cy.wait('@postIngestionPipeline').then(({ request, response }) => {
-      expect(request.body.sourceConfig.config).to.deep.equal({
-        regionName: 'US',
-        useAwsCredentials: true,
-        useSSL: false,
-        verifyCerts: false,
-        type: 'MetadataToElasticSearch',
-      });
       expect(request.body.loggerLevel).to.equal('INFO');
 
       expect(response.statusCode).to.equal(201);
@@ -110,21 +92,13 @@ describe('Data Insight settings page should work properly', () => {
 
     verifyResponseStatusCode('@serviceDetails', 200);
 
-    cy.get('#root\\/loggerLevel').click({ waitForAnimations: true });
+    cy.get('#root\\/enableDebugLog').click({ waitForAnimations: true });
 
-    cy.get('#root\\/loggerLevel')
+    cy.get('#root\\/enableDebugLog')
       .invoke('attr', 'aria-checked')
       .should('eq', 'true');
 
-    cy.get('[data-testid="next-button"]').click();
-
-    cy.get('#root\\/useSSL').click({ waitForAnimations: true });
-
-    cy.get('#root\\/useSSL')
-      .invoke('attr', 'aria-checked')
-      .should('eq', 'true');
-
-    cy.get('[data-testid="next-button"]').click();
+    cy.get('[data-testid="submit-btn"]').click();
 
     interceptURL(
       'PUT',
@@ -135,13 +109,6 @@ describe('Data Insight settings page should work properly', () => {
     cy.get('[data-testid="deploy-button"]').click();
 
     cy.wait('@putIngestionPipeline').then(({ request, response }) => {
-      expect(request.body.sourceConfig.config).to.deep.equal({
-        regionName: 'US',
-        useAwsCredentials: true,
-        useSSL: true,
-        verifyCerts: false,
-        type: 'MetadataToElasticSearch',
-      });
       expect(request.body.loggerLevel).to.equal('DEBUG');
 
       expect(response.statusCode).to.equal(200);

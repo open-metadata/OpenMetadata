@@ -36,7 +36,6 @@ import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
 import { getTableTabPath } from '../../constants/constants';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../constants/profiler.constant';
@@ -232,10 +231,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         <TableProfilerChart
           dateRangeObject={DEFAULT_RANGE_DATA}
           entityFqn={entityTypeFQN}
-          showOperationGraph={
-            table.serviceType &&
-            allowedServiceForOperationGraph.includes(table.serviceType)
-          }
         />
       )}
       {isColumnFqn && (

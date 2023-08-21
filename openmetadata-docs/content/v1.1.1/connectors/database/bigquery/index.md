@@ -8,7 +8,7 @@ slug: /connectors/database/bigquery
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/bigquery
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
@@ -59,19 +59,19 @@ To execute metadata extraction and usage workflow successfully the user or the s
 
 {% multiTablesWrapper %}
 
-| #    | GCP Permission                | Required For            |
-| :--- | :---------------------------- | :---------------------- |
-| 1    | bigquery.datasets.get         | Metadata Ingestion      |
-| 2    | bigquery.tables.get           | Metadata Ingestion      |
-| 3    | bigquery.tables.getData       | Metadata Ingestion      |
-| 4    | bigquery.tables.list          | Metadata Ingestion      |
-| 5    | resourcemanager.projects.get  | Metadata Ingestion      |
-| 6    | bigquery.jobs.create          | Metadata Ingestion      |
-| 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
-| 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
-| 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
-| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
-| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| #   | GCP Permission                | Required For                      |
+|:----|:------------------------------|:----------------------------------|
+| 1   | bigquery.datasets.get         | Metadata Ingestion                |
+| 2   | bigquery.tables.get           | Metadata Ingestion                |
+| 3   | bigquery.tables.getData       | Metadata Ingestion                |
+| 4   | bigquery.tables.list          | Metadata Ingestion                |
+| 5   | resourcemanager.projects.get  | Metadata Ingestion                |
+| 6   | bigquery.jobs.create          | Metadata Ingestion                |
+| 7   | bigquery.jobs.listAll         | Metadata Ingestion                |
+| 8   | datacatalog.taxonomies.get    | Fetch Policy Tags                 |
+| 9   | datacatalog.taxonomies.list   | Fetch Policy Tags                 |
+| 10  | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 11  | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 {% /multiTablesWrapper %}
 
@@ -104,9 +104,9 @@ link="/connectors/database/bigquery/roles"
 **Host and Port**: BigQuery APIs URL. By default, the API URL is `bigquery.googleapis.com` you can modify this if you have custom implementation of BigQuery.
 
 **GCP Credentials**: 
-You can authenticate with your bigquery instance using either `GCP Credentials Path` where you can specify the file path of the service account key or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
+You can authenticate with your bigquery instance using either `GCP Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+You can check out [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
 
 **GCP Credentials Values**: Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
 
@@ -123,13 +123,13 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
 
 **GCP Credentials Path**: Passing a local file path that contains the credentials.
 
-**Taxonomy Project ID (Optional)**: Bigquery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how yo can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
+**Taxonomy Project ID (Optional)**: Bigquery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how you can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
 
 If you have attached policy tags to the columns of table available in Bigquery, then OpenMetadata will fetch those tags and attach it to the respective columns.
 
 In this field you need to specify the id of project in which the taxonomy was created.
 
-**Taxonomy Location (Optional)**: Bigquery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how yo can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
+**Taxonomy Location (Optional)**: Bigquery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how you can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
 
 If you have attached policy tags to the columns of table available in Bigquery, then OpenMetadata will fetch those tags and attach it to the respective columns.
 

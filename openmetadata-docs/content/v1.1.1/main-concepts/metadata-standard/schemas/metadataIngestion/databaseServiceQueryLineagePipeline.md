@@ -15,7 +15,7 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 - **`resultLimit`** *(integer)*: Configuration to set the limit for query logs. Default: `1000`.
 - **`schemaFilterPattern`**: Regex to only fetch tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`tableFilterPattern`**: Regex exclude tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
-- **`databaseFilterPattern`**: Regex to only fetch databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`databaseFilterPattern`**: Regex to only fetch databases that match the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 ## Definitions
 
 - **`databaseLineageConfigType`** *(string)*: Database Source Config Usage Pipeline type. Must be one of: `['DatabaseLineage']`. Default: `DatabaseLineage`.

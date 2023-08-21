@@ -34,7 +34,7 @@ Configure the usage workflow by providing a Query Log file.
 
 ## UI Configuration
 
-Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add Query Usage information.
+Once the metadata ingestion runs correctly, and we are able to explore the service Entities, we can add Query Usage information.
 
 This will populate the Queries tab from the Table Entity Page.
 

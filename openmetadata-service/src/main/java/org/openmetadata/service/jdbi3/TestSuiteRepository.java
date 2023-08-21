@@ -3,17 +3,21 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
@@ -42,7 +46,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    entity.setSummary(fields.contains("summary") ? getTestSummary(entity) : entity.getSummary());
+    entity.setSummary(fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
     return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
   }
 
@@ -51,6 +55,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
     return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
+  }
+
+  private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
+    return new TestSummary()
+        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+        .withTotal(total);
   }
 
   @Override
@@ -63,13 +75,54 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
-  private TestSummary getTestSummary(TestSuite entity) {
-    List<EntityReference> testCases = getTestCases(entity);
-    List<String> testCaseFQNs =
-        testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+  private HashMap<String, Integer> getResultSummary(TestSuite testSuite) {
+    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+    for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
+      String status = resultSummary.getStatus().toString();
+      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    }
 
-    return EntityUtil.getTestCaseExecutionSummary(
-        daoCollection.entityExtensionTimeSeriesDao(), testCaseFQNs, TESTCASE_RESULT_EXTENSION);
+    return testCaseSummary;
+  }
+
+  private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
+    if (entity.getTestCaseResultSummary().isEmpty()) return new TestSummary();
+    HashMap<String, Integer> testSummary = getResultSummary(entity);
+    return buildTestSummary(testSummary, entity.getTestCaseResultSummary().size());
+  }
+
+  private TestSummary getTestCasesExecutionSummary(List<TestSuite> entities) {
+    if (entities.isEmpty()) return new TestSummary();
+
+    HashMap<String, Integer> testsSummary = new HashMap<>();
+    int total = 0;
+    for (TestSuite testSuite : entities) {
+      HashMap<String, Integer> testSummary = getResultSummary(testSuite);
+      for (Map.Entry<String, Integer> entry : testSummary.entrySet()) {
+        testsSummary.put(entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
+      }
+      total += testSuite.getTestCaseResultSummary().size();
+    }
+
+    return buildTestSummary(testsSummary, total);
+  }
+
+  public TestSummary getTestSummary(UUID testSuiteId) {
+    TestSummary testSummary;
+    if (testSuiteId == null) {
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam("testSuiteType", "executable");
+      List<TestSuite> testSuites = listAll(EntityUtil.Fields.EMPTY_FIELDS, filter);
+      testSummary = getTestCasesExecutionSummary(testSuites);
+    } else {
+      TestSuite testSuite = find(testSuiteId, Include.ALL);
+      if (!Boolean.TRUE.equals(testSuite.getExecutable())) {
+        throw new IllegalArgumentException("Test Suite is not executable. Please provide an executable test suite.");
+      }
+      testSummary = getTestCasesExecutionSummary(testSuite);
+    }
+
+    return testSummary;
   }
 
   @Override

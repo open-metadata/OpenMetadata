@@ -64,7 +64,7 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-To ingest basic metadata snowflake user must have the following priviledges:
+To ingest basic metadata snowflake user must have the following privileges:
   - `USAGE` Privilege on Warehouse
   - `USAGE` Privilege on Database
   - `USAGE` Privilege on Schema

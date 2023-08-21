@@ -32,7 +32,7 @@ This guide assumes your helm chart release names as `openmetadata` and `openmeta
 
 ### 1. Start Local Kubernetes Cluster
 
-For this guide, we will be using minikube as our local kubernetes cluster. Run the following command to start a minikube cluster with 4 vCPUs and 8GiB Memory.
+For this guide, we will be using minikube as our local kubernetes cluster. Run the following command to start a minikube cluster with 4 vCPUs and 8 GiB Memory.
 
 ```
 minikube start --cpus=4 --memory=8192
@@ -40,7 +40,7 @@ minikube start --cpus=4 --memory=8192
 
 {%note%}
 
-If you are using minikube to start a local kubernetes instance on Mac OS with M1 chipset, use the following command to start the cluster required for OpenMetadata Helm Charts to install locally (with docker desktop running as container runtime engine).
+If you are using minikube to start a local kubernetes instance on MacOS with M1 chipset, use the following command to start the cluster required for OpenMetadata Helm Charts to install locally (with docker desktop running as container runtime engine).
 
 `minikube start --cpus=4 --memory=8192 --cni=bridge --driver=docker`
 
@@ -155,7 +155,7 @@ persistent volume claims (`pvc`). These will need to be manually cleaned after h
 
 Sometimes, kubernetes timeout pulling the docker images. In such cases, you will receive `ErrImagePull` issue. In order to resolve this, you can manually pull the required docker images in your kubernetes environment. 
 
-You can find the docker image name of the failing pods using the the command below -
+You can find the docker image name of the failing pods using the command below -
 
 ```
 kubectl get pods -n <NAMESPACE_NAME> <POD_NAME> -o jsonpath="{..image}"

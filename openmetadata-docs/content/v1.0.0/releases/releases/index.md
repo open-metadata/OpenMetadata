@@ -221,7 +221,7 @@ Learn how to upgrade your OpenMetadata instance to 1.0!
 ## Profiler and Data Quality
 - Freshness Metric has been introduced. Data freshness shows DML operations performed against a table and the number of rows affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.
 - Support has been added for data quality tests on Data Lake.
-- UI has been improved to show table and column profile data on seperate page. Legend is now selectable to filter for specific metrics
+- UI has been improved to show table and column profile data on separate page. Legend is now selectable to filter for specific metrics
 
 ## Alerts and Notification
 The logic for Notification Support has been improved. Users can define Alerts based on a Trigger (all data assets or a specific entity), Filters (events to consider), and Action (Slack, MS Teams, Email, Webhook) on where to send the alert.
@@ -245,7 +245,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 {%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" /%}
 
 ## Data Insights and KPI
-Data Insight allows admins to take an active approach in their metadata management. Data Inisght provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
+Data Insight allows admins to take an active approach in their metadata management. Data Insight provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
 
 ## Lineage
 The lineage UI has been transformed to enhance user experience. Users can get a holistic view of an entity from the Lineage tab. When an entity is selected, the UI displays end-to-end lineage traceability for the table and column levels.
@@ -282,7 +282,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 - Databricks lineage
 - Added support for Airflow version 2.2.2 as a workflow scheduler
 ## Bug Fixes
-- Support same table across differemt databases for the profiler
+- Support same table across different databases for the profiler
 
 # [0.12.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.1-release) - Oct 3rd 2022 🎉
 ## Basic Authentication

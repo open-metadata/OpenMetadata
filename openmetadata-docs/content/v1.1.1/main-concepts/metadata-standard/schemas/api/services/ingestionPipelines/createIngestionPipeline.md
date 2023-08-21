@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/c
 
 # CreateIngestionPipelineRequest
 
-*Ingestion Pipeline Config is used to setup a Airflow DAG.*
+*Ingestion Pipeline Config is used to set up an Airflow DAG.*
 
 ## Properties
 

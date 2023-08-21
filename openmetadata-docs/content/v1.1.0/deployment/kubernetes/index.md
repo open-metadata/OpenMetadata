@@ -15,7 +15,7 @@ Below is the expected Kubernetes Deployment Architecture for OpenMetadata Applic
 
 In the above architecture diagram, OpenMetadata Application is deployed using Helm Charts. The various kubernetes manifests that supports the installation. With the above architecture, OpenMetadata Application Connects with external dependencies which is Database, ElasticSearch and Orchestration tools like airflow.
 
-The OpenMetadata Helm Charts Exposes the Application from Kubernetes Service at Port `8585` and `8586`. The Health Checks and Metrics endpoints are available on prot `8586`.
+The OpenMetadata Helm Charts Exposes the Application from Kubernetes Service at Port `8585` and `8586`. The Health Checks and Metrics endpoints are available on port `8586`.
 
 Network Policies and Ingresses are optional manifests and disabled by default. These can be installed / enabled using the [Helm Values](/deployment/kubernetes/helm-values).
 
