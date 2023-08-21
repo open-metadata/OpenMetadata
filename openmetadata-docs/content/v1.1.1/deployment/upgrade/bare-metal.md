@@ -90,12 +90,10 @@ binaries. You may restart the server by running the following command.
 
 ## Step 7: Re-index all your metadata
 
-Go to Settings -> Elasticsearch
+Go to `Settings` -> `Elasticsearch`
 
 {% image src="/images/v1.1.1/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
 
-Click on reindex all
-
-in the dialog box choose Recreate Indexes to All
+Click on `Re-index All` and in the dialog box choose `Entities` to `All`.
 
 {% image src="/images/v1.1.1/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}

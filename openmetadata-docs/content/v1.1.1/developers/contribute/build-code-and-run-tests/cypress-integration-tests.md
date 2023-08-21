@@ -8,7 +8,7 @@ slug: /developers/contribute/build-code-and-run-tests/cypress-integration-tests
 ## Pre-requisites
 Before proceeding ensure that you have followed all the pre-requisites in the [OpenMetadata UI](/developers/contribute/build-code-and-run-tests/openmetadata-ui) section.
 
-Cypress tests also require all the services to be up and running in a clean slate including Elastic Search, Airflow and MySQL database. The quickest way to bring all the services up and running in local is to use the following script which will start all the required docker containers.
+Cypress tests also require all the services to be up and running in a clean slate including Elasticsearch, Airflow and MySQL database. The quickest way to bring all the services up and running in local is to use the following script which will start all the required docker containers.
 
 ```shell
 sh docker/run_local_docker.sh

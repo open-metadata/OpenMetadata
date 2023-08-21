@@ -42,7 +42,16 @@ async function parseSchema(filePath, destPath) {
     const fileDir = `${cwd}/${path.dirname(filePath)}`;
     const fileName = path.basename(filePath);
     process.chdir(fileDir);
-    const parsedSchema = await parser.parse(fileName);
+
+    let parsedSchema = await parser.parse(fileName);
+
+    /**
+     * dbt schemas has some internal reference so we have to dereference them
+     */
+    if (fileName.startsWith('dbt')) {
+      parsedSchema = await parser.dereference(parsedSchema);
+    }
+
     const api = await parser.bundle(parsedSchema);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
     if (!fs.existsSync(dirname)) {

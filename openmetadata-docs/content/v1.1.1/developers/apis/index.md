@@ -28,7 +28,7 @@ Following REST API conventions are followed for Resource URIs:
 Following HTTP methods are supported for CRUD operations. HTTP response codes are used per REST API conventions.
 
 | HTTP Methods                        | Response                                                 |
-| ----------------------------------- | -------------------------------------------------------- |
+|-------------------------------------|----------------------------------------------------------|
 | GET .../api/v1/entities             | List entities                                            |
 | GET .../api/v1/entities/{id}        | Get an entity by id                                      |
 | GET .../api/v1/entities/name/{name} | Get an entity by name                                    |

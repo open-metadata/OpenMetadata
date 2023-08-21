@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.configure-ingestion-form {
-  .ant-form-item {
-    margin-bottom: 16px;
-  }
-  .ant-divider-horizontal {
-    margin: 16px 0px;
-  }
-}
+
+import React, { ReactNode } from 'react';
+
+//  using fragment to eliminate title attribute from the progress element
+export const progressBarFormatter = (percent?: number): ReactNode => (
+  <>{percent ?? 0}%</>
+);

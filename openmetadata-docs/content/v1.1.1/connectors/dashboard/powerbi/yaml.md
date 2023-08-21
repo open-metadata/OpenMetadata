@@ -33,7 +33,7 @@ To access the PowerBI APIs and import dashboards, charts, and datasets from Powe
 
 ### PowerBI Account Setup
 
-### Step 1: Create an Azure AD app and configure the PowerBI Admin consle
+### Step 1: Create an Azure AD app and configure the PowerBI Admin console
 
 Please follow the steps mentioned [here](https://docs.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal) for setting up the Azure AD application service principle and configure PowerBI admin settings
 

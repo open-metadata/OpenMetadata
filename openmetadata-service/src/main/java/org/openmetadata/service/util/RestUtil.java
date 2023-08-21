@@ -46,7 +46,7 @@ public final class RestUtil {
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
   public static final String LOGICAL_TEST_CASES_ADDED = "Logical Test Cases Added to Test Suite";
   public static final String TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE =
-      "Test case successfuly removed from test suite ID %s";
+      "Test case successfully  removed from test suite ID %s";
 
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateFormat DATE_FORMAT;

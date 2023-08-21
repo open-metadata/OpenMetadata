@@ -30,7 +30,7 @@ slug: /main-concepts/metadata-standard/schemas/type/changeevent
     - **Items** *(string)*
   - **`exclude`** *(array)*: Field which are not allowed to pass. Default: `[]`.
     - **Items** *(string)*
-- **`eventFilter`** *(object)*: Represents a Filter attached to a entity. Cannot contain additional properties.
+- **`eventFilter`** *(object)*: Represents a Filter attached to an entity. Cannot contain additional properties.
   - **`entityType`** *(string)*: Entity type for filter , example : topic , table, dashboard, mlmodel , etc.
   - **`filters`** *(array)*: List of operations supported by the resource.
     - **Items**: Refer to *#/definitions/filters*.

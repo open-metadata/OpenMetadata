@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/tests/column/columnvaluesmissingc
 
 ## Properties
 
-- **`missingCountValue`** *(integer)*: No.of missing values to be equal to.
+- **`missingCountValue`** *(integer)*: Number of missing values to be equal to.
 - **`missingValueMatch`**: By default match all null and empty values to be missing. This field allows us to configure additional strings such as N/A, NULL as missing strings as well.
   - **Items** *(string)*
 

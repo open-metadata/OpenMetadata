@@ -8,7 +8,7 @@ Learn how to configure the dbt workflow from the cli to ingest dbt data from you
 
 ## CLI Configuration
 
-Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add the dbt information.
+Once the metadata ingestion runs correctly, and we are able to explore the service Entities, we can add the dbt information.
 
 This will populate the dbt tab from the Table Entity Page.
 

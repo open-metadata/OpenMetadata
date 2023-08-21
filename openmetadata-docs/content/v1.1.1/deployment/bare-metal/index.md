@@ -24,7 +24,7 @@ Java?](https://java.com/en/download/help/download_options.html#mac).
 
 ## MySQL (version 8.0.0 or greater)
 
-To install MySQL see the instructions for your operating system (OS) at [Installing and Upgrading MySQL](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/installing.html) 
+To install MySQL, see the instructions for your operating system (OS) at [Installing and Upgrading MySQL](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/installing.html) 
 or visit one of the following OS-specific guides.
 
 - [Installing MySQL on Linux](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/linux-installation.html)
@@ -41,7 +41,7 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 ## Postgres (version between 12.0 or greater)
 
-To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
+To install Postgres, see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
 {%note%}
 
 Make sure to configure required databases and users for OpenMetadata. 
@@ -53,14 +53,14 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 ## Elasticsearch (version 7.X)
 
-OpenMetadata supports ElasticSearch version upto 7.17. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
+OpenMetadata supports ElasticSearch version up to 7.17. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
 [Installing ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
 
 We do not support ElasticSearch 8.x yet.
 
 Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setup.html).
 
-If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version upto 1.3. For more information on AWS OpenSearch Service, please visit the offical docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
+If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 1.3. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
 ## Airflow (version 2.0.0 or greater) or other workflow schedulers
 
@@ -125,7 +125,7 @@ To do this you will need to add one or more entries to the configuration file fo
 
 ### Nginx
 
-To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the http context of your Nginx
+To use OpenMetadata behind Nginx reverse proxy, add an entry resembling the following the http context of your Nginx
 configuration file for each OpenMetadata instance.
 
 ```commandline
@@ -146,7 +146,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or greater
-- Amazon OpenSearch (ElasticSearch) engine version upto 7.1 or Amazon OpenSearch engine version upto 1.3
+- Amazon OpenSearch (ElasticSearch) engine version up to 7.1 or Amazon OpenSearch engine version up to 1.3
 - Amazon RDS (PostgreSQL) engine version between 12 and 15.X
 
 Note:-

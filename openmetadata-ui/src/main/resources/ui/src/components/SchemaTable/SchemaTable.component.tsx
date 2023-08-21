@@ -284,7 +284,11 @@ const SchemaTable = ({
             align="start"
             className="w-max-90 vertical-align-inherit"
             size={2}>
-            {prepareConstraintIcon(name, record.constraint, tableConstraints)}
+            {prepareConstraintIcon({
+              columnName: name,
+              columnConstraint: record.constraint,
+              tableConstraints,
+            })}
             <span className="break-word">{getEntityName(record)}</span>
           </Space>
         ),

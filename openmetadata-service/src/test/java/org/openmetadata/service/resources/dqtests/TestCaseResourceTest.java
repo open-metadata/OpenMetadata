@@ -337,8 +337,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotEquals(0, testSummary.getTotal());
     assertEquals(0, testSummary.getAborted());
 
-    TestSummary emptyTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, UUID.randomUUID().toString());
-    assertNull(emptyTestSummary.getFailed());
+    String randomUUID = UUID.randomUUID().toString();
+    assertResponseContains(
+        () -> getTestSummary(ADMIN_AUTH_HEADERS, randomUUID),
+        NOT_FOUND,
+        "testSuite instance for " + randomUUID + " not found");
   }
 
   @Test
@@ -755,11 +758,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId) throws IOException {
-    WebTarget target = getCollection().path("/executionSummary");
-    if (testSuiteId != null) {
-      target = target.queryParam("testSuiteId", testSuiteId);
-    }
-    return TestUtils.get(target, TestSummary.class, authHeaders);
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    return testSuiteResourceTest.getTestSummary(authHeaders, testSuiteId);
   }
 
   public ResultList<TestCase> getTestCases(
