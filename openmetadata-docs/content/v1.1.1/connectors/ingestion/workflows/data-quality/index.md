@@ -60,7 +60,7 @@ Navigate to the entity you want to add a test (we currently support quality test
   caption="Write your first test"
  /%}
 
-## Step 2: Select the Test Definition
+## Step 2: Select the Test Type
 Select the type of test you want to run and set the parameters (if any) for your test case. If you have select a `column` test, you will need to select which column you want to execute your test against. Give it a name and then submit it.
 
 **Note:** if you have a profiler workflow running, you will be able to visualize some context around your column or table data.
