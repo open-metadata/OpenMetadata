@@ -65,7 +65,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -1031,10 +1030,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void putProfileConfig(Table table, Map<String, String> authHeaders) throws IOException {
+    // Add table profile config with columns c1, c3 and column c2 excluded
     List<ColumnProfilerConfig> columnProfilerConfigs = new ArrayList<>();
     columnProfilerConfigs.add(
         getColumnProfilerConfig(C1, "valuesCount", "valuePercentage", "validCount", "duplicateCount"));
     columnProfilerConfigs.add(getColumnProfilerConfig(C3, "duplicateCount", "nullCount", "missingCount"));
+
     TableProfilerConfig tableProfilerConfig =
         new TableProfilerConfig()
             .withProfileQuery("SELECT * FROM dual")
@@ -1045,6 +1046,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table storedTable = getEntity(table.getId(), "tableProfilerConfig", authHeaders);
     assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
 
+    // Change table profile config with columns c2, c3 and column c1 excluded
+    // Also change the profileQuery from dual to dual1
     columnProfilerConfigs.remove(0);
     columnProfilerConfigs.add(
         getColumnProfilerConfig(C2, "valuesCount", "valuePercentage", "validCount", "duplicateCount"));
@@ -1145,13 +1148,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             authHeaders);
     verifyColumnProfiles(tableColumnProfiles, columnProfileResults, 2);
 
-    // Replace table profile for a date
-    TableProfile newTableProfile1 = new TableProfile().withRowCount(21.0).withColumnCount(3.0).withTimestamp(timestamp);
-    createTableProfile.setTableProfile(newTableProfile1);
-    putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
-    assertEquals(newTableProfile1.getTimestamp(), putResponse.getProfile().getTimestamp());
-    verifyTableProfile(putResponse.getProfile(), newTableProfile1);
-
     table = getEntity(table.getId(), "profile", authHeaders);
     // first result should be the latest date
     tableProfiles =
@@ -1160,12 +1156,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             TestUtils.dateToTimestamp("2021-09-09"),
             TestUtils.dateToTimestamp("2021-09-10"),
             authHeaders);
-    verifyTableProfiles(tableProfiles, List.of(newTableProfile1, tableProfile), 2);
+    verifyTableProfiles(tableProfiles, List.of(newTableProfile, tableProfile), 2);
 
     String dateStr = "2021-09-";
     List<TableProfile> tableProfileList = new ArrayList<>();
     tableProfileList.add(tableProfile);
-    tableProfileList.add(newTableProfile1);
+    tableProfileList.add(newTableProfile);
     for (int i = 11; i <= 20; i++) {
       timestamp = TestUtils.dateToTimestamp(dateStr + i);
       tableProfile = new TableProfile().withRowCount(21.0).withColumnCount(3.0).withTimestamp(timestamp);
@@ -1704,7 +1700,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     DatabaseResourceTest dbTest = new DatabaseResourceTest();
@@ -1727,7 +1723,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_domainInheritance(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void test_domainInheritance(TestInfo test) throws HttpResponseException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     DatabaseServiceResourceTest dbServiceTest = new DatabaseServiceResourceTest();
     DatabaseService dbService =
@@ -1877,9 +1873,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void assertFields(Table table, String fieldsParam) {
-    // TODO cleanup
     Fields fields = new Fields(Entity.getEntityFields(Table.class), fieldsParam);
-
     if (fields.contains("usageSummary")) {
       assertNotNull(table.getUsageSummary());
     } else {

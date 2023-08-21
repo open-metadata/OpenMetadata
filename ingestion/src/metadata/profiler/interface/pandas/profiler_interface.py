@@ -25,14 +25,12 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.ingestion.source.database.datalake.models import (
-    DatalakeTableSchemaWrapper,
-)
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -81,12 +79,11 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.dfs = self._convert_table_to_list_of_dataframe_objects()
 
     def _convert_table_to_list_of_dataframe_objects(self):
-        """From a tablen entity, return the conresponding dataframe object
+        """From a table entity, return the corresponding dataframe object
 
         Returns:
             List[DataFrame]
         """
-        connection_args = self.service_connection_config.configSource.securityConfig
         data = fetch_dataframe(
             config_source=self.service_connection_config.configSource,
             client=self.client,
@@ -95,7 +92,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 bucket_name=self.table_entity.databaseSchema.name,
             ),
             is_profiler=True,
-            connection_kwargs=connection_args,
         )
 
         if not data:

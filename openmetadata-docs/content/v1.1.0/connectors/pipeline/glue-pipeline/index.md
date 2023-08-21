@@ -5,6 +5,17 @@ slug: /connectors/pipeline/glue-pipeline
 
 # Glue Pipeline
 
+{% multiTablesWrapper %}
+
+| Feature                     | Status                       |
+|--:--------------------------|--:---------------------------|
+| Stage                       | PROD                         |
+| Metadata                    | {% icon iconName="check" /%} |
+| Supported Versions          | --                           |
+
+
+{% /multiTablesWrapper %}
+
 In this section, we provide guides and references to use the Glue connector.
 
 Configure and schedule Glue metadata and profiler workflows from the OpenMetadata UI:

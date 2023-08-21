@@ -237,14 +237,14 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private void validateBotToken(String tokenFromHeader, String userName) {
-    if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
+    if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
     throw AuthenticationException.getInvalidTokenException();
   }
 
   private void validatePersonalAccessToken(String tokenFromHeader, String userName) {
-    if (UserTokenCache.getInstance().getToken(userName).contains(tokenFromHeader)) {
+    if (UserTokenCache.getToken(userName).contains(tokenFromHeader)) {
       return;
     }
     throw AuthenticationException.getInvalidTokenException();

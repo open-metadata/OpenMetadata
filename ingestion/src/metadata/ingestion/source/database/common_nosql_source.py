@@ -94,6 +94,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         yield CreateDatabaseRequest(
             name=database_name,
             service=self.context.database_service.fullyQualifiedName.__root__,
+            sourceUrl=self.get_source_url(database_name=database_name),
         )
 
     @abstractmethod
@@ -133,6 +134,10 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
             database=self.context.database.fullyQualifiedName.__root__,
+            sourceUrl=self.get_source_url(
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            ),
         )
 
     @abstractmethod
@@ -202,6 +207,12 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 columns=columns,
                 tableConstraints=None,
                 databaseSchema=self.context.database_schema.fullyQualifiedName.__root__,
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    table_type=table_type,
+                ),
             )
 
             yield table_request
@@ -221,6 +232,17 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         """
         tags are not supported with NoSQL
+        """
+
+    def get_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
+    ) -> Optional[str]:
+        """
+        By default the source url is not supported for
         """
 
     def close(self):

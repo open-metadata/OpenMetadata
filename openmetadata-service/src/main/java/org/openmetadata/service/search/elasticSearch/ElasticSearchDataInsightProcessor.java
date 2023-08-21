@@ -3,7 +3,6 @@ package org.openmetadata.service.search.elasticSearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -13,9 +12,10 @@ import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
-import org.openmetadata.service.elasticsearch.indexes.ReportDataIndexes;
 import org.openmetadata.service.exception.ProcessorException;
+import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchIndexDefinition;
+import org.openmetadata.service.search.indexes.ReportDataIndexes;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -42,7 +42,7 @@ public class ElasticSearchDataInsightProcessor implements Processor<BulkRequest,
           input.getData().size(),
           0);
       updateStats(input.getData().size(), 0);
-    } catch (JsonProcessingException e) {
+    } catch (Exception e) {
       LOG.debug(
           "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           input.getData().size(),
@@ -54,7 +54,7 @@ public class ElasticSearchDataInsightProcessor implements Processor<BulkRequest,
     return requests;
   }
 
-  private BulkRequest buildBulkRequests(String entityType, List<ReportData> entities) throws JsonProcessingException {
+  private BulkRequest buildBulkRequests(String entityType, List<ReportData> entities) {
     BulkRequest bulkRequests = new BulkRequest();
     for (ReportData reportData : entities) {
       UpdateRequest request = getUpdateRequest(entityType, reportData);
@@ -63,9 +63,8 @@ public class ElasticSearchDataInsightProcessor implements Processor<BulkRequest,
     return bulkRequests;
   }
 
-  private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) throws JsonProcessingException {
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+  private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);

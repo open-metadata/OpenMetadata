@@ -14,7 +14,6 @@
 import { ReactNode } from 'react';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
-import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export interface SchemaTableProps {
   tableColumns: Column[];
@@ -26,7 +25,6 @@ export interface SchemaTableProps {
   searchText?: string;
   isReadOnly?: boolean;
   entityFqn: string;
-  entityFieldThreads: EntityFieldThreads[];
   onUpdate: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }

@@ -22,6 +22,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -54,7 +55,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     setLoading(true);
     try {
       const response = await getRunHistoryForPipeline(
-        ingestion.fullyQualifiedName || '',
+        getEncodedFqn(ingestion.fullyQualifiedName || ''),
         queryParams
       );
 
@@ -112,7 +113,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
             <Popover
               key={i}
               title={
-                <div className="tw-text-left">
+                <div className="text-left">
                   {r.timestamp && (
                     <p>
                       {`${t('label.execution-date')}:`}{' '}

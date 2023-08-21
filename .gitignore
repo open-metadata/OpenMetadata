@@ -85,6 +85,7 @@ openmetadata-ui/src/main/resources/ui/cypress/fixtures
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
+openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
 
 #UI - Generated TS
 openmetadata-ui/src/main/resources/ui/src/generated

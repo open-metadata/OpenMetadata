@@ -28,14 +28,16 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
+import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import React, {
@@ -56,18 +58,19 @@ import {
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getEntityMissingError } from 'utils/CommonUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
-import { getDatabaseSchemaDetailsPath } from '../../constants/constants';
+import {
+  getDatabaseSchemaDetailsPath,
+  INITIAL_PAGING_VALUE,
+} from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityThreadLink,
-} from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -83,7 +86,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const history = useHistory();
   const isMounting = useRef(true);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
   );
@@ -104,9 +110,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
+  const [currentTablesPage, setCurrentTablesPage] =
+    useState<number>(INITIAL_PAGING_VALUE);
 
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
+    setCurrentTablesPage(INITIAL_PAGING_VALUE);
   };
 
   const { tags, tier } = useMemo(
@@ -123,7 +132,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const fetchDatabaseSchemaPermission = useCallback(async () => {
-    setIsLoading(true);
+    setIsPermissionsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE_SCHEMA,
@@ -133,7 +142,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsPermissionsLoading(false);
     }
   }, [databaseSchemaFQN]);
 
@@ -143,8 +152,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission]
   );
 
-  const onThreadLinkSelect = useCallback((link?: string) => {
-    setThreadLink(link ?? '');
+  const onThreadLinkSelect = useCallback(
+    (link: string, threadType?: ThreadType) => {
+      setThreadLink(link);
+      if (threadType) {
+        setThreadType(threadType);
+      }
+    },
+    []
+  );
+
+  const onThreadPanelClose = useCallback(() => {
+    setThreadLink('');
   }, []);
 
   const getEntityFeedCount = useCallback(async () => {
@@ -174,7 +193,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (err) {
       // Error
     } finally {
-      setIsLoading(false);
       setIsSchemaDetailsLoading(false);
     }
   }, [databaseSchemaFQN]);
@@ -185,7 +203,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const res = await getTableList({
           ...params,
-          databaseSchema: databaseSchemaFQN,
+          databaseSchema: getDecodedFqn(databaseSchemaFQN),
           include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
         });
         setTableData(res);
@@ -253,7 +271,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     (activeKey: string) => {
       if (activeKey !== activeTab) {
         history.push({
-          pathname: getDatabaseSchemaDetailsPath(databaseSchemaFQN, activeKey),
+          pathname: getDatabaseSchemaDetailsPath(
+            getDecodedFqn(databaseSchemaFQN),
+            activeKey
+          ),
         });
       }
     },
@@ -403,6 +424,20 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   }, [databaseSchemaId]);
 
+  const tablePaginationHandler = useCallback(
+    (cursorValue: string | number, activePage?: number) => {
+      if (isString(cursorValue)) {
+        getSchemaTables({ [cursorValue]: tableData.paging[cursorValue] });
+      }
+      setCurrentTablesPage(activePage ?? INITIAL_PAGING_VALUE);
+    },
+    [tableData, getSchemaTables]
+  );
+
+  useEffect(() => {
+    fetchDatabaseSchemaPermission();
+  }, [databaseSchemaFQN]);
+
   useEffect(() => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
@@ -411,14 +446,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission, databaseSchemaFQN]);
 
   useEffect(() => {
-    if (databaseSchemaFQN) {
+    if (viewDatabaseSchemaPermission && databaseSchemaFQN) {
       getSchemaTables();
     }
-  }, [showDeletedTables, databaseSchemaFQN]);
-
-  useEffect(() => {
-    fetchDatabaseSchemaPermission();
-  }, [databaseSchemaFQN]);
+  }, [showDeletedTables, databaseSchemaFQN, viewDatabaseSchemaPermission]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {
@@ -456,15 +487,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         <Row gutter={[0, 16]} wrap={false}>
           <Col className="p-t-sm m-x-lg" flex="auto">
             <SchemaTablesTab
+              currentTablesPage={currentTablesPage}
               databaseSchemaDetails={databaseSchema}
               description={description}
               editDescriptionPermission={editDescriptionPermission}
               entityFieldThreadCount={entityFieldThreadCount}
-              getSchemaTables={getSchemaTables}
               isEdit={isEdit}
               showDeletedTables={showDeletedTables}
               tableData={tableData}
               tableDataLoading={tableDataLoading}
+              tablePaginationHandler={tablePaginationHandler}
               onCancel={onEditCancel}
               onDescriptionEdit={onDescriptionEdit}
               onDescriptionUpdate={onDescriptionUpdate}
@@ -480,7 +512,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={databaseSchemaFQN}
-                entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -491,7 +522,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={databaseSchemaFQN}
-                entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -527,17 +557,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
   ];
 
-  if (isLoading) {
+  if (isPermissionsLoading) {
     return <Loader />;
   }
 
   if (!viewDatabaseSchemaPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (
@@ -546,55 +571,62 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
       })}>
-      <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
-          {isSchemaDetailsLoading ? (
-            <Skeleton
-              active
-              paragraph={{
-                rows: 3,
-                width: ['20%', '80%', '60%'],
-              }}
+      {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
+        <ErrorPlaceHolder className="m-0">
+          {getEntityMissingError(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)}
+        </ErrorPlaceHolder>
+      ) : (
+        <Row gutter={[0, 12]}>
+          <Col className="p-x-lg" span={24}>
+            {isSchemaDetailsLoading ? (
+              <Skeleton
+                active
+                paragraph={{
+                  rows: 3,
+                  width: ['20%', '80%', '60%'],
+                }}
+              />
+            ) : (
+              <DataAssetsHeader
+                isRecursiveDelete
+                afterDeleteAction={handleDataAssetAfterDeleteAction}
+                dataAsset={databaseSchema}
+                entityType={EntityType.DATABASE_SCHEMA}
+                permissions={databaseSchemaPermission}
+                onDisplayNameUpdate={handleUpdateDisplayName}
+                onOwnerUpdate={handleUpdateOwner}
+                onRestoreDataAsset={handleRestoreDatabaseSchema}
+                onTierUpdate={handleUpdateTier}
+              />
+            )}
+          </Col>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={activeTabHandler}
             />
-          ) : (
-            <DataAssetsHeader
-              isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
-              dataAsset={databaseSchema}
-              entityType={EntityType.DATABASE_SCHEMA}
-              permissions={databaseSchemaPermission}
-              onDisplayNameUpdate={handleUpdateDisplayName}
-              onOwnerUpdate={handleUpdateOwner}
-              onRestoreDataAsset={handleRestoreDatabaseSchema}
-              onTierUpdate={handleUpdateTier}
-            />
-          )}
-        </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={activeTabHandler}
-          />
-        </Col>
-        <Col span={24}>
-          {threadLink ? (
-            <ActivityThreadPanel
-              createThread={createThread}
-              deletePostHandler={deleteFeed}
-              open={Boolean(threadLink)}
-              postFeedHandler={postFeed}
-              threadLink={threadLink}
-              updateThreadHandler={updateFeed}
-              onCancel={onThreadLinkSelect}
-            />
-          ) : null}
-        </Col>
-      </Row>
+          </Col>
+          <Col span={24}>
+            {threadLink ? (
+              <ActivityThreadPanel
+                createThread={createThread}
+                deletePostHandler={deleteFeed}
+                open={Boolean(threadLink)}
+                postFeedHandler={postFeed}
+                threadLink={threadLink}
+                threadType={threadType}
+                updateThreadHandler={updateFeed}
+                onCancel={onThreadPanelClose}
+              />
+            ) : null}
+          </Col>
+        </Row>
+      )}
     </PageLayoutV1>
   );
 };
 
-export default observer(DatabaseSchemaPage);
+export default observer(withActivityFeed(DatabaseSchemaPage));

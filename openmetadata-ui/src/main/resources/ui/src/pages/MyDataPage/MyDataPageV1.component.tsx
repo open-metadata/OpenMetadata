@@ -19,6 +19,7 @@ import KPIWidget from 'components/KPIWidget/KPIWidget.component';
 import { MyDataWidget } from 'components/MyData/MyDataWidget/MyDataWidget.component';
 import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
 import TotalDataAssetsWidget from 'components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
+import WelcomeScreen from 'components/WelcomeScreen/WelcomeScreen.component';
 import FeedsWidget from 'components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from 'constants/constants';
 import { isEmpty, isNil } from 'lodash';
@@ -41,7 +42,7 @@ const MyDataPageV1 = () => {
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const isMounted = useRef(false);
-  const [_, setShowWelcomeScreen] = useState(false);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -114,6 +115,14 @@ const MyDataPageV1 = () => {
       });
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
+
+  if (showWelcomeScreen) {
+    return (
+      <div className="bg-white full-height">
+        <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
+      </div>
+    );
+  }
 
   return (
     <ActivityFeedProvider>

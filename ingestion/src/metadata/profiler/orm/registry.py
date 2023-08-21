@@ -94,6 +94,7 @@ NOT_COMPUTE = {
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
+    CustomTypes.SQADATETIMERANGE.value.__name__,
 }
 
 QUANTIFIABLE_SET = {

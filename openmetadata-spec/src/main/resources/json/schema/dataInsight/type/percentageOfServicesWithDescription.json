@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/type/percentageOfServicesWithDescription.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PercentageOfServicesWithDescription",
+  "description": "PercentageOfServicesWithDescription data blob",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithDescription",
+  "javaInterfaces": [
+    "org.openmetadata.schema.DataInsightInterface"
+  ],
+  "properties": {
+    "timestamp": {
+      "description": "timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "serviceName": {
+      "description": "Type of entity. Derived from the entity class.",
+      "type": "string"
+    },
+    "completedDescriptionFraction": {
+      "description": "decimal fraction of entity with completed description",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "completedDescription": {
+      "description": "decimal fraction of entity with completed description",
+      "type": "number"
+    },
+    "entityCount": {
+      "description": "Decimal fraction of entity with an owner.",
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

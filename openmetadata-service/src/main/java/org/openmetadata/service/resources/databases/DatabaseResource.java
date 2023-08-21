@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -75,11 +74,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
+    super.addHref(uriInfo, db);
     Entity.withHref(uriInfo, db.getDatabaseSchemas());
     Entity.withHref(uriInfo, db.getLocation());
-    Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
-    Entity.withHref(uriInfo, db.getDomain());
     return db;
   }
 
@@ -142,8 +140,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -163,8 +160,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -195,8 +191,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -229,8 +224,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -257,8 +251,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               description = "Database version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -275,8 +268,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create) {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, database);
   }
@@ -301,8 +293,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -318,8 +309,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create) {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, database);
   }
@@ -345,8 +335,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -369,8 +358,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the database", schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -387,14 +375,14 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class)))
       })
   public Response restoreDatabase(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Database getDatabase(CreateDatabase create, String user) throws IOException {
+  private Database getDatabase(CreateDatabase create, String user) {
     return copy(new Database(), create, user)
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
+        .withSourceUrl(create.getSourceUrl())
         .withRetentionPeriod(create.getRetentionPeriod());
   }
 }

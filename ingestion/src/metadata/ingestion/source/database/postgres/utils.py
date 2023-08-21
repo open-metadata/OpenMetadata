@@ -14,8 +14,10 @@
 Postgres SQLAlchemy util methods
 """
 import re
-from typing import Dict, Tuple
+import traceback
+from typing import Dict, Optional, Tuple
 
+from packaging import version
 from sqlalchemy import sql, util
 from sqlalchemy.dialects.postgresql.base import ENUM
 from sqlalchemy.engine import reflection
@@ -23,14 +25,20 @@ from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_COL_IDENTITY,
+    POSTGRES_GET_SERVER_VERSION,
     POSTGRES_SQL_COLUMNS,
     POSTGRES_TABLE_COMMENTS,
     POSTGRES_VIEW_DEFINITIONS,
 )
+from metadata.utils.logger import utils_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+
+logger = utils_logger()
+
+OLD_POSTGRES_VERSION = "13.0"
 
 
 @reflection.cache
@@ -347,3 +355,34 @@ def get_view_definition(
         schema=schema,
         query=POSTGRES_VIEW_DEFINITIONS,
     )
+
+
+def get_postgres_version(engine) -> Optional[str]:
+    """
+    return the postgres version in major.minor.patch format
+    """
+    try:
+        results = engine.execute(POSTGRES_GET_SERVER_VERSION)
+        for res in results:
+            version_string = str(res[0])
+            opening_parenthesis_index = version_string.find("(")
+            if opening_parenthesis_index != -1:
+                return version_string[:opening_parenthesis_index].strip()
+            return version_string
+    except Exception as err:
+        logger.warning(f"Unable to fetch the Postgres Version - {err}")
+        logger.debug(traceback.format_exc())
+    return None
+
+
+def get_postgres_time_column_name(engine) -> str:
+    """
+    Return the correct column name for the time column based on postgres version
+    """
+    time_column_name = "total_exec_time"
+    postgres_version = get_postgres_version(engine)
+    if postgres_version and version.parse(postgres_version) < version.parse(
+        OLD_POSTGRES_VERSION
+    ):
+        time_column_name = "total_time"
+    return time_column_name

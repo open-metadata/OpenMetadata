@@ -22,6 +22,8 @@ server:
   adminConnectors:
     - type: http
       port: 0
+  requestLog:
+    type: external
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
@@ -102,7 +104,8 @@ database:
   url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "../bootstrap/sql"
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
 
 #elasticsearch:
 #  host: localhost

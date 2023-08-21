@@ -30,7 +30,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
-
+# pylint: disable=too-many-locals
 class Histogram(HybridMetric):
     """
     AVG Metric
@@ -101,8 +101,9 @@ class Histogram(HybridMetric):
         self, res_iqr: float, res_row_count: float, res_min: float, res_max: float
     ):
         """Get the number of bins and the width of each bin.
-        We'll first use the Freedman-Diaconis rule to compute the number of bins. If the number of bins is greater than 100,
-        we'll fall back to Sturge's rule. If the number of bins is still greater than 100, we'll default to 100 bins.
+        We'll first use the Freedman-Diaconis rule to compute the number of bins.
+        If the number of bins is greater than 100, we'll fall back to Sturge's rule. If the number of bins
+        is still greater than 100, we'll default to 100 bins.
 
         Args:
             res_iqr (float): IQR (first quartile - third quartile)

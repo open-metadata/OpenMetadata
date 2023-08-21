@@ -168,7 +168,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, testSuitePermission]);
+  }, [testSuitePermission]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -198,18 +198,21 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
       <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          data-testid="test-suite-table"
-          dataSource={testSuites.data}
-          loading={{ spinning: isLoading, indicator: <Loader /> }}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          size="small"
-        />
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Table
+            bordered
+            columns={columns}
+            data-testid="test-suite-table"
+            dataSource={testSuites.data}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            size="small"
+          />
+        )}
       </Col>
       <Col span={24}>
         {testSuites.paging.total > PAGE_SIZE && (

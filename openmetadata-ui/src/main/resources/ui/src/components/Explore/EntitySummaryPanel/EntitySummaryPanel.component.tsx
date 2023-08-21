@@ -89,7 +89,6 @@ export default function EntitySummaryPanel({
     if (!viewPermission) {
       return (
         <ErrorPlaceHolder
-          className="m-0"
           size={SIZE.MEDIUM}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
@@ -132,7 +131,7 @@ export default function EntitySummaryPanel({
       (entityDetails.details.fullyQualifiedName &&
         entityDetails.details.entityType &&
         getEntityLinkFromType(
-          getEncodedFqn(entityDetails.details.fullyQualifiedName),
+          entityDetails.details.fullyQualifiedName,
           entityDetails.details.entityType as EntityType
         )) ??
       '',
