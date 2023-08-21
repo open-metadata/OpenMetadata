@@ -28,6 +28,7 @@ import AppBadge from 'components/common/Badge/Badge.component';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import SkeletonTable from 'components/common/SkeletonTable/SkeletonTable.component';
 import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -57,7 +58,6 @@ import {
   getFormattedDateFromSeconds,
 } from '../../../utils/TimeUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
-import Loader from '../../Loader/Loader';
 import {
   DataQualityTabProps,
   TableProfilerTab,
@@ -400,9 +400,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <Row gutter={16}>
       <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
+        <SkeletonTable columns={columns} loading={isLoading}>
           <Table
             bordered
             className="test-case-table-container"
@@ -422,7 +420,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             rowKey="id"
             size="small"
           />
-        )}
+        </SkeletonTable>
       </Col>
       <Col span={24}>
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
