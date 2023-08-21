@@ -188,9 +188,10 @@ export const scheduleIngestion = () => {
   // Schedule & Deploy
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
-  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
-  cy.get('#retries').clear().type(RETRIES_COUNT);
+  cy.get('#retries').scrollIntoView().clear().type(RETRIES_COUNT);
+
+  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   verifyResponseStatusCode('@createIngestionPipelines', 201);
   verifyResponseStatusCode('@deployPipeline', 200, {
