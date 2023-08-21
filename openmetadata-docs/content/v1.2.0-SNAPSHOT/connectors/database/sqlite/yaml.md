@@ -49,7 +49,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ### Python Requirements
 
-To ingest basic metadata sqlite user must have the following priviledges:
+To ingest basic metadata sqlite user must have the following privileges:
   - `SELECT` Privilege on `sqlite_temp_master`
 
 ## Metadata Ingestion
@@ -118,7 +118,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

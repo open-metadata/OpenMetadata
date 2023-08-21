@@ -33,7 +33,7 @@
       },
       "accessToken": {
         "title": "Access Token",
-        "description": "Access token to connect to to DOMO",
+        "description": "Access token to connect to DOMO",
         "type": "string"
       },
       "apiHost": {

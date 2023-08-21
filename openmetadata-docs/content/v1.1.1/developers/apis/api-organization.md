@@ -30,7 +30,7 @@ OpenMetadata has the following APIs. See this [API documentation](https://docs.o
   * `.../api/v1/services/mlmodelServices` - APIs related to ML Model Services.
   * `.../api/v1/services/pipelineServices` - APIs related to pipeline Services.
 * **Data Quality APIs**
-  * `.../api/v1/dataQuality/testSuites` - A set of test cases grouped together to capture data quality..
+  * `.../api/v1/dataQuality/testSuites` - A set of test cases grouped together to capture data quality.
   * `.../api/v1/dataQuality/testDefinitions` - A definition of a type of test using which test cases are created that run against data to capture data quality.
   * `.../api/v1/dataQuality/testCases` - Test case is a specification of a test definition to capture data quality tests against tables, columns, and other data assets.
 * **Lineage**

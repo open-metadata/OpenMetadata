@@ -344,7 +344,7 @@ class OMetaTableTest(TestCase):
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                timestamp=datetime.now(tz=timezone.utc).timestamp() + 1,
                 operation="UPDATE",
                 rowsAffected=110,
             ),

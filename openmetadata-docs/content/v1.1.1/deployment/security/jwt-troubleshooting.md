@@ -33,7 +33,7 @@ First Open Open-Metadata UI than go to settings > Bots > Ingestion Bot
 {% image
   src="/images/v1.1.1/deployment/troubleshoot/jwt-token.png"
   alt="jwt-token"
-  caption="JWT token in Openmetada UI"
+  caption="JWT token in OpenMetadata UI"
  /%}
 
 You can validate that in [jwt.io](https://jwt.io/). if there's something wrong on how the JWT token was generated.

@@ -46,7 +46,6 @@ import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import { getFeedCount } from 'rest/feedsAPI';
 import AppState from '../AppState';
-import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -67,7 +66,6 @@ import {
 import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
-import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
@@ -734,38 +732,6 @@ export const Transi18next = ({
     {renderElement}
   </Trans>
 );
-
-/**
- * It takes a string and returns a string
- * @param {FilterPatternEnum} type - FilterPatternEnum
- * @returns A function that takes in a type and returns a keyof AddIngestionState
- */
-export const getFilterTypes = (
-  type: FilterPatternEnum
-): keyof AddIngestionState => {
-  switch (type) {
-    case FilterPatternEnum.CHART:
-      return 'chartFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DASHBOARD:
-      return 'dashboardFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DATABASE:
-      return 'databaseFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.MLMODEL:
-      return 'mlModelFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.PIPELINE:
-      return 'pipelineFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.SCHEMA:
-      return 'schemaFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.TABLE:
-      return 'tableFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.CONTAINER:
-      return 'containerFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DASHBOARD_DATAMODEL:
-      return 'dataModelFilterPattern' as keyof AddIngestionState;
-    default:
-      return 'topicFilterPattern' as keyof AddIngestionState;
-  }
-};
 
 /**
  * It takes a state and an action, and returns a new state with the action merged into it

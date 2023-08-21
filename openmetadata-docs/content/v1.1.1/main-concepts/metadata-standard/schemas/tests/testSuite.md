@@ -18,7 +18,7 @@ slug: /main-concepts/metadata-standard/schemas/tests/testsuite
   - **Items**: Refer to *../type/entityReference.json*.
 - **`connection`**: Refer to *#/definitions/testSuiteConnection*.
 - **`testConnectionResult`**: Refer to *../entity/services/connections/testConnectionResult.json*.
-- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../type/entityReferenceList.json#/definitions/entityReferenceList*. Default: `None`.
+- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage, etc. Refer to *../type/entityReferenceList.json#/definitions/entityReferenceList*. Default: `None`.
 - **`serviceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['TestSuite']`. Default: `TestSuite`.
 - **`owner`**: Owner of this TestCase definition. Refer to *../type/entityReference.json*. Default: `None`.
 - **`version`**: Metadata version of the entity. Refer to *../type/entityHistory.json#/definitions/entityVersion*.

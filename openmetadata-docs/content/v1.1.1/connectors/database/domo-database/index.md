@@ -8,7 +8,7 @@ slug: /connectors/database/domo-database
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
@@ -19,8 +19,8 @@ slug: /connectors/database/domo-database
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}          |
+|:-------------|:-----------------------------|
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 

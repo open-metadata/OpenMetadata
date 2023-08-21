@@ -32,7 +32,7 @@ Validate the total row count in the table is equal to the given value.
 **Behavior**
 
 | Condition                                                  | Status    |
-|----------------------------------------------------------|---------|
+|------------------------------------------------------------|-----------|
 | `value` **match** the number of rows in the table          | Success ✅ |
 | `value` **does not match** the number of rows in the table | Failed ❌  |
 
@@ -71,10 +71,10 @@ Any of those two need to be informed.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|The number of rows in the table **is between** `minValue` and `maxValue`| Success ✅|
-|The number of rows in the table **is not between** `minValue` and `maxValue`|Failed ❌|
+| Condition                                                                    | Status    |
+|------------------------------------------------------------------------------|-----------|
+| The number of rows in the table **is between** `minValue` and `maxValue`     | Success ✅ |
+| The number of rows in the table **is not between** `minValue` and `maxValue` | Failed ❌  |
 
 **YAML Config**
 
@@ -114,10 +114,10 @@ Validate that the number of columns in a table is equal to a given value.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|`columnCount` **matches** the number of column in the table| Success ✅|
-|`columnCount` **does not matches** the number of column in the table|Failed ❌|
+| Condition                                                            | Status    |
+|----------------------------------------------------------------------|-----------|
+| `columnCount` **matches** the number of column in the table          | Success ✅ |
+| `columnCount` **does not matches** the number of column in the table | Failed ❌  |
 
 **YAML Config**
 
@@ -152,10 +152,10 @@ Validate the number of columns in a table is between the given value
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|The number of columns in the table **is between** `minColValue` and `maxColValue`| Success ✅|
-|The number of columns in the table **is not between** `minColValue` and `maxColValue`|Failed ❌|
+| Condition                                                                             | Status    |
+|---------------------------------------------------------------------------------------|-----------|
+| The number of columns in the table **is between** `minColValue` and `maxColValue`     | Success ✅ |
+| The number of columns in the table **is not between** `minColValue` and `maxColValue` | Failed ❌  |
 
 **YAML Config**
 
@@ -195,10 +195,10 @@ Validate a column name is present in the table
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|`columnName` **exists** in the set of column name for the table| Success ✅|
-|`columnName` **does not exists** in the set of column name for the table|Failed ❌|
+| Condition                                                                | Status    |
+|--------------------------------------------------------------------------|-----------|
+| `columnName` **exists** in the set of column name for the table          | Success ✅ |
+| `columnName` **does not exists** in the set of column name for the table | Failed ❌  |
 
 **YAML Config**
 
@@ -233,12 +233,12 @@ Validate a list of table column name matches an expected set of columns
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|[`ordered=False`] `columnNames` **matches** the list of column names in the table **regarless of the order**|Success ✅|
-|[`ordered=True`] `columnNames` **matches** the list of column names in the table **in the corresponding order** (e.g. `["a","b"] == ["a","b"]`| Success ✅|
-|[`ordered=fALSE`] `columnNames` **does no match** the list of column names in the table **regarless of the order**|Failed ❌|
-|[`ordered=True`] `columnNames` **does no match** the list of column names in the table **and/or the corresponding order** (e.g. `["a","b"] != ["b","a"]`|Failed ❌|
+| Condition                                                                                                                                                | Status    |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| [`ordered=False`] `columnNames` **matches** the list of column names in the table **regardless of the order**                                             | Success ✅ |
+| [`ordered=True`] `columnNames` **matches** the list of column names in the table **in the corresponding order** (e.g. `["a","b"] == ["a","b"]`           | Success ✅ |
+| [`ordered=fALSE`] `columnNames` **does no match** the list of column names in the table **regardless of the order**                                       | Failed ❌  |
+| [`ordered=True`] `columnNames` **does no match** the list of column names in the table **and/or the corresponding order** (e.g. `["a","b"] != ["b","a"]` | Failed ❌  |
 
 **YAML Config**
 
@@ -279,10 +279,10 @@ Write you own SQL test. The test will pass if the following condition is met:
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|`sqlExpression` returns **0 row**|Success ✅|
-|`sqlExpression` returns **1 or more rows**|Failed ❌|
+| Condition                                  | Status    |
+|--------------------------------------------|-----------|
+| `sqlExpression` returns **0 row**          | Success ✅ |
+| `sqlExpression` returns **1 or more rows** | Failed ❌  |
 
 **Example**
 ```sql
@@ -332,7 +332,7 @@ Validate the number of rows inserted for the defined period is between the expec
 
 {% note %}
 
-The Table Row Inserted Count To Be Between cannot be executed against tables that have configured a partition in OpenMetadata. The logic of the test performed will be similar to executiong a Table Row Count to be Between test against a table with a partition configured.
+The Table Row Inserted Count To Be Between cannot be executed against tables that have configured a partition in OpenMetadata. The logic of the test performed will be similar to executing a Table Row Count to be Between test against a table with a partition configured.
 
 {% /note %}
 
@@ -346,10 +346,10 @@ The Table Row Inserted Count To Be Between cannot be executed against tables tha
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|Number of rows **is between** `Min Row Count` and `Max Row Count`| Success ✅|
-|Number of rows **is not between** `Min Row Count` and `Max Row Count|Failed ❌|
+| Condition                                                            | Status    |
+|----------------------------------------------------------------------|-----------|
+| Number of rows **is between** `Min Row Count` and `Max Row Count`    | Success ✅ |
+| Number of rows **is not between** `Min Row Count` and `Max Row Count | Failed ❌  |
 
 **YAML Config**
 
@@ -421,10 +421,10 @@ Makes sure that there are no duplicate values in a given column.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|column values are unique|Success ✅|
-|column values are not unique|Failed ❌|
+| Condition                    | Status    |
+|------------------------------|-----------|
+| column values are unique     | Success ✅ |
+| column values are not unique | Failed ❌  |
 
 **Properties**
 
@@ -462,10 +462,10 @@ Validates that there are no null values in the column.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|No `NULL` values are present in the column|Success ✅|
-|1 or more `NULL` values are present in the column|Failed ❌|
+| Condition                                         | Status    |
+|---------------------------------------------------|-----------|
+| No `NULL` values are present in the column        | Success ✅ |
+| 1 or more `NULL` values are present in the column | Failed ❌  |
 
 **YAML Config**
 
@@ -509,10 +509,10 @@ The other databases will fall back to the `LIKE` expression
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|All column values match `regex`|Success ✅|
-|1 or more column values do not match `regex`|Failed ❌|
+| Condition                                    | Status    |
+|----------------------------------------------|-----------|
+| All column values match `regex`              | Success ✅ |
+| 1 or more column values do not match `regex` | Failed ❌  |
 
 **YAML Config**
 
@@ -556,10 +556,10 @@ The other databases will fall back to the `LIKE` expression
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|0 column value match `regex`|Success ✅|
-|1 or more column values match `regex`|Failed ❌|
+| Condition                             | Status    |
+|---------------------------------------|-----------|
+| 0 column value match `regex`          | Success ✅ |
+| 1 or more column values match `regex` | Failed ❌  |
 
 **YAML Config**
 
@@ -593,10 +593,10 @@ Validate values form a set are present in a column.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|1 or more values from `allowedValues` is found in the column|Success ✅|
-|0 value from `allowedValues` is found in the column|Failed ❌|
+| Condition                                                    | Status    |
+|--------------------------------------------------------------|-----------|
+| 1 or more values from `allowedValues` is found in the column | Success ✅ |
+| 0 value from `allowedValues` is found in the column          | Failed ❌  |
 
 **YAML Config**
 
@@ -633,10 +633,10 @@ Validate that there are no values in a column in a set of forbidden values.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|0 value from `forbiddenValues` is found in the column|Success ✅|
-|1 or more values from `forbiddenValues` is found in the column|Failed ❌|
+| Condition                                                      | Status    |
+|----------------------------------------------------------------|-----------|
+| 0 value from `forbiddenValues` is found in the column          | Success ✅ |
+| 1 or more values from `forbiddenValues` is found in the column | Failed ❌  |
 
 **YAML Config**
 
@@ -677,14 +677,14 @@ Any of those two need to be informed.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|value is **between** `minValue` and `maxValue`|Success ✅|
-|value is **greater** than `minValue` if only `minValue` is specified|Success ✅|
-|value is **less** then `maxValue` if only `maxValue` is specified|Success ✅|
-|value is **not between** `minValue` and `maxValue`|Failed ❌|
-|value is **less** than `minValue` if only `minValue` is specified|Failed ❌|
-|value is **greater** then `maxValue` if only `maxValue` is specified|Failed ❌|
+| Condition                                                            | Status    |
+|----------------------------------------------------------------------|-----------|
+| value is **between** `minValue` and `maxValue`                       | Success ✅ |
+| value is **greater** than `minValue` if only `minValue` is specified | Success ✅ |
+| value is **less** then `maxValue` if only `maxValue` is specified    | Success ✅ |
+| value is **not between** `minValue` and `maxValue`                   | Failed ❌  |
+| value is **less** than `minValue` if only `minValue` is specified    | Failed ❌  |
+| value is **greater** then `maxValue` if only `maxValue` is specified | Failed ❌  |
 
 **YAML Config**
 
@@ -722,10 +722,10 @@ Validates that the number of missing values matches a given number. Missing valu
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|Number of missing value is **equal** to `missingCountValue`|Success ✅|
-|Number of missing value is **not equal** to `missingCountValue`|Failed ❌|
+| Condition                                                       | Status    |
+|-----------------------------------------------------------------|-----------|
+| Number of missing value is **equal** to `missingCountValue`     | Success ✅ |
+| Number of missing value is **not equal** to `missingCountValue` | Failed ❌  |
 
 **YAML Config**
 
@@ -793,14 +793,14 @@ Any of those two need to be informed.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|value length is **between** `minLength` and `maxLength`|Success ✅|
-|value length is **greater** than `minLength` if only `minLength` is specified|Success ✅|
-|value length is **less** then `maxLength` if only `maxLength` is specified|Success ✅|
-|value length is **not between** `minLength` and `maxLength`|Failed ❌|
-|value length is **less** than `minLength` if only `minLength` is specified|Failed ❌|
-|value length is **greater** then `maxLength` if only `maxLength` is specified|Failed ❌|
+| Condition                                                                     | Status    |
+|-------------------------------------------------------------------------------|-----------|
+| value length is **between** `minLength` and `maxLength`                       | Success ✅ |
+| value length is **greater** than `minLength` if only `minLength` is specified | Success ✅ |
+| value length is **less** then `maxLength` if only `maxLength` is specified    | Success ✅ |
+| value length is **not between** `minLength` and `maxLength`                   | Failed ❌  |
+| value length is **less** than `minLength` if only `minLength` is specified    | Failed ❌  |
+| value length is **greater** then `maxLength` if only `maxLength` is specified | Failed ❌  |
 
 **YAML Config**
 
@@ -842,14 +842,14 @@ Validate the maximum value of a column is between a specific range
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|column max value is **between** `minValueForMaxInCol` and `maxValueForMaxInCol`|Success ✅|
-|column max value is **greater** than `minValueForMaxInCol` if only `minValueForMaxInCol` is specified|Success ✅|
-|column max value is **less** then `maxValueForMaxInCol` if only `maxValueForMaxInCol` is specified|Success ✅|
-|column max value is **not between** `minValueForMaxInCol` and `maxValueForMaxInCol`|Failed ❌|
-|column max value is **less** than `minValueForMaxInCol` if only `minValueForMaxInCol` is specified|Failed ❌|
-|column max value is **greater** then `maxValueForMaxInCol` if only `maxValueForMaxInCol` is specified|Failed ❌|
+| Condition                                                                                             | Status    |
+|-------------------------------------------------------------------------------------------------------|-----------|
+| column max value is **between** `minValueForMaxInCol` and `maxValueForMaxInCol`                       | Success ✅ |
+| column max value is **greater** than `minValueForMaxInCol` if only `minValueForMaxInCol` is specified | Success ✅ |
+| column max value is **less** then `maxValueForMaxInCol` if only `maxValueForMaxInCol` is specified    | Success ✅ |
+| column max value is **not between** `minValueForMaxInCol` and `maxValueForMaxInCol`                   | Failed ❌  |
+| column max value is **less** than `minValueForMaxInCol` if only `minValueForMaxInCol` is specified    | Failed ❌  |
+| column max value is **greater** then `maxValueForMaxInCol` if only `maxValueForMaxInCol` is specified | Failed ❌  |
 
 **YAML Config**
 
@@ -891,14 +891,14 @@ Validate the minimum value of a column is between a specific range
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|column min value is **between** `minValueForMinInCol` and `maxValueForMinInCol`|Success ✅|
-|column min value is **greater** than `minValueForMinInCol` if only `minValueForMinInCol` is specified|Success ✅|
-|column min value is **less** then `maxValueForMinInCol` if only `maxValueForMinInCol` is specified|Success ✅|
-|column min value is **not between** `minValueForMinInCol` and `maxValueForMinInCol`|Failed ❌|
-|column min value is **less** than `minValueForMinInCol` if only `minValueForMinInCol` is specified|Failed ❌|
-|column min value is **greater** then `maxValueForMinInCol` if only `maxValueForMinInCol` is specified|Failed ❌|
+| Condition                                                                                             | Status    |
+|-------------------------------------------------------------------------------------------------------|-----------|
+| column min value is **between** `minValueForMinInCol` and `maxValueForMinInCol`                       | Success ✅ |
+| column min value is **greater** than `minValueForMinInCol` if only `minValueForMinInCol` is specified | Success ✅ |
+| column min value is **less** then `maxValueForMinInCol` if only `maxValueForMinInCol` is specified    | Success ✅ |
+| column min value is **not between** `minValueForMinInCol` and `maxValueForMinInCol`                   | Failed ❌  |
+| column min value is **less** than `minValueForMinInCol` if only `minValueForMinInCol` is specified    | Failed ❌  |
+| column min value is **greater** then `maxValueForMinInCol` if only `maxValueForMinInCol` is specified | Failed ❌  |
 
 **YAML Config**
 
@@ -940,14 +940,14 @@ Validate the mean of a column is between a specific range
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|column mean value is **between** `minValueForMeanInCol` and `maxValueForMeanInCol`|Success ✅|
-|column mean value is **greater** than `minValueForMeanInCol` if only `minValueForMeanInCol` is specified|Success ✅|
-|column mean value is **less** then `maxValueForMeanInCol` if only `maxValueForMeanInCol` is specified|Success ✅|
-|column mean value is **not between** `minValueForMeanInCol` and `maxValueForMeanInCol`|Failed ❌|
-|column mean value is **less** than `minValueForMeanInCol` if only `minValueForMeanInCol` is specified|Failed ❌|
-|column mean value is **greater** then `maxValueForMeanInCol` if only `maxValueForMeanInCol` is specified|Failed ❌|
+| Condition                                                                                                | Status    |
+|----------------------------------------------------------------------------------------------------------|-----------|
+| column mean value is **between** `minValueForMeanInCol` and `maxValueForMeanInCol`                       | Success ✅ |
+| column mean value is **greater** than `minValueForMeanInCol` if only `minValueForMeanInCol` is specified | Success ✅ |
+| column mean value is **less** then `maxValueForMeanInCol` if only `maxValueForMeanInCol` is specified    | Success ✅ |
+| column mean value is **not between** `minValueForMeanInCol` and `maxValueForMeanInCol`                   | Failed ❌  |
+| column mean value is **less** than `minValueForMeanInCol` if only `minValueForMeanInCol` is specified    | Failed ❌  |
+| column mean value is **greater** then `maxValueForMeanInCol` if only `maxValueForMeanInCol` is specified | Failed ❌  |
 
 **YAML Config**
 
@@ -989,14 +989,14 @@ Validate the median of a column is between a specific range
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|column median value is **between** `minValueForMedianInCol` and `maxValueForMedianInCol`|Success ✅|
-|column median value is **greater** than `minValueForMedianInCol` if only `minValueForMedianInCol` is specified|Success ✅|
-|column median value is **less** then `maxValueForMedianInCol` if only `maxValueForMedianInCol` is specified|Success ✅|
-|column median value is **not between** `minValueForMedianInCol` and `maxValueForMedianInCol`|Failed ❌|
-|column median value is **less** than `minValueForMedianInCol` if only `minValueForMedianInCol` is specified|Failed ❌|
-|column median value is **greater** then `maxValueForMedianInCol` if only `maxValueForMedianInCol` is specified|Failed ❌|
+| Condition                                                                                                      | Status    |
+|----------------------------------------------------------------------------------------------------------------|-----------|
+| column median value is **between** `minValueForMedianInCol` and `maxValueForMedianInCol`                       | Success ✅ |
+| column median value is **greater** than `minValueForMedianInCol` if only `minValueForMedianInCol` is specified | Success ✅ |
+| column median value is **less** then `maxValueForMedianInCol` if only `maxValueForMedianInCol` is specified    | Success ✅ |
+| column median value is **not between** `minValueForMedianInCol` and `maxValueForMedianInCol`                   | Failed ❌  |
+| column median value is **less** than `minValueForMedianInCol` if only `minValueForMedianInCol` is specified    | Failed ❌  |
+| column median value is **greater** then `maxValueForMedianInCol` if only `maxValueForMedianInCol` is specified | Failed ❌  |
 
 **YAML Config**
 
@@ -1038,14 +1038,14 @@ Validate the sum of a column is between a specific range
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|Sum of the column values is **between** `minValueForColSum` and `maxValueForColSum`|Success ✅|
-|Sum of the column values is **greater** than `minValueForColSum` if only `minValueForColSum` is specified|Success ✅|
-|Sum of the column values is **less** then `maxValueForColSum` if only `maxValueForColSum` is specified|Success ✅|
-|Sum of the column values is **not between** `minValueForColSum` and `maxValueForColSum`|Failed ❌|
-|Sum of the column values is **less** than `minValueForColSum` if only `minValueForColSum` is specified|Failed ❌|
-|Sum of the column values is **greater** then `maxValueForColSum` if only `maxValueForColSum` is specified|Failed ❌|
+| Condition                                                                                                 | Status    |
+|-----------------------------------------------------------------------------------------------------------|-----------|
+| Sum of the column values is **between** `minValueForColSum` and `maxValueForColSum`                       | Success ✅ |
+| Sum of the column values is **greater** than `minValueForColSum` if only `minValueForColSum` is specified | Success ✅ |
+| Sum of the column values is **less** then `maxValueForColSum` if only `maxValueForColSum` is specified    | Success ✅ |
+| Sum of the column values is **not between** `minValueForColSum` and `maxValueForColSum`                   | Failed ❌  |
+| Sum of the column values is **less** than `minValueForColSum` if only `minValueForColSum` is specified    | Failed ❌  |
+| Sum of the column values is **greater** then `maxValueForColSum` if only `maxValueForColSum` is specified | Failed ❌  |
 
 **YAML Config**
 
@@ -1087,14 +1087,14 @@ Validate the standard deviation of a column is between a specific range
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|column values standard deviation is **between** `minValueForStdDevInCol` and `minValueForStdDevInCol`|Success ✅|
-|column values standard deviation is **greater** than `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified|Success ✅|
-|column values standard deviation is **less** then `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified|Success ✅|
-|column values standard deviation is **not between** `minValueForStdDevInCol` and `minValueForStdDevInCol`|Failed ❌|
-|column values standard deviation is **less** than `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified|Failed ❌|
-|column values standard deviation is **greater** then `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified|Failed ❌|
+| Condition                                                                                                                   | Status    |
+|-----------------------------------------------------------------------------------------------------------------------------|-----------|
+| column values standard deviation is **between** `minValueForStdDevInCol` and `minValueForStdDevInCol`                       | Success ✅ |
+| column values standard deviation is **greater** than `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified | Success ✅ |
+| column values standard deviation is **less** then `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified    | Success ✅ |
+| column values standard deviation is **not between** `minValueForStdDevInCol` and `minValueForStdDevInCol`                   | Failed ❌  |
+| column values standard deviation is **less** than `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified    | Failed ❌  |
+| column values standard deviation is **greater** then `minValueForStdDevInCol` if only `minValueForStdDevInCol` is specified | Failed ❌  |
 
 **YAML Config**
 

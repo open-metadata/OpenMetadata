@@ -7,7 +7,7 @@ You can find further information on the Data Insight Ingestion in the [docs](htt
 
 $$section
 
-### Enable Debug Logs $(id="loggerLevel")
+### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 $$

@@ -38,7 +38,7 @@ const Chip = ({
       data-testid={item.name}
       key={item.name}
       size={6}>
-      {icon}
+      <div className="m-t-xss">{icon}</div>
       <Typography.Text className="w-56 text-left" ellipsis={{ tooltip: true }}>
         {getEntityName(item)}
       </Typography.Text>

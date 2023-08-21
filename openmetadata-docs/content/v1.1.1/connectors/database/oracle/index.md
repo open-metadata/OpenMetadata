@@ -8,7 +8,7 @@ slug: /connectors/database/oracle
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- |:-----------------------------|
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/oracle
 | Supported Versions | 12c, 18c, 19c, and 21c       |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
