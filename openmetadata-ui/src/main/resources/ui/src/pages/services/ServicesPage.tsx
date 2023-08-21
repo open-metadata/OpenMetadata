@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from 'components/Loader/Loader';
@@ -108,12 +108,35 @@ const ServicesPage = () => {
   }
 
   return viewAllPermission ? (
-    <Services
-      currentPage={currentPage}
-      paging={paging}
-      serviceData={serviceDetails}
-      serviceName={serviceName}
-      onPageChange={handlePageChange}
+    <Tabs
+      items={[
+        {
+          key: 'services',
+          children: (
+            <Services
+              currentPage={currentPage}
+              paging={paging}
+              serviceData={serviceDetails}
+              serviceName={serviceName}
+              onPageChange={handlePageChange}
+            />
+          ),
+          label: 'Services',
+        },
+        {
+          key: 'pipelines',
+          children: (
+            <Services
+              currentPage={currentPage}
+              paging={paging}
+              serviceData={serviceDetails}
+              serviceName={serviceName}
+              onPageChange={handlePageChange}
+            />
+          ),
+          label: 'Pipelines',
+        },
+      ]}
     />
   ) : (
     <Row>
