@@ -89,6 +89,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -1039,7 +1040,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Date date = jwt.getExpiresAt();
     long hours = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60));
     assertEquals(1, hours);
-    assertEquals(username, jwt.getClaims().get("sub").asString());
+    assertEquals(username.toLowerCase(), jwt.getClaims().get("sub").asString());
     assertEquals(false, jwt.getClaims().get("isBot").asBoolean());
   }
 
@@ -1168,7 +1169,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public CreateUser createRequest(String name) {
     // user part of the email should be less than 64 in length
-    String entityName = name.toLowerCase();
+    String entityName = name != null ? name.toLowerCase() : null;
     String emailUser = nullOrEmpty(entityName) ? UUID.randomUUID().toString().toLowerCase() : entityName;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
     return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
@@ -1190,7 +1191,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getName(), user.getName());
+    assertEquals(createRequest.getName().toLowerCase(), user.getName().toLowerCase());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
     assertEquals(createRequest.getTimezone(), user.getTimezone());
     assertEquals(createRequest.getIsBot(), user.getIsBot());
@@ -1297,5 +1298,16 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     WebTarget target = getCollection().path("/export");
     target = target.queryParam("team", teamName);
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Override
+  protected final void validateCommonEntityFields(User entity, CreateEntity create, String updatedBy) {
+    assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
+    assertEquals(create.getName().toLowerCase(), entity.getName().toLowerCase());
+    assertEquals(create.getDisplayName(), entity.getDisplayName());
+    assertEquals(create.getDescription(), entity.getDescription());
+    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    assertReference(create.getOwner(), entity.getOwner());
+    assertEquals(updatedBy, entity.getUpdatedBy());
   }
 }

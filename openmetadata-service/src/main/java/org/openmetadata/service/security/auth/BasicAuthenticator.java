@@ -104,8 +104,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public User registerUser(RegistrationRequest newRegistrationRequest) {
     if (isSelfSignUpAvailable) {
-      String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
-      String[] tokens = newRegistrationRequest.getEmail().split("@");
+      String newRegistrationRequestEmail = newRegistrationRequest.getEmail().toLowerCase();
+      String[] tokens = newRegistrationRequest.getEmail().toLowerCase().split("@");
       String emailDomain = tokens[1];
       Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
       if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
@@ -386,7 +386,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   private User getUserFromRegistrationRequest(RegistrationRequest create) {
-    String username = create.getEmail().split("@")[0];
+    String username = create.getEmail().toLowerCase().split("@")[0];
     String hashedPwd = BCrypt.withDefaults().hashToString(HASHING_COST, create.getPassword().toCharArray());
 
     BasicAuthMechanism newAuthMechanism = new BasicAuthMechanism().withPassword(hashedPwd);

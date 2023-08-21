@@ -359,7 +359,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    User user = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    User user = getByNameInternal(uriInfo, securityContext, name.toLowerCase(), fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
   }
