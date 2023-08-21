@@ -13,7 +13,6 @@
 
 import { Space, Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
-import classNames from 'classnames';
 import { EntityDetails } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -27,16 +26,20 @@ import {
 } from 'diff';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Field, MessageSchemaObject, Topic } from 'generated/entity/data/topic';
+import { Field } from 'generated/entity/data/topic';
 import { EntityReference } from 'generated/entity/type';
 import { t } from 'i18next';
-import { EntityDiffProps } from 'interface/EntityVersion.interface';
+import {
+  EntityDiffProps,
+  EntityDiffWithMultiChanges,
+} from 'interface/EntityVersion.interface';
 import {
   cloneDeep,
   isEmpty,
   isEqual,
   isUndefined,
   toString,
+  uniqBy,
   uniqueId,
 } from 'lodash';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
@@ -72,13 +75,9 @@ export const getChangedEntityNewValue = (diffObject?: EntityDiffProps) =>
   diffObject?.updated?.newValue;
 
 export const getChangeColumnNameFromDiffValue = (name?: string) => {
-  return name?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
-};
+  const nameWithoutInternalQuotes = name?.replaceAll(/"/g, '');
 
-export const getChangeSchemaFieldsName = (name: string) => {
-  const formattedName = name.replaceAll(/"/g, '');
-
-  return getChangeColumnNameFromDiffValue(formattedName);
+  return nameWithoutInternalQuotes?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
 };
 
 export const isEndsWithField = (checkWith: string, name?: string) => {
@@ -112,12 +111,12 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
   const diff = diffWordsWithSpace(oldValue, newValue);
 
   return diff.map((part: Change) => {
+    const diffChangeText = part.added ? 'diff-added' : 'diff-removed';
+
     return (
       <span
-        className={classNames(
-          { 'diff-added': part.added },
-          { 'diff-removed': part.removed }
-        )}
+        className={diffChangeText}
+        data-testid={`${diffChangeText}-${part.value}`}
         key={part.value}>
         {part.value}
       </span>
@@ -130,7 +129,7 @@ export const getAddedDiffElement = (text: string) => {
     <Typography.Text
       underline
       className="diff-added"
-      data-testid="diff-added"
+      data-testid={`diff-added-${text}`}
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -142,7 +141,7 @@ export const getRemovedDiffElement = (text: string) => {
     <Typography.Text
       delete
       className="text-grey-muted"
-      data-testid="diff-removed"
+      data-testid={`diff-removed-${text}`}
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -151,7 +150,7 @@ export const getRemovedDiffElement = (text: string) => {
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
+    <Typography.Text data-testid={`diff-normal-${text}`} key={uniqueId()}>
       {text}
     </Typography.Text>
   );
@@ -184,14 +183,18 @@ export const getTextDiff = (
 
 export const getEntityVersionByField = (
   changeDescription: ChangeDescription,
-  field: EntityField,
+  field: string,
   fallbackText?: string
 ) => {
   const fieldDiff = getDiffByFieldName(field, changeDescription, true);
   const oldField = getChangedEntityOldValue(fieldDiff);
   const newField = getChangedEntityNewValue(fieldDiff);
 
-  return getTextDiff(oldField ?? '', newField, fallbackText);
+  return getTextDiff(
+    toString(oldField) ?? '',
+    toString(newField),
+    toString(fallbackText)
+  );
 };
 
 export const getTagsDiff = (
@@ -435,107 +438,6 @@ export function getEntityTagDiff<
   return entityList ?? [];
 }
 
-function getNewSchemaFromSchemaDiff(newField: Array<Field>) {
-  return newField.map((field) => ({
-    ...field,
-    tags: field.tags?.map((tag) => ({ ...tag, removed: true })),
-    description: getTextDiff(field.description ?? '', ''),
-    dataTypeDisplay: getTextDiff(field.dataTypeDisplay ?? '', ''),
-    name: getTextDiff(field.name, ''),
-  }));
-}
-
-export function getSchemasDiff(
-  schemaFieldsDiff: EntityDiffProps,
-  schemaFields: Array<Field> = [],
-  clonedMessageSchema?: MessageSchemaObject
-) {
-  let newFields: Array<Field>;
-  if (schemaFieldsDiff.added) {
-    const newField: Array<Field> = JSON.parse(
-      schemaFieldsDiff.added?.newValue ?? '[]'
-    );
-    newField.forEach((field) => {
-      const formatSchemaFieldsData = (arr: Array<Field>) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, field.name)) {
-            i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', field.description ?? '');
-            i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', field.name);
-          } else {
-            formatSchemaFieldsData(i?.children as Array<Field>);
-          }
-        });
-      };
-      formatSchemaFieldsData(schemaFields ?? []);
-    });
-  }
-  if (schemaFieldsDiff.deleted) {
-    const newField: Array<Field> = JSON.parse(
-      schemaFieldsDiff.deleted?.oldValue ?? '[]'
-    );
-    newFields = getNewSchemaFromSchemaDiff(newField);
-  } else {
-    return { ...clonedMessageSchema, schemaFields };
-  }
-
-  return {
-    ...clonedMessageSchema,
-    schemaFields: [...newFields, ...(schemaFields ?? [])],
-  };
-}
-
-export const getUpdatedMessageSchema = (
-  currentVersionData: VersionData,
-  changeDescription: ChangeDescription
-): Topic['messageSchema'] => {
-  const clonedMessageSchema = cloneDeep(
-    (currentVersionData as Topic).messageSchema
-  );
-  const schemaFields = clonedMessageSchema?.schemaFields;
-  const schemaFieldsDiff = getDiffByFieldName(
-    EntityField.SCHEMA_FIELDS,
-    changeDescription
-  );
-  const changedSchemaFieldName = getChangeSchemaFieldsName(
-    getChangedEntityName(schemaFieldsDiff) ?? ''
-  );
-
-  if (
-    isEndsWithField(
-      EntityField.DESCRIPTION,
-      getChangedEntityName(schemaFieldsDiff)
-    )
-  ) {
-    const formattedSchema = getEntityDescriptionDiff(
-      schemaFieldsDiff,
-      changedSchemaFieldName,
-      schemaFields
-    );
-
-    return { ...clonedMessageSchema, schemaFields: formattedSchema };
-  } else if (
-    isEndsWithField(EntityField.TAGS, getChangedEntityName(schemaFieldsDiff))
-  ) {
-    const formattedSchema = getEntityTagDiff(
-      schemaFieldsDiff,
-      changedSchemaFieldName,
-      schemaFields
-    );
-
-    return { ...clonedMessageSchema, schemaFields: formattedSchema };
-  } else {
-    const schemaFieldsDiff = getDiffByFieldName(
-      EntityField.SCHEMA_FIELDS,
-      changeDescription,
-      true
-    );
-
-    return getSchemasDiff(schemaFieldsDiff, schemaFields, clonedMessageSchema);
-  }
-};
-
 export const getOwnerInfo = (owner: EntityReference, ownerLabel: ReactNode) => {
   const isTeamType = owner.type === 'team';
 
@@ -618,79 +520,176 @@ export const getCommonExtraInfoForVersionDetails = (
   return extraInfo;
 };
 
-function getNewColumnFromColDiff<A extends TableColumn | ContainerColumn>(
-  newCol: Array<A>
+export function getNewColumnFromColDiff<
+  A extends TableColumn | ContainerColumn
+>(newCol: Array<A>): Array<A> {
+  return newCol.map((col) => {
+    let children: Array<A> | undefined;
+    if (!isEmpty(col.children)) {
+      children = getNewColumnFromColDiff(col.children as Array<A>);
+    }
+
+    return {
+      ...col,
+      tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
+      description: getTextDiff(col.description ?? '', ''),
+      dataTypeDisplay: getTextDiff(col.dataTypeDisplay ?? '', ''),
+      name: getTextDiff(col.name, ''),
+      children,
+    };
+  });
+}
+
+function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
+  columnsDiff: EntityDiffProps,
+  colList: A[] = []
 ) {
-  return newCol.map((col) => ({
-    ...col,
-    tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-    description: getTextDiff(col.description ?? '', ''),
-    dataTypeDisplay: getTextDiff(col.dataTypeDisplay ?? '', ''),
-    name: getTextDiff(col.name, ''),
-  }));
+  const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
+
+  newCol.forEach((col) => {
+    const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, col.name) || updateAll) {
+          i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+          i.description = getTextDiff('', i.description ?? '');
+          i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+          i.name = getTextDiff('', i.name);
+          if (!isEmpty(i.children)) {
+            formatColumnData(i?.children as Array<A>, true);
+          }
+        } else {
+          formatColumnData(i?.children as Array<A>);
+        }
+      });
+    };
+    formatColumnData(colList);
+  });
+}
+
+export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
+  columnsDiff: EntityDiffProps,
+  colList: A[] = [],
+  changedEntity = ''
+) {
+  const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
+  const newColumns = getNewColumnFromColDiff(newCol);
+
+  const insertNewColumn = (
+    changedEntityField: string,
+    colArray: Array<TableColumn | ContainerColumn>
+  ) => {
+    const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
+    if (isEmpty(changedEntityField)) {
+      const nonExistingColumns = newColumns.filter((newColumn) =>
+        isUndefined(colArray.find((col) => col.name === newColumn.name))
+      );
+      colArray.unshift(...nonExistingColumns);
+    } else {
+      const parentField = fieldsArray.shift();
+      const arr = colArray.find((col) => col.name === parentField)?.children;
+
+      insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
+    }
+  };
+  insertNewColumn(changedEntity, colList);
 }
 
 export function getColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
-  colList: A[] = []
+  colList: A[] = [],
+  changedEntity = ''
 ) {
-  let newColumns: Array<A> = [];
   if (columnsDiff.added) {
-    const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
-    newCol.forEach((col) => {
-      const formatColumnData = (arr: Array<A>) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, col.name)) {
-            i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', col.description ?? '');
-            i.dataTypeDisplay = getTextDiff('', col.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', col.name);
-          } else {
-            formatColumnData(i?.children as Array<A>);
-          }
-        });
-      };
-      formatColumnData(colList);
-    });
+    createAddedColumnsDiff(columnsDiff, colList);
   }
   if (columnsDiff.deleted) {
-    const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
-    newColumns = getNewColumnFromColDiff(newCol);
-  } else {
-    return colList;
+    addDeletedColumnsDiff(columnsDiff, colList, changedEntity);
   }
 
-  return [...newColumns, ...colList];
+  return uniqBy(colList, 'name');
 }
+
+export const getAllDiffByFieldName = (
+  name: string,
+  changeDescription: ChangeDescription,
+  exactMatch?: boolean
+): EntityDiffWithMultiChanges => {
+  const fieldsAdded = changeDescription?.fieldsAdded || [];
+  const fieldsDeleted = changeDescription?.fieldsDeleted || [];
+  const fieldsUpdated = changeDescription?.fieldsUpdated || [];
+  if (exactMatch) {
+    return {
+      added: fieldsAdded.filter((ch) => ch.name === name),
+      deleted: fieldsDeleted.filter((ch) => ch.name === name),
+      updated: fieldsUpdated.filter((ch) => ch.name === name),
+    };
+  } else {
+    return {
+      added: fieldsAdded.filter((ch) => ch.name?.includes(name)),
+      deleted: fieldsDeleted.filter((ch) => ch.name?.includes(name)),
+      updated: fieldsUpdated.filter((ch) => ch.name?.includes(name)),
+    };
+  }
+};
+
+export const getAllChangedEntityNames = (
+  diffObject: EntityDiffWithMultiChanges
+) => {
+  const changedEntityNames: string[] = [];
+  Object.keys(diffObject).forEach((key) => {
+    const changedValues = diffObject[key as keyof EntityDiffWithMultiChanges];
+
+    if (changedValues) {
+      changedValues.forEach((value) => {
+        if (value.name) {
+          changedEntityNames.push(value.name);
+        }
+      });
+    }
+  });
+
+  return changedEntityNames;
+};
 
 export function getColumnsDataWithVersionChanges<
   A extends TableColumn | ContainerColumn
->(changeDescription: ChangeDescription, colList?: A[]): Array<A> {
-  const columnsDiff = getDiffByFieldName(
+>(
+  changeDescription: ChangeDescription,
+  colList?: A[],
+  isContainerEntity?: boolean
+): Array<A> {
+  const columnsDiff = getAllDiffByFieldName(
     EntityField.COLUMNS,
     changeDescription
   );
-  const changedColName = getChangeColumnNameFromDiffValue(
-    getChangedEntityName(columnsDiff)
-  );
 
-  if (
-    isEndsWithField(EntityField.DESCRIPTION, getChangedEntityName(columnsDiff))
-  ) {
-    return getEntityDescriptionDiff(columnsDiff, changedColName, colList);
-  } else if (
-    isEndsWithField(EntityField.TAGS, getChangedEntityName(columnsDiff))
-  ) {
-    return getEntityTagDiff(columnsDiff, changedColName, colList);
-  } else {
-    const columnsDiff = getDiffByFieldName(
-      EntityField.COLUMNS,
-      changeDescription,
-      true
-    );
+  const changedFields = getAllChangedEntityNames(columnsDiff);
 
-    return getColumnsDiff(columnsDiff, colList);
-  }
+  let newColumnsList = cloneDeep(colList);
+
+  changedFields?.forEach((changedField) => {
+    const columnDiff = getDiffByFieldName(changedField, changeDescription);
+    const changedEntityName = getChangedEntityName(columnDiff);
+    const changedColName = getChangeColumnNameFromDiffValue(changedEntityName);
+
+    if (isEndsWithField(EntityField.DESCRIPTION, changedEntityName)) {
+      newColumnsList = [
+        ...getEntityDescriptionDiff(columnDiff, changedColName, colList),
+      ];
+    } else if (isEndsWithField(EntityField.TAGS, changedEntityName)) {
+      newColumnsList = [
+        ...getEntityTagDiff(columnDiff, changedColName, colList),
+      ];
+    } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
+      const changedEntity = changedEntityName
+        ?.split(FQN_SEPARATOR_CHAR)
+        .slice(isContainerEntity ? 2 : 1)
+        .join(FQN_SEPARATOR_CHAR);
+      newColumnsList = [...getColumnsDiff(columnDiff, colList, changedEntity)];
+    }
+  });
+
+  return newColumnsList ?? [];
 }
 
 export const getUpdatedExtensionDiffFields = (
@@ -711,4 +710,33 @@ export const getUpdatedExtensionDiffFields = (
         },
       }
     : { extensionObject: {} };
+};
+
+export const getConstraintChanges = (
+  changeDescription: ChangeDescription,
+  fieldName: EntityField
+) => {
+  const constraintAddedDiff = getAllDiffByFieldName(
+    fieldName,
+    changeDescription
+  ).added;
+  const constraintDeletedDiff = getAllDiffByFieldName(
+    fieldName,
+    changeDescription
+  ).deleted;
+  const constraintUpdatedDiff = getAllDiffByFieldName(
+    fieldName,
+    changeDescription
+  ).updated;
+
+  const addedConstraintDiffs: FieldChange[] = [
+    ...(constraintAddedDiff ?? []),
+    ...(constraintUpdatedDiff ?? []),
+  ];
+  const deletedConstraintDiffs: FieldChange[] = [
+    ...(constraintDeletedDiff ?? []),
+    ...(constraintUpdatedDiff ?? []),
+  ];
+
+  return { addedConstraintDiffs, deletedConstraintDiffs };
 };

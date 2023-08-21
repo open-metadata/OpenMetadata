@@ -136,7 +136,7 @@ We will now describe the steps, following the official AWS documentation.
 - The required image is `docker.getcollate.io/openmetadata/ingestion-base:x.y.z`
     - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`
 
-We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
+We have tested this process with a Task Memory of 512 MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 
 When creating the ECS Cluster, take notes on the log groups assigned, as we will need them to prepare the MWAA Executor Role policies.
 

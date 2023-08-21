@@ -35,7 +35,10 @@
     "dbServiceNames": {
       "title": "Database Service Names List",
       "description": "List of Database Service Names for creation of lineage",
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "markDeletedPipelines": {
       "description": "Optional configuration to soft delete Pipelines in OpenMetadata if the source Pipelines are deleted. Also, if the Pipeline is deleted, all the associated entities like lineage, etc., with that Pipeline will be deleted",

@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -47,15 +46,11 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
-import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
@@ -200,32 +195,6 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
-  }
-
-  public static TestSummary getTestCaseExecutionSummary(
-      CollectionDAO.EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDAO,
-      List<String> testCaseFQNs,
-      String extensionName) {
-    List<String> testCaseFQNHashes =
-        testCaseFQNs.stream().map(FullyQualifiedName::buildHash).collect(Collectors.toList());
-
-    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
-
-    List<String> jsonList = entityExtensionTimeSeriesDAO.getLatestExtensionByFQNs(testCaseFQNHashes, extensionName);
-
-    HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    for (String json : jsonList) {
-      TestCaseResult testCaseResult;
-      testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-      String status = testCaseResult.getTestCaseStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
-    }
-
-    return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(jsonList.size());
   }
 
   /** Merge two sets of tags */

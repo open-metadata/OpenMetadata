@@ -5,7 +5,7 @@ slug: /connectors/ingestion/workflows/data-quality/custom-tests
 
 
 # Adding Custom Tests
-While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite or define your own data quality tests to be ran inside OpenMetada. This is very easy to do using the API and our Python SDK.
+While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite or define your own data quality tests to be ran inside OpenMetadata.  This is very easy to do using the API and our Python SDK.
 
 ### Step 1: Creating a `TestDefinition`
 First, you'll need to create a Test Definition for your test. You can use the following endpoint `/api/v1/dataQuality/testDefinition` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
@@ -154,10 +154,10 @@ curl --location --request PUT 'http://localhost:8585/api/v1/dataQuality/testCase
 You will now be able to see your test in the Test Suite or the table entity.
 
 ### Step 5: Making Custom Test Case Available Through OpenMetadata UI (Optional)
-OpenMetadata offers the flexibility to user to create custom test cases that will be executabl through the user interface. To accomplish our goal, we'll be leveraging OpenMetadata namespace `data_quality` submodole.
+OpenMetadata offers the flexibility to user to create custom test cases that will be executable through the user interface. To accomplish our goal, we'll be leveraging OpenMetadata namespace `data_quality` submodule .
 
 #### A. Create Your Namespace Package
-The first in creating your owne executable test case is to create a package where you'll be writting the logic to process the tests. Your package should have a minimum the below structure
+The first in creating your own  executable test case is to create a package where you'll be writing   the logic to process the tests. Your package should have a minimum the below structure
 
 ```
 metadata/

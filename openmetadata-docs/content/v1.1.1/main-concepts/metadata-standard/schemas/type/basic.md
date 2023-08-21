@@ -25,7 +25,7 @@ slug: /main-concepts/metadata-standard/schemas/type/basic
 - **`time`** *(string)*: time in ISO 8601 format. Example - '20:20:39+00:00'.
 - **`timezone`** *(string)*: Timezone of the user in the format `America/Los_Angeles`, `Brazil/East`, etc.
 - **`entityLink`** *(string)*: Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.
-- **`entityName`** *(string)*: Name that identifies a entity.
+- **`entityName`** *(string)*: Name that identifies an entity.
 - **`fullyQualifiedEntityName`** *(string)*: A unique name that identifies an entity. Example for table 'DatabaseService:Database:Table'.
 - **`sqlQuery`** *(string)*: SQL query statement. Example - 'select * from orders'.
 - **`sqlFunction`** *(string)*: SQL function. Example - 'AVG()`, `COUNT()`, etc..

@@ -8,7 +8,7 @@ slug: /connectors/ingestion/deployment
 In this page we are going to explain how OpenMetadata internally deploys the workflows that are configured from the UI.
 As of now, OpenMetadata uses Airflow under the hood as a scheduler for the Ingestion Pipelines.
 
-This is the right place if you are curious about our current approach or if you are looking forward to contribute by
+This is the right place if you are curious about our current approach or if you are looking forward to contributing by
 adding the implementation to deploy workflows to another tool directly from the UI.
 
 {% note %}
@@ -29,7 +29,7 @@ can find that [here](/main-concepts/high-level-design).
 ## System Context
 
 Everything in OpenMetadata is centralized and managed via the API. Then, the Workflow's lifecycle is also fully managed
-via the OpenMetadata server APIs. Morover, the `IngestionPipeline` Entity is also defined in a JSON Schema that you
+via the OpenMetadata server APIs. More over, the `IngestionPipeline` Entity is also defined in a JSON Schema that you
 can find [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json).
 
 {% image
@@ -305,7 +305,7 @@ If we focus on the important properties here, we can see:
 - and an API Endpoint
 
 As we use a Basic Auth to connect to Airflow's API, those all the necessary ingredients. This is just Airflow specific,
-so any other Pipeline Service can tune this parameters as needed.
+so any other Pipeline Service can tune these parameters as needed.
 
 If we then check what has been implemented in the `deployPipeline` method of the Airflow REST Client, we will see
 that it is just calling a `/deploy` endpoint from its API root. What is this endpoint? What does it do?

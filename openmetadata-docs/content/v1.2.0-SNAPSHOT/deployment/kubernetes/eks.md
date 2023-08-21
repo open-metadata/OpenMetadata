@@ -35,7 +35,7 @@ The below guide provides Persistent Volumes provisioning as static volumes (mean
 
 ## Provision EFS backed PVs, PVCs for Airflow DAGs and Airflow Logs
 
-Please note that we are using one AWS Elastic File System (EFS) service with sub-directories as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
+Please note that we are using one AWS Elastic File System (EFS) service with subdirectories   as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
 
 In order to create directories inside the AWS Elastic File System (EFS) you would need to follow these [steps](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs-nfs-permissions-per-user-subdirs.html).
 

@@ -122,7 +122,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the they support regex as include or exclude. E.g.,
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the they support regex as include or exclude. E.g.,
 
 {% /codeInfo %}
 

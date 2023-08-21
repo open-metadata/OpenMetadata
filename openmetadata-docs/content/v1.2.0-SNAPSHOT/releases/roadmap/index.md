@@ -36,9 +36,9 @@ You can check the latest release [here](/releases/all-releases).
 {% /tile %}
 
 {% tile title="Alerts & Notifications" %}
-- Durable queue to store ChangeEvents guranteeing at-least-once semantics
+- Durable queue to store ChangeEvents guaranteeing  at-least-once semantics
 - Live BulkActions on ElasticSearch to handle Tag category deletion, owner chagne propagation etc..
-- Support to get notificaitons via email when a user is mentioned 
+- Support to get notifications  via email when a user is mentioned 
 {% /tile %}
 
 {% tile title="Search" %}
@@ -65,7 +65,7 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Data Insights" %}
 - Data Insight UI improvements
-- Data Insight report to show most unsused data assets
+- Data Insight report to show most unused  data assets
 {% /tile %}
 
 {% tile title="Lineage" %}

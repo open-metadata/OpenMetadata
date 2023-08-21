@@ -197,10 +197,10 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or greater
-- Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
+- Amazon OpenSearch (ElasticSearch) engine version up to 7.10 or Amazon OpenSearch engine version up to 1.3
 - Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
-For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
+For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
 
