@@ -42,13 +42,11 @@ docker compose -f docker-compose.yml up -d
 
 ## Step 2: Re-index all your metadata
 
-Go to Settings -> OpenMetadata -> Search
+Go to `Settings` -> `OpenMetadata` -> `Search`
 
 {% image src="/images/v1.1.1/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
 
-Click on reindex all.
-
-In the dialog box choose Recreate Indexes to All.
+Click on `Reindex-all`. In the dialog box choose `Entities` to `All`.
 
 {% image src="/images/v1.1.1/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
@@ -86,7 +84,7 @@ The steps to follow are:
    You can find the list of all released versions of
    the `openmetadata-ingestion` package [here](https://pypi.org/project/openmetadata-ingestion/#history).
 - Exit the container by typing `exit`.
-- Restart the ingestion container with `docker restart openmetadata_ingestion`. This will need a few minutes to
+- Restart the ingestion container with `docker restart openmetadata_ingestion`. This will need a few minutes 
    to stop the container and start it again. Now, Airflow will start with the upgraded `metadata` version.
 - Connect to the ingestion container and validate the `metadata` version:
     ```

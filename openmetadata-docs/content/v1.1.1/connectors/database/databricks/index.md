@@ -7,19 +7,19 @@ slug: /connectors/database/databricks
 
 {% multiTablesWrapper %}
 
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%} |
-| DBT                | {% icon iconName="check" /%} |
+| Feature            | Status                        |
+|:-------------------|:------------------------------|
+| Stage              | PROD                          |
+| Metadata           | {% icon iconName="check" /%}  |
+| Query Usage        | {% icon iconName="check" /%}  |
+| Data Profiler      | {% icon iconName="check" /%}  |
+| Data Quality       | {% icon iconName="check" /%}  |
+| Lineage            | {% icon iconName="check" /%}  |
+| DBT                | {% icon iconName="check" /%}  |
 | Supported Versions | Databricks Runtime Version 9+ |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |

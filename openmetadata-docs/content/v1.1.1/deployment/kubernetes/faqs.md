@@ -129,7 +129,7 @@ If you are using MySQL and ElasticSearch externally, you would want to disable t
 helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies --set mysql.enabled=false --set elasticsearch.enabled=false
 ```
 
-Alternatively, you can create a custom YAML file named `values.deps.yaml` to disable installation of MySQL and ELasticSearch.
+Alternatively, you can create a custom YAML file named `values.deps.yaml` to disable installation of MySQL and Elasticsearch .
 
 ```yaml
 mysql:

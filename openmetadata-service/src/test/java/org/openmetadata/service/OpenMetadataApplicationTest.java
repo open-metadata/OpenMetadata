@@ -96,13 +96,14 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();
 
-    final String migrationScripsLocation =
-        ResourceHelpers.resourceFilePath("db/sql/" + sqlContainer.getDriverClassName());
+    final String flyWayMigrationScripsLocation =
+        ResourceHelpers.resourceFilePath("db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
+    final String nativeMigrationScripsLocation = ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
     Flyway flyway =
         Flyway.configure()
             .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
             .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + migrationScripsLocation)
+            .locations("filesystem:" + flyWayMigrationScripsLocation)
             .sqlMigrationPrefix("v")
             .cleanDisabled(false)
             .load();
@@ -137,7 +138,9 @@ public abstract class OpenMetadataApplicationTest {
     configOverrides.add(ConfigOverride.config("database.user", sqlContainer.getUsername()));
     configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));
     // Migration overrides
-    configOverrides.add(ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
+    configOverrides.add(ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScripsLocation));
+    configOverrides.add(ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScripsLocation));
+
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
 
@@ -146,7 +149,8 @@ public abstract class OpenMetadataApplicationTest {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
-    validateAndRunSystemDataMigrations(jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), false);
+    validateAndRunSystemDataMigrations(
+        jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), nativeMigrationScripsLocation, false);
 
     APP.before();
   }

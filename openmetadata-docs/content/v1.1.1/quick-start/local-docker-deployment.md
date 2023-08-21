@@ -108,7 +108,7 @@ Create a new directory for OpenMetadata and navigate into that directory.
 mkdir openmetadata-docker && cd openmetadata-docker
 ```
 
-### 2. Download Docker Compose File from Github Releases
+### 2. Download Docker Compose File from GitHub Releases
 
 Download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest).
 
@@ -187,7 +187,7 @@ You can access OpenMetadata at [http://localhost:8585](http://localhost:8585). U
 - Username: `admin`
 - Password: `admin`
 
-Once you login, you can goto Settings -> Users to add another user and make them admin as well.
+Once you log in, you can goto Settings -> Users to add another user and make them admin as well.
 
 ## Log in to Airflow
 

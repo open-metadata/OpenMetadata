@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/container
 
 # Container
 
-*This schema defines the Container entity. A Container is an abstraction for any path(including the top level eg. bucket in S3) storing data in an Object store such as S3, GCP, Azure. It maps a tree-like structure, where each Container can have a parent and a list of sub-folders, and it can be structured - where it contains structured data, or unstructured where no schema for its data is defined.*
+*This schema defines the Container entity. A Container is an abstraction for any path(including the top level e.g. bucket in S3) storing data in an Object store such as S3, GCP, Azure. It maps a tree-like structure, where each Container can have a parent and a list of sub-folders, and it can be structured - where it contains structured data, or unstructured where no schema for its data is defined.*
 
 ## Properties
 
@@ -40,7 +40,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/container
 
 - **`entityName`** *(string)*: Name of a container. Expected to be unique in the same level containers.
 - **`containerDataModel`** *(object)*: This captures information about how the container's data is modeled, if it has a schema. . Cannot contain additional properties.
-  - **`isPartitioned`** *(boolean)*: Whether the data under this container is partitioned by some property, eg. eventTime=yyyy-mm-dd. Default: `False`.
+  - **`isPartitioned`** *(boolean)*: Whether the data under this container is partitioned by some property, e.g. eventTime=yyyy-mm-dd. Default: `False`.
   - **`columns`** *(array)*: Columns belonging to this container's schema.
     - **Items**: Refer to *../data/table.json#/definitions/column*.
 - **`fileFormat`** *(string)*: This schema defines the file formats for the object/files within a container. Must be one of: `['zip', 'gz', 'zstd', 'csv', 'tsv', 'json', 'parquet', 'avro']`.

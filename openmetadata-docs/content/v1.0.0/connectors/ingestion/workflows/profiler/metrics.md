@@ -190,12 +190,12 @@ OpenMetadata uses the `QUERY_HISTORY_BY_WAREHOUSE` view of the `INFORMATION_SCHE
 OpenMetadata will look at the past 24-hours to fetch the operations that were performed against a table. 
 
 ### Redshift
-OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fecth DML operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
+OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fetch DML operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
 
 OpenMetadata will look at the previous day to fetch the operations that were performed against a table.
 
 ### BigQuery
-Bigquery uses the `JOBS` table of the `INFORMATION_SCHEMA` to fecth DML operations as well as the number of rows affected by these operations. You will need to make sure your data location is properly set when creating your BigQuery service connection in OpenMetadata. 
+Bigquery uses the `JOBS` table of the `INFORMATION_SCHEMA` to fetch DML operations as well as the number of rows affected by these operations. You will need to make sure your data location is properly set when creating your BigQuery service connection in OpenMetadata. 
 
 OpenMetadata will look at the previous day to fetch the operations that were performed against a table filter on the `creation_time` partition field to limit the size of data scanned.
 

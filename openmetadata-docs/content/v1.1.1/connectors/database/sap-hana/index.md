@@ -7,18 +7,18 @@ slug: /connectors/database/sap-hana
 
 {% multiTablesWrapper %}
 
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | BETA                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="cross" /%} |
+| Feature       | Status                       |
+|:--------------|:-----------------------------|
+| Stage         | BETA                         |
+| Metadata      | {% icon iconName="check" /%} |
+| Query Usage   | {% icon iconName="cross" /%} |
+| Data Profiler | {% icon iconName="check" /%} |
+| Data Quality  | {% icon iconName="check" /%} |
+| Lineage       | Partially via Views          |
+| DBT           | {% icon iconName="cross" /%} |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | Partially via Views          |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |

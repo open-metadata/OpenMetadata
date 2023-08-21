@@ -71,7 +71,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "experts": {
-      "description": "List of of users who are experts in this Domain.",
+      "description": "List of users who are experts in this Domain.",
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },

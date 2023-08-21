@@ -269,14 +269,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult, testCaseResult), 2);
 
-    // Replace table profile for a date
-    TestCaseResult newTestCaseResult1 =
-        new TestCaseResult()
-            .withResult("result")
-            .withTestCaseStatus(TestCaseStatus.Success)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
-    putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult1, ADMIN_AUTH_HEADERS);
-
     testCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
     testCaseResults =
@@ -285,12 +277,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TestUtils.dateToTimestamp("2021-09-09"),
             TestUtils.dateToTimestamp("2021-09-10"),
             ADMIN_AUTH_HEADERS);
-    verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult1, testCaseResult), 2);
+    verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult, testCaseResult), 2);
 
     String dateStr = "2021-09-";
     List<TestCaseResult> testCaseResultList = new ArrayList<>();
     testCaseResultList.add(testCaseResult);
-    testCaseResultList.add(newTestCaseResult1);
+    testCaseResultList.add(newTestCaseResult);
     for (int i = 11; i <= 20; i++) {
       testCaseResult =
           new TestCaseResult()
@@ -345,8 +337,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotEquals(0, testSummary.getTotal());
     assertEquals(0, testSummary.getAborted());
 
-    TestSummary emptyTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, UUID.randomUUID().toString());
-    assertNull(emptyTestSummary.getFailed());
+    String randomUUID = UUID.randomUUID().toString();
+    assertResponseContains(
+        () -> getTestSummary(ADMIN_AUTH_HEADERS, randomUUID),
+        NOT_FOUND,
+        "testSuite instance for " + randomUUID + " not found");
   }
 
   @Test
@@ -763,11 +758,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId) throws IOException {
-    WebTarget target = getCollection().path("/executionSummary");
-    if (testSuiteId != null) {
-      target = target.queryParam("testSuiteId", testSuiteId);
-    }
-    return TestUtils.get(target, TestSummary.class, authHeaders);
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    return testSuiteResourceTest.getTestSummary(authHeaders, testSuiteId);
   }
 
   public ResultList<TestCase> getTestCases(
