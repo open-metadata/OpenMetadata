@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { getEntityDetailLink } from 'utils/CommonUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -118,7 +119,9 @@ const RequestTag = () => {
         history.push(
           getEntityDetailLink(
             entityType as EntityType,
-            entityFQN,
+            entityType === EntityType.TABLE
+              ? entityFQN
+              : getDecodedFqn(entityFQN),
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
