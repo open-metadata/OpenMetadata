@@ -2809,8 +2809,9 @@ public interface CollectionDAO {
       return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);
     }
 
+    @Override
     default User findEntityByName(String fqn, String nameHashColumn, Include include) {
-      return EntityDAO.super.findEntityByName(fqn, nameHashColumn, include);
+      return EntityDAO.super.findEntityByName(fqn.toLowerCase(), nameHashColumn, include);
     }
   }
 
