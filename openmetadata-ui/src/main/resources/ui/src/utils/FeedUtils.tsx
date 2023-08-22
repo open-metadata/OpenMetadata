@@ -13,6 +13,8 @@
 
 import { RightOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
+import { MentionSuggestionsItem } from 'components/FeedEditor/FeedEditor.interface';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual } from 'lodash';
@@ -58,13 +60,16 @@ import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
+  getRandomColor,
 } from './CommonUtils';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
+import Fqn from './Fqn';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 import { showErrorToast } from './ToastUtils';
+import { getUserProfilePic } from './UserDataUtils';
 
 export const getEntityType = (entityLink: string) => {
   return EntityLink.getEntityType(entityLink);
@@ -153,54 +158,105 @@ export const getThreadField = (
 };
 
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
+  if (entityType === EntityType.GLOSSARY_TERM) {
+    return `${document.location.protocol}//${document.location.host}/glossary/${entityFqn}`;
+  } else if (entityType === EntityType.TAG) {
+    const classificationFqn = Fqn.split(entityFqn);
+
+    return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  }
+
   return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
 };
 
-export async function suggestions(searchTerm: string, mentionChar: string) {
+const getAvatarElementAsString = async (userName: string) => {
+  const res = await getUserProfilePic(true, '', userName);
+  let avatarEle = '';
+  if (!res) {
+    const { color, character } = getRandomColor(userName);
+    avatarEle = `<div
+      class="flex-center flex-shrink align-middle mention-avatar"
+      data-testid="avatar" style="background-color: ${color}">
+      <span>${character}</span>
+    </div>`;
+  } else {
+    avatarEle = `<div
+    class="mention-profile-image">
+    <img
+      alt="user"
+      data-testid="profile-image"
+      referrerPolicy="no-referrer"
+      src="${res}"
+    />
+  </div>`;
+  }
+
+  return avatarEle;
+};
+
+export async function suggestions(
+  searchTerm: string,
+  mentionChar: string
+): Promise<MentionSuggestionsItem[]> {
   if (mentionChar === '@') {
     let atValues = [];
+
     if (!searchTerm) {
       const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
       const hits = data.data.hits.hits;
 
-      atValues = hits.map((hit) => {
-        const entityType = hit._source.entityType;
-
-        return {
-          id: hit._id,
-          value: getEntityPlaceHolder(
+      atValues = await Promise.all(
+        hits.map(async (hit) => {
+          const avatarEle =
+            (await getAvatarElementAsString(hit._source.name)) ?? '';
+          const entityType = hit._source.entityType;
+          const name = getEntityPlaceHolder(
             `@${hit._source.name ?? hit._source.displayName}`,
             hit._source.deleted
-          ),
-          link: buildMentionLink(
-            entityUrlMap[entityType as keyof typeof entityUrlMap],
-            hit._source.name
-          ),
-        };
-      });
+          );
+
+          return {
+            id: hit._id,
+            value: name,
+            link: buildMentionLink(
+              entityUrlMap[entityType as keyof typeof entityUrlMap],
+              hit._source.name
+            ),
+            name: hit._source.name,
+            avatarEle,
+          };
+        })
+      );
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = await getUserSuggestions(searchTerm);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      atValues = hits.map((hit: any) => {
-        const entityType = hit._source.entityType;
 
-        return {
-          id: hit._id,
-          value: getEntityPlaceHolder(
+      atValues = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        hits.map(async (hit: any) => {
+          const entityType = hit._source.entityType;
+          const name = getEntityPlaceHolder(
             `@${hit._source.name ?? hit._source.display_name}`,
             hit._source.deleted
-          ),
-          link: buildMentionLink(
-            entityUrlMap[entityType as keyof typeof entityUrlMap],
-            hit._source.name
-          ),
-        };
-      });
+          );
+
+          const avatarEle = await getAvatarElementAsString(hit._source.name);
+
+          return {
+            id: hit._id,
+            value: name,
+            link: buildMentionLink(
+              entityUrlMap[entityType as keyof typeof entityUrlMap],
+              hit._source.name
+            ),
+            name: hit._source.name,
+            avatarEle,
+          };
+        })
+      );
     }
 
-    return atValues;
+    return atValues as MentionSuggestionsItem[];
   } else {
     let hashValues = [];
     if (!searchTerm) {
@@ -209,6 +265,11 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
       hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
+        const breadcrumbs = getEntityBreadcrumbs(
+          hit._source,
+          entityType as EntityType,
+          false
+        );
 
         return {
           id: hit._id,
@@ -217,6 +278,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             entityType,
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
+          type: entityType,
+          name: hit._source.displayName || hit._source.name,
+          breadcrumbs,
         };
       });
     } else {
@@ -225,6 +289,11 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
       hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
+        const breadcrumbs = getEntityBreadcrumbs(
+          hit._source as SearchedDataProps['data'][number]['_source'],
+          entityType as EntityType,
+          false
+        );
 
         return {
           id: hit._id,
@@ -233,6 +302,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             entityType,
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
+          type: entityType,
+          name: hit._source.displayName || hit._source.name,
+          breadcrumbs,
         };
       });
     }
@@ -243,7 +315,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
 export async function matcher(
   searchTerm: string,
-  renderList: (matches: string[], search: string) => void,
+  renderList: (matches: MentionSuggestionsItem[], search: string) => void,
   mentionChar: string
 ) {
   const matches = await suggestions(searchTerm, mentionChar);
