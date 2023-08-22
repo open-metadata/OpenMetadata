@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.USER;
 
@@ -97,17 +98,22 @@ public class QueryRepository extends EntityRepository<Query> {
     }
 
     // Store Query Used in Relation
-    if (queryEntity.getQueryUsedIn() != null) {
-      for (EntityReference entityRef : queryEntity.getQueryUsedIn()) {
-        addRelationship(
-            entityRef.getId(), queryEntity.getId(), entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
-      }
-    }
+    storeQueryUsedIn(queryEntity.getId(), queryEntity.getQueryUsedIn(), null);
   }
 
   @Override
   public EntityUpdater getUpdater(Query original, Query updated, Operation operation) {
     return new QueryUpdater(original, updated, operation);
+  }
+
+  private void storeQueryUsedIn(
+      UUID queryId, List<EntityReference> addQueryUsedIn, List<EntityReference> deleteQueryUsedIn) {
+    for (EntityReference entityRef : listOrEmpty(addQueryUsedIn)) {
+      addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
+    }
+    for (EntityReference entityRef : listOrEmpty(deleteQueryUsedIn)) {
+      deleteRelationship(entityRef.getId(), entityRef.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
+    }
   }
 
   public RestUtil.PutResponse<?> addQueryUsage(
@@ -180,6 +186,8 @@ public class QueryRepository extends EntityRepository<Query> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+      // Store Query Used in Relation
+      storeQueryUsedIn(updated.getId(), added, deleted);
       String originalChecksum = EntityUtil.hash(original.getQuery());
       String updatedChecksum = EntityUtil.hash(updated.getQuery());
       if (!originalChecksum.equals(updatedChecksum)) {
