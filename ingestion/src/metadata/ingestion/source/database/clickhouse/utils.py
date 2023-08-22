@@ -37,17 +37,3 @@ def get_mview_names_dialect(self, connection, schema=None, **kw):
     database = schema or connection.engine.url.database
     rows = self._execute(connection, query, database=database)
     return [row.name for row in rows]
-
-
-def get_mview_definition(self, mview_name, schema=None):
-    """Return definition for `mview_name`.
-
-    :param schema: Optional, retrieve names from a non-default schema.
-        For special quoting, use :class:`.quoted_name`.
-
-    """
-
-    with self._operation_context() as conn:
-        return self.dialect.get_view_definition(
-            conn, mview_name, schema, info_cache=self.info_cache
-        )

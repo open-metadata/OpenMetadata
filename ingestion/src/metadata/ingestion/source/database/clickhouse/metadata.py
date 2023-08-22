@@ -38,7 +38,6 @@ from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_VIEW_DEFINITIONS,
 )
 from metadata.ingestion.source.database.clickhouse.utils import (
-    get_mview_definition,
     get_mview_names,
     get_mview_names_dialect,
 )
@@ -269,7 +268,6 @@ ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
     _get_column_info
 )
 Inspector.get_mview_names = get_mview_names
-Inspector.get_mview_definition = get_mview_definition
 Inspector.get_all_view_definitions = get_all_view_definitions
 ClickHouseDialect.get_mview_names = get_mview_names_dialect
 
@@ -322,9 +320,6 @@ class ClickhouseSource(CommonDbSourceService):
     ) -> Optional[str]:
         if table_type in {TableType.View, TableType.MaterializedView}:
             definition_fn = inspector.get_view_definition
-            if table_type == TableType.MaterializedView:
-                definition_fn = inspector.get_mview_definition
-
             try:
                 view_definition = definition_fn(table_name, schema_name)
                 view_definition = (
