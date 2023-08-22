@@ -278,7 +278,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     EntityField.DESCRIPTION,
                     entityFieldThreadCount
                   )}
-                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityFqn={topicFQN}
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
                   hasEditAccess={
@@ -297,7 +297,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     EntityField.MESSAGE_SCHEMA,
                     entityFieldThreadCount
                   )}
-                  entityFqn={topicDetails.fullyQualifiedName ?? ''}
+                  entityFqn={topicFQN}
                   hasDescriptionEditAccess={
                     topicPermissions.EditAll || topicPermissions.EditDescription
                   }
@@ -318,7 +318,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityFqn={topicFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
                   permission={
@@ -333,7 +333,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityFqn={topicFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
                   permission={

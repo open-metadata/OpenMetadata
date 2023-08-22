@@ -126,7 +126,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
 
-  const { mlModelTags, isFollowing, tier, entityFqn } = useMemo(() => {
+  const { mlModelTags, isFollowing, tier } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
@@ -135,7 +135,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
-      entityFqn: mlModelDetail.fullyQualifiedName ?? '',
     };
   }, [mlModelDetail]);
 
@@ -392,7 +391,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     EntityField.DESCRIPTION,
                     entityFieldThreadCount
                   )}
-                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityFqn={mlModelFqn}
                   entityName={mlModelDetail.name}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={
@@ -412,7 +411,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     EntityField.ML_FEATURES,
                     entityFieldThreadCount
                   )}
-                  entityFqn={entityFqn}
+                  entityFqn={mlModelFqn}
                   handleFeaturesUpdate={onFeaturesUpdate}
                   isDeleted={mlModelDetail.deleted}
                   mlFeatures={mlModelDetail.mlFeatures}
@@ -428,7 +427,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityFqn={mlModelFqn}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
                   permission={
@@ -444,7 +443,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityFqn={mlModelFqn}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
                   permission={
