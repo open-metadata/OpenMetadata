@@ -75,6 +75,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
+  @Override
+  public EntityReference getOwner(TestSuite entity) {
+    return entity.getExecutable() ? getOwner(entity.getExecutableEntityReference()) : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
+  }
   private HashMap<String, Integer> getResultSummary(TestSuite testSuite) {
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
     for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
