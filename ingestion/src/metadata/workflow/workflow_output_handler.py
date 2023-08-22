@@ -28,9 +28,12 @@ from metadata.ingestion.api.parser import (
     ParsingConfigurationError,
 )
 from metadata.ingestion.api.status import StackTraceError, Status
+from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.steps import Source, Processor, Stage, Sink, BulkSink
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
+from metadata.workflow.base import BaseWorkflow
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
 WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
@@ -191,12 +194,12 @@ def print_init_error(
         print_more_info(workflow_type)
 
 
-def print_status(workflow) -> None:
+def print_status(workflow: BaseWorkflow) -> None:
     """
     Print the workflow results
     """
 
-    print_workflow_summary(workflow, source=True, stage=True, bulk_sink=True)
+    print_workflow_summary(workflow)
 
     if workflow.source.get_status().source_start_time:
         log_ansi_encoded_string(
@@ -281,6 +284,7 @@ def print_data_insight_status(workflow) -> None:
     Args:
         workflow (DataInsightWorkflow): workflow object
     """
+    # TODO: fixme
     print_workflow_summary(
         workflow,
         processor=True,
@@ -316,27 +320,19 @@ def is_debug_enabled(workflow) -> bool:
     )
 
 
-def get_source_status(workflow, source_status: Status) -> Optional[Status]:
-    if hasattr(workflow, "source"):
-        return source_status if source_status else workflow.source.get_status()
-    return source_status
+def get_generic_step_name(step: Step) -> str:
+    """
+    Since we cannot directly log the step name
+    as step.__class__.__name__ since it brings too
+    much internal info (e.g., MetadataRestSink), we'll
+    just check here for the simplification.
+    """
+    for step_types in (Source, Processor, Stage, Sink, BulkSink):
+        if isinstance(step, step_types):
+            return step_types.__name__
 
 
-def get_processor_status(workflow, processor_status: Status) -> Optional[Status]:
-    if hasattr(workflow, "processor"):
-        return processor_status if processor_status else workflow.processor.get_status()
-    return processor_status
-
-
-def print_workflow_summary(
-    workflow,
-    source: bool = False,
-    stage: bool = False,
-    bulk_sink: bool = False,
-    processor: bool = False,
-    source_status: Status = None,
-    processor_status: Status = None,
-):
+def print_workflow_summary(workflow: BaseWorkflow) -> None:
     """
     Args:
         workflow: the workflow status to be printed
@@ -350,54 +346,46 @@ def print_workflow_summary(
     Returns:
         Print Workflow status when the workflow logger level is DEBUG
     """
-    source_status = get_source_status(workflow, source_status)
-    processor_status = get_processor_status(workflow, processor_status)
-    if is_debug_enabled(workflow):
-        print_workflow_status_debug(
-            workflow,
-            bulk_sink,
-            stage,
-            source_status,
-            processor_status,
-        )
-    summary = Summary()
+
+    # if is_debug_enabled(workflow):
+    #    print_workflow_status_debug(
+    #        workflow,
+    #        bulk_sink,
+    #        stage,
+    #        source_status,
+    #        processor_status,
+    #    )
+
     failures = []
-    if source_status and source:
-        summary += get_summary(source_status)
-        failures.append(Failure(name="Source", failures=source_status.failures))
-    if hasattr(workflow, "stage") and stage:
-        summary += get_summary(workflow.stage.get_status())
+    total_records = 0
+    total_errors = 0
+    for step in [workflow.source] + list(workflow.steps):
+        step_summary = get_summary(step.get_status())
+        total_records += step_summary.records
+        total_errors += step_summary.errors
         failures.append(
-            Failure(name="Stage", failures=workflow.stage.get_status().failures)
+            Failure(
+                name=get_generic_step_name(step), failures=step.get_status().failures
+            )
         )
-    if hasattr(workflow, "sink"):
-        summary += get_summary(workflow.sink.get_status())
-        failures.append(
-            Failure(name="Sink", failures=workflow.sink.get_status().failures)
+
+        log_ansi_encoded_string(
+            bold=True, message=f"Workflow {get_generic_step_name(step)} Summary:"
         )
-    if hasattr(workflow, "bulk_sink") and bulk_sink:
-        summary += get_summary(workflow.bulk_sink.get_status())
-        failures.append(
-            Failure(name="Bulk Sink", failures=workflow.bulk_sink.get_status().failures)
-        )
-    if processor_status and processor:
-        summary += get_summary(processor_status)
-        failures.append(Failure(name="Processor", failures=processor_status.failures))
+        log_ansi_encoded_string(message=f"Processed records: {step_summary.records}")
+        log_ansi_encoded_string(message=f"Warnings: {step_summary.warnings}")
+        if isinstance(step, Source):
+            log_ansi_encoded_string(message=f"Filtered: {step_summary.filtered}")
+        log_ansi_encoded_string(message=f"Errors: {step_summary.errors}")
 
     print_failures_if_apply(failures)
 
-    log_ansi_encoded_string(bold=True, message="Workflow Summary:")
-    log_ansi_encoded_string(message=f"Total processed records: {summary.records}")
-    log_ansi_encoded_string(message=f"Total warnings: {summary.warnings}")
-    log_ansi_encoded_string(message=f"Total filtered: {summary.filtered}")
-    log_ansi_encoded_string(message=f"Total errors: {summary.errors}")
-
-    total_success = max(summary.records, 1)
+    total_success = max(total_records, 1)
     log_ansi_encoded_string(
         color=ANSI.BRIGHT_CYAN,
         bold=True,
         message=f"Success %: "
-        f"{round(total_success * 100 / (total_success + summary.errors), 2)}",
+        f"{round(total_success * 100 / (total_success + total_errors), 2)}",
     )
 
 
@@ -441,9 +429,7 @@ def get_summary(status: Status) -> Summary:
     records = len(status.records)
     warnings = len(status.warnings)
     errors = len(status.failures)
-    filtered = 0
-    if hasattr(status, "filtered"):
-        filtered = len(status.filtered)
+    filtered = len(status.filtered)
     return Summary(records=records, warnings=warnings, errors=errors, filtered=filtered)
 
 

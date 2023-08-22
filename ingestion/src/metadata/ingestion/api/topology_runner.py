@@ -10,7 +10,7 @@
 #  limitations under the License.
 """
 Mixin to be used by service sources to dynamically
-generate the next_record based on their topology.
+generate the _run based on their topology.
 """
 import traceback
 from typing import Any, Generic, Iterable, List, TypeVar
@@ -18,6 +18,7 @@ from typing import Any, Generic, Iterable, List, TypeVar
 from pydantic import BaseModel
 
 from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.status import Either
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -45,7 +46,7 @@ class MissingExpectedEntityAckException(Exception):
 
 class TopologyRunnerMixin(Generic[C]):
     """
-    Prepares the next_record function
+    Prepares the _run function
     dynamically based on the source topology
     """
 
@@ -122,7 +123,7 @@ class TopologyRunnerMixin(Generic[C]):
         for entity_request in node_post_process():
             yield entity_request
 
-    def next_record(self) -> Iterable[Entity]:
+    def _run(self) -> Iterable[Either]:
         """
         Based on a ServiceTopology, find the root node
         and fetch all source methods in the required order

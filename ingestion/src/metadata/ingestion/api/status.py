@@ -11,11 +11,11 @@
 """
 Status output utilities
 """
-import json
 import pprint
-from typing import Any, List, Optional
-
+import time
+from typing import Any, Dict, List, Optional, Generic
 from pydantic import BaseModel, Field
+from metadata.ingestion.api.common import Entity
 
 
 class StackTraceError(BaseModel):
@@ -28,35 +28,53 @@ class StackTraceError(BaseModel):
     stack_trace: Optional[str]
 
 
+class Either(BaseModel, Generic[Entity]):
+    """
+    Any execution should return us Either an Entity of an error for us to handle
+    - left: Optional error we encounter
+    - right: Correct instance of an Entity
+    """
+
+    left: Optional[StackTraceError]
+    right: Optional[Entity]
+
+
 class Status(BaseModel):
     """
     Class to handle status
     """
 
+    source_start_time = time.time()
+
     records: List[Any] = Field(default_factory=list)
     warnings: List[Any] = Field(default_factory=list)
+    filtered: List[Dict[str, str]] = Field(default_factory=list)
     failures: List[StackTraceError] = Field(default_factory=list)
 
-    def as_obj(self) -> dict:
-        return self.__dict__
+    def scanned(self, record: Any) -> None:
+        """
+        Clean up the status results we want to show
+        """
+
+        record_name = record.name.__root__ if hasattr(record, "name") else ""
+        scanned_record = f"[{type(record)}] {record_name}"
+
+        self.records.append(scanned_record)
+
+    def warning(self, key: str, reason: str) -> None:
+        self.warnings.append({key: reason})
+
+    def filter(self, key: str, reason: str) -> None:
+        self.filtered.append({key: reason})
 
     def as_string(self) -> str:
-        return pprint.pformat(self.as_obj(), width=150)
+        return pprint.pformat(self.__dict__, width=150)
 
-    def as_json(self) -> str:
-        return json.dumps(self.as_obj())
-
-    def failed(self, name: str, error: str, stack_trace: Optional[str] = None) -> None:
+    def failed(self, error: StackTraceError) -> None:
         """
         Add a failure to the list of failures
-        Args:
-            name: the entity or record name
-            error: the error with the exception
-            stack_trace: the return of calling to traceback.format_exc()
         """
-        self.failures.append(
-            StackTraceError(name=name, error=error, stack_trace=stack_trace)
-        )
+        self.failures.append(error)
 
     def fail_all(self, failures: List[StackTraceError]) -> None:
         """
@@ -65,3 +83,10 @@ class Status(BaseModel):
             failures: a list of stack tracer errors
         """
         self.failures.extend(failures)
+
+    def calculate_success(self) -> float:
+        source_success = max(
+            len(self.records), 1
+        )  # To avoid ZeroDivisionError using minimum value as 1
+        source_failed = len(self.failures)
+        return round(source_success * 100 / (source_success + source_failed), 2)
