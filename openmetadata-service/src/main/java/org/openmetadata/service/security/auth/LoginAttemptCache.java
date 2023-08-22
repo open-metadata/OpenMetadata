@@ -26,7 +26,7 @@ public class LoginAttemptCache {
             .expireAfterWrite(accessBlockTime, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
-                  public Integer load(@NonNull String key) {
+                  public Integer load(@NonNull String userName) {
                     return 0;
                   }
                 });
@@ -40,38 +40,38 @@ public class LoginAttemptCache {
             .expireAfterWrite(blockTimeInSec, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
-                  public Integer load(@NonNull String key) {
+                  public Integer load(@NonNull String userName) {
                     return 0;
                   }
                 });
   }
 
-  public void recordSuccessfulLogin(String key) {
-    attemptsCache.invalidate(key);
+  public void recordSuccessfulLogin(String userName) {
+    attemptsCache.invalidate(userName.toLowerCase());
   }
 
-  public void recordFailedLogin(String key) {
+  public void recordFailedLogin(String userName) {
     int attempts;
     try {
-      attempts = attemptsCache.get(key);
+      attempts = attemptsCache.get(userName.toLowerCase());
     } catch (ExecutionException e) {
       attempts = 0;
     }
     attempts++;
-    attemptsCache.put(key, attempts);
+    attemptsCache.put(userName.toLowerCase(), attempts);
   }
 
-  public boolean isLoginBlocked(String key) {
+  public boolean isLoginBlocked(String userName) {
     try {
-      return attemptsCache.get(key) >= maxAttempt;
+      return attemptsCache.get(userName.toLowerCase()) >= maxAttempt;
     } catch (ExecutionException e) {
       return false;
     }
   }
 
-  public int getUserFailedLoginCount(String key) {
+  public int getUserFailedLoginCount(String userName) {
     try {
-      return attemptsCache.get(key);
+      return attemptsCache.get(userName.toLowerCase());
     } catch (ExecutionException e) {
       return -1;
     }
