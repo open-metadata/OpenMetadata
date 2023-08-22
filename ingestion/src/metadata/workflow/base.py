@@ -100,6 +100,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         Pass each record from the source down the pipeline:
         Source -> (Processor) -> Sink
         or Source -> (Processor) -> Stage -> BulkSink
+
+        Note how the Source class needs to be an Iterator. Specifically,
+        we are defining Sources as Generators.
         """
         for record in self.source.run():
             self.source.status.scanned(record)
@@ -111,6 +114,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 ):
                     processed_record = step.run(processed_record)
 
+        # Try to pick up the BulkSink and execute it, if needed
         bulk_sink = next(
             (step for step in self.steps if isinstance(step, BulkSink)), None
         )

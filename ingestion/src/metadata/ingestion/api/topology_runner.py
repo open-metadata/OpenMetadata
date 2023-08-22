@@ -17,8 +17,7 @@ from typing import Any, Generic, Iterable, List, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.status import Either
+from metadata.ingestion.api.status import Either, Entity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -123,8 +122,11 @@ class TopologyRunnerMixin(Generic[C]):
         for entity_request in node_post_process():
             yield entity_request
 
-    def _run(self) -> Iterable[Either]:
+    def _iter(self) -> Iterable[Either]:
         """
+        This is the implementation for the entrypoint of our Source classes, which
+        are an IterStep
+
         Based on a ServiceTopology, find the root node
         and fetch all source methods in the required order
         to yield data to the sink

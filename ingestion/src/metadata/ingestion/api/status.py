@@ -13,9 +13,11 @@ Status output utilities
 """
 import pprint
 import time
-from typing import Any, Dict, List, Optional, Generic
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
-from metadata.ingestion.api.common import Entity
+
+# Entities are instances of BaseModel
+Entity = BaseModel
 
 
 class StackTraceError(BaseModel):
@@ -28,7 +30,7 @@ class StackTraceError(BaseModel):
     stack_trace: Optional[str]
 
 
-class Either(BaseModel, Generic[Entity]):
+class Either(BaseModel):
     """
     Any execution should return us Either an Entity of an error for us to handle
     - left: Optional error we encounter
