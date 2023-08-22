@@ -13,10 +13,10 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,7 +30,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -51,6 +54,8 @@ public final class Entity {
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+
+  @Getter @Setter private static FeedRepository feedRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -89,15 +94,13 @@ public final class Entity {
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRICS = "metrics";
   public static final String DASHBOARD = "dashboard";
+  public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
-  public static final String BOT = "bot";
-  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
-  public static final String THREAD = "THREAD";
   public static final String QUERY = "query";
 
   public static final String GLOSSARY = "glossary";
@@ -107,14 +110,11 @@ public final class Entity {
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
-  public static final String WORKFLOW = "workflow";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
-
-  public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
 
   //
   // Policy entity
@@ -128,6 +128,7 @@ public final class Entity {
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
+  public static final String BOT = "bot";
 
   //
   // Operation related entities
@@ -139,6 +140,12 @@ public final class Entity {
   //
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
+
+  //
+  // Other entities
+  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
+  public static final String THREAD = "THREAD";
+  public static final String WORKFLOW = "workflow";
 
   //
   // Reserved names in OpenMetadata
@@ -207,7 +214,7 @@ public final class Entity {
     return Collections.unmodifiableList(ENTITY_LIST);
   }
 
-  public static EntityReference getEntityReference(EntityReference ref, Include include) throws IOException {
+  public static EntityReference getEntityReference(EntityReference ref, Include include) {
     if (ref == null) {
       return null;
     }
@@ -216,28 +223,21 @@ public final class Entity {
         : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), include);
   }
 
-  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
-      throws IOException {
-    EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include) {
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
-    return repository.getDao().findEntityReferenceById(id, include);
+    return repository.getReference(id, include);
   }
 
   public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
     if (fqn == null) {
       return null;
     }
-    EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
-    return repository.getDao().findEntityReferenceByName(fqn, include);
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    return repository.getReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException {
+  public static EntityReference getOwner(@NonNull EntityReference reference) {
     EntityRepository<?> repository = getEntityRepository(reference.getType());
     return repository.getOwner(reference);
   }
@@ -271,38 +271,30 @@ public final class Entity {
     return entityRepository.getFields(String.join(",", fields));
   }
 
-  public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
+  public static <T> T getEntity(EntityReference ref, String fields, Include include) {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
   }
 
-  public static <T> T getEntity(EntityLink link, String fields, Include include) throws IOException {
+  public static <T> T getEntity(EntityLink link, String fields, Include include) {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) throws IOException {
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id, fieldList, include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
+    T entity = (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, true);
     return entity;
   }
 
+  // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include)
-      throws IOException {
+  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.getByName(null, fqn, fieldList, include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
-    }
+    T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, true);
     return entity;
   }
 
@@ -332,12 +324,12 @@ public final class Entity {
   }
 
   public static void deleteEntity(
-      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) throws IOException {
+      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.delete(updatedBy, entityId, recursive, hardDelete);
   }
 
-  public static void restoreEntity(String updatedBy, String entityType, UUID entityId) throws IOException {
+  public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.restoreEntity(updatedBy, entityType, entityId);
   }
@@ -360,6 +352,29 @@ public final class Entity {
   public static <T> Set<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
     return new HashSet<>(Arrays.asList(propertyOrder.value()));
+  }
+
+  /** Returns true if the entity supports activity feeds, announcement, and tasks */
+  public static boolean supportsFeed(String entityType) {
+    return listOf(
+            TABLE,
+            DATABASE,
+            DATABASE_SCHEMA,
+            METRICS,
+            DASHBOARD,
+            DASHBOARD_DATA_MODEL,
+            PIPELINE,
+            CHART,
+            REPORT,
+            TOPIC,
+            MLMODEL,
+            CONTAINER,
+            QUERY,
+            GLOSSARY,
+            GLOSSARY_TERM,
+            TAG,
+            CLASSIFICATION)
+        .contains(entityType);
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */

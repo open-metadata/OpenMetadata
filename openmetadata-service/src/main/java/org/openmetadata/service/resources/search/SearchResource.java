@@ -56,7 +56,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 
@@ -301,8 +300,7 @@ public class SearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "No Job Found")
       })
-  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
@@ -318,16 +316,14 @@ public class SearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Status not found")
       })
-  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     // Check if there is a running job for reindex for requested entity
     String jobRecord;
     jobRecord =
         dao.entityExtensionTimeSeriesDao()
-            .getLatestExtension(
-                FullyQualifiedName.buildHash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)
           .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))
@@ -349,8 +345,7 @@ public class SearchResource {
   public Response reindexJobWithId(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id)
-      throws IOException {
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
     // Only admins or bot can issue a reindex request
     authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
@@ -392,8 +387,7 @@ public class SearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Not found")
       })
-  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getAllJobs()).build();

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
@@ -31,21 +30,27 @@ public class BotRepository extends EntityRepository<Bot> {
 
   public BotRepository(CollectionDAO dao) {
     super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+    quoteFqn = true;
   }
 
   @Override
-  public Bot setFields(Bot entity, Fields fields) throws IOException {
+  public Bot setFields(Bot entity, Fields fields) {
     return entity.withBotUser(getBotUser(entity));
   }
 
   @Override
-  public void prepare(Bot entity) throws IOException {
+  public Bot clearFields(Bot entity, Fields fields) {
+    return entity; // Nothing to do
+  }
+
+  @Override
+  public void prepare(Bot entity) {
     User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
     entity.withBotUser(user.getEntityReference());
   }
 
   @Override
-  public void storeEntity(Bot entity, boolean update) throws IOException {
+  public void storeEntity(Bot entity, boolean update) {
     EntityReference botUser = entity.getBotUser();
     entity.withBotUser(null);
     store(entity, update);
@@ -68,8 +73,10 @@ public class BotRepository extends EntityRepository<Bot> {
     updated.withBotUser(original.getBotUser());
   }
 
-  public EntityReference getBotUser(Bot bot) throws IOException {
-    return getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
+  public EntityReference getBotUser(Bot bot) {
+    return bot.getBotUser() != null
+        ? bot.getBotUser()
+        : getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
   }
 
   public class BotUpdater extends EntityUpdater {
@@ -78,11 +85,11 @@ public class BotRepository extends EntityRepository<Bot> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateUser(original, updated);
     }
 
-    private void updateUser(Bot original, Bot updated) throws IOException {
+    private void updateUser(Bot original, Bot updated) {
       deleteTo(original.getBotUser().getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
       addRelationship(updated.getId(), updated.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
       if (original.getBotUser() == null

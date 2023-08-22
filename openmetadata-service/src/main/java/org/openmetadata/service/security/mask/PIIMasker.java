@@ -3,7 +3,6 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -127,32 +126,27 @@ public class PIIMasker {
         testCases.getData().stream()
             .map(
                 testCase -> {
-                  try {
-                    MessageParser.EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-                    Table table =
-                        Entity.getEntityByName(
-                            Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
+                  MessageParser.EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+                  Table table =
+                      Entity.getEntityByName(
+                          Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
 
-                    // Ignore table tests
-                    if (testCaseLink.getFieldName() == null) return testCase;
+                  // Ignore table tests
+                  if (testCaseLink.getFieldName() == null) return testCase;
 
-                    Optional<Column> referencedColumn =
-                        table.getColumns().stream()
-                            .filter(
-                                col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
-                            .findFirst();
+                  Optional<Column> referencedColumn =
+                      table.getColumns().stream()
+                          .filter(col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
+                          .findFirst();
 
-                    if (referencedColumn.isPresent()) {
-                      Column col = referencedColumn.get();
-                      // We need the table owner to know if we can authorize the access
-                      boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
-                      if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
-                      return testCase;
-                    }
+                  if (referencedColumn.isPresent()) {
+                    Column col = referencedColumn.get();
+                    // We need the table owner to know if we can authorize the access
+                    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
+                    if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
                     return testCase;
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
                   }
+                  return testCase;
                 })
             .collect(Collectors.toList());
 

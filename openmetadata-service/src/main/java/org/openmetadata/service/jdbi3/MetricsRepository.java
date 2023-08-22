@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 
-import java.io.IOException;
 import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -37,24 +37,31 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(Metrics metrics) {
-    return FullyQualifiedName.buildHash(metrics.getFullyQualifiedName());
+  public Metrics setFields(Metrics metrics, Fields fields) {
+    if (metrics.getService() == null) {
+      metrics.setService(getContainer(metrics.getId())); // service is a default field
+    }
+    if (metrics.getUsageSummary() == null) {
+      metrics.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId())
+              : metrics.getUsageSummary());
+    }
+    return metrics;
   }
 
   @Override
-  public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
-    metrics.setService(getContainer(metrics.getId())); // service is a default field
-    return metrics.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
+  public Metrics clearFields(Metrics metrics, Fields fields) {
+    return metrics.withUsageSummary(fields.contains("usageSummary") ? metrics.getUsageSummary() : null);
   }
 
   @Override
-  public void prepare(Metrics metrics) throws IOException {
+  public void prepare(Metrics metrics) {
     metrics.setService(getService(metrics.getService()));
   }
 
   @Override
-  public void storeEntity(Metrics metrics, boolean update) throws IOException {
+  public void storeEntity(Metrics metrics, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = metrics.getService();
     metrics.withService(null);
@@ -68,9 +75,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
   }
 
-  private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID
+  private EntityReference getService(EntityReference service) { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
+      return Entity.getEntityReferenceById(Entity.DATABASE_SERVICE, service.getId(), NON_DELETED);
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));

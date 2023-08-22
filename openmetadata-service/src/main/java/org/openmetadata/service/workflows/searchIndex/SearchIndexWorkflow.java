@@ -20,7 +20,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getT
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,7 +55,6 @@ import org.openmetadata.service.search.openSearch.OpenSearchDataInsightProcessor
 import org.openmetadata.service.search.openSearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.openSearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
@@ -69,8 +67,8 @@ public class SearchIndexWorkflow implements Runnable {
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
   private final Processor entityProcessor;
-  private Processor dataInsightProcessor;
-  private Sink searchIndexSink;
+  private final Processor dataInsightProcessor;
+  private final Sink searchIndexSink;
   private final SearchClient searchClient;
   @Getter final EventPublisherJob jobData;
   private final CollectionDAO dao;
@@ -303,7 +301,7 @@ public class SearchIndexWorkflow implements Runnable {
       WebSocketManager.getInstance()
           .sendToOne(
               jobData.getStartedBy(), WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
-    } catch (JsonProcessingException ex) {
+    } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
   }
@@ -334,16 +332,12 @@ public class SearchIndexWorkflow implements Runnable {
 
   public void updateRecordToDb() throws IOException {
     String recordString =
-        dao.entityExtensionTimeSeriesDao()
-            .getExtension(EntityUtil.hash(jobData.getId().toString()), REINDEXING_JOB_EXTENSION);
+        dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
     long originalLastUpdate = lastRecord.getTimestamp();
     dao.entityExtensionTimeSeriesDao()
         .update(
-            EntityUtil.hash(jobData.getId().toString()),
-            REINDEXING_JOB_EXTENSION,
-            JsonUtils.pojoToJson(jobData),
-            originalLastUpdate);
+            jobData.getId().toString(), REINDEXING_JOB_EXTENSION, JsonUtils.pojoToJson(jobData), originalLastUpdate);
   }
 
   private void reCreateIndexes(String entityType) {

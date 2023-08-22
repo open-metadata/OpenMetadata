@@ -89,8 +89,10 @@ server:
 
 # Logging settings.
 logging:
-  level: OFF
-  appenders: []
+  level: INFO
+  appenders:
+    - type: console
+      logFormat: "%level %logger{5} - %msg%n"
 
 database:
   # the name of the JDBC driver, h2 is used for testing
@@ -102,7 +104,8 @@ database:
   url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "../bootstrap/sql"
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
 
 #elasticsearch:
 #  host: localhost

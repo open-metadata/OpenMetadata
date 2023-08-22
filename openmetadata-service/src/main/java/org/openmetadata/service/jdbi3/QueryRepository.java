@@ -1,16 +1,14 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.USER;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -41,15 +39,21 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public Query setFields(Query entity, EntityUtil.Fields fields) throws IOException {
-    entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : null);
-    entity.setVotes(fields.contains("votes") ? this.getVotes(entity) : null);
-    entity.setQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? this.getQueryUsage(entity) : null);
-    entity.setUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
+  public Query setFields(Query entity, EntityUtil.Fields fields) {
+    entity.setVotes(fields.contains("votes") ? getVotes(entity) : entity.getVotes());
+    entity.setQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
+    entity.setUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
     return entity;
   }
 
-  public List<EntityReference> getQueryUsage(Query queryEntity) throws IOException {
+  @Override
+  public Query clearFields(Query entity, EntityUtil.Fields fields) {
+    entity.withVotes(fields.contains("votes") ? entity.getVotes() : null);
+    entity.withQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? entity.getQueryUsedIn() : null);
+    return entity.withUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
+  }
+
+  public List<EntityReference> getQueryUsage(Query queryEntity) {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
@@ -60,7 +64,7 @@ public class QueryRepository extends EntityRepository<Query> {
     return EntityUtil.getEntityReferences(records);
   }
 
-  public List<EntityReference> getQueryUsers(Query queryEntity) throws IOException {
+  public List<EntityReference> getQueryUsers(Query queryEntity) {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
@@ -72,7 +76,7 @@ public class QueryRepository extends EntityRepository<Query> {
   @Override
   @SneakyThrows
   public void prepare(Query entity) {
-    if (CommonUtil.nullOrEmpty(entity.getName())) {
+    if (nullOrEmpty(entity.getName())) {
       String checkSum = EntityUtil.hash(entity.getQuery());
       entity.setChecksum(checkSum);
       entity.setName(checkSum);
@@ -81,15 +85,14 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void storeEntity(Query queryEntity, boolean update) throws IOException {
-    EntityReference owner = queryEntity.getOwner();
+  public void storeEntity(Query queryEntity, boolean update) {
     List<EntityReference> queryUsage = queryEntity.getQueryUsedIn();
     List<EntityReference> queryUsers = queryEntity.getUsers();
-    queryEntity.withQueryUsedIn(null).withOwner(null).withFollowers(null).withUsers(null);
+    queryEntity.withQueryUsedIn(null).withUsers(null);
     store(queryEntity, update);
 
     // Restore relationships
-    queryEntity.withQueryUsedIn(queryUsage).withOwner(owner).withUsers(queryUsers);
+    queryEntity.withQueryUsedIn(queryUsage).withUsers(queryUsers);
   }
 
   @Override
@@ -116,7 +119,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   public RestUtil.PutResponse<?> addQueryUsage(
-      UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) throws IOException {
+      UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) {
     Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_USED_IN_FIELD, Include.NON_DELETED);
     List<EntityReference> oldValue = query.getQueryUsedIn();
     // Create Relationships
@@ -133,7 +136,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   public RestUtil.PutResponse<?> removeQueryUsedIn(
-      UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) throws IOException {
+      UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) {
     Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_USED_IN_FIELD, Include.NON_DELETED);
     List<EntityReference> oldValue = query.getQueryUsedIn();
 
@@ -173,7 +176,7 @@ public class QueryRepository extends EntityRepository<Query> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateFromRelationships(
           "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
       if (operation.isPatch() && !original.getQuery().equals(updated.getQuery())) {
