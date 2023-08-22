@@ -263,7 +263,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={topicDetails.description}
-                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityFqn={topicFQN}
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
                   hasEditAccess={
@@ -278,7 +278,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
-                  entityFqn={topicDetails.fullyQualifiedName ?? ''}
+                  entityFqn={topicFQN}
                   hasDescriptionEditAccess={
                     topicPermissions.EditAll || topicPermissions.EditDescription
                   }
@@ -299,7 +299,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityFqn={topicFQN}
                   entityType={EntityType.TOPIC}
                   permission={
                     (topicPermissions.EditAll || topicPermissions.EditTags) &&
@@ -313,7 +313,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityFqn={topicFQN}
                   entityType={EntityType.TOPIC}
                   permission={
                     (topicPermissions.EditAll || topicPermissions.EditTags) &&
