@@ -343,26 +343,29 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-
         # TODO support location property in JSON Schema
         # TODO support OAuth 2.0 scopes
-        impersonate_service_account = (
-            self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-        )
-        lifetime = (
-            self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
-        )
-        self.client = get_bigquery_client(
-            project_id=database_name,
-            impersonate_service_account=impersonate_service_account,
-            lifetime=lifetime,
-        )
+        kwargs = {}
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ):
             self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
+            if self.service_connection.credentials.gcpImpersonateServiceAccount:
+                kwargs[
+                    "impersonate_service_account"
+                ] = (
+                    self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+                )
+
+                kwargs[
+                    "lifetime"
+                ] = (
+                    self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+                )
+
+        self.client = get_bigquery_client(project_id=database_name, **kwargs)
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
