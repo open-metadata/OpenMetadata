@@ -1,0 +1,24 @@
+source:
+  type: lightdash
+  serviceName: local_lightdash
+  serviceConnection:
+    config:
+      type: Lightdash
+      hostPort: https://app.lightdash.cloud
+      apiKey: 2e55cf38b3194b916bffee6032e96bea
+      projectUUID: 12cfc22e-aa77-46a0-9d27-4ce80af96a7c
+      spaceUUID: 9d995a48-20bb-48ef-a189-8cbc364ddc7e
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE2OTIyMDIxOTQsImV4cCI6bnVsbH0.HdEwTmVS3gHoqpPacrgs2B7669uwCIktVO26U7dhoTUPnEG8eDUuV1HAtDCgOjoW7cTpdjsyPAEQW5P9hp6AXdMEzyxsJk9I4c_hrOLL8hUUwFz8TgdTGWeV7GhYqDP1yUEfhDvDeiouGCeJVP3IEqLrks4GiX7MicOjCOP8rtW66y0B3A51XYnuD6t0OnZ13WYCzEWlJuX3RvOCVFYCd2FPTDe3TnIX2gODtP5VByu9SkNm5btuHipkrTKVJIUkqO-vrGbfx3N6J3TPZqrZA2nozTJi-bWG_hd5-44o9TJCqokxda8X--tCmH9bkLXQADEBVrovXdGuVn_GC-cvGQ"
