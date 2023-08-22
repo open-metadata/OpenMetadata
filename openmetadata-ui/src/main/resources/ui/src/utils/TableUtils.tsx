@@ -25,6 +25,7 @@ import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
+import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
@@ -76,7 +77,6 @@ import {
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
-import SVGIcons, { Icons } from './SvgUtils';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -409,15 +409,9 @@ export function getTableExpandableConfig<T>(
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <div className="d-inline-block items-center">
+        <div className="d-inline-flex items-center">
           {isDraggable && (
-            <SVGIcons
-              alt="icon"
-              className="m-r-xs drag-icon"
-              height={8}
-              icon={Icons.DRAG}
-              width={8}
-            />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
           )}
           <Icon
             className="m-r-xs"
@@ -430,13 +424,7 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <SVGIcons
-              alt="icon"
-              className="m-r-xs drag-icon"
-              height={8}
-              icon={Icons.DRAG}
-              width={8}
-            />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
             <div className="expand-cell-empty-icon-container" />
           </>
         )

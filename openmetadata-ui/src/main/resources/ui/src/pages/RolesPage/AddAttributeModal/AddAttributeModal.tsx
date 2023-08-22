@@ -98,7 +98,7 @@ const AddAttributeModal: FC<Props> = ({
     }
   };
 
-  const handleValuSelect = (id: string) => {
+  const handleValueSelect = (id: string) => {
     const isAdded = selectedValues.includes(id);
     if (isAdded) {
       setSelectedValues((prev) => prev.filter((v) => v !== id));
@@ -177,7 +177,7 @@ const AddAttributeModal: FC<Props> = ({
                 data-testid="policy-row"
                 gutter={[16, 16]}
                 key={option.id}
-                onClick={() => handleValuSelect(option.id)}>
+                onClick={() => handleValueSelect(option.id)}>
                 <Col span={6}>{getEntityName(option)}</Col>
                 <Col span={16}>
                   <RichTextEditorPreviewer
