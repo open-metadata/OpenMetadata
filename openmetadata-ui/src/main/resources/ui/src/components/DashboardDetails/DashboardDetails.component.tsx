@@ -111,14 +111,16 @@ const DashboardDetails = ({
     deleted,
     dashboardTags,
     tier,
+    entityFqn,
   } = useMemo(() => {
-    const { tags = [] } = dashboardDetails;
+    const { tags = [], fullyQualifiedName } = dashboardDetails;
 
     return {
       ...dashboardDetails,
       tier: getTierTags(tags),
       dashboardTags: getTagsWithoutTier(tags),
       entityName: getEntityName(dashboardDetails),
+      entityFqn: fullyQualifiedName ?? '',
     };
   }, [dashboardDetails]);
 
@@ -457,7 +459,7 @@ const DashboardDetails = ({
                 fqn: record.fullyQualifiedName ?? '',
                 field: record.description,
               }}
-              entityFqn={dashboardFQN}
+              entityFqn={entityFqn}
               entityType={EntityType.DASHBOARD}
               hasEditPermission={editDescriptionPermissions}
               index={index}
@@ -477,7 +479,7 @@ const DashboardDetails = ({
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
-              entityFqn={dashboardFQN}
+              entityFqn={entityFqn}
               entityType={EntityType.DASHBOARD}
               handleTagSelection={handleChartTagSelection}
               hasTagEditAccess={hasEditTagAccess(record)}
@@ -499,7 +501,7 @@ const DashboardDetails = ({
         width: 300,
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
-            entityFqn={dashboardFQN}
+            entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD}
             handleTagSelection={handleChartTagSelection}
             hasTagEditAccess={hasEditTagAccess(record)}
@@ -515,6 +517,7 @@ const DashboardDetails = ({
     ],
     [
       deleted,
+      entityFqn,
       chartsPermissionsArray,
       onThreadLinkSelect,
       hasEditTagAccess,
@@ -537,7 +540,7 @@ const DashboardDetails = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={dashboardDetails.description}
-                  entityFqn={dashboardFQN}
+                  entityFqn={dashboardDetails.fullyQualifiedName}
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
                   hasEditAccess={
@@ -576,7 +579,7 @@ const DashboardDetails = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={dashboardFQN}
+                  entityFqn={dashboardDetails.fullyQualifiedName}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||
@@ -591,7 +594,7 @@ const DashboardDetails = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={dashboardFQN}
+                  entityFqn={dashboardDetails.fullyQualifiedName}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||

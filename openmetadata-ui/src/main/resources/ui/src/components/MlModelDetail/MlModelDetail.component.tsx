@@ -121,7 +121,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
 
-  const { mlModelTags, isFollowing, tier } = useMemo(() => {
+  const { mlModelTags, isFollowing, tier, entityFqn } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
@@ -130,6 +130,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
+      entityFqn: mlModelDetail.fullyQualifiedName ?? '',
     };
   }, [mlModelDetail]);
 
@@ -377,7 +378,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={mlModelDetail.description}
-                  entityFqn={mlModelFqn}
+                  entityFqn={mlModelDetail.fullyQualifiedName}
                   entityName={mlModelDetail.name}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={
@@ -393,7 +394,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   onThreadLinkSelect={handleThreadLinkSelect}
                 />
                 <MlModelFeaturesList
-                  entityFqn={mlModelFqn}
+                  entityFqn={entityFqn}
                   handleFeaturesUpdate={onFeaturesUpdate}
                   isDeleted={mlModelDetail.deleted}
                   mlFeatures={mlModelDetail.mlFeatures}
@@ -409,7 +410,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelFqn}
+                  entityFqn={mlModelDetail.fullyQualifiedName}
                   entityType={EntityType.MLMODEL}
                   permission={
                     (mlModelPermissions.EditAll ||
@@ -424,7 +425,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelFqn}
+                  entityFqn={mlModelDetail.fullyQualifiedName}
                   entityType={EntityType.MLMODEL}
                   permission={
                     (mlModelPermissions.EditAll ||
