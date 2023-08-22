@@ -269,11 +269,9 @@ update_github_action_paths:
 	@echo "Current working directory: $(shell pwd)"
 	@echo "List of files: $(shell ls -la)"
 	@file_paths=\
-	  .github/workflows/docker-openmetadata-db.yml \
-	  .github/workflows/docker-openmetadata-ingestion-base.yml \
-	  .github/workflows/docker-openmetadata-ingestion.yml \
-	  .github/workflows/docker-openmetadata-postgres.yml \
-	  .github/workflows/docker-openmetadata-server.yml; \
+	  ingestion/setup.py \
+	  docker/docker-compose-ingestion/docker-compose-ingestion.yml \
+	  ingestion/operators/docker/Dockerfile; \
 	for file_path in $$file_paths; do \
 	  echo "Checking permissions for: $$file_path"; \
 	  ls -ld $$file_path; \
