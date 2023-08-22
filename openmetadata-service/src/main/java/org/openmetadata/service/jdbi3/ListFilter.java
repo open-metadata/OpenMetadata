@@ -55,7 +55,8 @@ public class ListFilter {
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
     condition = addCondition(condition, getTestCaseCondition());
-    condition = addCondition(condition, getTestSuiteCondition());
+    condition = addCondition(condition, getTestSuiteTypeCondition());
+    condition = addCondition(condition, getTestSuiteFQNCondition());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -83,6 +84,13 @@ public class ListFilter {
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
     return service == null ? "" : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service));
+  }
+
+  public String getTestSuiteFQNCondition() {
+    String testSuiteName = queryParams.get("testSuite");
+    return testSuiteName == null
+        ? ""
+        : String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
   }
 
   public String getParentCondition(String tableName) {
@@ -158,7 +166,7 @@ public class ListFilter {
     return addCondition(condition1, condition2);
   }
 
-  private String getTestSuiteCondition() {
+  private String getTestSuiteTypeCondition() {
     String testSuiteType = getQueryParam("testSuiteType");
 
     if (testSuiteType == null) {
