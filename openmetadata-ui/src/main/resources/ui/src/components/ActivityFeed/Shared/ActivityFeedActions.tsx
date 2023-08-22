@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Popover, Space } from 'antd';
-import AppState from 'AppState';
 import { ReactComponent as AddReactionIcon } from 'assets/svg/add-reaction-emoji.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import Reaction from 'components/Reactions/Reaction';
 import { REACTION_LIST } from 'constants/reactions.constant';
@@ -46,10 +46,7 @@ const ActivityFeedActions = ({
   onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUserDetails: currentUser } = useAuthContext();
   const isAuthor = post.from === currentUser?.name;
   const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

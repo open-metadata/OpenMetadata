@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ReactionOperation } from 'enums/reactions.enum';
@@ -69,11 +69,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUserDetails: currentUser } = useAuthContext();
 
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
@@ -142,11 +138,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   // Here value is the post message and id can be thread id or post id.
   const postFeed = useCallback(async (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser?.name,
     } as Post;
 
     try {

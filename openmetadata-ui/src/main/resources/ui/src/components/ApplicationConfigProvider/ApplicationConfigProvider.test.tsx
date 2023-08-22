@@ -47,7 +47,9 @@ describe('ApplicationConfigProvider', () => {
 
   it('fetch the application config on mount and set in the context', async () => {
     function TestComponent() {
-      const { customLogoUrlPath } = useApplicationConfigProvider();
+      const {
+        logo: { customLogoUrlPath },
+      } = useApplicationConfigProvider();
 
       return <div>{customLogoUrlPath}</div>;
     }

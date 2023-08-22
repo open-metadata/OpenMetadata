@@ -13,6 +13,8 @@
 
 import { Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { SsoServiceType } from 'generated/api/teams/createUser';
+import { AuthProvider } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import _, { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +22,6 @@ import { checkEmailInUse } from 'rest/auth-API';
 import { createBotWithPut } from 'rest/botsAPI';
 import { createUserWithPut, getUserByName } from 'rest/userAPI';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
-import { SsoServiceType } from '../../generated/auth/ssoAuth';
 import { Bot } from '../../generated/entity/bot';
 import {
   AuthenticationMechanism,
@@ -156,7 +157,8 @@ const AuthMechanismForm: FC<Props> = ({
                 JWTTokenExpiry: tokenExpiry,
               }
             : {
-                ssoServiceType: authConfig?.provider as SsoServiceType,
+                ssoServiceType:
+                  authConfig?.provider as unknown as SsoServiceType,
                 authConfig: {
                   ...ssoClientConfig,
                 },
@@ -207,7 +209,8 @@ const AuthMechanismForm: FC<Props> = ({
                     JWTTokenExpiry: tokenExpiry,
                   }
                 : {
-                    ssoServiceType: authConfig?.provider as SsoServiceType,
+                    ssoServiceType:
+                      authConfig?.provider as unknown as SsoServiceType,
                     authConfig: {
                       ...ssoClientConfig,
                     },
@@ -223,7 +226,7 @@ const AuthMechanismForm: FC<Props> = ({
 
   const getSSOConfig = () => {
     switch (authConfig?.provider) {
-      case SsoServiceType.Google: {
+      case AuthProvider.Google: {
         return (
           <>
             <Form.Item
@@ -259,7 +262,7 @@ const AuthMechanismForm: FC<Props> = ({
         );
       }
 
-      case SsoServiceType.Auth0: {
+      case AuthProvider.Auth0: {
         return (
           <>
             <Form.Item
@@ -323,7 +326,7 @@ const AuthMechanismForm: FC<Props> = ({
           </>
         );
       }
-      case SsoServiceType.Azure: {
+      case AuthProvider.Azure: {
         return (
           <>
             <Form.Item
@@ -406,7 +409,7 @@ const AuthMechanismForm: FC<Props> = ({
           </>
         );
       }
-      case SsoServiceType.Okta: {
+      case AuthProvider.Okta: {
         return (
           <>
             <Form.Item
@@ -499,7 +502,7 @@ const AuthMechanismForm: FC<Props> = ({
           </>
         );
       }
-      case SsoServiceType.CustomOidc: {
+      case AuthProvider.CustomOidc: {
         return (
           <>
             <Form.Item

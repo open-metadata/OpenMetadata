@@ -269,7 +269,8 @@ const CreateUser = ({
                       JWTTokenExpiry: tokenExpiry,
                     }
                   : {
-                      ssoServiceType: authConfig?.provider as SsoServiceType,
+                      ssoServiceType:
+                        authConfig?.provider as unknown as SsoServiceType,
                       authConfig: {
                         ...ssoClientConfig,
                       },
@@ -289,7 +290,7 @@ const CreateUser = ({
 
   const getSSOConfig = () => {
     switch (authConfig?.provider) {
-      case SsoServiceType.Google: {
+      case AuthProvider.Google: {
         return (
           <>
             <Form.Item
@@ -325,7 +326,7 @@ const CreateUser = ({
         );
       }
 
-      case SsoServiceType.Auth0: {
+      case AuthProvider.Auth0: {
         return (
           <>
             <Form.Item
@@ -389,7 +390,7 @@ const CreateUser = ({
           </>
         );
       }
-      case SsoServiceType.Azure: {
+      case AuthProvider.Azure: {
         return (
           <>
             <Form.Item
@@ -470,7 +471,7 @@ const CreateUser = ({
           </>
         );
       }
-      case SsoServiceType.Okta: {
+      case AuthProvider.Okta: {
         return (
           <>
             <Form.Item
@@ -563,7 +564,7 @@ const CreateUser = ({
           </>
         );
       }
-      case SsoServiceType.CustomOidc: {
+      case AuthProvider.CustomOidc: {
         return (
           <>
             <Form.Item

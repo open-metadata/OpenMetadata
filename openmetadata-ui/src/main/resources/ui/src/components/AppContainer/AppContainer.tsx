@@ -13,8 +13,8 @@
 import { Layout } from 'antd';
 import { Content, Header } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
-import AppState from 'AppState';
 import Appbar from 'components/AppBar/Appbar';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
 import AuthenticatedAppRouter from 'components/router/AuthenticatedAppRouter';
 import { ROUTES } from 'constants/constants';
@@ -25,10 +25,12 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import './app-container.less';
 
 const AppContainer = () => {
+  const { currentUserDetails } = useAuthContext();
+
   return (
     <Switch>
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
-        {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
+        {!isEmpty(currentUserDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
 
       <Layout className="app-container">

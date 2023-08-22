@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -37,7 +38,6 @@ import { restoreMlmodel } from 'rest/mlModelAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
-import AppState from '../../AppState';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
@@ -93,6 +93,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [threadLink, setThreadLink] = useState<string>('');
 
   const { getEntityPermission } = usePermissionProvider();
+  const { currentUserDetails: currentUser } = useAuthContext();
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -115,11 +116,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       fetchResourcePermission();
     }
   }, [mlModelDetail.id]);
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.nonSecureUserDetails, AppState.userDetails]
-  );
 
   const { mlModelTags, isFollowing, tier } = useMemo(() => {
     return {

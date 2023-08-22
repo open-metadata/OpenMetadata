@@ -31,7 +31,11 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getVersion } from 'rest/miscAPI';
-import { extractDetailsFromToken } from 'utils/AuthProvider.util';
+import {
+  extractDetailsFromToken,
+  isProtectedRoute,
+  isTourRoute,
+} from 'utils/AuthProvider.util';
 import { getEntityName } from 'utils/EntityUtils';
 import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
@@ -68,9 +72,8 @@ const Appbar: React.FC = (): JSX.Element => {
   const {
     isAuthDisabled,
     isAuthenticated,
-    isProtectedRoute,
-    isTourRoute,
     onLogoutHandler,
+    currentUserDetails,
   } = useAuthContext();
 
   const { searchCriteria } = useGlobalSearchProvider();
@@ -254,28 +257,22 @@ const Appbar: React.FC = (): JSX.Element => {
     );
   };
 
-  const getUserName = () => {
+  const userName = useMemo(() => {
     const currentUser = isAuthDisabled
       ? appState.nonSecureUserDetails
-      : appState.userDetails;
+      : currentUserDetails;
 
     return currentUser?.displayName || currentUser?.name || TERM_USER;
-  };
+  }, [currentUserDetails]);
 
   const profileDropdown = useMemo(() => {
-    const currentUser = isAuthDisabled
-      ? appState.nonSecureUserDetails
-      : appState.userDetails;
-
-    const name = currentUser?.displayName || currentUser?.name || TERM_USER;
-
-    const roles = currentUser?.roles?.map((r) => getEntityName(r)) || [];
+    const roles = currentUserDetails?.roles?.map((r) => getEntityName(r)) || [];
     const inheritedRoles =
-      currentUser?.inheritedRoles?.map((r) => getEntityName(r)) || [];
+      currentUserDetails?.inheritedRoles?.map((r) => getEntityName(r)) || [];
 
-    currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
+    currentUserDetails?.isAdmin && roles.unshift(TERM_ADMIN);
 
-    const userTeams = getNonDeletedTeams(currentUser?.teams ?? []);
+    const userTeams = getNonDeletedTeams(currentUserDetails?.teams ?? []);
 
     const teams = userTeams.splice(0, 3);
     const remainingTeamsCount = max([userTeams.length, 0]);
@@ -285,11 +282,11 @@ const Appbar: React.FC = (): JSX.Element => {
         label: (
           <Link
             data-testid="user-name"
-            to={getUserPath(currentUser?.name as string)}>
+            to={getUserPath(currentUserDetails?.name as string)}>
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
               ellipsis={{ rows: 1, tooltip: true }}>
-              {name}
+              {userName}
             </Typography.Paragraph>
           </Link>
         ),
@@ -347,7 +344,7 @@ const Appbar: React.FC = (): JSX.Element => {
               {remainingTeamsCount ? (
                 <Link
                   className="more-teams-pill"
-                  to={getUserPath(currentUser?.name as string)}>
+                  to={getUserPath(currentUserDetails?.name as string)}>
                   {remainingTeamsCount} {t('label.more')}
                 </Link>
               ) : null}
@@ -373,7 +370,7 @@ const Appbar: React.FC = (): JSX.Element => {
     });
 
     return dropDownOption;
-  }, [appState, getNonDeletedTeams, onLogoutHandler]);
+  }, [getNonDeletedTeams, onLogoutHandler]);
 
   const searchHandler = (value: string) => {
     if (!isTourOpen) {
@@ -442,11 +439,11 @@ const Appbar: React.FC = (): JSX.Element => {
     if (isAuthDisabled) {
       fetchOMVersion();
     } else {
-      if (!isEmpty(appState.userDetails)) {
+      if (!isEmpty(currentUserDetails)) {
         fetchOMVersion();
       }
     }
-  }, [appState.userDetails, isAuthDisabled]);
+  }, [currentUserDetails, isAuthDisabled]);
 
   useEffect(() => {
     const handleDocumentVisibilityChange = () => {
@@ -487,7 +484,7 @@ const Appbar: React.FC = (): JSX.Element => {
           profileDropdown={profileDropdown}
           searchValue={searchValue || ''}
           supportDropdown={supportLink}
-          username={getUserName()}
+          username={userName}
         />
       ) : null}
     </>

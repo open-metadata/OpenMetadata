@@ -14,6 +14,7 @@
 import { Button, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
@@ -21,7 +22,6 @@ import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAllFeeds } from 'rest/feedsAPI';
-import AppState from '../../../AppState';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -75,6 +75,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const [taskStatus, setTaskStatus] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
+  const { currentUserDetails: currentUser } = useAuthContext();
 
   const isTaskType = isEqual(threadType, ThreadType.Task);
 
@@ -163,10 +164,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   };
 
   const onPostThread = (value: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser?.name ?? '',
       about: threadLink,
     };
     createThread(data);

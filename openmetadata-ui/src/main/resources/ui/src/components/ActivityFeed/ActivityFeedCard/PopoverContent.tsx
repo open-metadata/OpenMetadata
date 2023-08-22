@@ -13,10 +13,10 @@
 
 import { Button, Popover, Space } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
@@ -58,11 +58,8 @@ const PopoverContent: FC<Props> = ({
   editAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+
+  const { currentUserDetails: currentUser } = useAuthContext();
 
   const [visible, setVisible] = useState<boolean>(false);
 

@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Loader from 'components/Loader/Loader';
 import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
+import { AuthenticationConfiguration } from 'generated/configuration/authenticationConfiguration';
+import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import React, {
   createContext,
   FC,
@@ -19,10 +22,11 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
 import { getCustomLogoConfig } from 'rest/settingConfigAPI';
 
-export const ApplicationConfigContext = createContext<LogoConfiguration>(
-  {} as LogoConfiguration
+export const ApplicationConfigContext = createContext<ApplicationConfig>(
+  {} as ApplicationConfig
 );
 
 export const useApplicationConfigProvider = () =>
@@ -32,23 +36,38 @@ interface ApplicationConfigProviderProps {
   children: ReactNode;
 }
 
+interface ApplicationConfig {
+  auth: AuthenticationConfiguration;
+  authorizer: AuthorizerConfiguration;
+  logo: LogoConfiguration;
+}
+
 const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
 }) => {
-  const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
-    {} as LogoConfiguration
+  const [applicationConfig, setApplicationConfig] = useState<ApplicationConfig>(
+    {} as ApplicationConfig
   );
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchApplicationConfig = async () => {
     try {
-      const data = await getCustomLogoConfig();
+      const [authConfig, authorizerConfig, logoConfig] = await Promise.all([
+        fetchAuthenticationConfig(),
+        fetchAuthorizerConfig(),
+        getCustomLogoConfig(),
+      ]);
 
       setApplicationConfig({
-        ...data,
+        auth: authConfig,
+        authorizer: authorizerConfig,
+        logo: logoConfig,
       });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -56,8 +75,12 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     fetchApplicationConfig();
   }, []);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
-    <ApplicationConfigContext.Provider value={{ ...applicationConfig }}>
+    <ApplicationConfigContext.Provider value={applicationConfig}>
       {children}
     </ApplicationConfigContext.Provider>
   );

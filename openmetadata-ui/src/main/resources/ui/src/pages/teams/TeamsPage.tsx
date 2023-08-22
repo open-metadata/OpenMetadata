@@ -39,7 +39,6 @@ import {
 } from 'rest/teamsAPI';
 import { getUsers, updateUserDetail } from 'rest/userAPI';
 import { getEncodedFqn } from 'utils/StringsUtils';
-import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
   LIST_SIZE,
@@ -66,8 +65,8 @@ const TeamsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
-  const { fqn } = useParams<{ [key: string]: string }>();
+  const { isAuthDisabled, handleUserCreated } = useAuthContext();
+  const { fqn } = useParams<{ fqn: string }>();
   const [currentFqn, setCurrentFqn] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
@@ -454,7 +453,7 @@ const TeamsPage = () => {
     updateUserDetail(id, data)
       .then((res) => {
         if (res) {
-          AppState.updateUserDetails(res);
+          handleUserCreated(res);
           setSelectedTeam((prev) => ({ ...prev, ...res }));
           showSuccessToast(t('server.join-team-success'), 2000);
         } else {
@@ -471,7 +470,7 @@ const TeamsPage = () => {
       updateUserDetail(id, data)
         .then((res) => {
           if (res) {
-            AppState.updateUserDetails(res);
+            handleUserCreated(res);
             setSelectedTeam((prev) => ({ ...prev, ...res }));
             showSuccessToast(t('server.leave-team-success'), 2000);
             resolve();

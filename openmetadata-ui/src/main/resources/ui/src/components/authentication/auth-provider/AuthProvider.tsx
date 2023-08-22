@@ -18,14 +18,18 @@ import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import appState from 'AppState';
 import { AxiosError } from 'axios';
+import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { CookieStorage } from 'cookie-storage';
 import { compare } from 'fast-json-patch';
+import { AuthenticationConfiguration } from 'generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
+import { AuthProvider as AuthProviderEnum } from 'generated/settings/settings';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   ComponentType,
   createContext,
+  FC,
   ReactNode,
   useCallback,
   useContext,
@@ -36,20 +40,17 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
-import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
 import { getLoggedInUser, updateUserDetail } from 'rest/userAPI';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
-import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
-import { AuthType, User } from '../../../generated/entity/teams/user';
+import { User } from '../../../generated/entity/teams/user';
 import {
   extractDetailsFromToken,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
-  isTourRoute,
   msalInstance,
   setMsalInstance,
 } from '../../../utils/AuthProvider.util';
@@ -73,14 +74,34 @@ import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './basic-auth.provider';
 import OktaAuthProvider from './okta-auth-provider';
 
-import { AuthProvider as AuthProviderEnum } from 'generated/settings/settings';
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
 }
 
+interface IAuthContext {
+  isAuthenticated: boolean;
+  setIsAuthenticated: (authenticated: boolean) => void;
+  isAuthDisabled: boolean;
+  isUserCreated: boolean;
+  setIsAuthDisabled: (authenticated: boolean) => void;
+  authConfig: AuthenticationConfiguration;
+  authorizerConfig: AuthorizerConfiguration;
+  isSigningIn: boolean;
+  setIsSigningIn: (authenticated: boolean) => void;
+  onLoginHandler: () => void;
+  onLogoutHandler: () => void;
+  getCallBackComponent: () => FC | null;
+  loading: boolean;
+  currentUserDetails: User | null;
+  setLoadingIndicator: (authenticated: boolean) => void;
+  handleSuccessfulLogin: (user: OidcUser) => void;
+  handleUserCreated: (user: User) => void;
+  updateAxiosInterceptors: () => void;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const AuthContext = createContext({} as any);
+export const AuthContext = createContext<IAuthContext>({} as IAuthContext);
 
 const cookieStorage = new CookieStorage();
 
@@ -100,28 +121,22 @@ export const AuthProvider = ({
   const { t } = useTranslation();
   const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
-
   const oidcUserToken = localState.getOidcToken();
-
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
     Boolean(oidcUserToken)
   );
   const [isAuthDisabled, setIsAuthDisabled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [authConfig, setAuthConfig] =
-    useState<Record<string, string | boolean>>();
-
-  const [authorizerConfig, setAuthorizerConfig] =
-    useState<AuthorizerConfiguration>();
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [isUserCreated, setIsUserCreated] = useState(false);
-
-  const [jwtPrincipalClaims, setJwtPrincipalClaims] = useState<
-    AuthenticationConfiguration['jwtPrincipalClaims']
-  >([]);
+  const [currentUserDetails, setCurrentUserDetails] = useState<User | null>(
+    null
+  );
 
   let silentSignInRetries = 0;
-  const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
+  const handleUserCreated = (user: User) => setCurrentUserDetails(user);
+
+  const { auth: authConfig, authorizer: authorizerConfig } =
+    useApplicationConfigProvider();
 
   const onLoginHandler = () => {
     setLoading(true);
@@ -135,7 +150,7 @@ export const AuthProvider = ({
     authenticatorRef.current?.invokeLogout();
 
     // reset the user details on logout
-    appState.updateUserDetails({} as User);
+    setCurrentUserDetails({} as User);
 
     // remove analytics session on logout
     removeSession();
@@ -171,7 +186,7 @@ export const AuthProvider = ({
   }
 
   const resetUserDetails = (forceLogout = false) => {
-    appState.updateUserDetails({} as User);
+    setCurrentUserDetails({} as User);
     appState.updateUserPermissions([]);
     localState.removeOidcToken();
     setIsUserAuthenticated(false);
@@ -189,7 +204,7 @@ export const AuthProvider = ({
     getLoggedInUser(userAPIQueryFields)
       .then((res) => {
         if (res) {
-          appState.updateUserDetails(res);
+          setCurrentUserDetails(res);
         } else {
           resetUserDetails();
         }
@@ -218,13 +233,13 @@ export const AuthProvider = ({
     updateUserDetail(existingData.id, jsonPatch)
       .then((res) => {
         if (res) {
-          appState.updateUserDetails({ ...existingData, ...res });
+          setCurrentUserDetails({ ...existingData, ...res });
         } else {
           throw t('server.unexpected-response');
         }
       })
       .catch((error: AxiosError) => {
-        appState.updateUserDetails(existingData);
+        setCurrentUserDetails(existingData);
         showErrorToast(
           error,
           t('server.entity-updating-error', {
@@ -337,7 +352,7 @@ export const AuthProvider = ({
     setLoading(true);
     setIsUserAuthenticated(true);
     const fields =
-      authConfig?.provider === AuthType.Basic
+      authConfig?.provider === AuthProviderEnum.Basic
         ? userAPIQueryFields + ',' + isEmailVerifyField
         : userAPIQueryFields;
     getLoggedInUser(fields)
@@ -347,7 +362,7 @@ export const AuthProvider = ({
           if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
-            appState.updateUserDetails(res);
+            setCurrentUserDetails(res);
           }
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -357,7 +372,7 @@ export const AuthProvider = ({
       .catch((err) => {
         if (err && err.response && err.response.status === 404) {
           appState.updateNewUser(user.profile);
-          appState.updateUserDetails({} as User);
+          setCurrentUserDetails({} as User);
           appState.updateUserPermissions([]);
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
@@ -438,10 +453,6 @@ export const AuthProvider = ({
 
   const fetchAuthConfig = async () => {
     try {
-      const [authConfig, authorizerConfig] = await Promise.all([
-        fetchAuthenticationConfig(),
-        fetchAuthorizerConfig(),
-      ]);
       const isSecureMode =
         !isNil(authConfig) && authConfig.provider !== NO_AUTH;
       if (isSecureMode) {
@@ -449,10 +460,9 @@ export const AuthProvider = ({
         // show an error toast if provider is null or not supported
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
-          setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+
           initializeAxiosInterceptors();
-          setAuthConfig(configJson);
-          setAuthorizerConfig(authorizerConfig);
+
           updateAuthInstance(configJson);
           if (!oidcUserToken) {
             if (isProtectedRoute(location.pathname)) {
@@ -559,7 +569,7 @@ export const AuthProvider = ({
             childComponentType={childComponentType}
             ref={authenticatorRef}
             userConfig={getUserManagerConfig({
-              ...(authConfig as Record<string, string>),
+              ...authConfig,
             })}
             onLoginFailure={handleFailedLogin}
             onLoginSuccess={handleSuccessfulLogin}
@@ -604,7 +614,7 @@ export const AuthProvider = ({
 
   useEffect(() => {
     return history.listen((location) => {
-      if (!isAuthDisabled && !appState.userDetails) {
+      if (!isAuthDisabled && !currentUserDetails) {
         if (
           (location.pathname === ROUTES.SIGNUP && isEmpty(appState.newUser)) ||
           (!location.pathname.includes(ROUTES.CALLBACK) &&
@@ -635,24 +645,21 @@ export const AuthProvider = ({
     isAuthenticated: isUserAuthenticated,
     setIsAuthenticated: setIsUserAuthenticated,
     isAuthDisabled,
-    isUserCreated,
+    isUserCreated: Boolean(currentUserDetails),
     setIsAuthDisabled,
     authConfig,
     authorizerConfig,
-    setAuthConfig,
     isSigningIn,
     setIsSigningIn,
     onLoginHandler,
     onLogoutHandler,
     getCallBackComponent,
-    isProtectedRoute,
-    isTourRoute,
     loading,
     setLoadingIndicator,
     handleSuccessfulLogin,
     handleUserCreated,
+    currentUserDetails,
     updateAxiosInterceptors: initializeAxiosInterceptors,
-    jwtPrincipalClaims,
   };
 
   return (

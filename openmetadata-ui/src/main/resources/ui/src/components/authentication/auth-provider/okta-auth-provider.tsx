@@ -28,13 +28,10 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   onLoginSuccess,
 }: Props) => {
   const { authConfig, setIsAuthenticated } = useAuthContext();
-  const { clientId, issuer, redirectUri, scopes, pkce } = authConfig;
+  const { clientId, authority } = authConfig;
   const oktaAuth = new OktaAuth({
     clientId,
-    issuer,
-    redirectUri,
-    scopes,
-    pkce,
+    issuer: authority,
     tokenManager: {
       autoRenew: false,
     },

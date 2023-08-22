@@ -23,7 +23,6 @@
  *  limitations under the License.
  */
 
-import { SamlSSOClientConfig } from 'generated/configuration/authenticationConfiguration';
 import React, {
   forwardRef,
   Fragment,
@@ -44,10 +43,10 @@ interface Props {
 const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { setIsAuthenticated, authConfig } = useAuthContext();
-    const config: SamlSSOClientConfig = authConfig.samlConfiguration;
+    const { samlConfiguration: config } = authConfig;
 
     const login = async () => {
-      if (config.idp.authorityUrl) {
+      if (config?.idp.authorityUrl) {
         window.location.href = config.idp.authorityUrl;
       } else {
         showErrorToast('SAML IDP Authority URL is not configured.');

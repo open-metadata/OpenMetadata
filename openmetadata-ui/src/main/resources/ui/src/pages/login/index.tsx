@@ -279,7 +279,7 @@ const SigninPage = () => {
                   </Typography.Link>
                 </div>
 
-                {(authConfig?.enableSelfSignUp || isAuthProviderLDAP) && (
+                {(authConfig?.enableSelfSignup || isAuthProviderLDAP) && (
                   <>
                     <Divider className="w-min-0 mt-8 mb-12 justify-center">
                       <Typography.Text className="text-sm" type="secondary">

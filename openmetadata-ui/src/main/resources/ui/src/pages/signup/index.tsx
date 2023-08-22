@@ -12,7 +12,6 @@
  */
 
 import { Button } from 'antd';
-import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
@@ -37,8 +36,9 @@ const SignUp = () => {
   const history = useHistory();
   const {
     setIsSigningIn,
-    jwtPrincipalClaims = [],
+    authConfig: { jwtPrincipalClaims },
     authorizerConfig,
+    handleUserCreated,
   } = useAuthContext();
 
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
@@ -52,30 +52,24 @@ const SignUp = () => {
     ),
   });
 
-  const createNewUser = (details: User | CreateUser) => {
-    setLoading(true);
-    createUser(details as CreateUser)
-      .then((res) => {
-        if (res) {
-          appState.updateUserDetails(res);
-          cookieStorage.removeItem(REDIRECT_PATHNAME);
-          setIsSigningIn(false);
-          history.push(ROUTES.HOME);
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.create-entity-error', {
-            entity: t('label.user'),
-          })
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+  const createNewUser = async (details: User | CreateUser) => {
+    try {
+      setLoading(true);
+      const user = await createUser(details as CreateUser);
+      handleUserCreated(user);
+      cookieStorage.removeItem(REDIRECT_PATHNAME);
+      setIsSigningIn(false);
+      history.push(ROUTES.HOME);
+    } catch (error) {
+      showErrorToast(
+        error,
+        t('server.create-entity-error', {
+          entity: t('label.user'),
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {

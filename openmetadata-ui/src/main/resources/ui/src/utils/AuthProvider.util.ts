@@ -47,17 +47,15 @@ export const getSilentRedirectUri = () => {
 };
 
 export const getUserManagerConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthenticationConfiguration
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority, clientId, callbackUrl, responseType, scope } = authClient;
+  const { authority, clientId, callbackUrl } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType,
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
-    scope,
     userStore: new WebStorageStateStore({ store: localStorage }),
   };
 };
