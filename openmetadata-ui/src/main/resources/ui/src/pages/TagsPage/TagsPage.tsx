@@ -90,7 +90,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getDecodedFqn, getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import TagsForm from './TagsForm';
 import { DeleteTagsType } from './TagsPage.interface';
@@ -195,7 +195,7 @@ const TagsPage = () => {
 
   const isClassificationDisabled = useMemo(
     () => currentClassification?.disabled ?? false,
-    [currentClassification]
+    [currentClassification?.disabled]
   );
 
   const fetchCurrentClassificationPermission = async () => {
@@ -373,9 +373,24 @@ const TagsPage = () => {
         if (res) {
           if (currentClassification) {
             setDeleteStatus(LOADING_STATE.SUCCESS);
-            setCurrentClassification({
-              ...currentClassification,
-            });
+            setClassifications((prev) =>
+              prev.map((item) => {
+                if (
+                  item.fullyQualifiedName ===
+                  currentClassification.fullyQualifiedName
+                ) {
+                  return {
+                    ...item,
+                    termCount: (item.termCount ?? 0) - 1,
+                  };
+                }
+
+                return item;
+              })
+            );
+            fetchClassificationChildren(
+              currentClassification?.fullyQualifiedName ?? ''
+            );
           }
         } else {
           showErrorToast(
@@ -419,21 +434,28 @@ const TagsPage = () => {
           currentClassification?.id ?? '',
           patchData
         );
-        if (response) {
-          fetchClassifications();
-          if (
-            currentClassification?.fullyQualifiedName !==
-            updatedClassification.fullyQualifiedName
-          ) {
-            history.push(getTagPath(response.fullyQualifiedName));
-          } else {
-            await fetchCurrentClassification(
-              currentClassification?.fullyQualifiedName ?? '',
-              true
-            );
-          }
-        } else {
-          throw t('server.unexpected-response');
+        setClassifications((prev) =>
+          prev.map((item) => {
+            if (
+              item.fullyQualifiedName ===
+              currentClassification.fullyQualifiedName
+            ) {
+              return {
+                ...item,
+                ...response,
+              };
+            }
+
+            return item;
+          })
+        );
+        setCurrentClassification((prev) => ({ ...prev, ...response }));
+        if (
+          currentClassification?.fullyQualifiedName !==
+            updatedClassification.fullyQualifiedName ||
+          currentClassification?.name !== updatedClassification.name
+        ) {
+          history.push(getTagPath(response.fullyQualifiedName));
         }
       } catch (error) {
         if (
@@ -513,9 +535,24 @@ const TagsPage = () => {
         classification: currentClassification?.fullyQualifiedName,
       });
 
-      fetchCurrentClassification(
-        currentClassification?.fullyQualifiedName ?? '',
-        true
+      setClassifications((prevClassifications) => {
+        return prevClassifications.map((data) => {
+          if (
+            data.fullyQualifiedName ===
+            currentClassification?.fullyQualifiedName
+          ) {
+            return {
+              ...data,
+              termCount: (data.termCount ?? 0) + 1,
+            };
+          }
+
+          return data;
+        });
+      });
+
+      fetchClassificationChildren(
+        currentClassification?.fullyQualifiedName ?? ''
       );
     } catch (error) {
       if (
@@ -547,14 +584,15 @@ const TagsPage = () => {
       const patchData = compare(editTag, updatedData);
       try {
         const response = await patchTag(editTag.id ?? '', patchData);
-        if (response) {
-          fetchCurrentClassification(
-            currentClassification?.fullyQualifiedName ?? '',
-            true
-          );
-        } else {
-          throw t('server.unexpected-response');
-        }
+        setTags((prev) =>
+          prev?.map((item) => {
+            if (item.id === editTag.id) {
+              return { ...item, ...response };
+            }
+
+            return item;
+          })
+        );
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -608,7 +646,9 @@ const TagsPage = () => {
      */
     if (tagCategoryName) {
       const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
-      fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
+      fetchCurrentClassification(
+        isTier ? TIER_CATEGORY : getDecodedFqn(tagCategoryName)
+      );
     }
   }, [tagCategoryName]);
 
@@ -625,7 +665,7 @@ const TagsPage = () => {
       fetchClassificationChildren(
         currentClassification?.fullyQualifiedName ?? ''
       );
-  }, [currentClassification]);
+  }, [currentClassification?.fullyQualifiedName]);
 
   const onClickClassifications = (category: Classification) => {
     setCurrentClassification(category);
@@ -648,10 +688,8 @@ const TagsPage = () => {
     [fetchClassificationChildren, paging, currentClassificationName]
   );
 
-  // Use the component in the render method
-
-  const fetchLeftPanel = () => {
-    return (
+  const leftPanelLayout = useMemo(
+    () => (
       <LeftPanelCard id="tags">
         <TagsLeftPanelSkeleton loading={isLoading}>
           <div className="tw-py-2" data-testid="data-summary-container">
@@ -719,8 +757,14 @@ const TagsPage = () => {
           </div>
         </TagsLeftPanelSkeleton>
       </LeftPanelCard>
-    );
-  };
+    ),
+    [
+      isLoading,
+      classifications,
+      currentClassification,
+      createClassificationPermission,
+    ]
+  );
 
   const disableEditButton = useMemo(
     () =>
@@ -1044,9 +1088,7 @@ const TagsPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      leftPanel={fetchLeftPanel()}
-      pageTitle={t('label.tag-plural')}>
+    <PageLayoutV1 leftPanel={leftPanelLayout} pageTitle={t('label.tag-plural')}>
       {isUpdateLoading ? (
         <Loader />
       ) : (
@@ -1155,26 +1197,29 @@ const TagsPage = () => {
           {isTagsLoading ? (
             <Loader />
           ) : (
-            <Table
-              bordered
-              className={isClassificationDisabled ? 'opacity-60' : ''}
-              columns={tableColumn}
-              data-testid="table"
-              dataSource={tags}
-              pagination={false}
-              rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-              rowKey="id"
-              size="small"
-            />
-          )}
-          {paging.total > PAGE_SIZE && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={PAGE_SIZE}
-              paging={paging}
-              pagingHandler={handlePageChange}
-              totalCount={paging.total}
-            />
+            <Space className="w-full m-b-md" direction="vertical" size="large">
+              <Table
+                bordered
+                className={isClassificationDisabled ? 'opacity-60' : ''}
+                columns={tableColumn}
+                data-testid="table"
+                dataSource={tags}
+                pagination={false}
+                rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
+                rowKey="id"
+                size="small"
+              />
+
+              {paging.total > PAGE_SIZE && (
+                <NextPrevious
+                  currentPage={currentPage}
+                  pageSize={PAGE_SIZE}
+                  paging={paging}
+                  pagingHandler={handlePageChange}
+                  totalCount={paging.total}
+                />
+              )}
+            </Space>
           )}
 
           {/* Classification Form */}
