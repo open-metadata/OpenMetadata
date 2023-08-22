@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.data.database import Database, databaseSer
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.orm.converter.converter_registry import converter_registry
 
 Base = declarative_base()
@@ -79,7 +78,7 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     """
     return sqlalchemy.Column(
         name=str(col.name.__root__),
-        type_=converter_registry.get(table_service_type, CommonMapTypes)().map_types(
+        type_=converter_registry[table_service_type]().map_types(
             col, table_service_type
         ),
         primary_key=not bool(idx),  # The first col seen is used as PK
