@@ -14,7 +14,7 @@
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, round, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -59,6 +59,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -198,12 +199,12 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
               {tiers.map((tiers) => {
                 return (
                   <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
+                    <EntitySummaryProgressBar
+                      entity={TIER_DATA[tiers as keyof typeof TIER_DATA]}
+                      label={round(latestData[tiers] || 0, 2) + '%'}
+                      latestData={latestData}
+                      pluralize={false}
                       progress={latestData[tiers]}
-                      showLabel={false}
-                      startValue={Number(latestData[tiers] || 0).toFixed(2)}
-                      successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
                     />
                   </Col>
                 );

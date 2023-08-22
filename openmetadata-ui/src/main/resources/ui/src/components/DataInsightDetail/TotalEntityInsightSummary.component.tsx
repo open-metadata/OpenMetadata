@@ -1,8 +1,20 @@
-import { Col, Progress, Row, Typography } from 'antd';
-import { TOTAL_ENTITY_CHART_COLOR } from 'constants/DataInsight.constants';
-import { isNil, uniqueId } from 'lodash';
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Col, Row, Typography } from 'antd';
+import { isNil } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 type TotalEntityInsightSummaryProps = {
   total: string | number;
@@ -20,10 +32,6 @@ const TotalEntityInsightSummary = ({
   latestData,
 }: TotalEntityInsightSummaryProps) => {
   const { t } = useTranslation();
-
-  const pluralize = (entity: string) => {
-    return entity + 's';
-  };
 
   return (
     <Row>
@@ -64,30 +72,12 @@ const TotalEntityInsightSummary = ({
         const progress = (latestData[entity] / Number(total)) * 100;
 
         return (
-          <Col key={uniqueId()} span={24}>
-            <Row className="m-b-xs">
-              <Col
-                className="d-flex justify-between items-center text-xs"
-                md={12}
-                sm={24}>
-                <Typography.Paragraph className="m-b-0">
-                  {pluralize(entity)}
-                </Typography.Paragraph>
-
-                <Typography.Paragraph className="m-b-0">
-                  {latestData[entity]}
-                </Typography.Paragraph>
-              </Col>
-              <Col md={12} sm={24}>
-                <Progress
-                  className="p-l-xss"
-                  percent={progress}
-                  showInfo={false}
-                  size="small"
-                  strokeColor={TOTAL_ENTITY_CHART_COLOR[entity]}
-                />
-              </Col>
-            </Row>
+          <Col key={entity} span={24}>
+            <EntitySummaryProgressBar
+              entity={entity}
+              latestData={latestData}
+              progress={progress}
+            />
           </Col>
         );
       })}

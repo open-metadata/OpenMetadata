@@ -30,15 +30,15 @@ import {
 } from 'recharts';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
-  BAR_CHART_MARGIN,
-  DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
-} from '../../constants/DataInsight.constants';
-import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../constants/constants';
+import {
+  BAR_CHART_MARGIN,
+  DI_STRUCTURE,
+  ENTITIES_BAR_COLO_MAP,
+} from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -59,6 +59,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -227,13 +228,13 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
               {entities.map((entity) => {
                 return (
                   <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
+                    <EntitySummaryProgressBar
+                      entity={entity}
+                      label={`${round(latestData[entity] || 0, 2)}${
+                        isPercentageGraph ? '%' : ''
+                      }`}
+                      latestData={latestData}
                       progress={latestData[entity]}
-                      showLabel={false}
-                      startValue={round(latestData[entity] || 0, 2)}
-                      successValue={entity}
-                      suffix={isPercentageGraph ? '%' : ''}
                     />
                   </Col>
                 );

@@ -59,6 +59,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -226,13 +227,13 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
               {entities.map((entity) => {
                 return (
                   <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
+                    <EntitySummaryProgressBar
+                      entity={entity}
+                      label={`${round(latestData[entity] || 0, 2)}${
+                        isPercentageGraph ? '%' : ''
+                      }`}
+                      latestData={latestData}
                       progress={latestData[entity]}
-                      showLabel={false}
-                      startValue={round(latestData[entity] || 0, 2)}
-                      successValue={entity}
-                      suffix={isPercentageGraph ? '%' : ''}
                     />
                   </Col>
                 );
