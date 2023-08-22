@@ -52,7 +52,7 @@
     "viewParsingTimeoutLimit": {
       "description": "Configuration to set the timeout for parsing view query in seconds.",
       "type": "integer",
-      "default": "300"
+      "default": 300
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",

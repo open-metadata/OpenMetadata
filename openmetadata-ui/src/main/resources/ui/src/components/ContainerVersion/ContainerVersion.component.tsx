@@ -42,6 +42,7 @@ import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
+  getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
@@ -78,7 +79,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       (currentVersionData as Container).dataModel?.columns
     );
 
-    return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
+    return getColumnsDataWithVersionChanges<Column>(
+      changeDescription,
+      colList,
+      true
+    );
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
@@ -118,6 +123,14 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const {
+    addedConstraintDiffs: addedColumnConstraintDiffs,
+    deletedConstraintDiffs: deletedColumnConstraintDiffs,
+  } = useMemo(
+    () => getConstraintChanges(changeDescription, EntityField.CONSTRAINT),
+    [changeDescription]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -136,12 +149,14 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <VersionTable
+                    addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
                       containerFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
+                    deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
                     joins={[]}
                   />
                 </Col>
@@ -189,12 +204,16 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         ),
       },
     ],
-    [description, containerFQN, columns, currentVersionData, entityPermissions]
+    [
+      description,
+      containerFQN,
+      columns,
+      currentVersionData,
+      entityPermissions,
+      addedColumnConstraintDiffs,
+      deletedColumnConstraintDiffs,
+    ]
   );
-
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
 
   return (
     <>
@@ -209,6 +228,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                entityType={EntityType.CONTAINER}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 tierDisplayName={tierDisplayName}

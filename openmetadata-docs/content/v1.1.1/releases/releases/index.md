@@ -125,7 +125,7 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 
 ## Storage Services
 - Based on your [feedback](https://github.com/open-metadata/OpenMetadata/discussions/8124), we created a new service to extract metadata from your **cloud storage**.
-- The Data Lake connector ingested one table per file, which covered only some of the use cases in a Data Platform. With **Storage Services**, you can now present accurate metadata from your tables, even when **partitioned**.
+- The Data Lake connector ingested one table per file, which covered only some use cases in a Data Platform. With **Storage Services**, you can now present accurate metadata from your tables, even when **partitioned**.
 - The first implementation has been done on **S3**, and we will keep adding support for other sources in the upcoming releases.
 
 ## Dashboard Data Models
@@ -252,7 +252,7 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 ## Profiler and Data Quality
 - Freshness Metric has been introduced. Data freshness shows DML operations performed against a table and the number of rows affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.
 - Support has been added for data quality tests on Data Lake.
-- UI has been improved to show table and column profile data on seperate page. Legend is now selectable to filter for specific metrics
+- UI has been improved to show table and column profile data on separate page. Legend is now selectable to filter for specific metrics
 
 ## Alerts and Notification
 The logic for Notification Support has been improved. Users can define Alerts based on a Trigger (all data assets or a specific entity), Filters (events to consider), and Action (Slack, MS Teams, Email, Webhook) on where to send the alert.
@@ -261,7 +261,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 - Now, dbt has its own workflow. Previously, dbt  was a part of metadata ingestion workflow.
 - Airflow Lineage Operator and the OpenMetadata Hook are now part of the ingestion package. Send Airflow metadata from your DAGs and safely store the OpenMetadata server connection directly in Airflow.
 - Multiple Databases (catalog) is now supported for the Databricks connector
-- Azure blob is now supported to backup your metadata into
+- Azure blob is now supported to back up your metadata into
 
 ## New Connectors
 - OpenMetadata now supports Azure Datalake Storage Gen 2
@@ -276,7 +276,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 {%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" /%}
 
 ## Data Insights and KPI
-Data Insight allows admins to take an active approach in their metadata management. Data Inisght provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
+Data Insight allows admins to take an active approach in their metadata management. Data Insight provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
 
 ## Lineage
 The lineage UI has been transformed to enhance user experience. Users can get a holistic view of an entity from the Lineage tab. When an entity is selected, the UI displays end-to-end lineage traceability for the table and column levels.
@@ -313,7 +313,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 - Databricks lineage
 - Added support for Airflow version 2.2.2 as a workflow scheduler
 ## Bug Fixes
-- Support same table across differemt databases for the profiler
+- Support same table across different databases for the profiler
 
 # [0.12.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.1-release) - Oct 3rd 2022 🎉
 ## Basic Authentication
@@ -378,7 +378,7 @@ With Announcements, you can now inform your entire team of all the upcoming even
 
 ## Activity Feed Notifications
 
-In 0.12, we’ve also streamlined the Notifications menu with two separate tabs for Tasks and Mentions, that’ll display only the recent notifications. You can always navigate to your User Profile page to view more activities.
+In 0.12, we’ve also streamlined the `Notifications` menu with two separate tabs for Tasks and Mentions, that’ll display only the recent notifications. You can always navigate to your User Profile page to view more activities.
 
 ## Slack & Microsoft Teams integration
 
@@ -411,7 +411,7 @@ Usage queries have been optimized.
 A result limit has been added to Usage queries.
 
 ## Global Settings
-The OpenMetadata Settings dropdown menu has been transformed into a single, centralized Settings page for added convenience in viewing all the available options. The Global Settings comprises setting options for Team Members, Access based on Roles and Policies, Services, Data Quality, Collaboration, Custom Attributes, and Integrations for webhooks and bots. Admins can view or update settings for various services like Slack, MS Teams, Webhooks, etc from the Global Settings page.
+The OpenMetadata Settings dropdown menu has been transformed into a single, centralized Settings page for added convenience in viewing all the available options. The Global Settings comprises setting options for Team Members, Access based on Roles and Policies, Services, Data Quality, Collaboration, Custom Attributes, and Integrations for webhooks and bots. Admins can view or update settings for various services like Slack, MS Teams, Webhooks, etc. from the Global Settings page.
 
 
 ## UI/UX Improvements

@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
 
 # IngestionPipeline
 
-*Ingestion Pipeline Config is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.*
+*Ingestion Pipeline Config is used to set up a DAG and deploy. This entity is used to set up metadata/quality pipelines on Apache Airflow.*
 
 ## Properties
 

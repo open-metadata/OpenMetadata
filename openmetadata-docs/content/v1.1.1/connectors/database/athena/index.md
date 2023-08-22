@@ -8,7 +8,7 @@ slug: /connectors/database/athena
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/athena
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
@@ -50,7 +50,7 @@ The Athena connector ingests metadata through JDBC connections.
 According to AWS's official [documentation](https://docs.aws.amazon.com/athena/latest/ug/policy-actions.html):
 
 *If you are using the JDBC or ODBC driver, ensure that the IAM
-permissions policy includes all of the actions listed in [AWS managed policy: AWSQuicksightAthenaAccess](https://docs.aws.amazon.com/athena/latest/ug/managed-policies.html#awsquicksightathenaaccess-managed-policy).*
+permissions policy includes all the actions listed in [AWS managed policy: AWSQuicksightAthenaAccess](https://docs.aws.amazon.com/athena/latest/ug/managed-policies.html#awsquicksightathenaaccess-managed-policy).*
 
 {% /note %}
 
@@ -197,7 +197,7 @@ You can find more information on [Using temporary credentials with AWS resources
 
 Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
 
-- **Profile Name**: A named profile is a collection of settings and credentials that you can apply to a AWS CLI command.
+- **Profile Name**: A named profile is a collection of settings and credentials that you can apply to an AWS CLI command.
   When you specify a profile to run a command, the settings and credentials are used to run that command.
   Multiple named profiles can be stored in the config and credentials files.
 

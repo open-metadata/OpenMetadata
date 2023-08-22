@@ -10,8 +10,8 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dashboardservic
 ## Properties
 
 - **`type`**: Pipeline type. Refer to *#/definitions/dashboardMetadataConfigType*. Default: `DashboardMetadata`.
-- **`dashboardFilterPattern`**: Regex to exclude or include dashboards that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
-- **`chartFilterPattern`**: Regex exclude or include charts that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`dashboardFilterPattern`**: Regex to exclude or include dashboards that match the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`chartFilterPattern`**: Regex exclude or include charts that match the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`dataModelFilterPattern`**: Regex exclude or include data models that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`dbServiceNames`** *(array)*: List of Database Service Names for creation of lineage.
 - **`includeOwners`** *(boolean)*: Enabling a flag will replace the current owner with a new owner from the source during metadata ingestion, if the current owner is null. It is recommended to keep the flag enabled to obtain the owner information during the first metadata ingestion. Default: `false`.

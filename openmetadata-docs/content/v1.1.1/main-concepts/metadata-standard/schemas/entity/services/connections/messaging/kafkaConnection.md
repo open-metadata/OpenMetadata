@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messa
 ## Properties
 
 - **`type`**: Service Type. Refer to *#/definitions/kafkaType*. Default: `Kafka`.
-- **`bootstrapServers`** *(string)*: Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092.
+- **`bootstrapServers`** *(string)*: Kafka bootstrap servers. add them in comma separated values e.g.: host1:9092,host2:9092.
 - **`schemaRegistryURL`** *(string)*: Confluent Kafka Schema Registry URL.
 - **`saslUsername`** *(string)*: sasl.username consumer config property.
 - **`saslPassword`** *(string)*: sasl.password consumer config property.

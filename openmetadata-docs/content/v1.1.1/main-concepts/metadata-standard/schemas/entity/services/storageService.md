@@ -16,7 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/storageservice
 - **`serviceType`**: Type of storage service such as S3, GCS, AZURE... Refer to *#/definitions/storageServiceType*.
 - **`description`**: Description of a storage service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`connection`**: Refer to *#/definitions/storageConnection*.
-- **`pipelines`**: References to pipelines deployed for this storage service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this storage service to extract metadata, usage, lineage, etc. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this storage Service. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.

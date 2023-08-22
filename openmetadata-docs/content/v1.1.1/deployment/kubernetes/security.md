@@ -9,7 +9,7 @@ Follow the steps for setting up the SSO, and then check the specific `Kubernetes
 
 {%note%}
 
-By default Basic Authentication will be enabled as authentication mechanism.
+By default, Basic Authentication will be enabled as authentication mechanism.
 
 {%inlineCallout
     color="violet-70"

@@ -241,6 +241,7 @@ const AddQueryPage = () => {
                   name="queryUsedIn">
                   <AsyncSelect
                     api={fetchTableEntity}
+                    data-testid="query-used-in"
                     mode="multiple"
                     options={initialOptions}
                     placeholder={t('label.please-select-entity', {

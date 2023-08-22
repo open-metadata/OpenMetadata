@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
 import React, { useMemo } from 'react';
 import { formatNumberWithComma } from 'utils/CommonUtils';
+import { progressBarFormatter } from 'utils/ProgressBar/ProgressBar.utils';
 import './summary-card.style.less';
 import { SummaryCardProps } from './SummaryCard.interface';
 
@@ -66,7 +67,7 @@ export const SummaryCard = ({
         <Progress
           className={type}
           data-testid="progress-bar"
-          format={(percent) => `${percent}%`}
+          format={progressBarFormatter}
           percent={percent}
           type="circle"
           width={65}

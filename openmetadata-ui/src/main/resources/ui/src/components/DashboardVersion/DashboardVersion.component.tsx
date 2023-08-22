@@ -234,10 +234,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     [description, tableColumn, currentVersionData, entityPermissions]
   );
 
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
-
   return (
     <>
       {isVersionLoading ? (
@@ -251,6 +247,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                entityType={EntityType.DASHBOARD}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 tierDisplayName={tierDisplayName}

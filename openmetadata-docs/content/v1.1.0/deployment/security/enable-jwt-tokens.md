@@ -170,7 +170,7 @@ Following the above documentation, you will have private key and public key pair
 
 ### Create Kubernetes Secrets for the Key Pairs
 
-Create Kubernetes Secrets from file using the kubernetes imparative commands below.
+Create Kubernetes Secrets from file using the kubernetes imperative  commands below.
 
 ```bash
 kubectl create secret generic openmetadata-jwt-keys --from-file private_key.der --from-file public_key.der --namespace default
