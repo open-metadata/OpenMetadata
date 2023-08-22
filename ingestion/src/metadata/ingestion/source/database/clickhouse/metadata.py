@@ -10,14 +10,19 @@
 #  limitations under the License.
 """Clickhouse source module"""
 
+import traceback
+from typing import Iterable, Optional
+
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect, ischema_names
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
 from clickhouse_sqlalchemy.types import Date
+from sqlalchemy import text
 from sqlalchemy import types as sqltypes
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Inspector, reflection
 from sqlalchemy.util import warn
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -32,8 +37,16 @@ from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_TABLE_COMMENTS,
     CLICKHOUSE_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.clickhouse.utils import (
+    get_mview_definition,
+    get_mview_names,
+    get_mview_names_dialect,
+)
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -186,6 +199,21 @@ def get_view_definition(
 
 
 @reflection.cache
+def get_view_names(
+    self, connection, schema=None, **kw  # pylint: disable=unused-argument
+):
+    query = text(
+        "SELECT name FROM system.tables WHERE engine = 'View' "
+        "AND database = :database"
+    )
+    database = schema or connection.engine.url.database
+    rows = self._execute(  # pylint: disable=protected-access
+        connection, query, database=database
+    )
+    return [row.name for row in rows]
+
+
+@reflection.cache
 def get_table_comment(
     self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
@@ -233,15 +261,25 @@ ClickHouseDialect._get_column_type = (  # pylint: disable=protected-access
 )
 RequestsTransport.execute = execute
 ClickHouseDialect.get_view_definition = get_view_definition
+ClickHouseDialect.get_view_names = get_view_names
 ClickHouseDialect.get_table_comment = get_table_comment
 ClickHouseDialect.get_all_view_definitions = get_all_view_definitions
 ClickHouseDialect.get_all_table_comments = get_all_table_comments
 ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
     _get_column_info
 )
+Inspector.get_mview_names = get_mview_names
+Inspector.get_mview_definition = get_mview_definition
+Inspector.get_all_view_definitions = get_all_view_definitions
+ClickHouseDialect.get_mview_names = get_mview_names_dialect
 
 
 class ClickhouseSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Clickhouse Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -251,3 +289,56 @@ class ClickhouseSource(CommonDbSourceService):
                 f"Expected ClickhouseConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        regular_tables = [
+            TableNameAndType(name=table_name)
+            for table_name in self.inspector.get_table_names(schema_name) or []
+        ]
+        material_tables = [
+            TableNameAndType(name=table_name, type_=TableType.MaterializedView)
+            for table_name in self.inspector.get_mview_names(schema_name) or []
+        ]
+        view_tables = [
+            TableNameAndType(name=table_name, type_=TableType.View)
+            for table_name in self.inspector.get_view_names(schema_name) or []
+        ]
+
+        return regular_tables + material_tables + view_tables
+
+    def get_view_definition(
+        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Optional[str]:
+        if table_type in {TableType.View, TableType.MaterializedView}:
+            definition_fn = inspector.get_view_definition
+            if table_type == TableType.MaterializedView:
+                definition_fn = inspector.get_mview_definition
+
+            try:
+                view_definition = definition_fn(table_name, schema_name)
+                view_definition = (
+                    "" if view_definition is None else str(view_definition)
+                )
+                return view_definition
+
+            except NotImplementedError:
+                logger.warning("View definition not implemented")
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to fetch view definition for {table_name}: {exc}"
+                )
+            return None
+        return None
