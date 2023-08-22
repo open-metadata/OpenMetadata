@@ -203,10 +203,10 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
     Set<String> fields = userRepository.getAllowedFieldsCopy();
-    String userName = request.getUsername();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
-        userRepository.getByName(uriInfo, userName, new EntityUtil.Fields(fields, String.join(",", fields)));
+        userRepository.getByName(
+            uriInfo, request.getUsername(), new EntityUtil.Fields(fields, String.join(",", fields)));
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
       throw new CustomExceptionMessage(BAD_REQUEST, "Token does not belong to the user.");
@@ -235,7 +235,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
     }
-    loginAttemptCache.recordSuccessfulLogin(userName);
+    loginAttemptCache.recordSuccessfulLogin(request.getUsername());
   }
 
   @Override
