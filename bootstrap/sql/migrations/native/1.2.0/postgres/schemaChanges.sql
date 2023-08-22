@@ -52,3 +52,16 @@ CREATE TABLE IF NOT EXISTS search_index_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
     );
+
+CREATE TABLE IF NOT EXISTS entity_extension_time_series (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    entityFQNHash VARCHAR(768) NOT NULL,
+    extension VARCHAR(256) NOT NULL,
+    jsonSchema VARCHAR(256) NOT NULL,
+    json JSONB NOT NULL,
+    timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
+    PRIMARY KEY (id),
+    INDEX combined_id_ts (id, timestamp)
+);
+
+
