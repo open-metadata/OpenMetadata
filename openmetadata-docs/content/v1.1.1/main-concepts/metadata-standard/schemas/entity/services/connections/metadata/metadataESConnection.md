@@ -19,7 +19,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 
-- **`metadataESType`** *(string)*: Metadata to Elastic Search type. Must be one of: `['MetadataES']`. Default: `MetadataES`.
+- **`metadataESType`** *(string)*: Metadata to Elasticsearch type. Must be one of: `['MetadataES']`. Default: `MetadataES`.
 
 
 Documentation file automatically generated at 2023-07-07 05:50:35.981927.

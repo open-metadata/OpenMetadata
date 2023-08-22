@@ -12,13 +12,13 @@ the different pages.
 
 {% image src="/images/v1.1.1/features/discovery-collaboration/search-top-bar.png" alt="search-top-bar" /%}
 
-Users can also start searching by invoking the Keyboard shortcut <kbd>Ctrl</kbd> + <kbd>K</kbd> in Windows or <kbd>Cmd</kbd> + <kbd>K</kbd> in Mac OS. 
+Users can also start searching by invoking the Keyboard shortcut <kbd>Ctrl</kbd> + <kbd>K</kbd> in Windows or <kbd>Cmd</kbd> + <kbd>K</kbd> in macOS. 
 The popup search dialog supports a full set of keyboard navigation to highlight and select the result by using 
 the arrow keys and <kbd>Return</kbd> button.
 
 {% image src="/images/v1.1.1/features/discovery-collaboration/command-k-search.png" alt="command-k-search" /%}
 
-The Search APIs are backed by Elastic Search.
+The Search APIs are backed by ElasticSearch.
 
 ## Conversation Threads
 As part of Data Collaboration feature of OpenMetadata, Conversation Threads were one

@@ -72,7 +72,7 @@ The OpenMetadata Java SDK supports several auth providers:
 * [Azure](#azure)
 * [OpenMetadata](#openmetadata)
 
-Apart from the above mentioned auth providers, OpenMetadata Java SDK also supports [Custom OIDC](#custom-oidc).
+Apart from the above-mentioned auth providers, OpenMetadata Java SDK also supports [Custom OIDC](#custom-oidc).
 
 ### Google
 To set up Google as the auth provider, the following details are required:
@@ -216,7 +216,7 @@ Please refer to the examples to access an API:
     Location location = locationsApi.createLocation(createLocation);
 ```
 
-* Elastic Search API
+* ElasticSearch API
 ```java
     ElasticSearchApi esApi = openMetadataGateway.buildClient(ElasticSearchApi.class);
     Response response = esApi.searchEntitiesWithQuery("", "pipeline_search_index", false, 0, 0, null, null, true, "{\"query\":{\"bool\":{}}}", null, false, null  );

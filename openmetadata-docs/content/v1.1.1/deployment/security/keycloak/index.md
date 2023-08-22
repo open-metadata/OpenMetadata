@@ -29,7 +29,7 @@ Security requirements for your **production** environment:
 - Enter the username and password you created.
 
 ### Step 2: Change Realm selected
-- The Keycloak use Realms as the primary form of organization, we can't use the realm "master" for new clients (apps), only for administration, so change for your specific realm or create a new.
+- The Keycloak use Realms as the primary form of organization, we can't use the realm "master" for new clients (apps), only for administration, so change for your specific realm or create a new one.
 - In this example we are used an existing one called "Data-sec".
 
 {% image src="/images/v1.1.1/deployment/security/keycloak/2-change-realm.png" alt="change-realm" /%}
@@ -43,8 +43,8 @@ Security requirements for your **production** environment:
 {% image src="/images/v1.1.1/deployment/security/keycloak/3-add-client.png" alt="add-client" /%}
 
 ### Step 4: Edit settings of the client
-- Change "Acess Type" value from "public" to "confidential".
-- Change "implicit flow" and "service accounts" to enabled.
+- Change "Access Type" value from "public" to "confidential".
+- Change "implicit flow" and "service accounts" to "enabled".
 
 {% image src="/images/v1.1.1/deployment/security/keycloak/4-edit-settings-client.png" alt="edit-settings-client" /%}
 
@@ -57,7 +57,7 @@ Security requirements for your **production** environment:
 
 {% note %}
 
-Note: Scopes `openid`, `email` & `profile` are required to fetch the user details so you will have to add these scopes in your client.
+Note: Scopes `openid`, `email` & `profile` are required to fetch the user details, so you will have to add these scopes in your client.
 
 {% /note %}
 
@@ -68,7 +68,7 @@ Note: Scopes `openid`, `email` & `profile` are required to fetch the user detail
 
 {% image src="/images/v1.1.1/deployment/security/keycloak/6-client-credentials.png" alt="client-credentials" /%}
 
-After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
+After the applying these steps, the users in your realm are able to log in to openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
 
 {% inlineCalloutContainer %}
   {% inlineCallout

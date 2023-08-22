@@ -50,7 +50,7 @@ The user should be able to send request to the Nifi API and access the `Resource
     1. Basic Authentication
         - Username: Username to connect to Nifi. This user should be able to send request to the Nifi API and access the `Resources` endpoint.
         - Password: Password to connect to Nifi.
-        - Verify SSL: Whether SSL verification should be perform when authenticating.
+        - Verify SSL: Whether SSL verification should be performed when authenticating.
     2. Client Certificate Authentication
         - Certificate Authority Path: Path to the certificate authority (CA) file. This is the certificate used to store and issue your digital certificate. This is an optional parameter. If omitted SSL verification will be skipped; this can present some sever security issue.
         **important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.

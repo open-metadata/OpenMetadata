@@ -140,7 +140,7 @@ We can do a test locally preparing some containers:
 1. `sh docker/run_local_docker.sh` to start the `docker compose` service.
 2. `docker run -p 9000:9000 -p 9001:9001 minio/minio server /data --console-address ":9001"` to start minio, an object
    storage S3 compatible.
-3. Connect to [http://localhost:9001](http://localhost:9001) to reach the minio console and create a bucket
+3. Connect to [http://localhost:9001](http://localhost:9001) URL to reach the minio console and create a bucket
    called `my-bucket`
 4. Finally, we just need to prepare the environment variables as:
    ```

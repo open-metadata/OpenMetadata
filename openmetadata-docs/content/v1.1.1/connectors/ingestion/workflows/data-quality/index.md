@@ -48,7 +48,7 @@ Test Definitions are generic tests definition elements specific to a test such a
 Test Cases specify a Test Definition. It will define what condition a test must meet to be successful (e.g. `max=n`, etc.). One Test Definition can be linked to multiple Test Cases.
 
 ## Adding Test Cases to an Entity
-Tests cases are actual test that will be ran and executed against your entity. This is where you will define the excution time and logic of these tests
+Tests cases are actual test that will be run and executed against your entity. This is where you will define the execution time and logic of these tests
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ## Step 1: Creating a Test Case
@@ -60,7 +60,7 @@ Navigate to the entity you want to add a test (we currently support quality test
   caption="Write your first test"
  /%}
 
-## Step 2: Select the Test Definition
+## Step 2: Select the Test Type
 Select the type of test you want to run and set the parameters (if any) for your test case. If you have select a `column` test, you will need to select which column you want to execute your test against. Give it a name and then submit it.
 
 **Note:** if you have a profiler workflow running, you will be able to visualize some context around your column or table data.
@@ -91,7 +91,7 @@ Test Suites are logical container allowing you to group related Test Cases toget
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ### Step 1: Creating a Test Suite
-From the vertical navigation bar, click on `Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button on the top right corner.
+From the vertical navigation bar, click on `Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button in the top right corner.
 
 {% image
   src="/images/v1.1.1/features/ingestion/workflows/data-quality/profiler-tab-view.png"
@@ -158,7 +158,7 @@ processor:
 The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/connectors/ingestion/workflows/data-quality/tests).
 
 ### Key referece:
-- `forceUpdate`: if the test case exists (base on the test case name) for the entity, implements the strategy to follow when running the test (i.e. whether or not to update parameters)
+- `forceUpdate`: if the test case exists (base on the test case name) for the entity, implements the strategy to follow when running the test (i.e. whether to update parameters)
 - `testCases`: list of test cases to execute against the entity referenced
 - `name`: test case name
 - `testDefinitionName`: test definition
@@ -166,7 +166,7 @@ The processor type should be set to ` "orm-test-runner"`. For accepted test defi
 - `parameterValues`: parameter values of the test
 
 
-`sink` and `workflowConfig` will have the same settings than the ingestion and profiler workflow.
+`sink` and `workflowConfig` will have the same settings as the ingestion and profiler workflow.
 
 ### Full  `yaml` config example
 
@@ -333,7 +333,7 @@ The next step for a user is to mark the new failure as `ack` (acknowledged) sign
   caption="Test suite results table"
  /%}
 
- Then user are able to mark a test as `resolved`. We made it mandatory for users to 1) select a reason and 2) add a comment when resolving failed test so that knowdledge can be maintain inside the platform.
+ Then user are able to mark a test as `resolved`. We made it mandatory for users to 1) select a reason and 2) add a comment when resolving failed test so that knowledge can be maintained inside the platform.
 
 {% image
   src="/images/v1.1.1/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png.png"

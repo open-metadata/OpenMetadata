@@ -526,7 +526,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
     setNodes((prevNodes) => {
       return prevNodes.map((prevNode) => {
-        const nodeTraced = prevNode.data.columns[column];
+        const { columns } = prevNode.data;
+        const nodeTraced = columns && columns[column];
+
         prevNode.data = {
           ...prevNode.data,
           selected: !isUndefined(nodeTraced),

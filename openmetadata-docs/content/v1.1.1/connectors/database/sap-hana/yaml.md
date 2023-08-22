@@ -7,18 +7,18 @@ slug: /connectors/database/sap-hana/yaml
 
 {% multiTablesWrapper %}
 
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | BETA                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="cross" /%} |
+| Feature       | Status                       |
+|:--------------|:-----------------------------|
+| Stage         | BETA                         |
+| Metadata      | {% icon iconName="check" /%} |
+| Query Usage   | {% icon iconName="cross" /%} |
+| Data Profiler | {% icon iconName="check" /%} |
+| Data Quality  | {% icon iconName="check" /%} |
+| Lineage       | Partially via Views          |
+| DBT           | {% icon iconName="cross" /%} |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | Partially via Views          |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
@@ -141,7 +141,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

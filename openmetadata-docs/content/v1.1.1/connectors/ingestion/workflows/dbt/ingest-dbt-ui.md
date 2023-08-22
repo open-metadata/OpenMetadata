@@ -8,7 +8,7 @@ Learn how to configure the dbt workflow from the UI to ingest dbt data from your
 
 ## UI Configuration
 
-Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add the dbt information.
+Once the metadata ingestion runs correctly, and we are able to explore the service Entities, we can add the dbt information.
 
 This will populate the dbt tab from the Table Entity Page.
 
@@ -109,7 +109,7 @@ File server path of the `manifest.json`, `catalog.json` and `run_results.json` f
 
 #### dbt Cloud
 
-Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with dbt cloud account setup if not done already.
+Click on the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with dbt cloud account setup if not done already.
 OpenMetadata uses dbt cloud APIs to fetch the `run artifacts` (manifest.json, catalog.json and run_results.json) from the most recent dbt run.
 The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your dbt cloud account.
 

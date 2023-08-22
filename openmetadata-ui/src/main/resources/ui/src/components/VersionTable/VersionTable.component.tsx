@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table } from 'antd';
+import { Col, Row, Space, Table, Tooltip } from 'antd';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { Column } from '../../generated/entity/data/table';
+import { Column, TableConstraint } from '../../generated/entity/data/table';
 import {
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -38,7 +39,10 @@ const VersionTable = ({
   columns,
   joins,
   tableConstraints,
-  constraintUpdatedColumns,
+  addedColumnConstraintDiffs,
+  deletedColumnConstraintDiffs,
+  addedTableConstraintDiffs,
+  deletedTableConstraintDiffs,
 }: VersionTableProps) => {
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const { t } = useTranslation();
@@ -47,6 +51,85 @@ const VersionTable = ({
 
   const data = useMemo(() => makeData(searchedColumns), [searchedColumns]);
 
+  const renderColumnName = useCallback(
+    (name: Column['name'], record: Column) => {
+      const addedColumnConstraint = addedColumnConstraintDiffs?.find((diff) =>
+        diff.name?.includes(name)
+      );
+      const deletedColumnConstraint = deletedColumnConstraintDiffs?.find(
+        (diff) => diff.name?.includes(name)
+      );
+      let addedTableConstraint: TableConstraint[] | undefined;
+      let deletedTableConstraint: TableConstraint[] | undefined;
+
+      addedTableConstraintDiffs?.forEach((diff) => {
+        const constraintNewValue = JSON.parse(diff.newValue);
+        constraintNewValue?.forEach((constraint: TableConstraint) => {
+          if (constraint.columns?.includes(name)) {
+            addedTableConstraint = [
+              ...(addedTableConstraint ?? []),
+              constraint,
+            ];
+          }
+        });
+      });
+
+      deletedTableConstraintDiffs?.forEach((diff) => {
+        const constraintOldValue = JSON.parse(diff.oldValue);
+        constraintOldValue?.forEach((constraint: TableConstraint) => {
+          if (constraint.columns?.includes(name)) {
+            deletedTableConstraint = [
+              ...(deletedTableConstraint ?? []),
+              constraint,
+            ];
+          }
+        });
+      });
+
+      let addedConstraintIcon = null;
+      let deletedConstraintIcon = null;
+
+      const existingAddedTableConstraint = isUndefined(addedTableConstraint)
+        ? tableConstraints
+        : undefined;
+
+      addedConstraintIcon = prepareConstraintIcon({
+        columnName: name,
+        columnConstraint: addedColumnConstraint?.newValue ?? record.constraint,
+        tableConstraints: addedTableConstraint ?? existingAddedTableConstraint,
+        isColumnConstraintAdded: !isUndefined(addedColumnConstraint),
+        isTableConstraintAdded: !isUndefined(addedTableConstraint),
+      });
+
+      deletedConstraintIcon = prepareConstraintIcon({
+        columnName: name,
+        columnConstraint: deletedColumnConstraint?.oldValue,
+        tableConstraints: deletedTableConstraint,
+        isColumnConstraintAdded: false,
+        isColumnConstraintDeleted: !isUndefined(deletedColumnConstraint),
+        isTableConstraintDeleted: !isUndefined(deletedTableConstraint),
+      });
+
+      return (
+        <Space
+          align="start"
+          className="w-max-90 vertical-align-inherit"
+          size={2}>
+          {deletedConstraintIcon}
+          {addedConstraintIcon}
+          <RichTextEditorPreviewer markdown={name} />
+        </Space>
+      );
+    },
+    [
+      tableConstraints,
+      addedColumnConstraintDiffs,
+      deletedColumnConstraintDiffs,
+      addedTableConstraintDiffs,
+      deletedTableConstraintDiffs,
+    ]
+  );
+
   const versionTableColumns = useMemo(
     () => [
       {
@@ -54,24 +137,8 @@ const VersionTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        ellipsis: true,
-        width: 180,
-        render: (name: Column['name'], record: Column) => (
-          <Space
-            align="start"
-            className="w-max-90 vertical-align-inherit"
-            size={2}>
-            {prepareConstraintIcon(
-              name,
-              record.constraint,
-              tableConstraints,
-              undefined,
-              undefined,
-              constraintUpdatedColumns?.includes(name)
-            )}
-            <RichTextEditorPreviewer markdown={name} />
-          </Space>
-        ),
+        width: 200,
+        render: renderColumnName,
       },
       {
         title: t('label.type'),
@@ -80,12 +147,25 @@ const VersionTable = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
-        render: (dataTypeDisplay: Column['dataTypeDisplay']) =>
-          dataTypeDisplay ? (
-            <RichTextEditorPreviewer markdown={dataTypeDisplay.toLowerCase()} />
+        render: (dataTypeDisplay: Column['dataTypeDisplay']) => {
+          return dataTypeDisplay ? (
+            <Tooltip
+              title={
+                <RichTextEditorPreviewer
+                  markdown={dataTypeDisplay?.toLowerCase() ?? ''}
+                  textVariant="white"
+                />
+              }>
+              <div className="cursor-pointer">
+                <RichTextEditorPreviewer
+                  markdown={dataTypeDisplay?.toLowerCase() ?? ''}
+                />
+              </div>
+            </Tooltip>
           ) : (
             NO_DATA_PLACEHOLDER
-          ),
+          );
+        },
       },
       {
         title: t('label.description'),
@@ -135,7 +215,7 @@ const VersionTable = ({
         ),
       },
     ],
-    [columnName, joins, data]
+    [columnName, joins, data, renderColumnName]
   );
 
   const handleSearchAction = (searchValue: string) => {

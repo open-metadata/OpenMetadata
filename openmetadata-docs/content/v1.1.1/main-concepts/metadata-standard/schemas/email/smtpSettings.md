@@ -11,7 +11,7 @@ slug: /main-concepts/metadata-standard/schemas/email/smtpsettings
 
 - **`emailingEntity`** *(string)*: Emailing Entity. Default: `OpenMetadata`.
 - **`supportUrl`** *(string)*: Support Url. Default: `https://slack.open-metadata.org`.
-- **`enableSmtpServer`** *(boolean)*: If this is enable password will details will be shared on mail. Default: `False`.
+- **`enableSmtpServer`** *(boolean)*: If this is enabled password details will be shared on mail. Default: `False`.
 - **`openMetadataUrl`** *(string)*: Openmetadata Server Endpoint.
 - **`senderMail`** *(string)*: Mail of the sender.
 - **`serverEndpoint`** *(string)*: Smtp Server Endpoint.

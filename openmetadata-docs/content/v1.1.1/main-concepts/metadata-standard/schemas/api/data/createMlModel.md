@@ -20,7 +20,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createmlmodel
   - **Items**: Refer to *../../entity/data/mlmodel.json#/definitions/mlHyperParameter*.
 - **`dashboard`**: Performance Dashboard fqn to track metric evolution. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`mlStore`**: Location containing the ML Model. It can be a storage layer and/or a container repository. Refer to *../../entity/data/mlmodel.json#/definitions/mlStore*.
-- **`server`**: Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions. Refer to *../../type/basic.json#/definitions/href*.
+- **`server`**: Endpoint that makes the ML Model available, e.g., a REST API serving the data or computing predictions. Refer to *../../type/basic.json#/definitions/href*.
 - **`tags`** *(array)*: Tags for this ML Model. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`owner`**: Owner of this database. Refer to *../../type/entityReference.json*.
