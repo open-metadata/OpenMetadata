@@ -30,6 +30,7 @@
     "@rjsf/utils": "5.4.0",
     "@rjsf/validator-ajv8": "5.4.0",
     "@tiptap/core": "^2.1.6",
+    "@tiptap/extension-placeholder": "^2.1.6",
     "@tiptap/pm": "^2.1.6",
     "@tiptap/react": "^2.1.6",
     "@tiptap/starter-kit": "^2.1.6",
