@@ -406,33 +406,20 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
-  const updateTeamHandler = (updatedData: Team) => {
+  const updateTeamHandler = async (updatedData: Team) => {
     const jsonPatch = compare(selectedTeam, updatedData);
 
-    return new Promise<void>((resolve, reject) => {
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            setSelectedTeam((previous) => ({
-              ...previous,
-              ...res,
-              owner: res.owner ?? undefined,
-            }));
-            resolve();
-          } else {
-            throw t('server.unexpected-response');
-          }
+    try {
+      const res = await patchTeamDetail(selectedTeam.id, jsonPatch);
+      setSelectedTeam(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.team'),
         })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-updating-error', {
-              entity: t('label.team'),
-            })
-          );
-          reject();
-        });
-    });
+      );
+    }
   };
 
   const userPagingHandler = (
