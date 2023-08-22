@@ -33,6 +33,7 @@ import {
   getDayTimeByTimeStamp,
 } from 'utils/TimeUtils';
 import './feed-card-header-v1.style.less';
+import FeedCardHeaderName from './FeedCardHeaderName';
 
 interface FeedCardHeaderV1Props {
   about?: string;
@@ -95,17 +96,10 @@ const FeedCardHeaderV1 = ({
         </UserPopOverCard>
       )}
       <span className="feed-header-content">
-        <UserPopOverCard userName={createdBy}>
-          <span
-            className="thread-author cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTitleClickHandler(createdBy);
-            }}>
-            {createdBy}
-          </span>
-        </UserPopOverCard>
-
+        <FeedCardHeaderName
+          createdBy={createdBy}
+          onTitleClickHandler={onTitleClickHandler}
+        />
         {getFeedLinkElement}
 
         {timeStamp && (

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Tooltip, Typography } from 'antd';
+import { Popover, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
@@ -186,7 +186,11 @@ function IngestionListTable({
   );
 
   return (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+    <Space
+      className="m-b-md w-full"
+      data-testid="ingestion-table"
+      direction="vertical"
+      size="large">
       <Table
         bordered
         columns={tableColumn}
@@ -217,7 +221,7 @@ function IngestionListTable({
           totalCount={paging.total}
         />
       )}
-    </div>
+    </Space>
   );
 }
 
