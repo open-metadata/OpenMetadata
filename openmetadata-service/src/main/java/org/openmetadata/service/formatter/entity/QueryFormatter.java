@@ -44,7 +44,9 @@ public class QueryFormatter implements EntityFormatter {
   private static String getFieldValue(Object fieldValue, EntityInterface entity, MessageDecorator<?> messageFormatter) {
     Query query = (Query) entity;
     StringBuilder field = new StringBuilder();
-    List<EntityReference> tableRefs = fieldValue instanceof String ? JsonUtils.readObjects(fieldValue.toString(), EntityReference.class)
+    List<EntityReference> tableRefs =
+        fieldValue instanceof String
+            ? JsonUtils.readObjects(fieldValue.toString(), EntityReference.class)
             : (List<EntityReference>) fieldValue;
     if (!nullOrEmpty(tableRefs)) {
       field.append("for '").append(query.getQuery()).append("', ").append(messageFormatter.getLineBreak());

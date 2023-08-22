@@ -1280,8 +1280,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Create
     CreateQuery query1 =
-        queryResourceTest.createRequest("table_query_test").withQuery("select * from test;").withDuration(200.0)
-                .withQueryUsedIn(List.of(table.getEntityReference()));
+        queryResourceTest
+            .createRequest("table_query_test")
+            .withQuery("select * from test;")
+            .withDuration(200.0)
+            .withQueryUsedIn(List.of(table.getEntityReference()));
 
     //
     // try updating the same query again
