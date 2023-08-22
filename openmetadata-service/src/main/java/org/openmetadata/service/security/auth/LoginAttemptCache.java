@@ -47,13 +47,13 @@ public class LoginAttemptCache {
   }
 
   public void recordSuccessfulLogin(String key) {
-    attemptsCache.invalidate(key);
+    attemptsCache.invalidate(key.toLowerCase());
   }
 
   public void recordFailedLogin(String key) {
     int attempts;
     try {
-      attempts = attemptsCache.get(key);
+      attempts = attemptsCache.get(key.toLowerCase());
     } catch (ExecutionException e) {
       attempts = 0;
     }
@@ -63,7 +63,7 @@ public class LoginAttemptCache {
 
   public boolean isLoginBlocked(String key) {
     try {
-      return attemptsCache.get(key) >= maxAttempt;
+      return attemptsCache.get(key.toLowerCase()) >= maxAttempt;
     } catch (ExecutionException e) {
       return false;
     }
@@ -71,7 +71,7 @@ public class LoginAttemptCache {
 
   public int getUserFailedLoginCount(String key) {
     try {
-      return attemptsCache.get(key);
+      return attemptsCache.get(key.toLowerCase());
     } catch (ExecutionException e) {
       return -1;
     }

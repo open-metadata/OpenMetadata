@@ -500,8 +500,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
             .build();
       }
-      String userName = user.getEmail().split("@")[0];
-      user.setName(userName);
+      user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }

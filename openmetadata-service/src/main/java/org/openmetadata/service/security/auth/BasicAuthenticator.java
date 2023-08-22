@@ -203,7 +203,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
     Set<String> fields = userRepository.getAllowedFieldsCopy();
-    String userName = request.getUsername().toLowerCase();
+    String userName = request.getUsername();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
         userRepository.getByName(uriInfo, userName, new EntityUtil.Fields(fields, String.join(",", fields)));
@@ -242,14 +242,13 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest request)
       throws IOException {
     // passwords validity
-    String lowerCaseUserName = userName.toLowerCase();
     if (!request.getNewPassword().equals(request.getConfirmPassword())) {
       throw new IllegalArgumentException("Password and Confirm Password should match");
     }
     PasswordUtil.validatePassword(request.getNewPassword());
 
     // Fetch user
-    User storedUser = userRepository.getByName(uriInfo, lowerCaseUserName, userRepository.getFieldsWithUserAuth("*"));
+    User storedUser = userRepository.getByName(uriInfo, userName, userRepository.getFieldsWithUserAuth("*"));
 
     // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
     // for the user is null
@@ -273,7 +272,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
     RestUtil.PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
     // remove login/details from cache
-    loginAttemptCache.recordSuccessfulLogin(lowerCaseUserName);
+    loginAttemptCache.recordSuccessfulLogin(userName);
 
     // in case admin updates , send email to user
     if (request.getRequestType() == USER && isEmailServiceEnabled) {
@@ -386,7 +385,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   private User getUserFromRegistrationRequest(RegistrationRequest create) {
-    String username = create.getEmail().toLowerCase().split("@")[0];
+    String username = create.getEmail().split("@")[0];
     String hashedPwd = BCrypt.withDefaults().hashToString(HASHING_COST, create.getPassword().toCharArray());
 
     BasicAuthMechanism newAuthMechanism = new BasicAuthMechanism().withPassword(hashedPwd);
@@ -415,7 +414,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    String userName = loginRequest.getEmail().toLowerCase();
+    String userName = loginRequest.getEmail();
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(userName, storedUser, loginRequest.getPassword());
