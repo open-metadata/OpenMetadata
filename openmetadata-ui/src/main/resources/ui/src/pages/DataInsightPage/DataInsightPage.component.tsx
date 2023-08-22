@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from 'components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from 'components/DataInsightDetail/DescriptionInsight';
@@ -30,6 +28,8 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
@@ -46,12 +46,12 @@ import { getListKPIs } from 'rest/KpiAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
-import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
+import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -347,46 +347,44 @@ const DataInsightPage = () => {
           </Space>
         </Col>
         <Col span={24}>
-          <Card>
-            <Space className="w-full justify-between">
-              <Space className="w-full">
-                <SearchDropdown
-                  label={t('label.team')}
-                  options={teamsOptions.options}
-                  searchKey="teams"
-                  selectedKeys={teamsOptions.selectedOptions}
-                  onChange={handleTeamChange}
-                  onGetInitialOptions={fetchDefaultTeamOptions}
-                  onSearch={handleTeamSearch}
-                />
+          <Space className="w-full justify-between align-center">
+            <Space className="w-full" size={16}>
+              <SearchDropdown
+                label={t('label.team')}
+                options={teamsOptions.options}
+                searchKey="teams"
+                selectedKeys={teamsOptions.selectedOptions}
+                onChange={handleTeamChange}
+                onGetInitialOptions={fetchDefaultTeamOptions}
+                onSearch={handleTeamSearch}
+              />
 
-                <SearchDropdown
-                  label={t('label.tier')}
-                  options={tierOptions.options}
-                  searchKey="tier"
-                  selectedKeys={tierOptions.selectedOptions}
-                  onChange={handleTierChange}
-                  onGetInitialOptions={fetchDefaultTierOptions}
-                  onSearch={handleTierSearch}
-                />
-              </Space>
-              <Space>
-                <Typography className="data-insight-label-text text-xs">
-                  {`${getFormattedDateFromMilliSeconds(
-                    chartFilter.startTs,
-                    'dd MMM yyyy'
-                  )} - ${getFormattedDateFromMilliSeconds(
-                    chartFilter.endTs,
-                    'dd MMM yyyy'
-                  )}`}
-                </Typography>
-                <DatePickerMenu
-                  handleDateRangeChange={handleDateRangeChange}
-                  showSelectedCustomRange={false}
-                />
-              </Space>
+              <SearchDropdown
+                label={t('label.tier')}
+                options={tierOptions.options}
+                searchKey="tier"
+                selectedKeys={tierOptions.selectedOptions}
+                onChange={handleTierChange}
+                onGetInitialOptions={fetchDefaultTierOptions}
+                onSearch={handleTierSearch}
+              />
             </Space>
-          </Card>
+            <Space size={16}>
+              <Typography className="data-insight-label-text text-xs">
+                {`${getFormattedDateFromMilliSeconds(
+                  chartFilter.startTs,
+                  'dd MMM yyyy'
+                )} - ${getFormattedDateFromMilliSeconds(
+                  chartFilter.endTs,
+                  'dd MMM yyyy'
+                )}`}
+              </Typography>
+              <DatePickerMenu
+                handleDateRangeChange={handleDateRangeChange}
+                showSelectedCustomRange={false}
+              />
+            </Space>
+          </Space>
         </Col>
 
         {/* Do not show summary for KPIs */}

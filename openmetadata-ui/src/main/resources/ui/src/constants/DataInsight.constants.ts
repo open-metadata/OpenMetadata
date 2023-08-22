@@ -32,8 +32,8 @@ export const BAR_CHART_MARGIN: Margin = {
 
 export const DI_STRUCTURE = {
   rowContainerGutter: 32 as RowProps['gutter'],
-  leftContainerSpan: 19,
-  rightContainerSpan: 5,
+  leftContainerSpan: 16,
+  rightContainerSpan: 8,
   rightRowGutter: [8, 16] as RowProps['gutter'],
 };
 

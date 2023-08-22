@@ -34,16 +34,16 @@ import {
 } from 'recharts';
 import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
 import {
+  BAR_CHART_MARGIN,
+  DATA_INSIGHT_GRAPH_COLORS,
+  DI_STRUCTURE,
+} from '../../constants/DataInsight.constants';
+import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
   ROUTES,
 } from '../../constants/constants';
-import {
-  BAR_CHART_MARGIN,
-  DATA_INSIGHT_GRAPH_COLORS,
-  DI_STRUCTURE,
-} from '../../constants/DataInsight.constants';
 import {
   Kpi,
   KpiResult,
@@ -62,7 +62,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
-import KPILatestResults from './KPILatestResults';
+import KPILatestResultsV1 from './KPILatestResultsV1';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -259,7 +259,9 @@ const KPIChart: FC<Props> = ({
               </Col>
               {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
                 <Col span={DI_STRUCTURE.rightContainerSpan}>
-                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
+                  <KPILatestResultsV1
+                    kpiLatestResultsRecord={kpiLatestResults}
+                  />
                 </Col>
               )}
             </>
