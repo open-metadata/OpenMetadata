@@ -89,7 +89,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
-import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -819,10 +818,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void post_createUser_BasicAuth_AdminCreate_login_200_ok(TestInfo test) throws HttpResponseException {
     // Create a user with Auth and Try Logging in
+    String name = "testBasicAuth";
     User user =
         createEntity(
             createRequest(test)
-                .withName("testBasicAuth")
+                .withName(name)
                 .withDisplayName("Test")
                 .withEmail("testBasicAuth@email.com")
                 .withIsBot(false)
@@ -834,6 +834,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // jwtAuth Response should be null always
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
+    assertEquals(name, user.getName());
+    assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
     LoginRequest loginRequest =
@@ -876,11 +878,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void post_createUser_BasicAuth_SignUp_200_ok() throws HttpResponseException {
     // Create a user with Auth and Try Logging in
+    String name = "testBasicAuth123";
     RegistrationRequest newRegistrationRequest =
         new RegistrationRequest()
             .withFirstName("Test")
             .withLastName("Test")
-            .withEmail("testBasicAuth123@email.com")
+            .withEmail(String.format("%s@email.com", name))
             .withPassword("Test@1234");
 
     TestUtils.post(getResource("users/signup"), newRegistrationRequest, String.class, ADMIN_AUTH_HEADERS);
@@ -888,6 +891,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // jwtAuth Response should be null always
     User user = getEntityByName("testBasicAuth123", null, ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
+    assertEquals(name, user.getName());
+    assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
     LoginRequest loginRequest =
@@ -1040,7 +1045,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Date date = jwt.getExpiresAt();
     long hours = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60));
     assertEquals(1, hours);
-    assertEquals(username.toLowerCase(), jwt.getClaims().get("sub").asString());
+    assertEquals(username, jwt.getClaims().get("sub").asString());
     assertEquals(false, jwt.getClaims().get("isBot").asBoolean());
   }
 
@@ -1191,7 +1196,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getName().toLowerCase(), user.getName().toLowerCase());
+    assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
     assertEquals(createRequest.getTimezone(), user.getTimezone());
     assertEquals(createRequest.getIsBot(), user.getIsBot());
@@ -1298,16 +1303,5 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     WebTarget target = getCollection().path("/export");
     target = target.queryParam("team", teamName);
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-  }
-
-  @Override
-  protected final void validateCommonEntityFields(User entity, CreateEntity create, String updatedBy) {
-    assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
-    assertEquals(create.getName().toLowerCase(), entity.getName().toLowerCase());
-    assertEquals(create.getDisplayName(), entity.getDisplayName());
-    assertEquals(create.getDescription(), entity.getDescription());
-    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertReference(create.getOwner(), entity.getOwner());
-    assertEquals(updatedBy, entity.getUpdatedBy());
   }
 }
