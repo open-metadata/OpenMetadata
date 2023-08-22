@@ -70,8 +70,6 @@ public class Migration extends MigrationProcessImpl {
       List<String> userEntities = daoCollection.userDAO().listAfterWithOffset(limit, offset);
       for (String json : userEntities) {
         User userEntity = JsonUtils.readValue(json, User.class);
-        userEntity.setName(userEntity.getName().toLowerCase());
-        userEntity.setEmail(userEntity.getEmail().toLowerCase());
         userEntity.setFullyQualifiedName(userEntity.getFullyQualifiedName().toLowerCase());
         daoCollection.userDAO().update(userEntity);
       }

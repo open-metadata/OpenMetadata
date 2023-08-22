@@ -2543,6 +2543,11 @@ public interface CollectionDAO {
     }
 
     @Override
+    default boolean shouldLowerCaseFqn() {
+      return true;
+    }
+
+    @Override
     default int listCount(ListFilter filter) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
@@ -2797,11 +2802,10 @@ public interface CollectionDAO {
         @Bind("after") String after,
         @Bind("relation") int relation);
 
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
+    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     int checkEmailExists(@Bind("email") String email);
 
-    @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
+    @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     String findUserByEmail(@Bind("email") String email);
   }
 

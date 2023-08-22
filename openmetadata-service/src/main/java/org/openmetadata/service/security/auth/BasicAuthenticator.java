@@ -104,8 +104,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public User registerUser(RegistrationRequest newRegistrationRequest) {
     if (isSelfSignUpAvailable) {
-      String newRegistrationRequestEmail = newRegistrationRequest.getEmail().toLowerCase();
-      String[] tokens = newRegistrationRequest.getEmail().toLowerCase().split("@");
+      String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
+      String[] tokens = newRegistrationRequest.getEmail().split("@");
       String emailDomain = tokens[1];
       Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
       if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
