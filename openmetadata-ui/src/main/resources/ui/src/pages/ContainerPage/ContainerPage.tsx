@@ -191,7 +191,6 @@ const ContainerPage = () => {
     isUserFollowing,
     tags,
     tier,
-    entityFqn,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -492,7 +491,7 @@ const ContainerPage = () => {
 
                 <ContainerDataModel
                   dataModel={containerData?.dataModel}
-                  entityFqn={entityFqn}
+                  entityFqn={containerName}
                   hasDescriptionEditAccess={hasEditDescriptionPermission}
                   hasTagEditAccess={hasEditTagsPermission}
                   isReadOnly={Boolean(deleted)}
