@@ -79,7 +79,6 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -94,7 +93,6 @@ import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.CreatePersonalToken;
-import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -258,8 +256,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
 
     // get user with  username in different case
-     User user = getEntityByName("UsERemailTEST", ADMIN_AUTH_HEADERS);
-     compareEntities(user, created, ADMIN_AUTH_HEADERS);
+    User user = getEntityByName("UsERemailTEST", ADMIN_AUTH_HEADERS);
+    compareEntities(user, created, ADMIN_AUTH_HEADERS);
     user.setName("UsERemailTEST");
     user.setFullyQualifiedName("UsERemailTEST");
     // delete user with different
