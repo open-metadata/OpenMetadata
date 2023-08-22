@@ -12,6 +12,7 @@ This is the supported list of connectors for Dashboard Services:
 - [Metabase](/connectors/dashboard/metabase)
 - [Mode](/connectors/dashboard/mode)
 - [PowerBI](/connectors/dashboard/powerbi)
+- [Qliksense](/connectors/dashboard/qliksense)
 - [QuickSight](/connectors/dashboard/quicksight)
 - [Redash](/connectors/dashboard/redash)
 - [Superset](/connectors/dashboard/superset)

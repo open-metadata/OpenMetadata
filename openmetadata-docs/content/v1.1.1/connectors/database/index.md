@@ -27,6 +27,7 @@ This is the supported list of connectors for Database Services:
 - [Postgres](/connectors/database/postgres)
 - [Presto](/connectors/database/presto)
 - [Redshift](/connectors/database/redshift)
+- [Sap Hana](/connectors/database/saphana)
 - [Salesforce](/connectors/database/salesforce)
 - [SingleStore](/connectors/database/singlestore)
 - [Snowflake](/connectors/database/snowflake)
