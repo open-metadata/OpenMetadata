@@ -155,7 +155,7 @@ the parameters to connect to OpenMetadata.
 
 Go to the Airflow UI > Admin > Connection and create a new `OpenMetadata` connection as follows:
 
-<Image src="/images/v1.1.0/connectors/airflow/airflow-connection.png" alt="Airflow Connection"/>
+{% image src="/images/v1.1.0/connectors/airflow/airflow-connection.png" alt="Airflow Connection" /%}
 
 Testing the connection will validate that the server is reachable and the installed client can be instantiated properly.
 

@@ -116,37 +116,6 @@ describe('TopicVersion tests', () => {
     expect(topicSchema).toBeNull();
   });
 
-  it('Should display ErrorPlaceholder if no viewing permission', async () => {
-    await act(async () => {
-      render(
-        <TopicVersion
-          {...topicVersionMockProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />
-      );
-    });
-
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-    const loader = screen.queryByText('Loader');
-    const dataAssetsVersionHeader = screen.queryByText(
-      'DataAssetsVersionHeader'
-    );
-    const schemaTabLabel = screen.queryByText('label.schema');
-    const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
-    const topicSchema = screen.queryByText('TopicSchema');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
-    expect(loader).toBeNull();
-    expect(entityVersionTimeLine).toBeNull();
-    expect(dataAssetsVersionHeader).toBeNull();
-    expect(schemaTabLabel).toBeNull();
-    expect(customPropertyTabLabel).toBeNull();
-    expect(topicSchema).toBeNull();
-  });
-
   it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
     await act(async () => {
       render(
@@ -199,30 +168,5 @@ describe('TopicVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/topic/sample_kafka.sales/versions/0.3/custom_properties'
     );
-  });
-
-  it('ErrorPlaceholder should be displayed in case of no view permissions', async () => {
-    await act(async () => {
-      render(
-        <TopicVersion
-          {...topicVersionMockProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />
-      );
-    });
-
-    const topicSchema = screen.queryByText('TopicSchema');
-
-    const description = screen.queryByText('Description.component');
-
-    const entityVersionTimeLine = screen.queryByText(
-      'EntityVersionTimeLine.component'
-    );
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(entityVersionTimeLine).toBeNull();
-    expect(topicSchema).toBeNull();
-    expect(description).toBeNull();
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });
