@@ -60,7 +60,7 @@ from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils import fqn
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_file_format_type
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.s3_utils import list_s3_objects
@@ -238,7 +238,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Optional[Iterable[Tuple[str, str]]]:
+    ) -> Iterable[Tuple[str, TableType]]:
         """
         Handle table and views.
 
@@ -371,6 +371,7 @@ class DatalakeSource(DatabaseServiceSource):
                     bucket_name=schema_name,
                 ),
             )
+
             # If no data_frame (due to unsupported type), ignore
             columns = self.get_columns(data_frame[0]) if data_frame else None
             if columns:
@@ -380,6 +381,7 @@ class DatalakeSource(DatabaseServiceSource):
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
+                    fileFormat=get_file_format_type(table_name),
                 )
                 yield table_request
                 self.register_record(table_request=table_request)
@@ -552,7 +554,7 @@ class DatalakeSource(DatabaseServiceSource):
         complex_col_dict.clear()
         return cols
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[AddLineageRequest]:
         yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:

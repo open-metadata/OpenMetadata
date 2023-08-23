@@ -37,7 +37,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   const finalWidthOfBreadcrumb = useMemo(() => {
     return (
       screenWidth -
-      (widthDeductions ? widthDeductions : 0) - // Any extra deductions due to sibling elements of breadcrumb
+      (widthDeductions ?? 0) - // Any extra deductions due to sibling elements of breadcrumb
       (titleLinks.length - 1) * 25 - // Deduction for every arrow between each titleLink name
       80 // Deduction due to margin of the container on both sides
     );
@@ -50,6 +50,48 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   const changeWidth = useCallback(() => {
     setScreenWidth(window.innerWidth);
   }, []);
+
+  const renderBreadcrumb = (
+    index: number,
+    link: {
+      name: string;
+      url: string;
+      imgSrc?: string;
+      activeTitle?: boolean;
+    },
+    classes: string
+  ) => {
+    if (link.url) {
+      return (
+        <Link
+          className={classes}
+          style={{
+            maxWidth,
+          }}
+          to={link.url}>
+          {link.name}
+        </Link>
+      );
+    }
+
+    return (
+      <>
+        <span
+          className={classNames(classes, 'inactive-link cursor-text')}
+          data-testid="inactive-link"
+          style={{
+            maxWidth,
+          }}>
+          {link.name}
+        </span>
+        {noLink && index < titleLinks.length - 1 && (
+          <span className="text-xss text-grey-muted">
+            {t('label.slash-symbol')}
+          </span>
+        )}
+      </>
+    );
+  };
 
   useEffect(() => {
     window.addEventListener('resize', changeWidth);
@@ -71,7 +113,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
               <li
                 className="d-flex items-center breadcrumb-item"
                 data-testid="breadcrumb-link"
-                key={index}>
+                key={link.name}>
                 {link.imgSrc ? (
                   <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}
@@ -90,34 +132,8 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {t('label.slash-symbol')}
                     </span>
                   </>
-                ) : link.url ? (
-                  <Link
-                    className={classes}
-                    style={{
-                      maxWidth,
-                    }}
-                    to={link.url}>
-                    {link.name}
-                  </Link>
                 ) : (
-                  <>
-                    <span
-                      className={classNames(
-                        classes,
-                        'inactive-link cursor-text'
-                      )}
-                      data-testid="inactive-link"
-                      style={{
-                        maxWidth,
-                      }}>
-                      {link.name}
-                    </span>
-                    {noLink && index < titleLinks.length - 1 && (
-                      <span className="text-xss text-grey-muted">
-                        {t('label.slash-symbol')}
-                      </span>
-                    )}
-                  </>
+                  renderBreadcrumb(index, link, classes)
                 )}
               </li>
             );

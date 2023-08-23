@@ -103,3 +103,9 @@ Set the `Auto Tag PII` toggle to control whether to automatically tag columns th
 
 If `Ingest Sample Data` is enabled, OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data. If disabled, OpenMetadata will infer this information from the column name.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$

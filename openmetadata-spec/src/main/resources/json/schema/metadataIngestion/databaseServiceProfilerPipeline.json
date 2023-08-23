@@ -30,6 +30,11 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
+    "includeViews": {
+      "description": "Optional configuration to turn off fetching metadata for views.",
+      "type": "boolean",
+      "default": true
+    },
     "processPiiSensitive": {
       "description": "Optional configuration to automatically tag columns that might contain sensitive information",
       "type": "boolean",
