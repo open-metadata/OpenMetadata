@@ -130,7 +130,7 @@ public class WebhookCallbackResource {
     } else {
       list.addAll(events.getData());
     }
-    LOG.debug("callback /{}/{} received event. Current count {}", eventType, entityType, list.size());
+    LOG.info("callback /{}/{} received event. Current count {}", eventType, entityType, list.size());
     return Response.ok().build();
   }
 

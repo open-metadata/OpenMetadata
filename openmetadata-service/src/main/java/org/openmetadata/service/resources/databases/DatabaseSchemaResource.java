@@ -78,7 +78,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     Entity.withHref(uriInfo, schema.getOwner());
     Entity.withHref(uriInfo, schema.getService());
     Entity.withHref(uriInfo, schema.getDatabase());
-    Entity.withHref(uriInfo, schema.getDomain());
     return schema;
   }
 

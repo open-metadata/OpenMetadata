@@ -13,20 +13,17 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -36,6 +33,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -46,7 +44,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void prepare(Tag entity) {
+  public void prepare(Tag entity) throws IOException {
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent(), NON_DELETED);
     entity.setParent(parentTerm);
@@ -57,7 +55,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void storeEntity(Tag tag, boolean update) {
+  public void storeEntity(Tag tag, boolean update) throws IOException {
     EntityReference classification = tag.getClassification();
     EntityReference parent = tag.getParent();
 
@@ -79,26 +77,17 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public Tag setInheritedFields(Tag tag, Fields fields) {
-    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(tag.getDomain())) {
-      if (tag.getParent() != null) {
-        Tag parentTerm = get(null, tag.getParent().getId(), getFields("domain"));
-        tag.setDomain(parentTerm.getDomain());
-      } else {
-        Classification classification = Entity.getEntity(tag.getClassification(), "domain", ALL);
-        tag.setDomain(classification.getDomain());
-      }
-    }
-    return tag;
-  }
-
-  @Override
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
       tag.setFullyQualifiedName(FullyQualifiedName.build(tag.getClassification().getName(), tag.getName()));
     } else {
       tag.setFullyQualifiedName(FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Tag tag) {
+    return FullyQualifiedName.buildHash(tag.getFullyQualifiedName());
   }
 
   @Override
@@ -113,26 +102,28 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public Tag setFields(Tag tag, Fields fields) {
+  public Tag setFields(Tag tag, Fields fields) throws IOException {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
-    if (fields.contains("usageCount")) {
-      tag.withUsageCount(getUsageCount(tag));
-    }
-    return tag;
-  }
-
-  @Override
-  public Tag clearFields(Tag tag, Fields fields) {
-    return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
+    tag.setChildren(fields.contains("children") ? getChildren(tag) : null);
+    return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
   }
 
   private Integer getUsageCount(Tag tag) {
-    return tag.getUsageCount() != null
-        ? tag.getUsageCount()
-        : daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(tag.getFullyQualifiedName()));
   }
 
-  private EntityReference getClassification(Tag tag) {
+  private List<EntityReference> getChildren(Tag entity) throws IOException {
+    List<EntityRelationshipRecord> ids = findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
+    return EntityUtil.populateEntityReferences(ids, TAG);
+  }
+
+  private EntityReference getParent(Tag tag) throws IOException {
+    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
+  }
+
+  private EntityReference getClassification(Tag tag) throws IOException {
     return getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
   }
 
@@ -152,14 +143,14 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate() throws IOException {
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled,", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
       updateParent(original, updated);
     }
 
-    public void updateName(Tag original, Tag updated) {
+    public void updateName(Tag original, Tag updated) throws IOException {
       if (!original.getName().equals(updated.getName())) {
         if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(
@@ -176,11 +167,10 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       // Populate response fields
-      invalidateTags(original.getId());
       getChildren(updated);
     }
 
-    private void updateParent(Tag original, Tag updated) {
+    private void updateParent(Tag original, Tag updated) throws JsonProcessingException {
       // Can't change parent and Classification both at the same time
       UUID oldParentId = getId(original.getParent());
       UUID newParentId = getId(updated.getParent());
@@ -199,12 +189,10 @@ public class TagRepository extends EntityRepository<Tag> {
         updateClassificationRelationship(original, updated);
         recordChange(
             "Classification", original.getClassification(), updated.getClassification(), true, entityReferenceMatch);
-        invalidateTags(original.getId());
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
-        invalidateTags(original.getId());
       }
     }
 
@@ -226,15 +214,6 @@ public class TagRepository extends EntityRepository<Tag> {
     private void deleteParentRelationship(Tag term) {
       if (term.getParent() != null) {
         deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
-      }
-    }
-
-    private void invalidateTags(UUID tagId) {
-      // The name of the tag changed. Invalidate that tag and all the children from the cache
-      List<EntityRelationshipRecord> tagRecords = findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
-      for (EntityRelationshipRecord tagRecord : tagRecords) {
-        invalidateTags(tagRecord.getId());
       }
     }
   }

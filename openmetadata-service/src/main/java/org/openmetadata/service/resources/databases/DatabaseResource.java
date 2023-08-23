@@ -78,7 +78,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
-    Entity.withHref(uriInfo, db.getDomain());
     return db;
   }
 

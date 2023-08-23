@@ -82,7 +82,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     Entity.withHref(uriInfo, term.getRelatedTerms());
     Entity.withHref(uriInfo, term.getReviewers());
     Entity.withHref(uriInfo, term.getOwner());
-    Entity.withHref(uriInfo, term.getDomain());
     return term;
   }
 

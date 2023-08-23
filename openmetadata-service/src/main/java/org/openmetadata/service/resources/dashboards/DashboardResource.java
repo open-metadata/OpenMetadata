@@ -82,7 +82,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     Entity.withHref(uriInfo, dashboard.getCharts());
     Entity.withHref(uriInfo, dashboard.getFollowers());
     Entity.withHref(uriInfo, dashboard.getDataModels());
-    Entity.withHref(uriInfo, dashboard.getDomain());
     return dashboard;
   }
 

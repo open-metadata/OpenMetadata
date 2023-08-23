@@ -96,7 +96,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     Entity.withHref(uriInfo, team.getParents());
     Entity.withHref(uriInfo, team.getChildren());
     Entity.withHref(uriInfo, team.getPolicies());
-    Entity.withHref(uriInfo, team.getDomain());
     return team;
   }
 
