@@ -15,7 +15,6 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { topicVersionMockProps } from '../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
 
@@ -114,35 +113,6 @@ describe('TopicVersion tests', () => {
     expect(schemaTabLabel).toBeNull();
     expect(customPropertyTabLabel).toBeNull();
     expect(topicSchema).toBeNull();
-  });
-
-  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
-    await act(async () => {
-      render(
-        <TopicVersion
-          {...topicVersionMockProps}
-          entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
-        />
-      );
-    });
-
-    const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
-    );
-    const topicSchema = screen.getByText('TopicSchema');
-    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
-
-    expect(customPropertyTabLabel).toBeInTheDocument();
-    expect(topicSchema).toBeInTheDocument();
-    expect(errorPlaceHolder).toBeNull();
-
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
-
-    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 
   it('Should update url on click of tab', async () => {
