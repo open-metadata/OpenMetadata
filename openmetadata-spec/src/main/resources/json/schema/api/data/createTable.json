@@ -77,6 +77,10 @@
     "sourceUrl": {
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "$ref": "../../entity/data/table.json#/definitions/fileFormat"
     }
   },
   "required": ["name", "columns", "databaseSchema"],

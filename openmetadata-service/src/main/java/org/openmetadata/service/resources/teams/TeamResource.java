@@ -84,6 +84,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "teams", order = 2) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
+  static final String FIELDS =
+      "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount";
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
@@ -120,9 +122,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
     /* Required for serde */
   }
-
-  static final String FIELDS =
-      "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount";
 
   @GET
   @Path("/hierarchy")
