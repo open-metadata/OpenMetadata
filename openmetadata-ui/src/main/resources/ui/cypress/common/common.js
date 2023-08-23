@@ -28,6 +28,7 @@ const RETRY_TIMES = 4;
 const BASE_WAIT_TIME = 20000;
 
 const ADMIN = 'admin';
+const RETRIES_COUNT = 4;
 
 const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
 
@@ -168,7 +169,7 @@ export const handleIngestionRetry = (
   checkSuccessState();
 };
 
-export const scheduleIngestion = () => {
+export const scheduleIngestion = (hasRetryCount = true) => {
   interceptURL(
     'POST',
     '/api/v1/services/ingestionPipelines',
@@ -187,6 +188,11 @@ export const scheduleIngestion = () => {
   // Schedule & Deploy
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
+
+  if (hasRetryCount) {
+    cy.get('#retries').scrollIntoView().clear().type(RETRIES_COUNT);
+  }
+
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   verifyResponseStatusCode('@createIngestionPipelines', 201);
