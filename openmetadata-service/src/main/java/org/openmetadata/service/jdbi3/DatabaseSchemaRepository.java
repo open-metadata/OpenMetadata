@@ -25,7 +25,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -102,7 +101,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     UUID databaseId = schema.getDatabase().getId();
     // If schema does not have owner, then inherit parent database owner
     if (fields.contains(FIELD_OWNER) && schema.getOwner() == null) {
-      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner", ALL);
+      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner,domain", ALL);
       schema.withOwner(database.getOwner());
     }
 
