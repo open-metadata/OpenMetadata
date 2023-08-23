@@ -143,6 +143,20 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  @Override
+  public Table setInheritedFields(Table table, Fields fields) {
+    setInheritedProperties(table, table.getDatabaseSchema().getId());
+    return table;
+  }
+
+  public void setInheritedProperties(Table table, UUID schemaId) {
+    // If table does not have retention period, then inherit it from parent databaseSchema
+    if (table.getRetentionPeriod() == null) {
+      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+      table.withRetentionPeriod(schema.getRetentionPeriod());
+    }
+  }
+
   private void setDefaultFields(Table table) {
     EntityReference schemaRef = getContainer(table.getId());
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
@@ -592,12 +606,15 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "", ALL);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    // Carry forward ownership from database schema
+    table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());

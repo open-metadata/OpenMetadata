@@ -379,6 +379,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
+    this.supportsEmptyDescription = !EntityUtil.isDescriptionRequired(entityClass);
     this.systemEntityName = systemEntityName;
   }
 

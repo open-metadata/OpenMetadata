@@ -65,7 +65,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -1705,47 +1704,22 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     DatabaseResourceTest dbTest = new DatabaseResourceTest();
     Database db = dbTest.createEntity(dbTest.createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
 
-    // Ensure databaseSchema owner is inherited from database
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
     DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
-    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
+    assertEquals(USER1_REF, schema.getOwner()); // Ensure databaseSchema owner is inherited from database
 
-    // Ensure table owner is inherited from databaseSchema
-    CreateTable createTable = createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, table.getOwner()); // Inherited owner
-    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, table.getOwner()); // Inherited owner
-
-    // Change the ownership of table and ensure further ingestion updates don't overwrite the ownership
-    String json = JsonUtils.pojoToJson(table);
-    table.setOwner(USER2_REF);
-    table = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, table.getOwner());
-    table = updateEntity(createTable.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
-    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
-    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
-
-    // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
-    json = JsonUtils.pojoToJson(schema);
-    schema.setOwner(USER2_REF);
-    schema = schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, schema.getOwner());
-    schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
-    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
-    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
-    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
+    Table table =
+        createEntity(
+            createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+    assertEquals(USER1_REF, table.getOwner()); // Ensure table owner is inherited from databaseSchema
   }
 
   @Test

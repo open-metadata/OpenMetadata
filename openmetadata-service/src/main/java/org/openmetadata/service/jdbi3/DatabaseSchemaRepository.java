@@ -135,6 +135,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withDatabase(database.getEntityReference())
         .withService(database.getService())
         .withServiceType(database.getServiceType());
+
+    // Carry forward ownership from database, if necessary
+    schema.withOwner(schema.getOwner() == null ? database.getOwner() : schema.getOwner());
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {
