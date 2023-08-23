@@ -60,11 +60,7 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import {
-  getCurrentUserId,
-  getFeedCounts,
-  refreshPage,
-} from '../../utils/CommonUtils';
+import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -259,7 +255,7 @@ const PipelineDetails = ({
         }),
         2000
       );
-      refreshPage();
+      handleDeleteAction();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
