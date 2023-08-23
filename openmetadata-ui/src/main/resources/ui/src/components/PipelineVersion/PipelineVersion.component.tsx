@@ -285,7 +285,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={version}
         versionHandler={versionHandler}
         versionList={versionList}

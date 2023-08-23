@@ -249,7 +249,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={toString(version)}
         versionHandler={versionHandler}
         versionList={versionList}

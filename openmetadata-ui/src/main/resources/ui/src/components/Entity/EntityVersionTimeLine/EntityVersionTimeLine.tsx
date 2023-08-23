@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from 'antd';
+import { Col, Divider, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import CloseIcon from 'components/Modals/CloseIcon.component';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { capitalize, toString } from 'lodash';
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSummary, isMajorVersion } from 'utils/EntityVersionUtils';
 
 type Props = {
   versionList: EntityHistory;
   currentVersion: string;
-  show?: boolean;
   versionHandler: (v: string) => void;
   onBack: () => void;
 };
@@ -32,13 +31,13 @@ type VersionType = 'all' | 'major' | 'minor';
 const EntityVersionTimeLine: React.FC<Props> = ({
   versionList = {} as EntityHistory,
   currentVersion,
-  show = false,
   versionHandler,
   onBack,
 }: Props) => {
   const { t } = useTranslation();
   const [versionType] = useState<VersionType>('all');
-  const getVersionList = () => {
+
+  const versions = useMemo(() => {
     let versionTypeList = [];
     const list = versionList.versions ?? [];
 
@@ -164,18 +163,35 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         })}
       </p>
     );
-  };
+  }, [versionList, currentVersion, versionHandler, versionType]);
 
   return (
-    <div className={classNames('timeline-drawer', { open: show })}>
-      <header className="d-flex justify-between">
-        <p className="font-medium ">{t('label.version-plural-history')}</p>
-        <CloseIcon handleCancel={onBack} />
-      </header>
-      <Divider className="m-t-sm m-b-md" />
-
-      <div>{getVersionList()}</div>
-    </div>
+    <Drawer
+      destroyOnClose
+      open
+      className="versions-list-container"
+      closable={false}
+      getContainer={false}
+      mask={false}
+      maskClosable={false}
+      title={
+        <>
+          <Row className="p-b-xss" justify="space-between">
+            <Col>
+              <Typography.Text className="font-medium">
+                {t('label.version-plural-history')}
+              </Typography.Text>
+            </Col>
+            <Col>
+              <CloseIcon handleCancel={onBack} />
+            </Col>
+          </Row>
+          <Divider className="m-0" />
+        </>
+      }
+      width={330}>
+      {versions}
+    </Drawer>
   );
 };
 

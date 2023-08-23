@@ -269,7 +269,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={version}
         versionHandler={versionHandler}
         versionList={versionList}
