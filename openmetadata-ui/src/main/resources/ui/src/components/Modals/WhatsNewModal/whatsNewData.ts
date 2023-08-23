@@ -976,7 +976,7 @@ export const WHATS_NEW = [
 - Table mentions now show Service, Schema and Database information.
 - Fixed the version history list.
 `,
-      'Data Quality': `- Added support for Postgres version 11.9.
+      'Data Quality': `- Added support for Postgres version 11.19.
 - Fixed MariaDB time column issues.`,
       Ingestion: `- Improved performance when ingesting table constraints.`,
       Connectors: `- Added JWT authentication support for Trino
