@@ -12,6 +12,7 @@
  */
 
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
+import ServiceVersionPage from 'pages/ServiceVersionPage/ServiceVersionPage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -341,6 +342,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
       <Route
         exact
         component={EntityVersionPage}

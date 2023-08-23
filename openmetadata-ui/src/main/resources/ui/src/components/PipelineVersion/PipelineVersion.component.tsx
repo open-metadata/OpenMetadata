@@ -267,6 +267,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 entityType={EntityType.PIPELINE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
                 tierDisplayName={tierDisplayName}
                 version={version}
                 onVersionClick={backHandler}
