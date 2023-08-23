@@ -18,20 +18,74 @@ import React from 'react';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu';
 
-const extensions = [
-  StarterKit,
-  Placeholder.configure({
-    showOnlyWhenEditable: true,
-    placeholder: "Press '/' for commands...",
-  }),
-];
-
-const content = '<p>Hello World!</p>';
-
 const BlockEditor = () => {
   const editor = useEditor({
-    extensions,
-    content,
+    autofocus: false,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Placeholder.configure({
+        showOnlyWhenEditable: true,
+        includeChildren: true,
+        showOnlyCurrent: false,
+        emptyEditorClass: 'is-editor-empty',
+        placeholder: ({ node, editor: coreEditor }) => {
+          if (coreEditor.isDestroyed) {
+            return '';
+          }
+
+          const headingPlaceholders: {
+            [key: number]: string;
+          } = {
+            1: 'Heading 1',
+            2: 'Heading 2',
+            3: 'Heading 3',
+          };
+
+          if (node.type.name === 'heading') {
+            const level = node.attrs.level as number;
+
+            return headingPlaceholders[level];
+          }
+
+          if (
+            node.type.name === 'paragraph' &&
+            coreEditor.getJSON().content?.length === 1
+          ) {
+            return 'Type / to get started';
+          }
+
+          if (node.type.name === 'paragraph') {
+            const selectedNode = coreEditor.view.domAtPos(
+              coreEditor.state.selection.from
+            ).node;
+            if (
+              selectedNode.nodeName === 'P' &&
+              selectedNode.firstChild?.parentElement?.id === node.attrs.id
+            ) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const parentNode = (coreEditor.state.selection.$from as any)
+                .path[3];
+              if (
+                parentNode?.type?.name === 'blockquote' &&
+                parentNode?.content?.content?.[
+                  parentNode?.content?.content?.length - 1
+                ]?.attrs?.id === node.attrs?.id
+              ) {
+                return 'Type or hit enter to exit quote';
+              }
+
+              return 'Type / for commands';
+            }
+          }
+
+          return '';
+        },
+      }),
+    ],
   });
 
   const menus = !isNil(editor) && <BubbleMenu editor={editor} />;

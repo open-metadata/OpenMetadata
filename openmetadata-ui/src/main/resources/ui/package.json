@@ -229,6 +229,7 @@
     "webpackbar": "5.0.2"
   },
   "resolutions": {
-    "history": "4.5.1"
+    "history": "4.5.1",
+    "prosemirror-model": "1.18.1"
   }
 }

@@ -13,11 +13,27 @@
 @import (reference) url('../../styles/variables.less');
 
 .editor-wrapper {
-  border: @global-border;
-  padding: 8px 16px;
+  .tiptap p.is-editor-empty:first-child::before {
+    color: @grey-3;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
 }
 
 .menu-wrapper {
+  background-color: @white;
   display: flex;
   gap: 4px;
+  align-items: center;
+  justify-content: center;
+  border: @global-border;
+  border-radius: @border-radius-base;
+  width: 100%;
+
+  .more-menu-items > .ant-btn-compact-first-item,
+  .headings-dropdown > .ant-btn-compact-first-item {
+    display: none;
+  }
 }
