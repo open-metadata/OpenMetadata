@@ -268,12 +268,7 @@
     "sourceUrl": {
       "description": "Source URL of mlModel.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
-    },
-    "domain" : {
-      "description": "Domain the MLModel belongs to. When not set, the MLModel inherits the domain from the ML Model Service it belongs to.",
-      "$ref": "../../type/entityReference.json"
     }
-
   },
   "required": ["id", "name", "algorithm", "service"],
   "additionalProperties": false

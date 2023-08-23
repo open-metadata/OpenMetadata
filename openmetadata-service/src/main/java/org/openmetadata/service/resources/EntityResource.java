@@ -208,6 +208,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -275,14 +276,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T copy(T entity, CreateEntity request, String updatedBy) {
     EntityReference owner = repository.validateOwner(request.getOwner());
-    EntityReference domain = repository.validateDomain(request.getDomain());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
     entity.setDescription(request.getDescription());
     entity.setOwner(owner);
-    entity.setDomain(domain);
-    entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());

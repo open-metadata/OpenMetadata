@@ -70,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databases")
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
-  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags,extension,domain";
+  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags,extension";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {

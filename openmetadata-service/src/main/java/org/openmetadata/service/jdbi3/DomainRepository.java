@@ -14,20 +14,26 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
-  private static final String UPDATE_FIELDS = "parent,children,experts";
+  private static final String UPDATE_FIELDS = "owner,experts";
 
   public DomainRepository(CollectionDAO dao) {
     super(
@@ -41,23 +47,34 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public Domain setFields(Domain entity, Fields fields) {
-    return entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
+  public Domain setFields(Domain entity, Fields fields) throws IOException {
+    entity.withParent(fields.contains("parent") ? getParent(entity) : null);
+    entity.withChildren(fields.contains("children") ? getChildren(entity) : null);
+    entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
+    return entity.withOwner(fields.contains("owner") ? getOwner(entity) : null);
+  }
+
+  private EntityReference getParent(Domain entity) throws IOException {
+    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, DOMAIN, false);
+  }
+
+  private List<EntityReference> getChildren(Domain entity) throws IOException {
+    List<EntityRelationshipRecord> ids = findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
+    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+  }
+
+  private List<EntityReference> getExperts(Domain entity) throws IOException {
+    List<EntityRelationshipRecord> ids = findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
+    return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   @Override
-  public Domain clearFields(Domain entity, Fields fields) {
-    entity.withParent(fields.contains("parent") ? entity.getParent() : null);
-    return entity;
-  }
-
-  @Override
-  public void prepare(Domain entity) {
+  public void prepare(Domain entity) throws IOException {
     // Parent, Experts, Owner are already validated
   }
 
   @Override
-  public void storeEntity(Domain entity, boolean update) {
+  public void storeEntity(Domain entity, boolean update) throws IOException {
     EntityReference parent = entity.getParent();
     List<EntityReference> children = entity.getChildren();
     List<EntityReference> experts = entity.getExperts();
@@ -98,17 +115,22 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
+  @Override
+  public String getFullyQualifiedNameHash(Domain entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+  }
+
   public class DomainUpdater extends EntityUpdater {
     public DomainUpdater(Domain original, Domain updated, Operation operation) {
       super(original, updated, operation);
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate() throws IOException {
       updateExperts();
     }
 
-    private void updateExperts() {
+    private void updateExperts() throws JsonProcessingException {
       List<EntityReference> origExperts = listOrEmpty(original.getExperts());
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(

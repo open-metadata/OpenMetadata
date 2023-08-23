@@ -126,14 +126,6 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
-    },
-    "domain" : {
-      "description": "Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to.",
-      "$ref": "../../type/entityReference.json"
-    },
-    "dataProducts" : {
-      "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name", "service"],

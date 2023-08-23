@@ -142,8 +142,6 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.domains.DataProduct;
-import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -174,8 +172,6 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.domains.DataProductResourceTest;
-import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -583,7 +579,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
-      // List entity with "limit" set from 1 to maxEntities size with random jumps (to reduce the test time)
+      // List entity with "limit" set from 1 to maxTables size with random jumps (to reduce the test time)
       // Each time compare the returned list with allTables list to make sure right results are returned
       for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
         String after = null;
@@ -594,13 +590,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         ResultList<T> backwardPage;
         boolean foundDeleted = false;
         do { // For each limit (or page size) - forward scroll till the end
-          LOG.debug(
-              "Limit {} forward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
-              limit,
-              pageCount,
-              indexInAllTables,
-              totalRecords,
-              after);
+          LOG.debug("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
           forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           after = forwardPage.getPaging().getAfter();
@@ -632,13 +622,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         indexInAllTables = totalRecords - limit - forwardPage.getData().size();
         foundDeleted = false;
         do {
-          LOG.debug(
-              "Limit {} backward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
-              limit,
-              pageCount,
-              indexInAllTables,
-              totalRecords,
-              after);
+          LOG.debug("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
           forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           printEntities(forwardPage);
