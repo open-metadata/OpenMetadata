@@ -483,7 +483,7 @@ public class MigrationUtil {
           // the update() method here internally calls FullyQualifiedName.buildHash so not adding it
           stored.setFullyQualifiedName(EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)));
           stored.setDisplayName(testSuiteFqn);
-          testSuiteRepository.getDao().update(stored);
+          testSuiteRepository.getDao().update("nameHash", stored);
         } catch (EntityNotFoundException ex) {
           try {
             TestSuite newExecutableTestSuite =
@@ -540,7 +540,7 @@ public class MigrationUtil {
       TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId(), Include.ALL);
       if (Boolean.FALSE.equals(temp.getExecutable())) {
         temp.setExecutable(false);
-        testSuiteRepository.getDao().update(temp);
+        testSuiteRepository.getDao().update("nameHash", temp);
       }
 
       // get Ingestion Pipelines
