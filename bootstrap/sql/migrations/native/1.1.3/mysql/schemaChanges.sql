@@ -7,9 +7,11 @@ CREATE TABLE IF NOT EXISTS report_data_time_series (
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
     INDEX point_ts (timestamp)
 );
+
 INSERT INTO report_data_time_series (entityFQNHash,extension,jsonSchema,json)
 SELECT entityFQNHash, extension, jsonSchema, json
 FROM entity_extension_time_series WHERE extension = 'reportData.reportDataResult';
+
 DELETE FROM entity_extension_time_series
 WHERE extension = 'reportData.reportDataResult';
 
@@ -23,12 +25,33 @@ CREATE TABLE IF NOT EXISTS profiler_data_time_series (
     UNIQUE unique_hash_extension_ts (entityFQNHash, extension, timestamp),
     INDEX combined_id_ts (extension, timestamp)
 );
+
 INSERT INTO profiler_data_time_series (entityFQNHash,extension,jsonSchema,json)
 SELECT entityFQNHash, extension, jsonSchema, json
 FROM entity_extension_time_series
 WHERE extension IN ('table.columnProfile', 'table.tableProfile', 'table.systemProfile');
+
 DELETE FROM entity_extension_time_series
 WHERE extension IN ('table.columnProfile', 'table.tableProfile', 'table.systemProfile');
+
+-- Create data quality data time series table and move data from entity_extension_time_series
+CREATE TABLE IF NOT EXISTS data_quality_data_time_series (
+    entityFQNHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    extension VARCHAR(256) NOT NULL,
+    jsonSchema VARCHAR(256) NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
+    UNIQUE unique_hash_extension_ts (entityFQNHash, extension, timestamp),
+    INDEX combined_id_ts (extension, timestamp)
+);
+
+INSERT INTO data_quality_data_time_series (entityFQNHash,extension,jsonSchema,json)
+SELECT entityFQNHash, extension, jsonSchema, json
+FROM entity_extension_time_series
+WHERE extension = 'testCase.testCaseResult';
+
+DELETE FROM entity_extension_time_series
+WHERE extension = 'testCase.testCaseResult';
 
 ALTER TABLE automations_workflow MODIFY COLUMN nameHash VARCHAR(256) COLLATE ascii_bin,MODIFY COLUMN workflowType VARCHAR(256) COLLATE ascii_bin, MODIFY COLUMN status VARCHAR(256) COLLATE ascii_bin;
 ALTER TABLE entity_extension MODIFY COLUMN extension VARCHAR(256) COLLATE ascii_bin;
