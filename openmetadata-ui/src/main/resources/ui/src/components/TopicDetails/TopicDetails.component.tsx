@@ -397,9 +397,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !topicPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TOPIC}
@@ -407,6 +405,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             hasEditAccess={
               topicPermissions.EditAll || topicPermissions.EditCustomFields
             }
+            hasPermission={topicPermissions.ViewAll}
           />
         ),
       },

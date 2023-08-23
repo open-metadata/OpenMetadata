@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
@@ -25,7 +24,6 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import VersionTable from 'components/VersionTable/VersionTable.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import {
   ChangeDescription,
   Column,
@@ -190,9 +188,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: !entityPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -200,6 +196,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             }
             entityType={EntityType.CONTAINER}
             hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
