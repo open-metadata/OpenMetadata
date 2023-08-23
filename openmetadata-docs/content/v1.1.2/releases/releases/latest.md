@@ -3,7 +3,7 @@ title: Latest Release
 slug: /releases/latest-release
 ---
 
-# 1.1.1 Release 🎉
+# 1.1.2 Release 🎉
 
 {% inlineCalloutContainer %}
 {% inlineCallout
@@ -11,36 +11,33 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.1.1!
+Learn how to upgrade your OpenMetadata instance to 1.1.2!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-## UI Improvements
-
-- User profile page UI / UX improvements
-- Superset Connection fixes for Basic and IAM auth type
-- Fix task flow bugs
-- UI / UX improvements for Service, Database, and Schema pages.
-- Support custom cron for schedule ingestion
-
 ## Data Quality
-- Fix BigQuery, MSSQL, and Clickhouse profiling errors
-
-## Ingestion
-- Fixed Airflow lineage extraction.
-- Added support for Databricks complex columns comments.
-- Fixed Athena lineage and usage parameter validation.
-- Airflow Managed APIs now support Airflow 2.6
+- Added support for Postgres version 11.19.
+- Fixed MariaDB time column issues.
 
 ## Connectors
-- New [Qliksense](qlik.com) Connector.
-- Hive supports extracting metadata directly from the metastore to speed up the execution. Users whose metastore is not exposed can still run the extraction pointing to Hive.
-- Added Usage & Lineage connector for Trino.
-- Impala scheme has been deprecated from Hive connector. Users can use the Impala connector instead.
-- Snowflake can now ingest TRANSIENT tables.
-- Added support for JSON fields in SingleStore.
+- Added JWT authentication support for Trino.
+- Fixed Snowflake connection test.
+- Fixed SageMaker ingestion.
+- Added external table support for BigQuery.
+
+## UI Improvements
+- Added Russian language support.
+- Supports Delete functionality for sample data.
+- Improved Schema page UX.
+- Table mentions now show Service, Schema and Database information.
+- Fixed the version history list.
+
+## Ingestion
+- Improved performance when ingesting table constraints.
 
 ## Backend
-- Bumped table and column names length
-- Aggregation Improvements for Search
-- Test Suite Improvements
+- Improved Glossary import validations.
+- Fixed Test Suite migrations and naming.
+- Fixed Classification migration.
+- Deprecated Flyway and using native migrations.
+- Improved Test Suite UI performance.
