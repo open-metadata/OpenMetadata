@@ -1450,6 +1450,12 @@ site_menu:
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
+  - category: Developers / APIs
+    url: /developers/apis
+  - category: Developers / APIs / Implementation Notes
+    url: /developers/apis/implementation-notes
+  - category: Developers / APIs / API Organization
+    url: /developers/apis/api-organization
 
   - category: SDK
     url: /sdk
