@@ -23,7 +23,7 @@ from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -194,7 +194,15 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                         "Table pattern not allowed",
                     )
                     continue
-
+                if (
+                    table.tableType == TableType.View
+                    and not self.source_config.includeViews
+                ):
+                    self.source_status.filter(
+                        table.fullyQualifiedName.__root__,
+                        "View filtered out",
+                    )
+                    continue
                 yield table
             except Exception as exc:
                 error = (
