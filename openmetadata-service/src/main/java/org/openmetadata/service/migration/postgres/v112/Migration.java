@@ -5,6 +5,7 @@ import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -13,6 +14,7 @@ import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class Migration extends MigrationProcessImpl {
@@ -35,6 +37,9 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     // Run Data Migration to Remove the quoted Fqn`
     unquoteTestSuiteMigration(collectionDAO);
+
+    // Run UserName Migration to make lowercase
+    lowerCaseUserNameAndEmail(collectionDAO);
   }
 
   public static void unquoteTestSuiteMigration(CollectionDAO collectionDAO) {
@@ -54,5 +59,22 @@ public class Migration extends MigrationProcessImpl {
         collectionDAO.testSuiteDAO().update(suite);
       }
     }
+  }
+
+  public static void lowerCaseUserNameAndEmail(CollectionDAO daoCollection) {
+    LOG.debug("Starting Migration UserName and Email to Lowercase");
+    int total = daoCollection.userDAO().listTotalCount();
+    int offset = 0;
+    int limit = 200;
+    while (offset < total) {
+      List<String> userEntities = daoCollection.userDAO().listAfterWithOffset(limit, offset);
+      for (String json : userEntities) {
+        User userEntity = JsonUtils.readValue(json, User.class);
+        userEntity.setFullyQualifiedName(userEntity.getFullyQualifiedName().toLowerCase());
+        daoCollection.userDAO().update(userEntity);
+      }
+      offset = offset + limit;
+    }
+    LOG.debug("Completed Migrating UserName and Email to Lowercase");
   }
 }

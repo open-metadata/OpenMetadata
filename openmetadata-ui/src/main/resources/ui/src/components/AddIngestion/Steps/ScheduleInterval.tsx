@@ -28,17 +28,23 @@ const ScheduleInterval = ({
   scheduleInterval,
   status,
   submitButtonLabel,
+  children,
 }: ScheduleIntervalProps) => {
   const { t } = useTranslation();
 
   return (
-    <Form data-testid="schedule-intervel-container" onFinish={onDeploy}>
+    <Form
+      data-testid="schedule-intervel-container"
+      layout="vertical"
+      onFinish={onDeploy}>
       <CronEditor
         disabledCronChange={disabledCronChange}
         includePeriodOptions={includePeriodOptions}
         value={scheduleInterval}
         onChange={onChange}
       />
+
+      {children}
 
       <Col className="d-flex justify-end mt-4" span={24}>
         <Button
