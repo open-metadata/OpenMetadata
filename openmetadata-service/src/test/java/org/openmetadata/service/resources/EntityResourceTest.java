@@ -1602,19 +1602,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   void testInvalidEntityList() {
     // Invalid entityCreated list
     assertResponse(
-        () -> getChangeEvents("invalidEntity", entityType, null, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        () -> getChangeEvents("invalidEntity", entityType, null, null, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityCreated");
 
     // Invalid entityUpdated list
     assertResponse(
-        () -> getChangeEvents(null, "invalidEntity", entityType, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        () -> getChangeEvents(null, "invalidEntity", null, entityType, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityUpdated");
 
     // Invalid entityDeleted list
     assertResponse(
-        () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        () -> getChangeEvents(entityType, null, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityDeleted");
   }
@@ -2234,7 +2234,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
-                    getChangeEvents(createdFilter, updatedFilter, null, timestamp, authHeaders), timestamp));
+                    getChangeEvents(createdFilter, updatedFilter, null, null, timestamp, authHeaders), timestamp));
     ChangeEvent changeEvent = eventHolder.getExpectedEvent();
     assertNotNull(
         changeEvent,
@@ -2276,7 +2276,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
-        .until(() -> eventHolder.hasDeletedEvent(getChangeEvents(null, null, entityType, timestamp, authHeaders), id));
+        .until(
+            () ->
+                eventHolder.hasDeletedEvent(getChangeEvents(null, null, null, entityType, timestamp, authHeaders), id));
     ChangeEvent changeEvent = eventHolder.getExpectedEvent();
 
     assertNotNull(changeEvent, "Deleted event after " + timestamp + " was not found for entity " + id);
@@ -2293,11 +2295,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected ResultList<ChangeEvent> getChangeEvents(
-      String entityCreated, String entityUpdated, String entityDeleted, long timestamp, Map<String, String> authHeaders)
+      String entityCreated,
+      String entityUpdated,
+      String entityRestored,
+      String entityDeleted,
+      long timestamp,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("events");
     target = entityCreated == null ? target : target.queryParam("entityCreated", entityCreated);
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
+    target = entityUpdated == null ? target : target.queryParam("entityRestored", entityRestored);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
     target = target.queryParam("timestamp", timestamp);
     return TestUtils.get(target, EventList.class, authHeaders);
