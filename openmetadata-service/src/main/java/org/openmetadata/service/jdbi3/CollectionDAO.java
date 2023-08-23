@@ -149,6 +149,12 @@ public interface CollectionDAO {
   ReportDataTimeSeriesDAO reportDataTimeSeriesDao();
 
   @CreateSqlObject
+  ProfilerDataTimeSeriesDAO profilerDataTimeSeriesDao();
+
+  @CreateSqlObject
+  DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -3134,6 +3140,20 @@ public interface CollectionDAO {
     @Override
     default String getTimeSeriesTableName() {
       return "report_data_time_series";
+    }
+  }
+
+  interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "profiler_data_time_series";
+    }
+  }
+
+  interface DataQualityDataTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "data_quality_data_time_series";
     }
   }
 
