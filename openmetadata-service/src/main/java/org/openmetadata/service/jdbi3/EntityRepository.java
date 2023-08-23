@@ -20,13 +20,9 @@ import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -189,8 +185,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
-  protected final boolean supportsDomain;
-  protected final boolean supportsDataProducts;
   protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
@@ -238,12 +232,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_EXTENSION);
     }
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
-    this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
-    if (supportsDomain) {
-      this.patchFields.addField(allowedFields, FIELD_DOMAIN);
-      this.putFields.addField(allowedFields, FIELD_DOMAIN);
-    }
-    this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
   }
 
   /**
@@ -669,8 +657,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void storeRelationshipsInternal(T entity) {
     storeOwner(entity, entity.getOwner());
     applyTags(entity);
-    storeDomain(entity, entity.getDomain());
-    storeDataProducts(entity, entity.getDataProducts());
     storeRelationships(entity);
   }
 
@@ -678,11 +664,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : entity.getOwner());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : entity.getDomain());
-    entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
     entity.setChildren(fields.contains("children") ? getChildren(entity) : entity.getChildren());
-    entity.setExperts(fields.contains("experts") ? getExperts(entity) : entity.getExperts());
     entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : entity.getReviewers());
     setFields(entity, fields);
     return entity;
@@ -692,11 +675,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwner(fields.contains(FIELD_OWNER) ? entity.getOwner() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
-    entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
-    entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
     entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
-    entity.setExperts(fields.contains("experts") ? entity.getExperts() : null);
     entity.setReviewers(fields.contains("reviewers") ? entity.getReviewers() : null);
     clearFields(entity, fields);
     return entity;
@@ -1034,10 +1014,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwner(null);
     List<TagLabel> tags = entity.getTags();
     entity.setTags(null);
-    EntityReference domain = entity.getDomain();
-    entity.setDomain(null);
-    List<EntityReference> dataProducts = entity.getDataProducts();
-    entity.setDataProducts(null);
     List<EntityReference> followers = entity.getFollowers();
     entity.setFollowers(null);
 
@@ -1053,8 +1029,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Restore the relationships
     entity.setOwner(owner);
     entity.setTags(tags);
-    entity.setDomain(domain);
-    entity.setDataProducts(dataProducts);
     entity.setFollowers(followers);
   }
 
@@ -1503,14 +1477,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
-  public EntityReference getDomain(T entity) {
-    return getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
-  }
-
-  private List<EntityReference> getDataProducts(T entity) {
-    return !supportsDataProducts ? null : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
-  }
-
   protected EntityReference getParent(T entity) {
     return getFromEntityRef(entity.getId(), Relationship.CONTAINS, entityType, false);
   }
@@ -1521,10 +1487,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getReviewers(T entity) {
     return findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER);
-  }
-
-  protected List<EntityReference> getExperts(T entity) {
-    return findTo(entity.getId(), entityType, Relationship.EXPERT, Entity.USER);
   }
 
   public EntityReference getOwner(EntityReference ref) {
@@ -1549,25 +1511,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           entity.getId());
       addRelationship(owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
-    }
-  }
-
-  protected void storeDomain(T entity, EntityReference domain) {
-    if (supportsDomain && domain != null) {
-      // Add relationship domain --- has ---> entity
-      LOG.info("Adding domain {} for entity {}:{}", domain.getFullyQualifiedName(), entityType, entity.getId());
-      addRelationship(domain.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
-    }
-  }
-
-  protected void storeDataProducts(T entity, List<EntityReference> dataProducts) {
-    if (supportsDataProducts && !nullOrEmpty(dataProducts)) {
-      for (EntityReference dataProduct : dataProducts) {
-        // Add relationship dataProduct --- has ---> entity
-        LOG.info(
-            "Adding dataProduct {} for entity {}:{}", dataProduct.getFullyQualifiedName(), entityType, entity.getId());
-        addRelationship(dataProduct.getId(), entity.getId(), Entity.DATA_PRODUCT, entityType, Relationship.HAS);
-      }
     }
   }
 
@@ -1651,13 +1594,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
   }
 
-  public EntityReference validateDomain(String domainFqn) {
-    if (!supportsDomain || domainFqn == null) {
-      return null;
-    }
-    return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
-  }
-
   /** Override this method to support downloading CSV functionality */
   public String exportToCsv(String name, String user) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
@@ -1732,8 +1668,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateOwner();
         updateExtension();
         updateTags(updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
-        updateDomain();
-        updateDataProducts();
         entitySpecificUpdate();
       }
 
@@ -1863,47 +1797,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       removeExtension(original);
       storeExtension(updated);
-    }
-
-    private void updateDomain() {
-      if (original.getDomain() == updated.getDomain()) {
-        return;
-      }
-
-      EntityReference origDomain = original.getDomain();
-      EntityReference updatedDomain = updated.getDomain();
-      if ((operation.isPatch() || updatedDomain != null)
-          && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
-        if (origDomain != null) {
-          LOG.info(
-              "Removing domain {} for entity {}", origDomain.getFullyQualifiedName(), original.getFullyQualifiedName());
-          deleteRelationship(origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
-        }
-        if (updatedDomain != null) {
-          // Add relationship owner --- owns ---> ownedEntity
-          LOG.info(
-              "Adding domain {} for entity {}",
-              updatedDomain.getFullyQualifiedName(),
-              original.getFullyQualifiedName());
-          addRelationship(updatedDomain.getId(), original.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
-        }
-      }
-    }
-
-    private void updateDataProducts() {
-      if (!supportsDataProducts) {
-        return;
-      }
-      List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
-      List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
-      updateFromRelationships(
-          "dataProducts",
-          DATA_PRODUCT,
-          origDataProducts,
-          updatedDataProducts,
-          Relationship.HAS,
-          entityType,
-          original.getId());
     }
 
     public final boolean updateVersion(Double oldVersion) {

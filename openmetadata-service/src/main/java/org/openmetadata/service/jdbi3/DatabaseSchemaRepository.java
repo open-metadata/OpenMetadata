@@ -101,7 +101,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     UUID databaseId = schema.getDatabase().getId();
     // If schema does not have owner, then inherit parent database owner
     if (fields.contains(FIELD_OWNER) && schema.getOwner() == null) {
-      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner,domain", ALL);
+      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner", ALL);
       schema.withOwner(database.getOwner());
     }
 

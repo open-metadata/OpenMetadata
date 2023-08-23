@@ -73,8 +73,6 @@ public final class Entity {
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
   public static final String FIELD_REVIEWERS = "reviewers";
-  public static final String FIELD_DOMAIN = "domain";
-  public static final String FIELD_DATA_PRODUCTS = "dataProducts";
 
   //
   // Service entities
@@ -136,12 +134,6 @@ public final class Entity {
   // Operation related entities
   //
   public static final String INGESTION_PIPELINE = "ingestionPipeline";
-
-  //
-  // Domain related entities
-  //
-  public static final String DOMAIN = "domain";
-  public static final String DATA_PRODUCT = "dataProduct";
 
   //
   // Other entities
