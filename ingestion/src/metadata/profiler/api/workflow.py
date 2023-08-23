@@ -194,7 +194,10 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                         "Table pattern not allowed",
                     )
                     continue
-                if table.tableType == TableType.View and not self.source_config.includeViews:
+                if (
+                    table.tableType == TableType.View
+                    and not self.source_config.includeViews
+                ):
                     self.source_status.filter(
                         table.fullyQualifiedName.__root__,
                         "View filtered out",
