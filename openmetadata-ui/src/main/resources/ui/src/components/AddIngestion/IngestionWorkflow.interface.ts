@@ -12,6 +12,7 @@
  */
 
 import { LoadingState, ServicesUpdateRequest } from 'Models';
+import { ReactNode } from 'react';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -56,7 +57,12 @@ export type ScheduleIntervalProps = {
   scheduleInterval: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
+  children?: ReactNode;
   disabledCronChange?: boolean;
   onBack: () => void;
-  onDeploy: () => void;
+  onDeploy: (values: WorkflowExtraConfig) => void;
 };
+
+export interface WorkflowExtraConfig {
+  retries: number;
+}

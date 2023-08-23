@@ -92,3 +92,10 @@ $$section
 
 Optional configuration to soft delete `dashboards` in OpenMetadata if the source `dashboards` are deleted. After deleting, all the associated entities like lineage, etc., with that `dashboard` will be deleted.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$
+

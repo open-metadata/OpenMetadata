@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Form, Input, Typography } from 'antd';
 import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { LOADING_STATE } from 'enums/common.enum';
 import { isUndefined, omit, trim } from 'lodash';
@@ -35,7 +35,10 @@ import {
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
-import { AddIngestionProps } from './IngestionWorkflow.interface';
+import {
+  AddIngestionProps,
+  WorkflowExtraConfig,
+} from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
@@ -69,11 +72,12 @@ const AddIngestion = ({
       getIngestionFrequency(pipelineType)
   );
 
-  const { sourceConfig, ingestionName } = useMemo(
+  const { sourceConfig, ingestionName, retries } = useMemo(
     () => ({
       sourceConfig: data?.sourceConfig.config,
       ingestionName:
         data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      retries: data?.airflowConfig.retries ?? 0,
     }),
     [data, pipelineType, serviceData]
   );
@@ -116,7 +120,7 @@ const AddIngestion = ({
     handleNext(2);
   };
 
-  const createNewIngestion = () => {
+  const createNewIngestion = (extraData: WorkflowExtraConfig) => {
     const { name = '', enableDebugLog, ...rest } = workflowData ?? {};
     const ingestionName = trim(name);
     setSaveState(LOADING_STATE.WAITING);
@@ -130,6 +134,7 @@ const AddIngestion = ({
       airflowConfig: {
         scheduleInterval,
         startDate: date,
+        retries: extraData.retries,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
@@ -168,13 +173,14 @@ const AddIngestion = ({
     }
   };
 
-  const updateIngestion = () => {
+  const updateIngestion = (extraData: WorkflowExtraConfig) => {
     if (data) {
       const updatedData: IngestionPipeline = {
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
           scheduleInterval,
+          retries: extraData.retries,
         },
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
@@ -213,11 +219,13 @@ const AddIngestion = ({
     });
   };
 
-  const handleScheduleIntervalDeployClick = () => {
+  const handleScheduleIntervalDeployClick = (
+    extraData: WorkflowExtraConfig
+  ) => {
     if (status === FormSubmitType.ADD) {
-      createNewIngestion();
+      createNewIngestion(extraData);
     } else {
-      updateIngestion();
+      updateIngestion(extraData);
     }
   };
 
@@ -288,8 +296,20 @@ const AddIngestion = ({
             }
             onBack={() => handlePrev(1)}
             onChange={(data) => setScheduleInterval(data)}
-            onDeploy={handleScheduleIntervalDeployClick}
-          />
+            onDeploy={handleScheduleIntervalDeployClick}>
+            <Form.Item
+              className="m-t-xs"
+              colon={false}
+              initialValue={retries}
+              label={t('label.number-of-retries')}
+              name="retries">
+              <Input
+                min={0}
+                type="number"
+                onFocus={() => onFocus('root/retries')}
+              />
+            </Form.Item>
+          </ScheduleInterval>
         )}
 
         {activeIngestionStep > 2 && handleViewServiceClick && (
