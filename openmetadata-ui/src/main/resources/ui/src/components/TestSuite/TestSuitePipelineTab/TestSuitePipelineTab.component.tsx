@@ -127,14 +127,13 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     });
   };
 
-  const getAllIngestionWorkflows = async (paging?: string) => {
+  const getAllIngestionWorkflows = async () => {
     try {
       setIsLoading(true);
-      const response = await getIngestionPipelines(
-        ['owner', 'pipelineStatuses'],
-        testSuiteFQN,
-        paging
-      );
+      const response = await getIngestionPipelines({
+        arrQueryFields: ['owner', 'pipelineStatuses'],
+        testSuite: testSuiteFQN,
+      });
       setTestSuitePipelines(response.data);
     } catch (error) {
       showErrorToast(error as AxiosError);

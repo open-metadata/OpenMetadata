@@ -78,14 +78,18 @@ export const getIngestionPipelineByName = async (
   return response.data;
 };
 
-export const getIngestionPipelines = async (
-  arrQueryFields: Array<string>,
-  serviceFilter?: string,
-  paging?: string,
-  pipelineType?: PipelineType
-) => {
+export const getIngestionPipelines = async (data: {
+  arrQueryFields: Array<string>;
+  serviceFilter?: string;
+  paging?: string;
+  pipelineType?: PipelineType;
+  testSuite?: string;
+}) => {
+  const { arrQueryFields, serviceFilter, paging, pipelineType, testSuite } =
+    data;
   const queryParamString = QueryString.stringify({
     service: serviceFilter,
+    testSuite,
     pipelineType,
   });
 

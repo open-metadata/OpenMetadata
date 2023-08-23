@@ -239,11 +239,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: string) => {
       try {
         setIsIngestionPipelineLoading(true);
-        const response = await getIngestionPipelines(
-          ['owner', 'pipelineStatuses'],
-          getDecodedFqn(serviceFQN),
-          paging
-        );
+        const response = await getIngestionPipelines({
+          arrQueryFields: ['owner', 'pipelineStatuses'],
+          serviceFilter: getDecodedFqn(serviceFQN),
+          paging,
+        });
 
         if (response.data) {
           setIngestionPipelines(response.data);
