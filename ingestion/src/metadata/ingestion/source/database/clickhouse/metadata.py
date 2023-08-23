@@ -96,7 +96,6 @@ ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
     _get_column_info
 )
 Inspector.get_mview_names = get_mview_names
-Inspector.get_all_view_definitions = get_all_view_definitions
 ClickHouseDialect.get_mview_names = get_mview_names_dialect
 
 
