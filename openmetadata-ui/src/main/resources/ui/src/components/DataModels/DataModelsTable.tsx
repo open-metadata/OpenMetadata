@@ -43,9 +43,13 @@ const DataModelTable = ({
         key: 'displayName',
         width: 350,
         render: (_, record: ServicePageData) => {
+          const dataModelDisplayName = getEntityName(record);
+
           return (
-            <Link to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
-              {getEntityName(record)}
+            <Link
+              data-testid={`data-model-${dataModelDisplayName}`}
+              to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
+              {dataModelDisplayName}
             </Link>
           );
         },

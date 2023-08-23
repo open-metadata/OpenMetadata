@@ -19,7 +19,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
+import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -57,8 +57,6 @@ const MlModelPage = () => {
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const [currentVersion, setCurrentVersion] = useState<string>();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -103,7 +101,6 @@ const MlModelPage = () => {
         timestamp: 0,
         id: res.id,
       });
-      setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -127,10 +124,10 @@ const MlModelPage = () => {
     try {
       const response = await saveUpdatedMlModelData(updatedMlModel);
       const { description, version } = response;
-      setCurrentVersion(version?.toString());
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        description: description,
+        description,
+        version,
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -177,12 +174,12 @@ const MlModelPage = () => {
 
   const onTagUpdate = async (updatedMlModel: Mlmodel) => {
     try {
-      const res = await saveUpdatedMlModelData(updatedMlModel);
+      const { tags, version } = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        tags: sortTagsCaseInsensitive(res.tags ?? []),
+        tags: sortTagsCaseInsensitive(tags ?? []),
+        version: version,
       }));
-      setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -197,14 +194,15 @@ const MlModelPage = () => {
     updatedMlModel: Mlmodel
   ): Promise<void> => {
     try {
-      const res = await saveUpdatedMlModelData(updatedMlModel);
+      const { displayName, owner, tags, version } =
+        await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        displayName: res.displayName,
-        owner: res.owner,
-        tags: res.tags,
+        displayName,
+        owner,
+        tags,
+        version,
       }));
-      setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -217,12 +215,14 @@ const MlModelPage = () => {
 
   const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
     try {
-      const response = await saveUpdatedMlModelData(updatedMlModel);
+      const { mlFeatures, version } = await saveUpdatedMlModelData(
+        updatedMlModel
+      );
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        mlFeatures: response.mlFeatures,
+        mlFeatures,
+        version,
       }));
-      setCurrentVersion(response.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -232,7 +232,6 @@ const MlModelPage = () => {
     try {
       const data = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail(data);
-      setCurrentVersion(data.version?.toString());
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -258,7 +257,11 @@ const MlModelPage = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.MLMODEL, mlModelFqn, currentVersion as string)
+      getVersionPath(
+        EntityType.MLMODEL,
+        mlModelFqn,
+        toString(mlModelDetail.version)
+      )
     );
   };
 
@@ -293,7 +296,6 @@ const MlModelPage = () => {
       tagUpdateHandler={onTagUpdate}
       unFollowMlModelHandler={unFollowMlModel}
       updateMlModelFeatures={updateMlModelFeatures}
-      version={currentVersion}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
     />
