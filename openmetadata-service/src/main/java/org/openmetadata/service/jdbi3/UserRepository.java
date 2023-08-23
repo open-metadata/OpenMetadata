@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -76,6 +77,13 @@ public class UserRepository extends EntityRepository<User> {
     super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
     organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
     this.quoteFqn = true;
+  }
+
+  // with the introduction of fqnhash we added case sensitivity to all of the entities
+  // however usernames , emails cannot be case sensitive
+  @Override
+  public void setFullyQualifiedName(User user) {
+    user.setFullyQualifiedName(quoteName(user.getName().toLowerCase()));
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
