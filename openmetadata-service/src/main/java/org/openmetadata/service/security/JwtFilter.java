@@ -196,7 +196,6 @@ public class JwtFilter implements ContainerRequestFilter {
     String userName;
     String domain;
     if (jwtClaim.contains("@")) {
-      // LowerCase the email
       userName = jwtClaim.split("@")[0];
       domain = jwtClaim.split("@")[1];
     } else {

@@ -2212,7 +2212,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return patchEntityAndCheck(entity, originalJson, authHeaders, MINOR_UPDATE, change);
   }
 
-  protected void validateCommonEntityFields(T entity, CreateEntity create, String updatedBy) {
+  protected final void validateCommonEntityFields(T entity, CreateEntity create, String updatedBy) {
     assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
     assertEquals(create.getName(), entity.getName());
     assertEquals(create.getDisplayName(), entity.getDisplayName());
