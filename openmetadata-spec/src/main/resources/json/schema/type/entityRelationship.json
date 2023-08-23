@@ -30,8 +30,7 @@
         "relatedTo",
         "reviews",
         "reactedTo",
-        "voted",
-        "expert"
+        "voted"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },

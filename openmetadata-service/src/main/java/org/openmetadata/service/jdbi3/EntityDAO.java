@@ -51,7 +51,7 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default String getNameHashColumn() {
     return "nameHash";
-  }
+  };
 
   default boolean supportsSoftDelete() {
     return true;
@@ -64,7 +64,7 @@ public interface EntityDAO<T extends EntityInterface> {
   @ConnectionAwareSqlUpdate(
       value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb)",
       connectionType = POSTGRES)
-  int insert(
+  void insert(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
@@ -288,7 +288,10 @@ public interface EntityDAO<T extends EntityInterface> {
     if (include == null || include == Include.NON_DELETED) {
       return "AND deleted = FALSE";
     }
-    return include == Include.DELETED ? " AND deleted = TRUE" : "";
+    if (include == Include.DELETED) {
+      return " AND deleted = TRUE";
+    }
+    return "";
   }
 
   default T findEntityById(UUID id, Include include) {
@@ -315,7 +318,11 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default T jsonToEntity(String json, String identity) {
     Class<T> clz = getEntityClass();
-    T entity = json != null ? JsonUtils.readValue(json, clz) : null;
+    T entity = null;
+    if (json != null) {
+
+      entity = JsonUtils.readValue(json, clz);
+    }
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));

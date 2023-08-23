@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
@@ -321,9 +320,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
-    if (nullOrEmpty(fqns)) {
-      return null;
-    }
     return EntityUtil.getEntityReferences(entityType, fqns);
   }
 
