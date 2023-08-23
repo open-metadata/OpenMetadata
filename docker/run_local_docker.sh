@@ -114,6 +114,7 @@ done
 
 until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
   printf 'Checking if Sample Data DAG is reachable...\n'
+  curl --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"
   sleep 5
 done
 
