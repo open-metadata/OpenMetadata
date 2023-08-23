@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
-import { isNil } from 'lodash';
+import { Col, Row } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import CustomStatistic from './CustomStatistic';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 type TotalEntityInsightSummaryProps = {
@@ -36,37 +36,14 @@ const TotalEntityInsightSummary = ({
   return (
     <Row>
       <Col className="p-b-sm" span={24}>
-        <div className="d-flex justify-between">
-          <div className="d-flex flex-col">
-            <Typography.Text className="font-medium">
-              {t('label.total-entity', {
-                entity: t('label.asset-plural'),
-              })}
-            </Typography.Text>
-            <Typography.Text className="font-bold text-2xl">
-              {total}
-            </Typography.Text>
-          </div>
-          <div className="d-flex flex-col justify-end text-right">
-            {Boolean(relativePercentage) && !isNil(relativePercentage) && (
-              <Typography.Paragraph className="m-b-0">
-                <Typography.Text
-                  className="d-block"
-                  type={relativePercentage >= 0 ? 'success' : 'danger'}>
-                  {`${
-                    relativePercentage >= 0 ? '+' : ''
-                  }${relativePercentage.toFixed(2)}%`}
-                </Typography.Text>
-                <Typography.Text className="d-block">
-                  {Boolean(selectedDays) &&
-                    t('label.days-change-lowercase', {
-                      days: selectedDays,
-                    })}
-                </Typography.Text>
-              </Typography.Paragraph>
-            )}
-          </div>
-        </div>
+        <CustomStatistic
+          changeInValue={relativePercentage}
+          duration={selectedDays}
+          label={t('label.total-entity', {
+            entity: t('label.asset-plural'),
+          })}
+          value={total}
+        />
       </Col>
       {entities.map((entity) => {
         const progress = (latestData[entity] / Number(total)) * 100;
