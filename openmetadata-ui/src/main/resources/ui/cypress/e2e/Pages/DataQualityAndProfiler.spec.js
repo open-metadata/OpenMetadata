@@ -134,7 +134,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
 
-    scheduleIngestion();
+    scheduleIngestion(false);
 
     cy.wait('@deployIngestion').then(() => {
       cy.get('[data-testid="view-service-button"]')
@@ -181,7 +181,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
     cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
-    scheduleIngestion();
+    scheduleIngestion(false);
 
     cy.get('[data-testid="success-line"]')
       .scrollIntoView()

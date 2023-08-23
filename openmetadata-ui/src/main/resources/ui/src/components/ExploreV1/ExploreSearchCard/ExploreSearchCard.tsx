@@ -118,7 +118,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               <div className="d-flex gap-2 items-center">
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
-                  <TitleBreadcrumb titleLinks={breadcrumbs} />
+                  <TitleBreadcrumb
+                    titleLinks={breadcrumbs}
+                    widthDeductions={780}
+                  />
                 </div>
               </div>
             </Col>

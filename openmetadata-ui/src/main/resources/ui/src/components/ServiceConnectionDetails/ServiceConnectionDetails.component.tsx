@@ -172,7 +172,7 @@ const ServiceConnectionDetails = ({
         return (
           <Col key={key} span={12}>
             <Row>
-              <Col span={8}>
+              <Col className="d-flex items-center" span={8}>
                 <Space size={0}>
                   <p className="text-grey-muted m-0">{key || title}:</p>
                   <Tooltip
@@ -189,6 +189,7 @@ const ServiceConnectionDetails = ({
               <Col span={16}>
                 <Input
                   readOnly
+                  className="w-full border-none"
                   type={format !== 'password' ? 'text' : 'password'}
                   value={value}
                 />
