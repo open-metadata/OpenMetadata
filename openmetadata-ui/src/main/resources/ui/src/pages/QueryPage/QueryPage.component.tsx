@@ -32,23 +32,17 @@ import { Query } from 'generated/entity/data/query';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { parseSearchParams } from 'utils/Query/QueryUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const QueryPage = () => {
   const { datasetFQN, queryId } =
     useParams<{ datasetFQN: string; queryId: string }>();
   const { t } = useTranslation();
-  const location = useLocation();
-  const searchFilter = useMemo(
-    () => parseSearchParams(location.search),
-    [location.search]
-  );
 
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -191,8 +185,8 @@ const QueryPage = () => {
   }
 
   return (
-    <PageLayoutV1 className="p-x-lg" pageTitle={t('label.query')}>
-      <Row gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.query')}>
+      <Row className="p-x-lg" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
         </Col>
@@ -202,7 +196,6 @@ const QueryPage = () => {
             afterDeleteAction={afterDeleteAction}
             permission={queryPermissions}
             query={query}
-            tableId={searchFilter.tableId}
             onQueryUpdate={handleQueryUpdate}
             onUpdateVote={updateVote}
           />
