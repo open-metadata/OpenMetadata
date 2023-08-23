@@ -116,8 +116,9 @@ public class MetadataServiceResource
 
   @Override
   public MetadataService addHref(UriInfo uriInfo, MetadataService service) {
-    super.addHref(uriInfo, service);
+    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 

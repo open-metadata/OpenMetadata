@@ -14,8 +14,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
@@ -166,8 +168,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public Dashboard setInheritedFields(Dashboard dashboard, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
-    return inheritDomain(dashboard, fields, dashboardService);
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(dashboard.getDomain())) {
+      DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
+      dashboard.setDomain(dashboardService.getDomain());
+    }
+    return dashboard;
   }
 
   @Override

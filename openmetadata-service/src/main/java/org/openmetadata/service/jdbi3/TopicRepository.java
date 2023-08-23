@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
@@ -109,8 +110,11 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public Topic setInheritedFields(Topic topic, Fields fields) {
     // If topic does not have domain, then inherit it from parent messaging service
-    MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
-    return inheritDomain(topic, fields, service);
+    if (fields.contains(FIELD_DOMAIN) && topic.getDomain() == null) {
+      MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
+      topic.withDomain(service.getDomain());
+    }
+    return topic;
   }
 
   @Override

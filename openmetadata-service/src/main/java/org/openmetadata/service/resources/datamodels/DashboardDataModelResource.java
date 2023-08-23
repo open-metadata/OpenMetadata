@@ -57,6 +57,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dashboard/datamodels")
@@ -72,8 +73,10 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
 
   @Override
   public DashboardDataModel addHref(UriInfo uriInfo, DashboardDataModel dashboardDataModel) {
-    super.addHref(uriInfo, dashboardDataModel);
+    dashboardDataModel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, dashboardDataModel.getId()));
+    Entity.withHref(uriInfo, dashboardDataModel.getOwner());
     Entity.withHref(uriInfo, dashboardDataModel.getService());
+    Entity.withHref(uriInfo, dashboardDataModel.getFollowers());
     return dashboardDataModel;
   }
 

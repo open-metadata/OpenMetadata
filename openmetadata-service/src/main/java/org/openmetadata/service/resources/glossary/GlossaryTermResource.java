@@ -75,10 +75,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
-    super.addHref(uriInfo, term);
+    term.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, term.getId()));
     Entity.withHref(uriInfo, term.getGlossary());
     Entity.withHref(uriInfo, term.getParent());
+    Entity.withHref(uriInfo, term.getChildren());
     Entity.withHref(uriInfo, term.getRelatedTerms());
+    Entity.withHref(uriInfo, term.getReviewers());
+    Entity.withHref(uriInfo, term.getOwner());
+    Entity.withHref(uriInfo, term.getDomain());
     return term;
   }
 

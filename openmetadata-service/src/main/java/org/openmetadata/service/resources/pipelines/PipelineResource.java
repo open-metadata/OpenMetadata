@@ -64,6 +64,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/pipelines")
@@ -80,8 +81,11 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
-    super.addHref(uriInfo, pipeline);
+    pipeline.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, pipeline.getId()));
+    Entity.withHref(uriInfo, pipeline.getOwner());
     Entity.withHref(uriInfo, pipeline.getService());
+    Entity.withHref(uriInfo, pipeline.getFollowers());
+    Entity.withHref(uriInfo, pipeline.getDomain());
     return pipeline;
   }
 

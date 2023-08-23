@@ -85,8 +85,10 @@ public class DatabaseServiceResource
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
-    super.addHref(uriInfo, service);
+    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
+    Entity.withHref(uriInfo, service.getOwner());
     Entity.withHref(uriInfo, service.getPipelines());
+    Entity.withHref(uriInfo, service.getDomain());
     return service;
   }
 

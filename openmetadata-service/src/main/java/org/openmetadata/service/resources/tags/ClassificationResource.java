@@ -366,6 +366,11 @@ public class ClassificationResource extends EntityResource<Classification, Class
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @Override
+  public Classification addHref(UriInfo uriInfo, Classification category) {
+    return category;
+  }
+
   public static Classification getClassification(CreateClassification create, SecurityContext securityContext) {
     return getClassification(create, securityContext.getUserPrincipal().getName());
   }

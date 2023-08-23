@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
@@ -63,6 +64,7 @@ import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/messagingServices")
@@ -74,6 +76,13 @@ public class MessagingServiceResource
     extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   public static final String FIELDS = "owner,domain";
+
+  @Override
+  public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
+    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
+    Entity.withHref(uriInfo, service.getOwner());
+    return service;
+  }
 
   public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(MessagingService.class, new MessagingServiceRepository(dao), authorizer, ServiceType.MESSAGING);

@@ -80,8 +80,10 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
-    super.addHref(uriInfo, topic);
+    Entity.withHref(uriInfo, topic.getOwner());
     Entity.withHref(uriInfo, topic.getService());
+    Entity.withHref(uriInfo, topic.getFollowers());
+    Entity.withHref(uriInfo, topic.getDomain());
     return topic;
   }
 

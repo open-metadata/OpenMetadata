@@ -82,16 +82,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.getFields(fields);
   }
 
-  protected T addHref(UriInfo uriInfo, T entity) {
-    Entity.withHref(uriInfo, entity.getOwner());
-    Entity.withHref(uriInfo, entity.getFollowers());
-    Entity.withHref(uriInfo, entity.getExperts());
-    Entity.withHref(uriInfo, entity.getReviewers());
-    Entity.withHref(uriInfo, entity.getChildren());
-    Entity.withHref(uriInfo, entity.getDomain());
-    Entity.withHref(uriInfo, entity.getDataProducts());
-    return entity;
-  }
+  public abstract T addHref(UriInfo uriInfo, T entity);
 
   protected List<MetadataOperation> getEntitySpecificOperations() {
     return null;

@@ -89,12 +89,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
-    super.addHref(uriInfo, team);
+    Entity.withHref(uriInfo, team.getOwner());
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
     Entity.withHref(uriInfo, team.getParents());
+    Entity.withHref(uriInfo, team.getChildren());
     Entity.withHref(uriInfo, team.getPolicies());
+    Entity.withHref(uriInfo, team.getDomain());
     return team;
   }
 

@@ -78,7 +78,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
 
   @Override
   public Query addHref(UriInfo uriInfo, Query entity) {
-    super.addHref(uriInfo, entity);
+    Entity.withHref(uriInfo, entity.getOwner());
+    Entity.withHref(uriInfo, entity.getFollowers());
     Entity.withHref(uriInfo, entity.getUsers());
     Entity.withHref(uriInfo, entity.getQueryUsedIn());
     return entity;
