@@ -49,14 +49,10 @@ mock_couch_config = {
                 "bucket": "default",
                 "username": "username",
                 "password": "password",
-                "hostport": "localhost"
+                "hostport": "localhost",
             },
         },
-        "sourceConfig": {
-            "config": {
-                "type": "DatabaseMetadata"
-            }
-        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -171,7 +167,7 @@ MOCK_DATABASE_SCHEMA_NAMES = [
 
 EXPECTED_TABLE_NAMES = [
     ("random_table", TableType.Regular),
-    ("random1_table",TableType.Regular)
+    ("random1_table", TableType.Regular),
 ]
 
 MOCK_TABLE_NAMES = [
@@ -192,14 +188,12 @@ class CouchbaseUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.couchbase.metadata.CouchbaseSource.test_connection"
     )
-    @patch(
-        "metadata.ingestion.source.database.couchbase.connection.get_connection"
-    )
-    def __init__(self, methodName, get_connection,test_connection) -> None:
+    @patch("metadata.ingestion.source.database.couchbase.connection.get_connection")
+    def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
-        get_connection.return_value= False
+        get_connection.return_value = False
         test_connection.return_value = False
-        
+
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_couch_config)
         self.couch_source = CouchbaseSource.create(
             mock_couch_config["source"],
