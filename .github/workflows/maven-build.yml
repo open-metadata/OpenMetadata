@@ -12,6 +12,7 @@
 name: Maven MySQL Tests CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
