@@ -2808,11 +2808,6 @@ public interface CollectionDAO {
     default User findEntityByName(String fqn, Include include) {
       return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);
     }
-
-    @Override
-    default User findEntityByName(String fqn, String nameHashColumn, Include include) {
-      return EntityDAO.super.findEntityByName(fqn.toLowerCase(), nameHashColumn, include);
-    }
   }
 
   interface ChangeEventDAO {

@@ -1,7 +1,9 @@
 package org.openmetadata.service.resources.bots;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -25,6 +27,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TestUtils;
 
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
@@ -113,7 +116,13 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
 
   @Override
   public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders) {
-    assertReference(request.getBotUser(), entity.getBotUser());
+    if (request.getBotUser() != null) {
+      assertNotNull(entity.getBotUser());
+      TestUtils.validateEntityReference(entity.getBotUser());
+      assertEquals(request.getBotUser().toLowerCase(), entity.getBotUser().getFullyQualifiedName().toLowerCase());
+    } else {
+      assertNull(entity.getBotUser());
+    }
   }
 
   @Override
