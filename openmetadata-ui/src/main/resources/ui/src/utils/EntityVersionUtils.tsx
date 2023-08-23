@@ -24,6 +24,7 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
+import { Column as DataModelColumn } from 'generated/entity/data/dashboardDataModel';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Field } from 'generated/entity/data/topic';
@@ -652,7 +653,7 @@ export const getAllChangedEntityNames = (
 };
 
 export function getColumnsDataWithVersionChanges<
-  A extends TableColumn | ContainerColumn
+  A extends TableColumn | ContainerColumn | DataModelColumn
 >(
   changeDescription: ChangeDescription,
   colList?: A[],

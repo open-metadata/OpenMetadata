@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.mysql.v112;
 
+import static org.openmetadata.service.migration.postgres.v112.Migration.lowerCaseUserNameAndEmail;
 import static org.openmetadata.service.migration.postgres.v112.Migration.unquoteTestSuiteMigration;
 
 import lombok.SneakyThrows;
@@ -28,5 +29,8 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     // Run Data Migration to Remove the quoted Fqn`
     unquoteTestSuiteMigration(collectionDAO);
+
+    // Run UserName Migration to make lowercase
+    lowerCaseUserNameAndEmail(collectionDAO);
   }
 }

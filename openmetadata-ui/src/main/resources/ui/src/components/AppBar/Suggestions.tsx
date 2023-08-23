@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { ContainerSearchSource } from 'interface/search.interface';
@@ -49,6 +50,7 @@ const Suggestions = ({
   searchCriteria,
 }: SuggestionProp) => {
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -139,6 +141,7 @@ const Suggestions = ({
 
   useEffect(() => {
     if (!isMounting.current && searchText) {
+      setIsLoading(true);
       getSuggestions(searchText, searchCriteria)
         .then((res) => {
           if (res.data) {
@@ -161,6 +164,9 @@ const Suggestions = ({
               entity: t('label.suggestion-lowercase-plural'),
             })
           );
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
     }
   }, [searchText, searchCriteria]);
@@ -170,7 +176,15 @@ const Suggestions = ({
     isMounting.current = false;
   }, []);
 
-  return options.length > 0 ? getEntitiesSuggestions() : <Loader />;
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (options.length === 0) {
+    return <Typography.Text>{t('message.no-match-found')}</Typography.Text>;
+  }
+
+  return getEntitiesSuggestions();
 };
 
 export default Suggestions;

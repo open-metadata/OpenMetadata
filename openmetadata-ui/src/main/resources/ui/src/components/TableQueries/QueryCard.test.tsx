@@ -82,7 +82,6 @@ jest.mock('hooks/useClipBoard', () => ({
 
 const mockProps: QueryCardProp = {
   query: mockQueryData,
-  tableId: 'id',
   permission: DEFAULT_ENTITY_PERMISSION,
   onQuerySelection: jest.fn(),
   onQueryUpdate: jest.fn(),

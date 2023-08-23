@@ -818,10 +818,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void post_createUser_BasicAuth_AdminCreate_login_200_ok(TestInfo test) throws HttpResponseException {
     // Create a user with Auth and Try Logging in
+    String name = "testBasicAuth";
     User user =
         createEntity(
             createRequest(test)
-                .withName("testBasicAuth")
+                .withName(name)
                 .withDisplayName("Test")
                 .withEmail("testBasicAuth@email.com")
                 .withIsBot(false)
@@ -833,6 +834,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // jwtAuth Response should be null always
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
+    assertEquals(name, user.getName());
+    assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
     LoginRequest loginRequest =
@@ -875,11 +878,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void post_createUser_BasicAuth_SignUp_200_ok() throws HttpResponseException {
     // Create a user with Auth and Try Logging in
+    String name = "testBasicAuth123";
     RegistrationRequest newRegistrationRequest =
         new RegistrationRequest()
             .withFirstName("Test")
             .withLastName("Test")
-            .withEmail("testBasicAuth123@email.com")
+            .withEmail(String.format("%s@email.com", name))
             .withPassword("Test@1234");
 
     TestUtils.post(getResource("users/signup"), newRegistrationRequest, String.class, ADMIN_AUTH_HEADERS);
@@ -887,6 +891,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // jwtAuth Response should be null always
     User user = getEntityByName("testBasicAuth123", null, ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
+    assertEquals(name, user.getName());
+    assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
     LoginRequest loginRequest =
@@ -1044,6 +1050,25 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void test_userNameIgnoreCase(TestInfo test) throws IOException {
+    // Create user with different optional fields
+    CreateUser create = createRequest(test, 1).withName("UserEmailTest").withEmail("UserEmailTest@domainx.com");
+    User created = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Creating another user with different case should fail
+    create.withName("Useremailtest").withEmail("Useremailtest@Domainx.com");
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
+
+    // get user with  username in different case
+    User user = getEntityByName("UsERemailTEST", ADMIN_AUTH_HEADERS);
+    compareEntities(user, created, ADMIN_AUTH_HEADERS);
+    user.setName("UsERemailTEST");
+    user.setFullyQualifiedName("UsERemailTEST");
+    // delete user with different
+    deleteByNameAndCheckEntity(user, false, false, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void testInheritedRole() throws HttpResponseException {
     // USER1 inherits DATA_CONSUMER_ROLE from Organization
     User user1 = getEntity(USER1.getId(), "roles", ADMIN_AUTH_HEADERS);
@@ -1168,9 +1193,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public CreateUser createRequest(String name) {
     // user part of the email should be less than 64 in length
-    String emailUser = nullOrEmpty(name) ? UUID.randomUUID().toString() : name;
+    String entityName = name != null ? name.toLowerCase() : null;
+    String emailUser = nullOrEmpty(entityName) ? UUID.randomUUID().toString().toLowerCase() : entityName;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
-    return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
+    return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
   }
 
   @Override

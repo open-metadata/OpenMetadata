@@ -163,7 +163,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                           <Card
                             bordered
                             className="m-b-xlg"
-                            data-testid="feature-card"
+                            data-testid={`feature-card-${feature.name ?? ''}`}
                             key={feature.fullyQualifiedName}>
                             <Row>
                               <Col className="m-b-xs" span={24}>
@@ -318,10 +318,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     ],
     [description, mlFeaturesData, currentVersionData, entityPermissions]
   );
-
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
 
   return (
     <>

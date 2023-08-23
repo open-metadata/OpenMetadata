@@ -32,3 +32,9 @@ $$section
 
 Optional configuration to soft delete ML Models in OpenMetadata if the source models are deleted. After deleting, all the associated entities like lineage, etc., with that ML Model will be deleted.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$

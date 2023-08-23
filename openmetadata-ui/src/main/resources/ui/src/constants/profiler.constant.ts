@@ -22,7 +22,6 @@ import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
-  DatabaseServiceType,
   DataType,
   PartitionIntervalType,
   PartitionIntervalUnit,
@@ -394,10 +393,4 @@ export const PROFILER_MODAL_LABEL_STYLE = {
 export const TIME_BASED_PARTITION = [
   PartitionIntervalType.IngestionTime,
   PartitionIntervalType.TimeUnit,
-];
-
-export const allowedServiceForOperationGraph = [
-  DatabaseServiceType.BigQuery,
-  DatabaseServiceType.Redshift,
-  DatabaseServiceType.Snowflake,
 ];
