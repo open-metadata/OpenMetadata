@@ -117,7 +117,7 @@ jobs:
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' | github.event_name == 'workflow_dispatch' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean test
 
       - name: Clean Up
