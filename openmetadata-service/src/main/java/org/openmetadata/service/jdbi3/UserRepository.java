@@ -79,9 +79,11 @@ public class UserRepository extends EntityRepository<User> {
     this.quoteFqn = true;
   }
 
+  // with the introduction of fqnhash we added case sensitivity to all of the entities
+  // however usernames , emails cannot be case sensitive
   @Override
-  public void setFullyQualifiedName(User entity) {
-    entity.setFullyQualifiedName(quoteName(entity.getName().toLowerCase()));
+  public void setFullyQualifiedName(User user) {
+    user.setFullyQualifiedName(quoteName(user.getName().toLowerCase()));
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {

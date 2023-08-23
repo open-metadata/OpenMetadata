@@ -104,6 +104,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
@@ -2543,11 +2544,6 @@ public interface CollectionDAO {
     }
 
     @Override
-    default boolean shouldLowerCaseFqn() {
-      return true;
-    }
-
-    @Override
     default int listCount(ListFilter filter) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
       String isBotStr = filter.getQueryParam("isBot");
@@ -2807,6 +2803,11 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     String findUserByEmail(@Bind("email") String email);
+
+    @Override
+    default User findEntityByName(String fqn, Include include) {
+      return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);
+    }
   }
 
   interface ChangeEventDAO {

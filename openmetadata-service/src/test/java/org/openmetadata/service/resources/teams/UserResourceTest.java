@@ -1050,6 +1050,25 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void test_userNameIgnoreCase(TestInfo test) throws IOException {
+    // Create user with different optional fields
+    CreateUser create = createRequest(test, 1).withName("UserEmailTest").withEmail("UserEmailTest@domainx.com");
+    User created = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Creating another user with different case should fail
+    create.withName("Useremailtest").withEmail("Useremailtest@Domainx.com");
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
+
+    // get user with  username in different case
+    User user = getEntityByName("UsERemailTEST", ADMIN_AUTH_HEADERS);
+    compareEntities(user, created, ADMIN_AUTH_HEADERS);
+    user.setName("UsERemailTEST");
+    user.setFullyQualifiedName("UsERemailTEST");
+    // delete user with different
+    deleteByNameAndCheckEntity(user, false, false, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void testInheritedRole() throws HttpResponseException {
     // USER1 inherits DATA_CONSUMER_ROLE from Organization
     User user1 = getEntity(USER1.getId(), "roles", ADMIN_AUTH_HEADERS);

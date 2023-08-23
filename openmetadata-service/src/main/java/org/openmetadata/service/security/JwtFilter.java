@@ -129,7 +129,7 @@ public class JwtFilter implements ContainerRequestFilter {
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(jwt.getClaims());
 
-    String userName = validateAndReturnUsername(claims).toLowerCase();
+    String userName = validateAndReturnUsername(claims);
 
     // validate bot token
     if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
@@ -197,7 +197,6 @@ public class JwtFilter implements ContainerRequestFilter {
     String domain;
     if (jwtClaim.contains("@")) {
       // LowerCase the email
-      jwtClaim = jwtClaim.toLowerCase();
       userName = jwtClaim.split("@")[0];
       domain = jwtClaim.split("@")[1];
     } else {

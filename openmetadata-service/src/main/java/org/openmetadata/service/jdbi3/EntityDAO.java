@@ -57,10 +57,6 @@ public interface EntityDAO<T extends EntityInterface> {
     return true;
   }
 
-  default boolean shouldLowerCaseFqn() {
-    return false;
-  }
-
   /** Common queries for all entities implemented here. Do not override. */
   @ConnectionAwareSqlUpdate(
       value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
@@ -255,26 +251,22 @@ public interface EntityDAO<T extends EntityInterface> {
 
   /** Default methods that interfaces with implementation. Don't override */
   default void insert(EntityInterface entity, String fqn) {
-    insert(
-        getTableName(),
-        getNameHashColumn(),
-        shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn,
-        JsonUtils.pojoToJson(entity));
+    insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
   default void insert(String nameHash, EntityInterface entity, String fqn) {
-    insert(getTableName(), nameHash, shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn, JsonUtils.pojoToJson(entity));
+    insert(getTableName(), nameHash, fqn, JsonUtils.pojoToJson(entity));
   }
 
   default void update(UUID id, String fqn, String json) {
-    update(getTableName(), getNameHashColumn(), shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn, id.toString(), json);
+    update(getTableName(), getNameHashColumn(), fqn, id.toString(), json);
   }
 
   default void update(EntityInterface entity) {
     update(
         getTableName(),
         getNameHashColumn(),
-        shouldLowerCaseFqn() ? entity.getFullyQualifiedName().toLowerCase() : entity.getFullyQualifiedName(),
+        entity.getFullyQualifiedName(),
         entity.getId().toString(),
         JsonUtils.pojoToJson(entity));
   }
@@ -283,7 +275,7 @@ public interface EntityDAO<T extends EntityInterface> {
     update(
         getTableName(),
         nameHashColumn,
-        shouldLowerCaseFqn() ? entity.getFullyQualifiedName().toLowerCase() : entity.getFullyQualifiedName(),
+        entity.getFullyQualifiedName(),
         entity.getId().toString(),
         JsonUtils.pojoToJson(entity));
   }
@@ -308,18 +300,16 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default T findEntityByName(String fqn) {
-    return findEntityByName(shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn, Include.NON_DELETED);
+    return findEntityByName(fqn, Include.NON_DELETED);
   }
 
   @SneakyThrows
   default T findEntityByName(String fqn, Include include) {
-    fqn = shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn;
     return jsonToEntity(findByName(getTableName(), getNameHashColumn(), fqn, getCondition(include)), fqn);
   }
 
   @SneakyThrows
   default T findEntityByName(String fqn, String nameHashColumn, Include include) {
-    fqn = shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn;
     return jsonToEntity(findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
   }
 
@@ -334,7 +324,6 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default String findJsonByFqn(String fqn, Include include) {
-    fqn = shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn;
     return findByName(getTableName(), getNameHashColumn(), fqn, getCondition(include));
   }
 
@@ -380,7 +369,6 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default void existsByName(String fqn) {
-    fqn = shouldLowerCaseFqn() ? fqn.toLowerCase() : fqn;
     if (!existsByName(getTableName(), getNameHashColumn(), fqn)) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
