@@ -31,7 +31,6 @@ def format_name(name: str) -> str:
     return re.sub(r"[" + subs + "]", "_", name)
 
 
-# pylint: disable=too-many-return-statements
 def get_entity_type(
     entity: Union[Type[T], str],
 ) -> str:
@@ -55,8 +54,6 @@ def get_entity_type(
         return class_name.replace("testsuite", "testSuite")
     if "databaseschema" in class_name:
         return class_name.replace("databaseschema", "databaseSchema")
-    if "searchindex" in class_name:
-        return class_name.replace("searchindex", "searchIndex")
 
     return class_name
 

@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.schema.entity.data.Query;
-import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.tests.TestCase;
@@ -22,7 +21,6 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnUtil;
@@ -99,22 +97,6 @@ public class PIIMasker {
     }
 
     return topic;
-  }
-
-  public static SearchIndex getSampleData(SearchIndex searchIndex) {
-    SearchIndexSampleData sampleData = searchIndex.getSampleData();
-
-    // If we don't have sample data, there's nothing to do
-    if (sampleData == null) {
-      return searchIndex;
-    }
-
-    if (hasPiiSensitiveTag(searchIndex)) {
-      sampleData.setMessages(List.of(MASKED_VALUE));
-      searchIndex.setSampleData(sampleData);
-    }
-
-    return searchIndex;
   }
 
   public static Table getTableProfile(Table table) {
@@ -206,10 +188,6 @@ public class PIIMasker {
 
   private static boolean hasPiiSensitiveTag(Table table) {
     return table.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
-  }
-
-  private static boolean hasPiiSensitiveTag(SearchIndex searchIndex) {
-    return searchIndex.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
   /*

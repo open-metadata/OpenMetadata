@@ -40,9 +40,6 @@
               "$ref": "storageServiceMetadataPipeline.json"
             },
             {
-              "$ref": "searchServiceMetadataPipeline.json"
-            },
-            {
               "$ref": "testSuitePipeline.json"
             },
             {

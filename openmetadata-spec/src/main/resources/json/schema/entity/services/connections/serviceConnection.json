@@ -28,9 +28,6 @@
         },
         {
           "$ref": "../storageService.json#/definitions/storageConnection"
-        },
-        {
-          "$ref": "../searchService.json#/definitions/searchConnection"
         }
       ]
     }
