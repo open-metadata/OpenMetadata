@@ -592,12 +592,15 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "", ALL);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    // Carry forward ownership from database schema
+    table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
