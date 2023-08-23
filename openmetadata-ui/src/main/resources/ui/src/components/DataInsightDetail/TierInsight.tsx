@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty, round, uniqueId } from 'lodash';
@@ -181,17 +181,13 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
-                <Typography.Paragraph
-                  className="data-insight-label-text"
-                  style={{ marginBottom: '4px' }}>
-                  {`${t('label.assigned-entity', {
-                    entity: t('label.tier'),
-                  })} %`}
-                </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}
                   className="m-b-md"
                   duration={selectedDays}
+                  label={`${t('label.assigned-entity', {
+                    entity: t('label.tier'),
+                  })} %`}
                   progress={Number(total)}
                   showLabel={false}
                 />

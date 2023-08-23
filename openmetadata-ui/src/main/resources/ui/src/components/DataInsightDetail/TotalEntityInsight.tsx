@@ -30,15 +30,15 @@ import {
 } from 'recharts';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
-  BAR_CHART_MARGIN,
-  DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
-} from '../../constants/DataInsight.constants';
-import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../constants/constants';
+import {
+  BAR_CHART_MARGIN,
+  DI_STRUCTURE,
+  ENTITIES_BAR_COLO_MAP,
+} from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -179,6 +179,7 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <TotalEntityInsightSummary
               entities={entities}
+              gutter={DI_STRUCTURE.rightRowGutter}
               latestData={latestData}
               relativePercentage={relativePercentage}
               selectedDays={selectedDays}

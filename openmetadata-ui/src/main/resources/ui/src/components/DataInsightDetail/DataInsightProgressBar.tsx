@@ -26,24 +26,18 @@ interface DataInsightProgressBarProps {
   showSuccessInfo?: boolean;
   label?: string;
   target?: number;
-  successValue?: number | string;
-  startValue?: number | string;
   suffix?: string;
   changeInValue?: number;
   duration?: number;
-  showEndValueAsLabel?: boolean;
 }
 
 const DataInsightProgressBar = ({
-  showEndValueAsLabel = false,
   width,
   progress,
   className,
   target,
-  startValue,
   label,
   suffix = '%',
-  successValue = 100,
   showSuccessInfo = false,
   changeInValue,
   duration,

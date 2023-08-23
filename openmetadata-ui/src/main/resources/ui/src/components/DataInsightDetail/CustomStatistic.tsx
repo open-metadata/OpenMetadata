@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { isNil } from 'lodash';
+import { Col, Row, Typography } from 'antd';
+import { isNil, round } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -32,20 +32,25 @@ const CustomStatistic = ({
   const { t } = useTranslation();
 
   return (
-    <div className="d-flex justify-between">
-      <div className="d-flex flex-col">
-        <Typography.Text className="font-medium">{label}</Typography.Text>
-        <Typography.Text className="font-bold text-2xl">
+    <Row justify="space-between">
+      <Col>
+        <Typography.Paragraph className="font-medium m-b-0">
+          {label}
+        </Typography.Paragraph>
+        <Typography.Paragraph className="font-bold text-2xl m-b-0">
           {value}
-        </Typography.Text>
-      </div>
-      <div className="d-flex flex-col justify-end text-right">
+        </Typography.Paragraph>
+      </Col>
+      <Col className="text-right">
         {Boolean(changeInValue) && !isNil(changeInValue) && (
           <Typography.Paragraph className="m-b-0">
             <Typography.Text
               className="d-block"
               type={changeInValue >= 0 ? 'success' : 'danger'}>
-              {`${changeInValue >= 0 ? '+' : ''}${changeInValue.toFixed(2)}%`}
+              {`${changeInValue >= 0 ? '+' : ''}${round(
+                changeInValue || 0,
+                2
+              )}%`}
             </Typography.Text>
             <Typography.Text className="d-block">
               {Boolean(duration) &&
@@ -55,8 +60,8 @@ const CustomStatistic = ({
             </Typography.Text>
           </Typography.Paragraph>
         )}
-      </div>
-    </div>
+      </Col>
+    </Row>
   );
 };
 

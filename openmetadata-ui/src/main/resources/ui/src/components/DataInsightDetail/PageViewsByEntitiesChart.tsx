@@ -175,6 +175,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <TotalEntityInsightSummary
               entities={entities}
+              gutter={DI_STRUCTURE.rightRowGutter}
               latestData={latestData}
               relativePercentage={relativePercentage}
               selectedDays={selectedDays}

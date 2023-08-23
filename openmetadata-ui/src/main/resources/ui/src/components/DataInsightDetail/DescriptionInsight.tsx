@@ -211,9 +211,9 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                   changeInValue={relativePercentage}
                   className="m-b-md"
                   duration={selectedDays}
-                  label={t('label.completed-entity', {
+                  label={`${t('label.completed-entity', {
                     entity: t('label.description'),
-                  })}
+                  })}${isPercentageGraph ? ' %' : ''}`}
                   progress={Number(total)}
                   suffix={isPercentageGraph ? '%' : ''}
                   target={targetValue}

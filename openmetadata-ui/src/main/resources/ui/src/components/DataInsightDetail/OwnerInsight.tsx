@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, round, uniqueId } from 'lodash';
+import { isEmpty, round } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -206,27 +206,22 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
-                <Typography.Paragraph
-                  className="data-insight-label-text"
-                  style={{ marginBottom: '4px' }}>
-                  {t('label.assigned-entity', {
-                    entity: t('label.owner'),
-                  })}
-                  {isPercentageGraph ? ' %' : ''}
-                </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}
                   className="m-b-md"
                   duration={selectedDays}
+                  label={`${t('label.assigned-entity', {
+                    entity: t('label.owner'),
+                  })}
+                  ${isPercentageGraph ? ' %' : ''}`}
                   progress={Number(total)}
-                  showLabel={false}
                   suffix={isPercentageGraph ? '%' : ''}
                   target={targetValue}
                 />
               </Col>
               {entities.map((entity) => {
                 return (
-                  <Col key={uniqueId()} span={24}>
+                  <Col key={entity} span={24}>
                     <EntitySummaryProgressBar
                       entity={entity}
                       label={`${round(latestData[entity] || 0, 2)}${

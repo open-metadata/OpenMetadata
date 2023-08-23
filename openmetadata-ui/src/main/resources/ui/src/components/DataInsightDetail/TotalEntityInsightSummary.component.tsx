@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
+import { Gutter } from 'antd/lib/grid/row';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CustomStatistic from './CustomStatistic';
@@ -22,6 +23,7 @@ type TotalEntityInsightSummaryProps = {
   selectedDays: number;
   entities: string[];
   latestData: Record<string, number>;
+  gutter?: Gutter | [Gutter, Gutter];
 };
 
 const TotalEntityInsightSummary = ({
@@ -30,11 +32,12 @@ const TotalEntityInsightSummary = ({
   selectedDays,
   entities,
   latestData,
+  gutter,
 }: TotalEntityInsightSummaryProps) => {
   const { t } = useTranslation();
 
   return (
-    <Row>
+    <Row gutter={gutter}>
       <Col className="p-b-sm" span={24}>
         <CustomStatistic
           changeInValue={relativePercentage}
