@@ -27,6 +27,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from 'generated/entity/data/table';
 import { Operation } from 'generated/entity/policies/policy';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -133,6 +134,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
       const response = await getIngestionPipelines({
         arrQueryFields: ['owner', 'pipelineStatuses'],
         testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
       });
       setTestSuitePipelines(response.data);
     } catch (error) {

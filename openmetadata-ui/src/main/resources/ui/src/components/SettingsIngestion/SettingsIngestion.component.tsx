@@ -85,7 +85,7 @@ function SettingsIngestion({
         arrQueryFields: ['pipelineStatuses'],
         serviceFilter: serviceFQN,
         paging,
-        pipelineType,
+        pipelineType: [pipelineType],
       });
 
       if (res.data) {
