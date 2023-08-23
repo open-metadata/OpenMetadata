@@ -269,8 +269,8 @@ const EntityVersionPage: FunctionComponent = () => {
           break;
         }
       }
-    } catch {
-      // Error
+    } finally {
+      setIsLoading(false);
     }
   }, [entityType, fetchResourcePermission]);
 
@@ -282,126 +282,122 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchEntityVersions = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (viewVersionPermission) {
-        switch (entityType) {
-          case EntityType.TABLE: {
-            const { id } = await getTableDetailsByFQN(entityFQN, '');
+      switch (entityType) {
+        case EntityType.TABLE: {
+          const { id } = await getTableDetailsByFQN(entityFQN, '');
 
-            setEntityId(id);
+          setEntityId(id);
 
-            const versions = await getTableVersions(id);
+          const versions = await getTableVersions(id);
 
-            setVersionList(versions);
+          setVersionList(versions);
 
-            break;
-          }
-
-          case EntityType.TOPIC: {
-            const { id } = await getTopicByFqn(
-              getPartialNameFromFQN(
-                entityFQN,
-                ['service', 'database'],
-                FQN_SEPARATOR_CHAR
-              ),
-              ''
-            );
-
-            setEntityId(id);
-
-            const versions = await getTopicVersions(id);
-
-            setVersionList(versions);
-
-            break;
-          }
-
-          case EntityType.DASHBOARD: {
-            const { id } = await getDashboardByFqn(
-              getPartialNameFromFQN(
-                entityFQN,
-                ['service', 'database'],
-                FQN_SEPARATOR_CHAR
-              ),
-              ''
-            );
-
-            setEntityId(id);
-
-            const versions = await getDashboardVersions(id);
-
-            setVersionList(versions);
-
-            break;
-          }
-
-          case EntityType.PIPELINE: {
-            const { id } = await getPipelineByFqn(
-              getPartialNameFromFQN(
-                entityFQN,
-                ['service', 'database'],
-                FQN_SEPARATOR_CHAR
-              ),
-              ''
-            );
-
-            setEntityId(id);
-
-            const versions = await getPipelineVersions(id);
-
-            setVersionList(versions);
-
-            break;
-          }
-
-          case EntityType.MLMODEL: {
-            const { id } = await getMlModelByFQN(
-              getPartialNameFromFQN(
-                entityFQN,
-                ['service', 'database'],
-                FQN_SEPARATOR_CHAR
-              ),
-              ''
-            );
-
-            setEntityId(id);
-
-            const versions = await getMlModelVersions(id);
-
-            setVersionList(versions);
-
-            break;
-          }
-
-          case EntityType.CONTAINER: {
-            const { id } = await getContainerByName(entityFQN, '');
-
-            setEntityId(id);
-
-            const versions = await getContainerVersions(id);
-
-            setVersionList(versions);
-
-            break;
-          }
-
-          case EntityType.DASHBOARD_DATA_MODEL: {
-            const { id } = await getDataModelDetailsByFQN(entityFQN, '');
-
-            setEntityId(id ?? '');
-
-            const versions = await getDataModelVersionsList(id ?? '');
-
-            setVersionList(versions);
-
-            break;
-          }
-
-          default:
-            break;
+          break;
         }
+
+        case EntityType.TOPIC: {
+          const { id } = await getTopicByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            ''
+          );
+
+          setEntityId(id);
+
+          const versions = await getTopicVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.DASHBOARD: {
+          const { id } = await getDashboardByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            ''
+          );
+
+          setEntityId(id);
+
+          const versions = await getDashboardVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.PIPELINE: {
+          const { id } = await getPipelineByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            ''
+          );
+
+          setEntityId(id);
+
+          const versions = await getPipelineVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.MLMODEL: {
+          const { id } = await getMlModelByFQN(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            ''
+          );
+
+          setEntityId(id);
+
+          const versions = await getMlModelVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.CONTAINER: {
+          const { id } = await getContainerByName(entityFQN, '');
+
+          setEntityId(id);
+
+          const versions = await getContainerVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.DASHBOARD_DATA_MODEL: {
+          const { id } = await getDataModelDetailsByFQN(entityFQN, '');
+
+          setEntityId(id ?? '');
+
+          const versions = await getDataModelVersionsList(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        default:
+          break;
       }
-    } catch (err) {
-      // Error
     } finally {
       setIsLoading(false);
     }
@@ -677,7 +673,9 @@ const EntityVersionPage: FunctionComponent = () => {
   }, [entityFQN]);
 
   useEffect(() => {
-    fetchEntityVersions();
+    if (viewVersionPermission) {
+      fetchEntityVersions();
+    }
   }, [entityFQN, viewVersionPermission]);
 
   useEffect(() => {

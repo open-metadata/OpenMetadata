@@ -211,23 +211,24 @@ function ServiceVersionMainTabContent({
 
           <Col data-testid="table-container" span={24}>
             <Space className="w-full m-b-md" direction="vertical" size="large">
-              {isServiceLoading ? (
-                <Loader />
-              ) : (
-                <Table
-                  bordered
-                  columns={tableColumn}
-                  data-testid="service-children-table"
-                  dataSource={data}
-                  locale={{
-                    emptyText: <ErrorPlaceHolder className="m-y-md" />,
-                  }}
-                  pagination={false}
-                  rowKey="name"
-                  scroll={TABLE_SCROLL_VALUE}
-                  size="small"
-                />
-              )}
+              <Table
+                bordered
+                columns={tableColumn}
+                data-testid="service-children-table"
+                dataSource={data}
+                loading={{
+                  spinning: isServiceLoading,
+                  indicator: <Loader size="small" />,
+                }}
+                locale={{
+                  emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                }}
+                pagination={false}
+                rowKey="name"
+                scroll={TABLE_SCROLL_VALUE}
+                size="small"
+              />
+
               {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
                 !isEmpty(data) && (
                   <NextPrevious

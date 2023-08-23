@@ -88,7 +88,10 @@ function ServiceVersionPage() {
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isVersionDataLoading, setIsVersionDataLoading] =
+    useState<boolean>(true);
+  const [isOtherDataLoading, setIsOtherDataLoading] = useState<boolean>(true);
   const [serviceId, setServiceId] = useState<string>('');
   const [currentVersionData, setCurrentVersionData] = useState<ServicesType>(
     {} as ServicesType
@@ -96,8 +99,6 @@ function ServiceVersionPage() {
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
-  const [isVersionDataLoading, setIsVersionDataLoading] =
-    useState<boolean>(false);
 
   const changeDescription = useMemo(
     () => currentVersionData.changeDescription ?? ({} as ChangeDescription),
@@ -150,16 +151,14 @@ function ServiceVersionPage() {
   );
 
   const fetchResourcePermission = useCallback(async () => {
-    setIsLoading(true);
     try {
-      if (!isEmpty(serviceFQN)) {
-        const permission = await getEntityPermissionByFqn(
-          resourceEntity,
-          serviceFQN
-        );
+      setIsLoading(true);
+      const permission = await getEntityPermissionByFqn(
+        resourceEntity,
+        serviceFQN
+      );
 
-        setServicePermissions(permission);
-      }
+      setServicePermissions(permission);
     } finally {
       setIsLoading(false);
     }
@@ -172,19 +171,14 @@ function ServiceVersionPage() {
 
   const fetchVersionsList = useCallback(async () => {
     try {
-      if (viewVersionPermission) {
-        setIsLoading(true);
-        const { id } = await getServiceByFQN(
-          serviceCategory,
-          serviceFQN,
-          'owner,tags'
-        );
-        setServiceId(id);
+      setIsLoading(true);
 
-        const versions = await getServiceVersions(serviceCategory, id);
+      const { id } = await getServiceByFQN(serviceCategory, serviceFQN);
+      setServiceId(id);
 
-        setVersionList(versions);
-      }
+      const versions = await getServiceVersions(serviceCategory, id);
+
+      setVersionList(versions);
     } finally {
       setIsLoading(false);
     }
@@ -275,7 +269,7 @@ function ServiceVersionPage() {
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
       try {
-        setIsVersionDataLoading(true);
+        setIsOtherDataLoading(true);
         switch (serviceCategory) {
           case ServiceCategory.DATABASE_SERVICES: {
             await fetchDatabases(paging);
@@ -314,7 +308,7 @@ function ServiceVersionPage() {
         setData([]);
         setPaging(pagingObject);
       } finally {
-        setIsVersionDataLoading(false);
+        setIsOtherDataLoading(false);
       }
     },
     [
@@ -331,8 +325,8 @@ function ServiceVersionPage() {
   const fetchCurrentVersionData = useCallback(
     async (id: string) => {
       try {
+        setIsVersionDataLoading(true);
         if (viewVersionPermission) {
-          setIsVersionDataLoading(true);
           const response = await getServiceVersionData(
             serviceCategory,
             id,
@@ -345,8 +339,6 @@ function ServiceVersionPage() {
             response,
             getEntityBreadcrumbs(response, entityType)
           );
-
-          await getOtherDetails();
         }
       } finally {
         setIsVersionDataLoading(false);
@@ -397,7 +389,7 @@ function ServiceVersionPage() {
                   currentPage={currentPage}
                   data={data}
                   entityType={entityType}
-                  isServiceLoading={isVersionDataLoading}
+                  isServiceLoading={isOtherDataLoading}
                   paging={paging}
                   pagingHandler={pagingHandler}
                   serviceDetails={currentVersionData}
@@ -418,7 +410,7 @@ function ServiceVersionPage() {
     serviceCategory,
     paging,
     data,
-    isVersionDataLoading,
+    isOtherDataLoading,
     getOtherDetails,
   ]);
 
@@ -483,11 +475,15 @@ function ServiceVersionPage() {
   };
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (!isEmpty(serviceFQN)) {
+      fetchResourcePermission();
+    }
   }, [serviceFQN]);
 
   useEffect(() => {
-    fetchVersionsList();
+    if (viewVersionPermission) {
+      fetchVersionsList();
+    }
   }, [serviceFQN, viewVersionPermission]);
 
   useEffect(() => {
@@ -495,6 +491,12 @@ function ServiceVersionPage() {
       fetchCurrentVersionData(serviceId);
     }
   }, [version, serviceId]);
+
+  useEffect(() => {
+    if (!isEmpty(currentVersionData)) {
+      getOtherDetails();
+    }
+  }, [currentVersionData]);
 
   return (
     <PageLayoutV1
