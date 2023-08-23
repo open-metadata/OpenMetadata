@@ -207,17 +207,22 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
-              description = "Filter airflow pipelines by service fully qualified name",
+              description = "Filter Ingestion Pipelines by service fully qualified name",
               schema = @Schema(type = "string", example = "snowflakeWestCoast"))
           @QueryParam("service")
           String serviceParam,
       @Parameter(
-              description = "Filter airflow pipelines by pipeline Type",
+              description = "Filter Ingestion Pipelines by test suite fully qualified name",
+              schema = @Schema(type = "string", example = "service.db.schema.name.testSuite"))
+          @QueryParam("testSuite")
+          String testSuiteParam,
+      @Parameter(
+              description = "Filter Ingestion Pipelines by pipeline Type",
               schema = @Schema(type = "string", example = "elasticSearchReindex"))
           @QueryParam("pipelineType")
           String pipelineType,
       @Parameter(
-              description = "Filter airflow pipelines by service Type",
+              description = "Filter Ingestion Pipelines by service Type",
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
           String serviceType,
@@ -243,7 +248,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("pipelineType", pipelineType)
-            .addQueryParam("serviceType", serviceType);
+            .addQueryParam("serviceType", serviceType)
+            .addQueryParam("testSuite", testSuiteParam);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
