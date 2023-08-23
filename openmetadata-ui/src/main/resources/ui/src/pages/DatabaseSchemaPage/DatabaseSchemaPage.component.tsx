@@ -404,6 +404,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [getEntityFeedCount]
   );
 
+  const handleDeleteAction = () => {
+    setDatabaseSchema((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
       await restoreDatabaseSchema(databaseSchemaId);
@@ -413,7 +423,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }),
         2000
       );
-      fetchDatabaseSchemaDetails();
+      handleDeleteAction();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -432,6 +442,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setCurrentTablesPage(activePage ?? INITIAL_PAGING_VALUE);
     },
     [tableData, getSchemaTables]
+  );
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+    []
   );
 
   useEffect(() => {
@@ -589,7 +605,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             ) : (
               <DataAssetsHeader
                 isRecursiveDelete
-                afterDeleteAction={handleDataAssetAfterDeleteAction}
+                afterDeleteAction={afterDeleteAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permissions={databaseSchemaPermission}

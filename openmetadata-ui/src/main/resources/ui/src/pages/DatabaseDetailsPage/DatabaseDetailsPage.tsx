@@ -545,6 +545,16 @@ const DatabaseDetails: FunctionComponent = () => {
     databaseSchemaPagingHandler,
   ]);
 
+  const handleDeleteAction = () => {
+    setDatabase((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreDatabase = useCallback(async () => {
     try {
       await restoreDatabase(databaseId);
@@ -554,7 +564,7 @@ const DatabaseDetails: FunctionComponent = () => {
         }),
         2000
       );
-      getDetailsByFQN();
+      handleDeleteAction();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -582,6 +592,12 @@ const DatabaseDetails: FunctionComponent = () => {
       (databasePermission.EditDescription || databasePermission.EditAll) &&
       !database.deleted,
     [databasePermission, database]
+  );
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+    []
   );
 
   const tabs = useMemo(
@@ -731,7 +747,7 @@ const DatabaseDetails: FunctionComponent = () => {
           <Col className="p-x-lg" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              afterDeleteAction={afterDeleteAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
               permissions={databasePermission}

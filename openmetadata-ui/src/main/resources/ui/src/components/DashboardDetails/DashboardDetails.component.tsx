@@ -46,11 +46,7 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import {
-  getCurrentUserId,
-  getFeedCounts,
-  refreshPage,
-} from '../../utils/CommonUtils';
+import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -78,6 +74,7 @@ const DashboardDetails = ({
   versionHandler,
   createThread,
   onDashboardUpdate,
+  handleDeleteAction,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -287,7 +284,7 @@ const DashboardDetails = ({
         }),
         2000
       );
-      refreshPage();
+      handleDeleteAction();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -404,6 +401,12 @@ const DashboardDetails = ({
       await onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+    []
+  );
 
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
@@ -692,7 +695,7 @@ const DashboardDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             permissions={dashboardPermissions}

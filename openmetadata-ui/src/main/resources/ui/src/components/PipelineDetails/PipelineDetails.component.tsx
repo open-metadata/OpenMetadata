@@ -87,6 +87,7 @@ const PipelineDetails = ({
   versionHandler,
   pipelineFQN,
   onExtensionUpdate,
+  handleDeleteAction,
 }: PipeLineDetailsProp) => {
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -492,6 +493,12 @@ const PipelineDetails = ({
     }
   };
 
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+    []
+  );
+
   const tabs = useMemo(
     () => [
       {
@@ -713,7 +720,7 @@ const PipelineDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
             dataAsset={pipelineDetails}
             entityType={EntityType.PIPELINE}
             permissions={pipelinePermissions}

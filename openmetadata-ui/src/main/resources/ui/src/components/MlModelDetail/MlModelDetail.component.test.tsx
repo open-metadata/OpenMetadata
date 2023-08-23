@@ -175,6 +175,7 @@ const mockProp = {
   createThread: jest.fn(),
   version: '0.1',
   versionHandler: jest.fn(),
+  handleDeleteAction: jest.fn(),
 };
 
 const mockParams = {

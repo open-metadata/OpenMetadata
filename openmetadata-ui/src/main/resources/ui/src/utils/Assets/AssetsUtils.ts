@@ -68,11 +68,12 @@ export const getEntityAPIfromSource = (
   }
 };
 
-export const handleDataAssetAfterDeleteAction = (isSoftDelete?: boolean) => {
+export const handleDataAssetAfterDeleteAction = (
+  isSoftDelete?: boolean,
+  softDeleteHandler?: () => void
+) => {
   if (isSoftDelete) {
-    setTimeout(() => {
-      history.go(0);
-    }, 1000);
+    softDeleteHandler?.();
   } else {
     history.push('/');
   }

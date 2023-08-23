@@ -265,6 +265,16 @@ const MlModelPage = () => {
     );
   };
 
+  const handleDeleteAction = () => {
+    setMlModelDetail((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
@@ -291,6 +301,7 @@ const MlModelPage = () => {
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
       followMlModelHandler={followMlModel}
+      handleDeleteAction={handleDeleteAction}
       mlModelDetail={mlModelDetail}
       settingsUpdateHandler={settingsUpdateHandler}
       tagUpdateHandler={onTagUpdate}
