@@ -17,6 +17,9 @@ import { isNil } from 'lodash';
 import React from 'react';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu';
+import { getSuggestionItems } from './Extensions/slash-command/items';
+import renderItems from './Extensions/slash-command/renderItems';
+import SlashCommand from './Extensions/slash-command/SlashCommand';
 
 const BlockEditor = () => {
   const editor = useEditor({
@@ -83,6 +86,12 @@ const BlockEditor = () => {
           }
 
           return '';
+        },
+      }),
+      SlashCommand.configure({
+        suggestion: {
+          items: getSuggestionItems,
+          render: renderItems,
         },
       }),
     ],
