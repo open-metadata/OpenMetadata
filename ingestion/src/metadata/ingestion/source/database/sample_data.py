@@ -1178,15 +1178,22 @@ class SampleDataSource(
                             rowCount=profile["rowCount"],
                             createDateTime=profile.get("createDateTime"),
                             sizeInByte=profile.get("sizeInByte"),
-                            timestamp=int((
-                                datetime.now(tz=timezone.utc) - timedelta(days=days)
-                            ).timestamp()*1000),
+                            timestamp=int(
+                                (
+                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
+                                ).timestamp()
+                                * 1000
+                            ),
                         ),
                         columnProfile=[
                             ColumnProfile(
-                                timestamp=int((
-                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
-                                ).timestamp() * 1000),
+                                timestamp=int(
+                                    (
+                                        datetime.now(tz=timezone.utc)
+                                        - timedelta(days=days)
+                                    ).timestamp()
+                                    * 1000
+                                ),
                                 **col_profile,
                             )
                             for col_profile in profile["columnProfile"]
@@ -1273,9 +1280,10 @@ class SampleDataSource(
                 for days, result in enumerate(test_case_results["results"]):
                     yield OMetaTestCaseResultsSample(
                         test_case_results=TestCaseResult(
-                            timestamp=int((
-                                datetime.now() - timedelta(days=days)
-                            ).timestamp() * 1000),
+                            timestamp=int(
+                                (datetime.now() - timedelta(days=days)).timestamp()
+                                * 1000
+                            ),
                             testCaseStatus=result["testCaseStatus"],
                             result=result["result"],
                             testResultValue=[
