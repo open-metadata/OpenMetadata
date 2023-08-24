@@ -34,16 +34,16 @@ import {
 } from 'recharts';
 import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
 import {
-  BAR_CHART_MARGIN,
-  DATA_INSIGHT_GRAPH_COLORS,
-  DI_STRUCTURE,
-} from '../../constants/DataInsight.constants';
-import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
   ROUTES,
 } from '../../constants/constants';
+import {
+  BAR_CHART_MARGIN,
+  DATA_INSIGHT_GRAPH_COLORS,
+  DI_STRUCTURE,
+} from '../../constants/DataInsight.constants';
 import {
   Kpi,
   KpiResult,
@@ -67,6 +67,7 @@ import KPILatestResultsV1 from './KPILatestResultsV1';
 interface Props {
   chartFilter: ChartFilter;
   kpiList: Array<Kpi>;
+  isKpiLoading: boolean;
   viewKPIPermission: boolean;
   createKPIPermission: boolean;
 }
@@ -76,6 +77,7 @@ const KPIChart: FC<Props> = ({
   kpiList,
   viewKPIPermission,
   createKPIPermission,
+  isKpiLoading,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -196,7 +198,7 @@ const KPIChart: FC<Props> = ({
       className="data-insight-card"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}
+      loading={isLoading || isKpiLoading}
       title={
         <PageHeader
           data={{

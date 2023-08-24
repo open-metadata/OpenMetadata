@@ -12,6 +12,8 @@
  */
 
 import { Button, Col, Row, Space, Typography } from 'antd';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from 'components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from 'components/DataInsightDetail/DescriptionInsight';
@@ -28,8 +30,6 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
@@ -46,12 +46,12 @@ import { getListKPIs } from 'rest/KpiAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
+import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
-import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -115,6 +115,7 @@ const DataInsightPage = () => {
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const [isKpiLoading, setIsKpiLoading] = useState(false);
   const [selectedDaysFilter, setSelectedDaysFilter] = useState(
     DEFAULT_SELECTED_RANGE.days
   );
@@ -254,11 +255,14 @@ const DataInsightPage = () => {
   };
 
   const fetchKpiList = async () => {
+    setIsKpiLoading(true);
     try {
       const response = await getListKPIs({ fields: 'dataInsightChart' });
       setKpiList(response.data);
     } catch (_err) {
       setKpiList([]);
+    } finally {
+      setIsKpiLoading(false);
     }
   };
 
@@ -403,6 +407,7 @@ const DataInsightPage = () => {
             <KPIChart
               chartFilter={chartFilter}
               createKPIPermission={createKPIPermission}
+              isKpiLoading={isKpiLoading}
               kpiList={kpiList}
               viewKPIPermission={viewKPIPermission}
             />
