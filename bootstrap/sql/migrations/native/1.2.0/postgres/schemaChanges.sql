@@ -55,4 +55,4 @@ CREATE TABLE IF NOT EXISTS search_index_entity (
 
 -- We were hardcoding retries to 0. Since we are now using the IngestionPipeline to set them, keep existing ones to 0.
 UPDATE ingestion_pipeline_entity
-SET json = jsonb_set(json::jsonb, '{airflowConfig.retries}', '0', true);
+SET json = jsonb_set(json::jsonb, '{airflowConfig,retries}', '0', true);
