@@ -5,9 +5,11 @@ import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
@@ -70,7 +72,7 @@ public class Migration extends MigrationProcessImpl {
       List<String> userEntities = daoCollection.userDAO().listAfterWithOffset(limit, offset);
       for (String json : userEntities) {
         User userEntity = JsonUtils.readValue(json, User.class);
-        userEntity.setFullyQualifiedName(userEntity.getFullyQualifiedName().toLowerCase());
+        userEntity.setFullyQualifiedName(EntityInterfaceUtil.quoteName(userEntity.getFullyQualifiedName().toLowerCase()));
         daoCollection.userDAO().update(userEntity);
       }
       offset = offset + limit;
