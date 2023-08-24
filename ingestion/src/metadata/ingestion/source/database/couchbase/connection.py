@@ -15,7 +15,6 @@ Source connection handler
 from functools import partial
 from typing import Optional
 
-from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
 from couchbase.options import ClusterOptions
 from pydantic import BaseModel
@@ -34,6 +33,9 @@ def get_connection(connection: CouchbaseConnection):
     """
     Create connection
     """
+    # pylint: disable=import-outside-toplevel
+    from couchbase.auth import PasswordAuthenticator
+
     auth = PasswordAuthenticator(
         connection.username, connection.password.get_secret_value()
     )
