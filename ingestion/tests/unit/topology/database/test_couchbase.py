@@ -13,8 +13,6 @@
 Test MongoDB using the topology
 """
 
-import json
-from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -32,12 +30,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.couchbase.metadata import CouchbaseSource
-
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-)
-with open(mock_file_path) as file:
-    mock_data: dict = json.load(file)
 
 mock_couch_config = {
     "source": {
