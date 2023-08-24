@@ -22,7 +22,7 @@ export const formatDateTime = (date?: number) => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(date);
+  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
 
   return dateTime.toLocaleString(DateTime.DATETIME_MED);
 };
@@ -48,9 +48,9 @@ export const formatDate = (date?: number) => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(date);
+  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
 
-  return dateTime.toLocaleString(DateTime.DATE_MED);
+  return dateTime.setLocale('en-US').toLocaleString(DateTime.DATE_MED);
 };
 
 /**
@@ -74,7 +74,7 @@ export const formatDateShort = (date?: number) => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(date);
+  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
 
   return dateTime.toLocaleString(DateTime.DATE_SHORT);
 };
@@ -84,7 +84,7 @@ export const formatDateShort = (date?: number) => {
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
 export const formatDateTimeLong = (timestamp: number, format?: string) =>
-  DateTime.fromMillis(toNumber(timestamp)).toFormat(
+  DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
     format || "ccc d'th' MMMM, yyyy,hh:mm a"
   );
 
@@ -118,7 +118,7 @@ export const formatDateTimeWithTimezone = (timeStamp: number): string => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(timeStamp);
+  const dateTime = DateTime.fromMillis(timeStamp, { locale: 'en-US' });
 
   return dateTime.toLocaleString(DateTime.DATETIME_FULL);
 };
@@ -147,7 +147,9 @@ export const customFormatDateTime = (
     return formatDateTime(milliseconds);
   }
 
-  return DateTime.fromMillis(milliseconds).toFormat(format);
+  return DateTime.fromMillis(milliseconds, { locale: 'en-US' }).toFormat(
+    format
+  );
 };
 
 /**
@@ -156,7 +158,9 @@ export const customFormatDateTime = (
  * @returns
  */
 export const getRelativeTime = (timeStamp?: number): string => {
-  return timeStamp ? DateTime.fromMillis(timeStamp).toRelative() ?? '' : '';
+  return timeStamp
+    ? DateTime.fromMillis(timeStamp, { locale: 'en-US' }).toRelative() ?? ''
+    : '';
 };
 
 /**
@@ -170,8 +174,10 @@ export const getRelativeCalendar = (
   baseTimeStamp?: number
 ): string => {
   return capitalize(
-    DateTime.fromMillis(timeStamp).toRelativeCalendar({
-      base: baseTimeStamp ? DateTime.fromMillis(baseTimeStamp) : DateTime.now(),
+    DateTime.fromMillis(timeStamp, { locale: 'en-US' }).toRelativeCalendar({
+      base: baseTimeStamp
+        ? DateTime.fromMillis(baseTimeStamp, { locale: 'en-US' })
+        : DateTime.now(),
     }) || ''
   );
 };
