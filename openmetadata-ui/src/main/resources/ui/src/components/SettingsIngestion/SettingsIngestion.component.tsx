@@ -81,12 +81,12 @@ function SettingsIngestion({
   const getAllIngestionWorkflows = async (paging?: string) => {
     setIsLoading(true);
     try {
-      const res = await getIngestionPipelines(
-        ['pipelineStatuses'],
-        serviceFQN,
+      const res = await getIngestionPipelines({
+        arrQueryFields: ['pipelineStatuses'],
+        serviceFilter: serviceFQN,
         paging,
-        pipelineType
-      );
+        pipelineType: [pipelineType],
+      });
 
       if (res.data) {
         const pipelinesList = res.data.filter(
