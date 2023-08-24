@@ -55,7 +55,6 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
-
   public SearchIndexRepository(CollectionDAO dao) {
     super(
         SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
@@ -69,6 +68,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       setFieldFQN(searchIndex.getFullyQualifiedName(), searchIndex.getFields());
     }
   }
+
   @Override
   public void prepare(SearchIndex searchIndex) {
     SearchService searchService = Entity.getEntity(searchIndex.getService(), "", ALL);
