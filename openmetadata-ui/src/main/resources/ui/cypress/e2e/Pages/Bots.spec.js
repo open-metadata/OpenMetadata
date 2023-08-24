@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
+import { formatDateTimeLong } from '../../../src/utils/date-time/DateTimeUtils';
 import {
   descriptionBox,
   interceptURL,
@@ -153,11 +153,7 @@ describe('Bots Page should work properly', () => {
         .should('be.visible')
         .click();
       // Save the updated date
-      const expiryDate = getExpiryDateTimeFromDate(
-        expiry,
-        'days',
-        `ccc d'th' MMMM, yyyy`
-      );
+      const expiryDate = formatDateTimeLong(expiry, `ccc d'th' MMMM, yyyy`);
       cy.get('[data-testid="save-edit"]').should('be.visible').click();
       cy.get('[data-testid="center-panel"]')
         .find('[data-testid="revoke-button"]')

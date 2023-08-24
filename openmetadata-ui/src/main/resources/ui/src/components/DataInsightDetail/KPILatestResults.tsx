@@ -13,12 +13,11 @@
 
 import { Space, Typography } from 'antd';
 import { toNumber, uniqueId } from 'lodash';
-
 import React, { FC, useMemo } from 'react';
+import { getDaysRemaining } from 'utils/date-time/DateTimeUtils';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
-import { getNumberOfDaysForTimestamp } from '../../utils/TimeUtils';
 import DataInsightProgressBar from './DataInsightProgressBar';
 
 interface Props {
@@ -54,7 +53,7 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
 
         const currentProgress = (targetValue / targetMetValue) * 100;
 
-        const daysLeft = getNumberOfDaysForTimestamp(resultData.endDate);
+        const daysLeft = getDaysRemaining(resultData.endDate);
 
         const isTargetMet = targetResult.targetMet;
 

@@ -46,13 +46,6 @@ jest.mock('../../../../utils/TableUtils', () => ({
   getTagsWithoutTier: jest.fn(),
 }));
 
-jest.mock('../../../../utils/TimeUtils', () => ({
-  getDayTimeByTimeStamp: jest
-    .fn()
-    .mockImplementation(() => 'Jan 1, 1970 00:00 AM'),
-  getDateTimeFromMilliSeconds: jest.fn(),
-}));
-
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
