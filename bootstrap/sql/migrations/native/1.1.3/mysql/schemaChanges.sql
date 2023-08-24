@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS report_data_time_series (
     jsonSchema VARCHAR(256) NOT NULL,
     json JSON NOT NULL,
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
-    INDEX point_ts (timestamp)
+    INDEX report_data_time_series_point_ts (timestamp)
 );
 
 INSERT INTO report_data_time_series (entityFQNHash,extension,jsonSchema,json)
@@ -21,9 +21,10 @@ CREATE TABLE IF NOT EXISTS profiler_data_time_series (
     extension VARCHAR(256) NOT NULL,
     jsonSchema VARCHAR(256) NOT NULL,
     json JSON NOT NULL,
+    operation VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.operation') NULL,
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
-    UNIQUE unique_hash_extension_ts (entityFQNHash, extension, timestamp),
-    INDEX combined_id_ts (extension, timestamp)
+    UNIQUE profiler_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, operation, timestamp),
+    INDEX profiler_data_time_series_combined_id_ts (extension, timestamp)
 );
 
 INSERT INTO profiler_data_time_series (entityFQNHash,extension,jsonSchema,json)
@@ -41,8 +42,8 @@ CREATE TABLE IF NOT EXISTS data_quality_data_time_series (
     jsonSchema VARCHAR(256) NOT NULL,
     json JSON NOT NULL,
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
-    UNIQUE unique_hash_extension_ts (entityFQNHash, extension, timestamp),
-    INDEX combined_id_ts (extension, timestamp)
+    UNIQUE data_quality_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, timestamp),
+    INDEX data_quality_data_time_series_combined_id_ts (extension, timestamp)
 );
 
 INSERT INTO data_quality_data_time_series (entityFQNHash,extension,jsonSchema,json)

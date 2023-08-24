@@ -1,12 +1,13 @@
 -- Create report data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS report_data_time_series (
-    entityFQNHash VARCHAR(768) CHARACTER SET ascii STORED NOT NULL,
-    extension VARCHAR(256) STORED NOT NULL,
-    jsonSchema VARCHAR(256) STORED NOT NULL,
-    json JSONB STORED NOT NULL,
-    timestamp BIGINT CHECK (timestamp > 0) GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
-    INDEX combined_id_ts (timestamp)
+    entityFQNHash VARCHAR(768),
+    extension VARCHAR(256) NOT NULL,
+    jsonSchema VARCHAR(256) NOT NULL,
+    json JSONB NOT NULL,
+    timestamp BIGINT CHECK (timestamp > 0) GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS report_data_time_series_point_ts ON report_data_time_series (timestamp);
 
 INSERT INTO report_data_time_series (entityFQNHash,extension,jsonSchema,json)
 SELECT entityFQNHash, extension, jsonSchema, json
@@ -17,14 +18,16 @@ WHERE extension = 'reportData.reportDataResult';
 
 -- Create profiler data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS profiler_data_time_series (
-    entityFQNHash VARCHAR(768) CHARACTER SET ascii STORED NOT NULL,
-    extension VARCHAR(256) STORED NOT NULL,
-    jsonSchema VARCHAR(256) STORED NOT NULL,
-    json JSON STORED NOT NULL,
+    entityFQNHash VARCHAR(768),
+    extension VARCHAR(256) NOT NULL,
+    jsonSchema VARCHAR(256) NOT NULL,
+    json JSON NOT NULL,
+    operation VARCHAR(256) GENERATED ALWAYS AS ((json ->> 'operation')::text) STORED NULL,
     timestamp BIGINT CHECK (timestamp > 0) GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
-    UNIQUE unique_hash_extension_ts (entityFQNHash, extension, timestamp),
-    INDEX combined_id_ts (extension, timestamp)
+    CONSTRAINT profiler_data_time_series_unique_hash_extension_ts UNIQUE(entityFQNHash, extension, operation, timestamp)
 );
+
+CREATE INDEX IF NOT EXISTS profiler_data_time_series_combined_id_ts ON profiler_data_time_series (extension, timestamp);
 
 INSERT INTO profiler_data_time_series (entityFQNHash,extension,jsonSchema,json)
 SELECT entityFQNHash, extension, jsonSchema, json
@@ -36,14 +39,15 @@ WHERE extension IN ('table.columnProfile', 'table.tableProfile', 'table.systemPr
 
 -- Create profiler data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS data_quality_data_time_series (
-    entityFQNHash VARCHAR(768) CHARACTER SET ascii STORED NOT NULL,
-    extension VARCHAR(256) STORED NOT NULL,
-    jsonSchema VARCHAR(256) STORED NOT NULL,
-    json JSON STORED NOT NULL,
+    entityFQNHash VARCHAR(768),
+    extension VARCHAR(256) NOT NULL,
+    jsonSchema VARCHAR(256) NOT NULL,
+    json JSON NOT NULL,
     timestamp BIGINT CHECK (timestamp > 0) GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
-    UNIQUE unique_hash_extension_ts (entityFQNHash, extension, timestamp),
-    INDEX combined_id_ts (extension, timestamp)
+    CONSTRAINT data_quality_data_time_series_unique_hash_extension_ts UNIQUE(entityFQNHash, extension, timestamp)
 );
+
+CREATE INDEX IF NOT EXISTS data_quality_data_time_series_combined_id_ts ON data_quality_data_time_series (extension, timestamp);
 
 INSERT INTO data_quality_data_time_series (entityFQNHash,extension,jsonSchema,json)
 SELECT entityFQNHash, extension, jsonSchema, json
