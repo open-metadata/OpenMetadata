@@ -29,7 +29,7 @@ from metadata.ingestion.api.parser import (
 )
 from metadata.ingestion.api.status import StackTraceError, Status
 from metadata.ingestion.api.step import Step
-from metadata.ingestion.api.steps import Source, Processor, Stage, Sink, BulkSink
+from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string

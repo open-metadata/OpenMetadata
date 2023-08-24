@@ -14,10 +14,8 @@ Workflow definition for metadata related ingestions: metadata, lineage and usage
 from typing import TypeVar
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.ingestion.api.steps import Source, Sink
-from metadata.utils.class_helper import (
-    get_service_type_from_source_type,
-)
+from metadata.ingestion.api.steps import Sink, Source
+from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.importer import (
     import_from_module,
     import_sink_class,

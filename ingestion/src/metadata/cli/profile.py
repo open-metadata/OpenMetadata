@@ -19,7 +19,11 @@ import traceback
 from metadata.config.common import load_config_file
 from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import cli_logger
-from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error, print_status
+from metadata.workflow.workflow_output_handler import (
+    WorkflowType,
+    print_init_error,
+    print_status,
+)
 
 logger = cli_logger()
 

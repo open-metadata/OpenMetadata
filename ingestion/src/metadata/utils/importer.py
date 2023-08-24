@@ -25,10 +25,9 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.api.processor import Processor
-from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.stage import Stage
 from metadata.ingestion.api.step import Step
-from metadata.ingestion.api.steps import Source
+from metadata.ingestion.api.steps import Sink, Source
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.logger import utils_logger
 

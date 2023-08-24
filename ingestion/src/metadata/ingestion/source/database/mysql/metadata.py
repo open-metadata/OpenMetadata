@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Mysql source module"""
 from typing import cast
+
 from sqlalchemy.dialects.mysql.base import ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 

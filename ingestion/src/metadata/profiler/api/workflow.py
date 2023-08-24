@@ -45,8 +45,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

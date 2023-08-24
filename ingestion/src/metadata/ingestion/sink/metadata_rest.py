@@ -14,7 +14,7 @@ It picks up the generated Entities and send them
 to the OM API.
 """
 import traceback
-from functools import singledispatch, wraps
+from functools import singledispatch
 from typing import Optional, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -35,7 +35,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.status import StackTraceError, Either
+from metadata.ingestion.api.status import Either, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -94,7 +94,9 @@ class MetadataRestSink(Sink):
         self._run_dispatch = singledispatch(self._run_dispatch)
         self._run_dispatch.register(AddLineageRequest, self.write_lineage)
         self._run_dispatch.register(OMetaUserProfile, self.write_users)
-        self._run_dispatch.register(OMetaTagAndClassification, self.write_classification)
+        self._run_dispatch.register(
+            OMetaTagAndClassification, self.write_classification
+        )
         self._run_dispatch.register(DeleteEntity, self.delete_entity)
         self._run_dispatch.register(OMetaPipelineStatus, self.write_pipeline_status)
         self._run_dispatch.register(DataModelLink, self.write_datamodel)
@@ -134,10 +136,18 @@ class MetadataRestSink(Sink):
             return self._run_dispatch(record)
         except (APIError, HTTPError) as err:
             error = f"Failed to ingest {log} due to api request failure: {err}"
-            return Either(left=StackTraceError(name=log, error=error, stack_trace=traceback.format_exc()))
+            return Either(
+                left=StackTraceError(
+                    name=log, error=error, stack_trace=traceback.format_exc()
+                )
+            )
         except Exception as exc:
             error = f"Failed to ingest {log}: {exc}"
-            return Either(left=StackTraceError(name=log, error=error, stack_trace=traceback.format_exc()))
+            return Either(
+                left=StackTraceError(
+                    name=log, error=error, stack_trace=traceback.format_exc()
+                )
+            )
 
     def write_create_request(self, entity_request) -> Either:
         """
@@ -149,7 +159,11 @@ class MetadataRestSink(Sink):
             return Either(right=created)
         else:
             error = f"Failed to ingest {type(entity_request).__name__}"
-            return Either(left=StackTraceError(name=type(entity_request).__name__, error=error, stack_trace=None))
+            return Either(
+                left=StackTraceError(
+                    name=type(entity_request).__name__, error=error, stack_trace=None
+                )
+            )
 
     def write_datamodel(self, datamodel_link: DataModelLink) -> Either:
         """
@@ -163,14 +177,15 @@ class MetadataRestSink(Sink):
             data_model = self.metadata.ingest_table_data_model(
                 table=table, data_model=datamodel_link.datamodel
             )
-            logger.debug(
-                f"Successfully ingested DataModel for {table.fullyQualifiedName.__root__}"
-            )
-            self.status.records_written(
-                f"DataModel: {table.fullyQualifiedName.__root__}"
-            )
+            return Either(right=data_model)
         else:
-            logger.warning("Unable to ingest datamodel")
+            return Either(
+                left=StackTraceError(
+                    name="Data Model",
+                    error="Sink did not receive a table. We cannot ingest the data model.",
+                    stack_trace=None,
+                )
+            )
 
     def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
         """
