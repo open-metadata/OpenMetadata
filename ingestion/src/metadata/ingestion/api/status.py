@@ -13,35 +13,12 @@ Status output utilities
 """
 import pprint
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
+from metadata.ingestion.api.models import StackTraceError
 from metadata.utils.logger import get_log_name
-
-# Entities are instances of BaseModel
-Entity = BaseModel
-
-
-class StackTraceError(BaseModel):
-    """
-    Class that represents a failure status
-    """
-
-    name: str
-    error: str
-    stack_trace: Optional[str]
-
-
-class Either(BaseModel):
-    """
-    Any execution should return us Either an Entity of an error for us to handle
-    - left: Optional error we encounter
-    - right: Correct instance of an Entity
-    """
-
-    left: Optional[StackTraceError]
-    right: Optional[Any]
 
 
 class Status(BaseModel):

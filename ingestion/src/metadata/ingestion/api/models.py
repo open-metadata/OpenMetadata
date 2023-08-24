@@ -9,19 +9,32 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Pydantic definition for deleting entites
+Generic models
 """
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from metadata.ingestion.api.models import Entity
+# Entities are instances of BaseModel
+Entity = BaseModel
 
 
-class DeleteEntity(BaseModel):
+class StackTraceError(BaseModel):
     """
-    Entity Reference of the entity to be deleted
+    Class that represents a failure status
     """
 
-    entity: Entity
-    mark_deleted_entities: Optional[bool] = False
+    name: str
+    error: str
+    stack_trace: Optional[str]
+
+
+class Either(BaseModel):
+    """
+    Any execution should return us Either an Entity of an error for us to handle
+    - left: Optional error we encounter
+    - right: Correct instance of an Entity
+    """
+
+    left: Optional[StackTraceError]
+    right: Optional[Any]

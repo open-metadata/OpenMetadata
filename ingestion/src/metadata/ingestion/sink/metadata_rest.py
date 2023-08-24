@@ -35,7 +35,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.status import Either, StackTraceError
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -55,7 +55,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.helpers import calculate_execution_time
-from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger, get_log_name
+from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
 
@@ -301,154 +301,99 @@ class MetadataRestSink(Sink):
         )
         return Either(right=record)
 
-    def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:
+    def write_pipeline_status(self, record: OMetaPipelineStatus) -> Either:
         """
         Use the /status endpoint to add PipelineStatus
         data to a Pipeline Entity
         """
-        try:
-            self.metadata.add_pipeline_status(
-                fqn=record.pipeline_fqn, status=record.pipeline_status
-            )
-            self.status.records_written(f"Pipeline Status: {record.pipeline_fqn}")
+        pipeline = self.metadata.add_pipeline_status(
+            fqn=record.pipeline_fqn, status=record.pipeline_status
+        )
+        return Either(right=pipeline)
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected error writing pipeline status [{record}]: {exc}")
-
-    def write_profile_sample_data(self, record: OMetaTableProfileSampleData):
+    def write_profile_sample_data(self, record: OMetaTableProfileSampleData) -> Either:
         """
         Use the /tableProfile endpoint to ingest sample profile data
         """
-        try:
-            self.metadata.ingest_profile_data(
-                table=record.table, profile_request=record.profile
-            )
+        table = self.metadata.ingest_profile_data(
+            table=record.table, profile_request=record.profile
+        )
+        return Either(right=table)
 
-            logger.debug(
-                f"Successfully ingested profile for table {record.table.name.__root__}"
-            )
-            self.status.records_written(f"Profile: {record.table.name.__root__}")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error writing profile sample data [{record}]: {exc}"
-            )
-
-    def write_test_suite_sample(self, record: OMetaTestSuiteSample):
+    def write_test_suite_sample(self, record: OMetaTestSuiteSample) -> Either:
         """
         Use the /testSuites endpoint to ingest sample test suite
         """
-        try:
-            self.metadata.create_or_update_executable_test_suite(record.test_suite)
-            logger.debug(
-                f"Successfully created test Suite {record.test_suite.name.__root__}"
-            )
-            self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error writing test suite sample [{record}]: {exc}"
-            )
+        test_suite = self.metadata.create_or_update_executable_test_suite(
+            record.test_suite
+        )
+        return Either(right=test_suite)
 
-    def write_logical_test_suite_sample(self, record: OMetaLogicalTestSuiteSample):
+    def write_logical_test_suite_sample(
+        self, record: OMetaLogicalTestSuiteSample
+    ) -> Either:
         """Create logical test suite and add tests cases to it"""
-        try:
-            test_suite = self.metadata.create_or_update(record.test_suite)
-            logger.debug(
-                f"Successfully created logical test Suite {record.test_suite.name.__root__}"
+        test_suite = self.metadata.create_or_update(record.test_suite)
+        logger.debug(
+            f"Successfully created logical test Suite {record.test_suite.name.__root__}"
+        )
+        self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
+        self.metadata.add_logical_test_cases(
+            CreateLogicalTestCases(
+                testSuiteId=test_suite.id,
+                testCaseIds=[test_case.id for test_case in record.test_cases],  # type: ignore
             )
-            self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
-            self.metadata.add_logical_test_cases(
-                CreateLogicalTestCases(
-                    testSuiteId=test_suite.id,
-                    testCaseIds=[test_case.id for test_case in record.test_cases],  # type: ignore
-                )
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error writing test suite sample [{record}]: {exc}"
-            )
+        )
+        return Either(right=test_suite)
 
-    def write_test_case_sample(self, record: OMetaTestCaseSample):
+    def write_test_case_sample(self, record: OMetaTestCaseSample) -> Either:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
-        try:
-            self.metadata.create_or_update(record.test_case)
-            logger.debug(
-                f"Successfully created test case {record.test_case.name.__root__}"
-            )
-            self.status.records_written(f"testCase: {record.test_case.name.__root__}")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected error writing test case sample [{record}]: {exc}")
+        test_case = self.metadata.create_or_update(record.test_case)
+        return Either(right=test_case)
 
-    def write_test_case_results_sample(self, record: OMetaTestCaseResultsSample):
+    def write_test_case_results_sample(
+        self, record: OMetaTestCaseResultsSample
+    ) -> Either:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
-        try:
-            self.metadata.add_test_case_results(
-                record.test_case_results,
-                record.test_case_name,
-            )
-            logger.debug(
-                f"Successfully ingested test case results for test case {record.test_case_name}"
-            )
-            self.status.records_written(
-                f"testCaseResults: {record.test_case_name} - {record.test_case_results.timestamp.__root__}"
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error writing test case result sample [{record}]: {exc}"
-            )
+        self.metadata.add_test_case_results(
+            record.test_case_results,
+            record.test_case_name,
+        )
+        return Either(right=record.test_case_results)
 
-    def write_topic_sample_data(self, record: OMetaTopicSampleData):
+    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
-        try:
-            if record.sample_data.messages:
-                self.metadata.ingest_topic_sample_data(
-                    record.topic,
-                    record.sample_data,
-                )
-                logger.debug(
-                    f"Successfully ingested sample data for {record.topic.name.__root__}"
-                )
-                self.status.records_written(
-                    f"topicSampleData: {record.topic.name.__root__}"
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error while ingesting sample data for topic [{record.topic.name.__root__}]: {exc}"
+        if record.sample_data.messages:
+            sample_data = self.metadata.ingest_topic_sample_data(
+                record.topic,
+                record.sample_data,
             )
+            return Either(right=sample_data)
 
-    def write_search_index_sample_data(self, record: OMetaIndexSampleData):
+        logger.debug(f"No sample data to PUT for {get_log_name(record.topic)}")
+        return Either(right=record.topic)
+
+    def write_search_index_sample_data(self, record: OMetaIndexSampleData) -> Either:
         """
         Ingest Search Index Sample Data
         """
-        try:
-            if record.data.messages:
-                self.metadata.ingest_search_index_sample_data(
-                    record.entity,
-                    record.data,
-                )
-                logger.debug(
-                    f"Successfully ingested sample data for {record.entity.name.__root__}"
-                )
-                self.status.records_written(
-                    f"SearchIndexSampleData: {record.entity.name.__root__}"
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error while ingesting sample data for search index [{record.entity.name.__root__}]: {exc}"
+        if record.data.messages:
+            sample_data = self.metadata.ingest_search_index_sample_data(
+                record.entity,
+                record.data,
             )
+            return Either(right=sample_data)
+
+        logger.debug(f"No sample data to PUT for {get_log_name(record.entity)}")
+        return Either(right=record.entity)
 
     def close(self):
-        pass
+        """
+        We don't have anything to close since we are using the given metadata client
+        """

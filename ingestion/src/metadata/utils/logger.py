@@ -19,7 +19,7 @@ from types import DynamicClassAttribute
 from typing import Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.ingestion.api.status import Entity
+from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.delete_entity import DeleteEntity
 
 METADATA_LOGGER = "metadata"
@@ -186,9 +186,7 @@ def _(record: AddLineageRequest) -> str:
 
     # name can be informed or not
     name_str = (
-        f"name: {record.edge.fromEntity.name}, "
-        if record.edge.fromEntity.name
-        else ""
+        f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
     )
 
     return f"{type_} [{name_str}id: {id_}]"

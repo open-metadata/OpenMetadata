@@ -19,7 +19,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.status import Either, Entity, StackTraceError, Status
+from metadata.ingestion.api.models import Either, Entity, StackTraceError
+from metadata.ingestion.api.status import Status
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

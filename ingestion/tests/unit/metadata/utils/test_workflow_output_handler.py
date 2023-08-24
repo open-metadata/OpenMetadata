@@ -20,11 +20,12 @@ from unittest.mock import Mock
 
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.bulk_sink import BulkSinkStatus
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.stage import StageStatus
-from metadata.ingestion.api.status import StackTraceError, Status
+from metadata.ingestion.api.status import Status
 from metadata.utils.logger import Loggers
 from metadata.workflow.workflow_output_handler import (
     print_data_insight_status,

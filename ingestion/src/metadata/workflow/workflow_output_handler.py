@@ -23,11 +23,12 @@ from tabulate import tabulate
 
 from metadata.config.common import ConfigurationError
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
-from metadata.ingestion.api.status import StackTraceError, Status
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.utils.constants import UTF_8

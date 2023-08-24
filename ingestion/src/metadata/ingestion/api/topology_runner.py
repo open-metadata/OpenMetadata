@@ -17,7 +17,7 @@ from typing import Any, Generic, Iterable, List, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.ingestion.api.status import Either, Entity
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,

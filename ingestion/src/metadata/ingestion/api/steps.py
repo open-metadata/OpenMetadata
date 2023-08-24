@@ -14,7 +14,7 @@ Abstract definition of each step
 from abc import ABC, abstractmethod
 from typing import Any
 
-from metadata.ingestion.api.status import Either, Entity
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.step import IterStep, ReturnStep
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
