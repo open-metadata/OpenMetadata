@@ -21,14 +21,3 @@ SET json = JSON_INSERT(
         JSON_EXTRACT(json, '$.connection.config.password'))
 where serviceType = 'Trino'
   AND JSON_EXTRACT(json, '$.connection.config.password') IS NOT NULL;
-
--- Update table and column profile timestamps to be in milliseconds
-UPDATE entity_extension_time_series
-    SET json = JSON_INSERT(
-    JSON_REMOVE(json, '$.timestamp'),
-    '$.timestamp',
-    JSON_EXTRACT(json, '$.timestamp') * 1000
-    )
-WHERE
-    extension  in ('table.tableProfile', 'table.columnProfile');
-;
