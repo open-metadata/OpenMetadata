@@ -84,7 +84,7 @@ describe('Test FeedHeader Component', () => {
     expect(entityTypeElement).not.toBeInTheDocument();
     expect(entityLinkElement).not.toBeInTheDocument();
     expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('Jan 1, 1970 00:00 AM');
+    expect(timeStampElement).toHaveTextContent('1 year ago');
   });
 
   it('Checks if the FeedHeader component has isEntityFeed as false', async () => {
@@ -112,7 +112,7 @@ describe('Test FeedHeader Component', () => {
     expect(entityTypeElement).toBeInTheDocument();
     expect(entityLinkElement).toBeInTheDocument();
     expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('Jan 1, 1970 00:00 AM');
+    expect(timeStampElement).toHaveTextContent('1 year ago');
   });
 
   it('Should show link text as `database.schema.table` if entity type is table', async () => {
