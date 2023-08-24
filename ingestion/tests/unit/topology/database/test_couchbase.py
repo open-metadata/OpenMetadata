@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Test MongoDB using the topology
+Test Couchbase using the topology
 """
 
 from unittest import TestCase
