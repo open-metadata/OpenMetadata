@@ -13,7 +13,7 @@
 import { ReactRenderer } from '@tiptap/react';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import tippy, { Instance, Props } from 'tippy.js';
-import { SlashCommandList, SlashCommandRef } from './CommandList';
+import { SlashCommandList, SlashCommandRef } from './SlashCommandList';
 
 const renderItems = () => {
   let component: ReactRenderer;

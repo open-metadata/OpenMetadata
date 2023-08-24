@@ -13,11 +13,11 @@
 import { Form, FormProps, Input, Modal } from 'antd';
 import React, { FC } from 'react';
 
-interface LinkData {
+export interface LinkData {
   href: string;
 }
 
-interface LinkModalProps {
+export interface LinkModalProps {
   isOpen: boolean;
   data: LinkData;
   onSave: (data: LinkData) => void;

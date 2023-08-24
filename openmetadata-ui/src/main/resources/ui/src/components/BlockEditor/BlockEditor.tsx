@@ -18,17 +18,13 @@ import { isNil } from 'lodash';
 import React, { useState } from 'react';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu';
+import SlashCommand from './Extensions/slash-command';
 import { getSuggestionItems } from './Extensions/slash-command/items';
 import renderItems from './Extensions/slash-command/renderItems';
-import SlashCommand from './Extensions/slash-command/SlashCommand';
-import LinkModal from './LinkModal';
+import LinkModal, { LinkData } from './LinkModal';
 
 const BlockEditor = () => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
-
-  const handleLinkToggle = () => {
-    setIsLinkModalOpen((prev) => !prev);
-  };
 
   const editor = useEditor({
     autofocus: false,
@@ -115,6 +111,31 @@ const BlockEditor = () => {
     ],
   });
 
+  const handleLinkToggle = () => {
+    setIsLinkModalOpen((prev) => !prev);
+  };
+
+  const handleLinkCancel = () => {
+    handleLinkToggle();
+    if (!isNil(editor)) {
+      editor?.chain().blur().run();
+    }
+  };
+
+  const handleLinkSave = (values: LinkData) => {
+    if (isNil(editor)) {
+      return;
+    }
+    // set the link
+    editor?.chain().focus().setLink({ href: values.href }).run();
+
+    // move cursor at the end
+    editor?.chain().selectTextblockEnd().run();
+
+    // close the modal
+    handleLinkToggle();
+  };
+
   const menus = !isNil(editor) && (
     <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
   );
@@ -125,12 +146,8 @@ const BlockEditor = () => {
         <LinkModal
           data={{ href: editor?.getAttributes('link').href }}
           isOpen={isLinkModalOpen}
-          onCancel={handleLinkToggle}
-          onSave={(values) => {
-            editor?.chain().focus().setLink({ href: values.href }).run();
-            handleLinkToggle();
-            editor?.chain().selectTextblockEnd().run();
-          }}
+          onCancel={handleLinkCancel}
+          onSave={handleLinkSave}
         />
       )}
       <div className="editor-wrapper">

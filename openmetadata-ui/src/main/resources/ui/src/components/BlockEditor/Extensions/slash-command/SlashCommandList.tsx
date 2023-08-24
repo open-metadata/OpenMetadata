@@ -13,6 +13,7 @@
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
+import { isInViewport } from 'components/BlockEditor/helpers';
 import { isEmpty } from 'lodash';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 
@@ -23,17 +24,6 @@ export type CommandsListState = {
 export interface SlashCommandRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
 }
-
-const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
-  const eleTop = ele.offsetTop;
-  const eleBottom = eleTop + ele.clientHeight;
-
-  const containerTop = container.scrollTop;
-  const containerBottom = containerTop + container.clientHeight;
-
-  // The element is fully visible in the container
-  return eleTop >= containerTop && eleBottom <= containerBottom;
-};
 
 export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
   (props, ref) => {
