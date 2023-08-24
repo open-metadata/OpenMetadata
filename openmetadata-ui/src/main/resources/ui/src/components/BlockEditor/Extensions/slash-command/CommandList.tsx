@@ -10,124 +10,115 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
-import { SuggestionItem } from './items';
+import { isEmpty } from 'lodash';
+import React, { forwardRef, useImperativeHandle, useState } from 'react';
 
 export type CommandsListState = {
   selectedIndex: number;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export class CommandsList extends React.Component<any, CommandsListState> {
-  static isInViewport(ele: HTMLElement, container: HTMLElement) {
-    const eleTop = ele.offsetTop;
-    const eleBottom = eleTop + ele.clientHeight;
+export interface SlashCommandRef {
+  onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+}
 
-    const containerTop = container.scrollTop;
-    const containerBottom = containerTop + container.clientHeight;
+const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
+  const eleTop = ele.offsetTop;
+  const eleBottom = eleTop + ele.clientHeight;
 
-    // The element is fully visible in the container
-    return eleTop >= containerTop && eleBottom <= containerBottom;
-  }
+  const containerTop = container.scrollTop;
+  const containerBottom = containerTop + container.clientHeight;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(props: any) {
-    super(props);
-    this.state = {
-      selectedIndex: 0,
+  // The element is fully visible in the container
+  return eleTop >= containerTop && eleBottom <= containerBottom;
+};
+
+export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
+  (props, ref) => {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const { items, command } = props;
+
+    const selectItem = (index: number) => {
+      const item = items[index];
+
+      if (item) {
+        command(item);
+      }
     };
-  }
 
-  // being used by parent
-  onKeyDown({ event }: { event: KeyboardEvent }) {
-    if (event.key === 'ArrowUp') {
-      this.upHandler();
+    const upHandler = () => {
+      setSelectedIndex((prev) => {
+        const newIndex = (prev + items.length - 1) % items.length;
+        const commandListing = document.getElementById(
+          `editor-command-${items[newIndex].title}`
+        );
+        const commandList = document.getElementById('editor-commands-viewport');
+        if (
+          commandList &&
+          commandListing &&
+          !isInViewport(commandListing, commandList)
+        ) {
+          commandListing.scrollIntoView();
+        }
 
-      return true;
+        return newIndex;
+      });
+    };
+
+    const downHandler = () => {
+      setSelectedIndex((prev) => {
+        const newIndex = (prev + 1) % items.length;
+        const commandListing = document.getElementById(
+          `editor-command-${items[newIndex].title}`
+        );
+        const commandList = document.getElementById('editor-commands-viewport');
+        if (
+          commandList &&
+          commandListing &&
+          !isInViewport(commandListing, commandList)
+        ) {
+          commandListing.scrollIntoView();
+        }
+
+        return newIndex;
+      });
+    };
+
+    const enterHandler = () => {
+      selectItem(selectedIndex);
+    };
+
+    useImperativeHandle(ref, () => ({
+      onKeyDown: ({ event }) => {
+        if (event.key === 'ArrowUp') {
+          upHandler();
+
+          return true;
+        }
+
+        if (event.key === 'ArrowDown') {
+          downHandler();
+
+          return true;
+        }
+
+        if (event.key === 'Enter') {
+          enterHandler();
+
+          return true;
+        }
+
+        return false;
+      },
+    }));
+
+    if (isEmpty(items)) {
+      return null;
     }
 
-    if (event.key === 'ArrowDown') {
-      this.downHandler();
-
-      return true;
-    }
-
-    if (event.key === 'Enter') {
-      this.enterHandler();
-
-      return true;
-    }
-
-    return false;
-  }
-
-  upHandler() {
-    const { items } = this.props;
-    this.setState((prev) => {
-      const newIndex = (prev.selectedIndex + items.length - 1) % items.length;
-      const commandListing = document.getElementById(
-        `editor-command-${items[newIndex].title}`
-      );
-      const commandList = document.getElementById('editor-commands-viewport');
-      if (
-        commandList &&
-        commandListing &&
-        !CommandsList.isInViewport(commandListing, commandList)
-      ) {
-        commandListing.scrollIntoView();
-      }
-
-      return {
-        selectedIndex: newIndex,
-      };
-    });
-  }
-
-  downHandler() {
-    const { items } = this.props;
-
-    this.setState((prev) => {
-      const newIndex = (prev.selectedIndex + 1) % items.length;
-      const commandListing = document.getElementById(
-        `editor-command-${items[newIndex].title}`
-      );
-      const commandList = document.getElementById('editor-commands-viewport');
-      if (
-        commandList &&
-        commandListing &&
-        !CommandsList.isInViewport(commandListing, commandList)
-      ) {
-        commandListing.scrollIntoView();
-      }
-
-      return {
-        selectedIndex: newIndex,
-      };
-    });
-  }
-
-  enterHandler() {
-    const { selectedIndex } = this.state;
-    this.selectItem(selectedIndex);
-  }
-
-  selectItem(index: number) {
-    const { items, command } = this.props;
-    const item = items[index];
-
-    if (item) {
-      command(item);
-    }
-  }
-
-  render() {
-    const { props } = this;
-    const items = props.items as SuggestionItem[];
-    const { selectedIndex } = this.state;
-
-    return items.length > 0 ? (
+    return (
       <div className="slash-menu-wrapper" id="editor-commands-viewport">
         {items.map((item, index) => (
           <div
@@ -143,7 +134,7 @@ export class CommandsList extends React.Component<any, CommandsListState> {
               })}
               key={item.title}
               type="text"
-              onClick={() => this.selectItem(index)}>
+              onClick={() => selectItem(index)}>
               <Space align="center">
                 <Typography className="font-bold">{item.title}</Typography>
                 <Typography>{item.description}</Typography>
@@ -152,8 +143,6 @@ export class CommandsList extends React.Component<any, CommandsListState> {
           </div>
         ))}
       </div>
-    ) : null;
+    );
   }
-}
-
-export default CommandsList;
+);

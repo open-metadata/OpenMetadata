@@ -13,22 +13,23 @@
 import { ReactRenderer } from '@tiptap/react';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import tippy, { Instance, Props } from 'tippy.js';
-import CommandsList from './CommandList';
+import { SlashCommandList, SlashCommandRef } from './CommandList';
 
 const renderItems = () => {
-  let component: ReactRenderer<CommandsList>;
+  let component: ReactRenderer;
   let popup: Instance<Props>[];
   let suggestionProps: SuggestionProps;
 
   return {
     onStart: (props: SuggestionProps) => {
       suggestionProps = props;
-      component = new ReactRenderer(CommandsList, {
+      component = new ReactRenderer(SlashCommandList, {
         props,
         editor: props.editor,
       });
 
       popup = tippy('body', {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         getReferenceClientRect: props.clientRect as any,
         appendTo: () => document.body,
         content: component.element,
@@ -43,6 +44,7 @@ const renderItems = () => {
       component.updateProps(props);
 
       popup[0].setProps({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         getReferenceClientRect: props.clientRect as any,
       });
     },
@@ -65,10 +67,12 @@ const renderItems = () => {
         }
       }
 
-      return component.ref?.onKeyDown(props) || false;
+      return (component.ref as SlashCommandRef)?.onKeyDown(props) || false;
     },
     onExit() {
-      popup[0].destroy();
+      if (!popup[0].state.isDestroyed) {
+        popup[0].destroy();
+      }
       component.destroy();
     },
   };
