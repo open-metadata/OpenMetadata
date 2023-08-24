@@ -18,9 +18,10 @@ import React, { FC, useMemo } from 'react';
 
 interface BubbleMenuProps {
   editor: Editor;
+  toggleLink: () => void;
 }
 
-const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
+const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
   const { menuList, headings } = useMemo(() => {
     const menuList = [
       {
@@ -50,6 +51,13 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
         disabled: !editor.can().chain().focus().toggleCode().run(),
         onClick: () => editor.chain().focus().toggleCode().run(),
         icon: '</>',
+      },
+      {
+        ariaLabel: 'Link',
+        className: editor.isActive('link') ? 'is-active' : '',
+        disabled: false,
+        onClick: () => toggleLink(),
+        icon: 'link',
       },
       {
         ariaLabel: 'Paragraph',

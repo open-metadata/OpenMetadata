@@ -10,18 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import LinkExtension from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { isNil } from 'lodash';
-import React from 'react';
+import React, { useState } from 'react';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu';
 import { getSuggestionItems } from './Extensions/slash-command/items';
 import renderItems from './Extensions/slash-command/renderItems';
 import SlashCommand from './Extensions/slash-command/SlashCommand';
+import LinkModal from './LinkModal';
 
 const BlockEditor = () => {
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
+
+  const handleLinkToggle = () => {
+    setIsLinkModalOpen((prev) => !prev);
+  };
+
   const editor = useEditor({
     autofocus: false,
     extensions: [
@@ -94,16 +102,42 @@ const BlockEditor = () => {
           render: renderItems,
         },
       }),
+      LinkExtension.configure({
+        autolink: false,
+        openOnClick: false,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          rel: 'noopener noreferrer nofollow',
+          target: '_blank',
+        },
+        validate: (href) => /^https?:\/\//.test(href),
+      }),
     ],
   });
 
-  const menus = !isNil(editor) && <BubbleMenu editor={editor} />;
+  const menus = !isNil(editor) && (
+    <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
+  );
 
   return (
-    <div className="editor-wrapper">
-      <EditorContent editor={editor} />
-      {menus}
-    </div>
+    <>
+      {isLinkModalOpen && (
+        <LinkModal
+          data={{ href: editor?.getAttributes('link').href }}
+          isOpen={isLinkModalOpen}
+          onCancel={handleLinkToggle}
+          onSave={(values) => {
+            editor?.chain().focus().setLink({ href: values.href }).run();
+            handleLinkToggle();
+            editor?.chain().selectTextblockEnd().run();
+          }}
+        />
+      )}
+      <div className="editor-wrapper">
+        <EditorContent editor={editor} />
+        {menus}
+      </div>
+    </>
   );
 };
 
