@@ -32,7 +32,7 @@ describe('Services page should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}`,
+      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}*`,
       'ingestionPipelines'
     );
     cy.login();
