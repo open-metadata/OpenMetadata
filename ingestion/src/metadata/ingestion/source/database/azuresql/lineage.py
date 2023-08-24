@@ -11,21 +11,15 @@
 """
 AZURESQL lineage module
 """
-from metadata.ingestion.source.database.azuresql.queries import AZURESQL_SQL_STATEMENT
+
 from metadata.ingestion.source.database.azuresql.query_parser import (
     AzuresqlQueryParserSource,
 )
-from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 
 
-class AzuresqlLineageSource(AzuresqlQueryParserSource, LineageSource):
-    sql_stmt = AZURESQL_SQL_STATEMENT
+class AzuresqlLineageSource(AzuresqlQueryParserSource, MssqlLineageSource):
+    """
+    Extending MssqlLineageSource
 
-    filters = """
-        AND (
-            lower(t.text) LIKE '%%select%%into%%'
-            OR lower(t.text) LIKE '%%insert%%into%%select%%'
-            OR lower(t.text) LIKE '%%update%%'
-            OR lower(t.text) LIKE '%%merge%%'
-        )
     """

@@ -11,14 +11,15 @@
 """
 AzureSQL usage module
 """
-from metadata.ingestion.source.database.azuresql.queries import AZURESQL_SQL_STATEMENT
+
 from metadata.ingestion.source.database.azuresql.query_parser import (
     AzuresqlQueryParserSource,
 )
-from metadata.ingestion.source.database.usage_source import UsageSource
+from metadata.ingestion.source.database.mssql.usage import MssqlUsageSource
 
 
-class AzuresqlUsageSource(AzuresqlQueryParserSource, UsageSource):
-    sql_stmt = AZURESQL_SQL_STATEMENT
+class AzuresqlUsageSource(AzuresqlQueryParserSource, MssqlUsageSource):
+    """
+    Extending MssqlUsageSource
 
-    filters = ""  # No filtering in the queries
+    """
