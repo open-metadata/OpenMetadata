@@ -27,7 +27,7 @@ const BlockEditor = () => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
   const editor = useEditor({
-    autofocus: false,
+    autofocus: true,
     extensions: [
       StarterKit.configure({
         heading: {
@@ -39,6 +39,7 @@ const BlockEditor = () => {
         includeChildren: true,
         showOnlyCurrent: false,
         emptyEditorClass: 'is-editor-empty',
+        emptyNodeClass: 'is-node-empty',
         placeholder: ({ node, editor: coreEditor }) => {
           if (coreEditor.isDestroyed) {
             return '';
@@ -150,7 +151,7 @@ const BlockEditor = () => {
           onSave={handleLinkSave}
         />
       )}
-      <div className="editor-wrapper">
+      <div className="block-editor-wrapper">
         <EditorContent editor={editor} />
         {menus}
       </div>

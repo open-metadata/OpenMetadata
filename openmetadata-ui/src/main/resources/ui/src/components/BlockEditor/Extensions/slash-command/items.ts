@@ -11,6 +11,15 @@
  *  limitations under the License.
  */
 import { Editor, Range } from '@tiptap/core';
+import CodeBlockImage from 'assets/svg/markdown/ic-format-code-block.svg';
+import BulletListImage from 'assets/svg/markdown/ic-slash-bullet-list.png';
+import DividerImage from 'assets/svg/markdown/ic-slash-divider.png';
+import H1Image from 'assets/svg/markdown/ic-slash-h1.png';
+import H2Image from 'assets/svg/markdown/ic-slash-h2.png';
+import H3Image from 'assets/svg/markdown/ic-slash-h3.png';
+import NumberedListImage from 'assets/svg/markdown/ic-slash-numbered-list.png';
+import QuoteImage from 'assets/svg/markdown/ic-slash-quote.png';
+import TextImage from 'assets/svg/markdown/ic-slash-text.png';
 
 export enum SuggestionItemType {
   BASIC_BLOCKS = 'Basic blocks',
@@ -21,6 +30,7 @@ export interface SuggestionItem {
   description: string;
   type: SuggestionItemType;
   shortcut: string | null;
+  imgSrc: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   command: (props: { editor: Editor; range: Range; props: any }) => void;
 }
@@ -36,6 +46,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setNode('paragraph').run();
         },
+        imgSrc: TextImage,
       },
       {
         title: 'H1',
@@ -50,6 +61,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
             .setNode('heading', { level: 1 })
             .run();
         },
+        imgSrc: H1Image,
       },
       {
         title: 'H2',
@@ -64,6 +76,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
             .setNode('heading', { level: 2 })
             .run();
         },
+        imgSrc: H2Image,
       },
       {
         title: 'H3',
@@ -78,6 +91,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
             .setNode('heading', { level: 3 })
             .run();
         },
+        imgSrc: H3Image,
       },
       {
         title: 'Code Block',
@@ -87,6 +101,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
         },
+        imgSrc: CodeBlockImage,
       },
       {
         title: 'Bullet List',
@@ -96,6 +111,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).toggleBulletList().run();
         },
+        imgSrc: BulletListImage,
       },
       {
         title: 'Numbered List',
@@ -105,6 +121,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).toggleOrderedList().run();
         },
+        imgSrc: NumberedListImage,
       },
       {
         title: 'Quote',
@@ -114,15 +131,17 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).toggleBlockquote().run();
         },
+        imgSrc: QuoteImage,
       },
       {
         title: 'Divider',
         description: 'Visually divide blocks',
         shortcut: null,
         type: SuggestionItemType.BASIC_BLOCKS,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+        command: ({ editor }) => {
+          editor.chain().focus().setHorizontalRule().run();
         },
+        imgSrc: DividerImage,
       },
     ] as SuggestionItem[]
   )

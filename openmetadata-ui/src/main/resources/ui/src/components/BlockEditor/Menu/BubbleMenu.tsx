@@ -12,8 +12,19 @@
  */
 import { Editor } from '@tiptap/core';
 import { BubbleMenu as CoreBubbleMenu } from '@tiptap/react';
-import { Button, Dropdown } from 'antd';
-import { ReactComponent as IconMore } from 'assets/svg/ic-three-dots.svg';
+import { Button, Dropdown, Tooltip, Typography } from 'antd';
+import { TitleProps } from 'antd/lib/typography/Title';
+import { ReactComponent as FormatBoldIcon } from 'assets/svg/markdown/ic-format-bold.svg';
+import { ReactComponent as FormatBulletListIcon } from 'assets/svg/markdown/ic-format-bullet-list.svg';
+import { ReactComponent as FormatCodeBlockIcon } from 'assets/svg/markdown/ic-format-code-block.svg';
+import { ReactComponent as FormatDividerIcon } from 'assets/svg/markdown/ic-format-divider.svg';
+import { ReactComponent as FormatInlineCodeIcon } from 'assets/svg/markdown/ic-format-inline-code.svg';
+import { ReactComponent as FormatItalicIcon } from 'assets/svg/markdown/ic-format-italic.svg';
+import { ReactComponent as FormatLinkIcon } from 'assets/svg/markdown/ic-format-link.svg';
+import { ReactComponent as FormatNumberListIcon } from 'assets/svg/markdown/ic-format-numbered-list.svg';
+import { ReactComponent as FormatQuoteIcon } from 'assets/svg/markdown/ic-format-quote.svg';
+import { ReactComponent as FormatStrikeIcon } from 'assets/svg/markdown/ic-format-strike.svg';
+import classNames from 'classnames';
 import React, { FC, useMemo } from 'react';
 
 interface BubbleMenuProps {
@@ -29,77 +40,70 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
         className: editor.isActive('bold') ? 'is-active' : '',
         disabled: !editor.can().chain().focus().toggleBold().run(),
         onClick: () => editor.chain().focus().toggleBold().run(),
-        icon: 'B',
+        icon: FormatBoldIcon,
       },
       {
         ariaLabel: 'Italic',
         className: editor.isActive('italic') ? 'is-active' : '',
         disabled: !editor.can().chain().focus().toggleItalic().run(),
         onClick: () => editor.chain().focus().toggleItalic().run(),
-        icon: 'I',
+        icon: FormatItalicIcon,
       },
       {
         ariaLabel: 'Strike',
         className: editor.isActive('strike') ? 'is-active' : '',
         disabled: !editor.can().chain().focus().toggleStrike().run(),
         onClick: () => editor.chain().focus().toggleStrike().run(),
-        icon: '$',
+        icon: FormatStrikeIcon,
       },
       {
         ariaLabel: 'Code',
         className: editor.isActive('code') ? 'is-active' : '',
         disabled: !editor.can().chain().focus().toggleCode().run(),
         onClick: () => editor.chain().focus().toggleCode().run(),
-        icon: '</>',
+        icon: FormatInlineCodeIcon,
       },
       {
         ariaLabel: 'Link',
         className: editor.isActive('link') ? 'is-active' : '',
         disabled: false,
         onClick: () => toggleLink(),
-        icon: 'link',
-      },
-      {
-        ariaLabel: 'Paragraph',
-        className: editor.isActive('paragraph') ? 'is-active' : '',
-        disabled: false,
-        onClick: () => editor.chain().focus().setParagraph().run(),
-        icon: 'P',
+        icon: FormatLinkIcon,
       },
       {
         ariaLabel: 'Bullet List',
         className: editor.isActive('bulletList') ? 'is-active' : '',
         disabled: false,
         onClick: () => editor.chain().focus().toggleBulletList().run(),
-        icon: 'Ul',
+        icon: FormatBulletListIcon,
       },
       {
         ariaLabel: 'Ordered List',
         className: editor.isActive('orderedList') ? 'is-active' : '',
         disabled: false,
         onClick: () => editor.chain().focus().toggleOrderedList().run(),
-        icon: 'Ol',
+        icon: FormatNumberListIcon,
       },
       {
         ariaLabel: 'Code block',
         className: editor.isActive('codeBlock') ? 'is-active' : '',
         disabled: false,
         onClick: () => editor.chain().focus().toggleCodeBlock().run(),
-        icon: '</>B',
+        icon: FormatCodeBlockIcon,
       },
       {
         ariaLabel: 'Blockquote',
         className: editor.isActive('blockquote') ? 'is-active' : '',
         disabled: false,
         onClick: () => editor.chain().focus().toggleBlockquote().run(),
-        icon: '>',
+        icon: FormatQuoteIcon,
       },
       {
         ariaLabel: 'Horizontal Line',
         className: '',
         disabled: false,
         onClick: () => editor.chain().focus().setHorizontalRule().run(),
-        icon: '--',
+        icon: FormatDividerIcon,
       },
     ];
 
@@ -107,14 +111,17 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
       {
         label: 'Heading 1',
         onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+        level: 1,
       },
       {
         label: 'Heading 2',
         onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+        level: 2,
       },
       {
         label: 'Heading 3',
         onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+        level: 3,
       },
     ];
 
@@ -127,38 +134,34 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
         className="headings-dropdown"
         icon={<i>H</i>}
         menu={{
-          items: headings.map((heading) => ({
-            key: heading.label,
-            icon: heading.label,
-            onClick: heading.onClick,
+          items: headings.map(({ label, level, onClick }) => ({
+            key: label,
+            icon: (
+              <Typography.Title
+                className="m-b-0"
+                level={(level + 2) as TitleProps['level']}>
+                {label}
+              </Typography.Title>
+            ),
+            onClick,
           })),
         }}
         type="text"
       />
-      {menuList.slice(0, 6).map((menu) => (
-        <Button
-          aria-label={menu.ariaLabel}
-          className={menu.className}
-          disabled={menu.disabled}
-          key={menu.ariaLabel}
-          title={menu.ariaLabel}
-          type="text"
-          onClick={menu.onClick}>
-          {menu.icon}
-        </Button>
-      ))}
-      <Dropdown.Button
-        className="more-menu-items"
-        icon={<IconMore height={16} width={16} />}
-        menu={{
-          items: menuList.slice(6).map((menu) => ({
-            icon: menu.ariaLabel,
-            key: menu.ariaLabel,
-            onClick: menu.onClick,
-          })),
-        }}
-        type="text"
-      />
+      {menuList.map(
+        ({ icon: Icon, ariaLabel, className, disabled, onClick }) => (
+          <Tooltip key={ariaLabel} title={ariaLabel}>
+            <Button
+              aria-label={ariaLabel}
+              className={classNames('p-0', className)}
+              disabled={disabled}
+              type="text"
+              onClick={onClick}>
+              <Icon className="d-flex" height={24} width={24} />
+            </Button>
+          </Tooltip>
+        )
+      )}
     </CoreBubbleMenu>
   );
 };

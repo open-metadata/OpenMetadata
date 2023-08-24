@@ -12,20 +12,24 @@
  */
 @import (reference) url('../../styles/variables.less');
 
-.editor-wrapper {
-  .tiptap p.is-editor-empty:first-child::before {
+.block-editor-wrapper {
+  // show placeholder when editor is in focused mode
+  .tiptap.ProseMirror-focused p.is-node-empty:last-child::before {
     color: @grey-3;
     content: attr(data-placeholder);
     float: left;
     height: 0;
     pointer-events: none;
   }
+  .tippy-box {
+    max-width: 400px !important;
+  }
 }
 
 .menu-wrapper {
   background-color: @white;
   display: flex;
-  gap: 4px;
+  gap: 8px;
   align-items: center;
   justify-content: center;
   border: @global-border;
@@ -40,11 +44,23 @@
 
 .slash-menu-wrapper {
   max-height: 300px;
-  padding: 12px 6px;
+  padding: 12px 0px;
   background-color: @white;
   border: @global-border;
   border-radius: @border-radius-base;
   overflow-y: auto;
+  .slash-command-item {
+    padding: 6px;
+    .slash-command-image {
+      display: block;
+      object-fit: cover;
+      border-radius: 4px;
+      background: white;
+      width: 46px;
+      height: 46px;
+      box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px;
+    }
+  }
 }
 
 .block-editor-link-modal {

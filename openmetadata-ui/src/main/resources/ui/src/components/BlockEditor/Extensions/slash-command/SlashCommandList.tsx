@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { Button, Space, Typography } from 'antd';
+import { Image, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isInViewport } from 'components/BlockEditor/helpers';
 import { isEmpty } from 'lodash';
@@ -109,30 +109,30 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
     }
 
     return (
-      <div className="slash-menu-wrapper" id="editor-commands-viewport">
+      <Space
+        className="slash-menu-wrapper"
+        direction="vertical"
+        id="editor-commands-viewport">
         {items.map((item, index) => (
-          <div
-            className="d-flex flex-column"
+          <Space
+            className={classNames('w-full cursor-pointer slash-command-item', {
+              'bg-grey-2': index === selectedIndex,
+            })}
             id={`editor-command-${item.title}`}
-            key={item.title}>
-            {item.type !== items[index - 1]?.type && (
-              <Typography className="m-b-xs">{item.type}</Typography>
-            )}
-            <Button
-              className={classNames('d-flex', {
-                'bg-grey-2': index === selectedIndex,
-              })}
-              key={item.title}
-              type="text"
-              onClick={() => selectItem(index)}>
-              <Space align="center">
-                <Typography className="font-bold">{item.title}</Typography>
-                <Typography>{item.description}</Typography>
-              </Space>
-            </Button>
-          </div>
+            key={item.title}
+            onClick={() => selectItem(index)}>
+            <Image
+              className="slash-command-image"
+              preview={false}
+              src={item.imgSrc}
+            />
+            <Space direction="vertical" size={0}>
+              <Typography className="font-bold">{item.title}</Typography>
+              <Typography>{item.description}</Typography>
+            </Space>
+          </Space>
         ))}
-      </div>
+      </Space>
     );
   }
 );
