@@ -224,7 +224,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                   <Col key={uniqueId()} span={24}>
                     <EntitySummaryProgressBar
                       entity={entity}
-                      label={`${round(latestData[entity] || 0, 2)}${
+                      label={`${round(latestData[entity] ?? 0, 2)}${
                         isPercentageGraph ? '%' : ''
                       }`}
                       latestData={latestData}

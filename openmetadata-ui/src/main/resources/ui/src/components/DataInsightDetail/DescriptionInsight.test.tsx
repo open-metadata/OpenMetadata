@@ -30,11 +30,11 @@ jest.mock('../../utils/DataInsightUtils', () => ({
     .fn()
     .mockImplementation(() => DUMMY_GRAPH_DATA),
 }));
-jest.mock('./DataInsightProgressBar', () => {
-  return jest.fn().mockImplementation(({ startValue, successValue }) => (
+jest.mock('./EntitySummaryProgressBar.component', () => {
+  return jest.fn().mockImplementation(({ label, entity }) => (
     <div>
-      DataInsightProgressBar.component
-      <p data-testid={successValue}>{startValue}</p>
+      EntitySummaryProgressBar.component
+      <p data-testid={entity}>{label}</p>
     </div>
   ));
 });
