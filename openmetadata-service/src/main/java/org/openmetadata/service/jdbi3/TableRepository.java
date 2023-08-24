@@ -353,18 +353,12 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    String storedTableProfile =
-        getExtensionAtTimestamp(
-            table.getFullyQualifiedName(),
-            TABLE_PROFILE_EXTENSION,
-            createTableProfile.getTableProfile().getTimestamp());
     storeTimeSeries(
         table.getFullyQualifiedName(),
         TABLE_PROFILE_EXTENSION,
         "tableProfile",
         JsonUtils.pojoToJson(createTableProfile.getTableProfile()),
-        createTableProfile.getTableProfile().getTimestamp(),
-        storedTableProfile != null);
+        createTableProfile.getTableProfile().getTimestamp());
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
       // Validate all the columns
@@ -372,16 +366,12 @@ public class TableRepository extends EntityRepository<Table> {
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
-      String storedColumnProfile =
-          getExtensionAtTimestamp(
-              column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION, columnProfile.getTimestamp());
       storeTimeSeries(
           column.getFullyQualifiedName(),
           TABLE_COLUMN_PROFILE_EXTENSION,
           "columnProfile",
           JsonUtils.pojoToJson(columnProfile),
-          columnProfile.getTimestamp(),
-          storedColumnProfile != null);
+          columnProfile.getTimestamp());
     }
 
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
@@ -412,16 +402,21 @@ public class TableRepository extends EntityRepository<Table> {
   public void deleteTableProfile(String fqn, String entityType, Long timestamp) {
     // Validate the request content
     String extension;
+    Class classMapper;
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
       extension = TABLE_PROFILE_EXTENSION;
+      classMapper = TableProfile.class;
     } else if (entityType.equalsIgnoreCase("column")) {
       extension = TABLE_COLUMN_PROFILE_EXTENSION;
+      classMapper = ColumnProfile.class;
+    } else if (entityType.equalsIgnoreCase("system")) {
+      extension = SYSTEM_PROFILE_EXTENSION;
+      classMapper = SystemProfile.class;
     } else {
-      throw new IllegalArgumentException("entityType must be table or column");
+      throw new IllegalArgumentException("entityType must be table, column or system");
     }
 
-    TableProfile storedTableProfile =
-        JsonUtils.readValue(getExtensionAtTimestamp(fqn, extension, timestamp), TableProfile.class);
+    Object storedTableProfile = JsonUtils.readValue(getExtensionAtTimestamp(fqn, extension, timestamp), classMapper);
     if (storedTableProfile == null) {
       throw new EntityNotFoundException(String.format("Failed to find table profile for %s at %s", fqn, timestamp));
     }
@@ -990,6 +985,7 @@ public class TableRepository extends EntityRepository<Table> {
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateConstraints(origTable, updatedTable);
       updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) {

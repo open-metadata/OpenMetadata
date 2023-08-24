@@ -34,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.storage.s3.metadata import (
@@ -211,6 +212,9 @@ class StorageUnitTest(TestCase):
                 file_formats=[],
                 data_model=None,
                 creation_date=bucket_response.creation_date.isoformat(),
+                sourceUrl=SourceUrl(
+                    __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&tab=objects"
+                ),
             ),
             self.object_store_source._generate_unstructured_container(
                 bucket_response=bucket_response
@@ -252,6 +256,9 @@ class StorageUnitTest(TestCase):
                 data_model=ContainerDataModel(isPartitioned=False, columns=columns),
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
+                sourceUrl=SourceUrl(
+                    __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&prefix=transactions/&showversions=false"
+                ),
             ),
             self.object_store_source._generate_container_details(
                 S3BucketResponse(

@@ -26,14 +26,20 @@ import {
 
 const serviceType = 'Mlflow';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'ElasticnetWineModel';
-const description = `This is ${tableName} description`;
+const modelName = 'ElasticnetWineModel';
+const description = `This is ${modelName} description`;
 
 const connectionInput = () => {
   cy.get('#root\\/trackingUri').type(Cypress.env('mlModelTrackingUri'));
   checkServiceFieldSectionHighlighting('trackingUri');
   cy.get('#root\\/registryUri').type(Cypress.env('mlModelRegistryUri'));
   checkServiceFieldSectionHighlighting('registryUri');
+};
+
+const addIngestionInput = () => {
+  cy.get('#root\\/mlModelFilterPattern\\/includes')
+    .scrollIntoView()
+    .type(`${modelName}{enter}`);
 };
 
 describe('ML Flow Ingestion', () => {
@@ -47,6 +53,7 @@ describe('ML Flow Ingestion', () => {
     testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
+      addIngestionInput,
       serviceName,
       type: SERVICE_TYPE.MLModels,
       serviceCategory: 'MlModel',
@@ -56,7 +63,7 @@ describe('ML Flow Ingestion', () => {
   it('Update MlModel description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
-      tableName,
+      modelName,
       description,
       SERVICE_TYPE.MLModels,
       MYDATA_SUMMARY_OPTIONS.mlmodels

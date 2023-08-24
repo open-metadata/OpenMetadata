@@ -99,7 +99,7 @@ With these settings, you can start adding breakpoints in PyCharm and debug the w
 
 ## Troubleshooting
 
-If you try to install the `kafka` plugin `pip install "./ingestion[kafka]"` on mac you might see the following error:
+If you try to install the `kafka` plugin `pip install "./ingestion[kafka]"` on Mac you might see the following error:
 
 ```
 fatal error: 'librdkafka/rdkafka.h' file not found
@@ -122,4 +122,4 @@ export C_INCLUDE_PATH=/opt/homebrew/include
 export LIBRARY_PATH=/opt/homebrew/lib
 ```
 
-More information on the later in this [thread](https://github.com/confluentinc/confluent-kafka-python/issues/184).
+More information on the latter in this [thread](https://github.com/confluentinc/confluent-kafka-python/issues/184).

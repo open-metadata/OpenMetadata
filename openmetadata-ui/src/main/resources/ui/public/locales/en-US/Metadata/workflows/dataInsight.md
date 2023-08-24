@@ -7,7 +7,7 @@ You can find further information on the Data Insight Ingestion in the [docs](htt
 
 $$section
 
-### Enable Debug Logs $(id="loggerLevel")
+### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 $$
@@ -56,4 +56,10 @@ $$section
 ### Enable Debug Logs $(id="verifyCerts")
 
 This indicates whether to verify certificates when using SSL connection to Elasticsearch. It's ignored by default and is set to true. Ensure that you send the certificates in the property `CA Certificates`.
+$$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
 $$

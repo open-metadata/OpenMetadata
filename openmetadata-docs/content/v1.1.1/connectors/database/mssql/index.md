@@ -8,7 +8,7 @@ slug: /connectors/database/mssql
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+|:-------------------|:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
@@ -19,7 +19,7 @@ slug: /connectors/database/mssql
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
-| :----------- | :--------------------------- |
+|:-------------|:-----------------------------|
 | Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
@@ -64,7 +64,7 @@ Make sure the SQL server that you are trying to connect is in running state.
 
 #### 2. Allow remote connection on MSSMS(Microsoft SQL Server Management Studio)
 
-This step allow the sql server to accept remote connection request.
+This step allows the sql server to accept remote connection request.
 
 {% image
 src="/images/v1.1.1/connectors/mssql/remote-connection.png"
@@ -74,7 +74,7 @@ caption="Rm"
 
 #### 3. Configure Windows Firewall 
 
-If you are using SQL server on windows, you must configure the firewall on the computer running SQL Server to allow access.
+If you are using SQL server on Windows, you must configure the firewall on the computer running SQL Server to allow access.
 
 **Step 1**: On the Start menu, select Run, type WF.msc, and then select OK.
 

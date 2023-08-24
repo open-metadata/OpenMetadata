@@ -103,17 +103,13 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
-
-    String storedKpiResult =
-        getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp());
     storeTimeSeries(
         kpi.getFullyQualifiedName(),
         KPI_RESULT_EXTENSION,
         "kpiResult",
         JsonUtils.pojoToJson(kpiResult),
-        kpiResult.getTimestamp(),
-        storedKpiResult != null);
-    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult, storedKpiResult);
+        kpiResult.getTimestamp());
+    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
@@ -136,11 +132,10 @@ public class KpiRepository extends EntityRepository<Kpi> {
         String.format("Failed to find kpi result for %s at %s", kpi.getName(), timestamp));
   }
 
-  private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue, Object oldValue) {
-    FieldChange fieldChange =
-        new FieldChange().withName(KPI_RESULT_FIELD).withNewValue(newValue).withOldValue(oldValue);
+  private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue) {
+    FieldChange fieldChange = new FieldChange().withName(KPI_RESULT_FIELD).withNewValue(newValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
-    change.getFieldsUpdated().add(fieldChange);
+    change.getFieldsAdded().add(fieldChange);
     return change;
   }
 

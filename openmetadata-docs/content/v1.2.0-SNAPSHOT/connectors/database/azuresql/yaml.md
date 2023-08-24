@@ -131,9 +131,11 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeTables**: true or false, to ingest table data. Default is true.
 
+**ingestAllDatabases**: Ingest data from all databases in Azuresql. You can use databaseFilterPattern on top of this.
+
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

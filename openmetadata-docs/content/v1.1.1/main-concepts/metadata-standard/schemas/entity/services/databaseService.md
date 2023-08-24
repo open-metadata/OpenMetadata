@@ -16,7 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 - **`serviceType`**: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Refer to *#/definitions/databaseServiceType*.
 - **`description`**: Description of a database service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`connection`**: Refer to *#/definitions/databaseConnection*.
-- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this Database Service. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.

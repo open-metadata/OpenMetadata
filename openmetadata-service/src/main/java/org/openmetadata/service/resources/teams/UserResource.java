@@ -948,8 +948,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/checkEmailInUse")
   @Operation(
       operationId = "checkEmailInUse",
-      summary = "Check if a mail is already in use",
-      description = "Check if a mail is already in use",
+      summary = "Check if a email is already in use",
+      description = "Check if a email is already in use",
       responses = {
         @ApiResponse(
             responseCode = "200",

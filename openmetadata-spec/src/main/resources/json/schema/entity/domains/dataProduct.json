@@ -48,7 +48,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "experts": {
-      "description": "List of of users who are experts for this Data Product.",
+      "description": "List of users who are experts for this Data Product.",
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },

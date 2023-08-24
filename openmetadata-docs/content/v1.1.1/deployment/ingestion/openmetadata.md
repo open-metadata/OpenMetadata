@@ -32,6 +32,24 @@ as a starting point.
    need to install the ingestion modules to the host. You can find more information on how to do this
    in the Custom Airflow Installation section.
 
+## Airflow permissions
+
+These are the permissions required by the user that will manage the communication between the OpenMetadata Server
+and Airflow's Webserver:
+
+```
+[
+    (permissions.ACTION_CAN_DELETE, permissions.RESOURCE_DAG),
+    (permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG),
+    (permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG),
+    (permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG),
+]
+```
+
+`User` permissions is enough for these requirements.
+
+You can find more information on Airflow's Access Control [here](https://airflow.apache.org/docs/apache-airflow/stable/security/access-control.html).
+
 ## Using the OpenMetadata Ingestion Image
 
 If you are using our `openmetadata/ingestion` Docker image, there is just one thing to do: Configure the OpenMetadata server.

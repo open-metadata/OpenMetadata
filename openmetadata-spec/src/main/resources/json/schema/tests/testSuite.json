@@ -18,6 +18,23 @@
         "config": {
           "type": "null"
         }
+      },
+      "resultSummary": {
+        "javaType": "org.openmetadata.schema.tests.ResultSummary",
+        "properties": {
+          "testCaseName": {
+            "description": "Name of the test case.",
+            "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+          },
+          "status": {
+            "description": "Status of the test case.",
+            "$ref": "./basic.json#/definitions/testCaseStatus"
+          },
+          "timestamp": {
+            "description": "Timestamp of the test case execution.",
+            "$ref": "../type/basic.json#/definitions/timestamp"
+          }
+        }
       }
     }
   },
@@ -109,6 +126,13 @@
     "summary": {
       "description": "Summary of the previous day test cases execution for this test suite.",
       "$ref": "./basic.json#/definitions/testSummary"
+    },
+    "testCaseResultSummary": {
+      "description": "Summary of test case execution",
+      "type": "array",
+      "items": {
+          "$ref": "#/definitions/testSuiteConnection/resultSummary"
+      }
     }
   },
   "required": ["name"],

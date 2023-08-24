@@ -25,15 +25,15 @@ We support
 
 - Amazon RDS (MySQL) engine version 8 or greater
 - Amazon RDS (PostgreSQL) engine version between 12 or greater
-- Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
+- Amazon OpenSearch (ElasticSearch) engine version up to 7.10 or Amazon OpenSearch engine version up to 1.3
 
 {%note noteType="Tip"%}
 When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch, as you can see in the ElasticSearch configuration example below.
 {%/note%}
 
 We recommend 
-- Amazon RDS to be in Multiple Availibility Zones. 
-- Amazon OpenSearch (or ElasticSearch) Service with Multiple Availibility Zones with minimum 2 Nodes.
+- Amazon RDS to be in Multiple Availability Zones. 
+- Amazon OpenSearch (or ElasticSearch) Service with Multiple Availability Zones with minimum 2 Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
 
@@ -94,7 +94,7 @@ The below guide provides Persistent Volumes provisioning as static volumes (mean
 
 ## Provision EFS backed PVs, PVCs for Airflow DAGs and Airflow Logs
 
-Please note that we are using one AWS Elastic File System (EFS) service with sub-directories as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
+Please note that we are using one AWS Elastic File System (EFS) service with subdirectories   as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
 
 In order to create directories inside the AWS Elastic File System (EFS) you would need to follow these [steps](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs-nfs-permissions-per-user-subdirs.html).
 

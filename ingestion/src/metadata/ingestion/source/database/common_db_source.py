@@ -163,6 +163,7 @@ class CommonDbSourceService(
             name=database_name,
             service=self.context.database_service.fullyQualifiedName,
             description=self.get_database_description(database_name),
+            sourceUrl=self.get_source_url(database_name=database_name),
         )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -190,6 +191,10 @@ class CommonDbSourceService(
             name=schema_name,
             database=self.context.database.fullyQualifiedName,
             description=self.get_schema_description(schema_name),
+            sourceUrl=self.get_source_url(
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            ),
         )
 
     @staticmethod
@@ -523,10 +528,10 @@ class CommonDbSourceService(
 
     def get_source_url(
         self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
         By default the source url is not supported for

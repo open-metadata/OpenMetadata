@@ -12,6 +12,7 @@
 Airbyte source to extract metadata
 """
 
+import traceback
 from typing import Iterable, Optional
 
 from pydantic import BaseModel
@@ -71,7 +72,7 @@ class FivetranSource(PipelineServiceSource):
         connection: FivetranConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, FivetranConnection):
             raise InvalidSourceException(
-                f"Expected AirbyteConnection, but got {connection}"
+                f"Expected FivetranConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -99,6 +100,11 @@ class FivetranSource(PipelineServiceSource):
             displayName=pipeline_details.pipeline_display_name,
             tasks=self.get_connections_jobs(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            sourceUrl=self.get_source_url(
+                connector_id=pipeline_details.source.get("id"),
+                group_id=pipeline_details.group.get("id"),
+                source_name=pipeline_details.source.get("service"),
+            ),
         )
         yield pipeline_request
         self.register_record(pipeline_request=pipeline_request)
@@ -112,7 +118,7 @@ class FivetranSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: FivetranPipelineDetails
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[AddLineageRequest]:
         """
         Parse all the stream available in the connection and create a lineage between them
         :param pipeline_details: pipeline_details object from airbyte
@@ -191,3 +197,20 @@ class FivetranSource(PipelineServiceSource):
         Get Pipeline Name
         """
         return pipeline_details.pipeline_name
+
+    def get_source_url(
+        self,
+        connector_id: Optional[str],
+        group_id: Optional[str],
+        source_name: Optional[str],
+    ) -> Optional[str]:
+        try:
+            if connector_id and group_id and source_name:
+                return (
+                    f"https://fivetran.com/dashboard/connectors/{connector_id}/status"
+                    f"?groupId={group_id}&service={source_name}"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url: {exc}")
+        return None

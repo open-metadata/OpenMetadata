@@ -19,6 +19,7 @@ import unittest
 import uuid
 from copy import deepcopy
 from datetime import datetime, time, timedelta
+from random import randint
 from time import sleep
 
 import pytest
@@ -88,7 +89,12 @@ data_insight_config = {
 WEB_EVENT_DATA = [
     WebAnalyticEventData(
         eventId=None,
-        timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
+        timestamp=int(
+            (
+                datetime.utcnow() - timedelta(days=1, milliseconds=randint(100, 999))
+            ).timestamp()
+            * 1000
+        ),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
             fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
@@ -104,7 +110,12 @@ WEB_EVENT_DATA = [
     ),
     WebAnalyticEventData(
         eventId=None,
-        timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
+        timestamp=int(
+            (
+                datetime.utcnow() - timedelta(days=1, milliseconds=randint(100, 999))
+            ).timestamp()
+            * 1000
+        ),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
             fullUrl="http://localhost:8585/table/mysql.default.airflow_db.dag_run/profiler",
@@ -133,6 +144,19 @@ class DataInsightWorkflowTests(unittest.TestCase):
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
+
+        # clean up kpis in case we have linguering ones
+        kpis: list[Kpi] = cls.metadata.list_entities(
+            entity=Kpi, fields="*"  # type: ignore
+        ).entities
+
+        for kpi in kpis:
+            cls.metadata.delete(
+                entity=Kpi,
+                entity_id=kpi.id,
+                hard_delete=True,
+                recursive=True,
+            )
 
         cls.start_ts = int(
             datetime.combine(datetime.utcnow(), time.min).timestamp() * 1000

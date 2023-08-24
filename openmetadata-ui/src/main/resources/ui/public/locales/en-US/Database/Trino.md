@@ -29,9 +29,28 @@ $$section
 Username to connect to Trino. This user should have `SELECT` permission on the `SYSTEM.METADATA` and `INFORMATION_SCHEMA` - see the section above for more details.
 $$
 
+### Auth Config $(id="authType")
+There are 2 types of auth configs:
+- Basic Auth.
+- JWT Auth.
+
+User can authenticate the Trino Instance with auth type as `Basic Authentication` i.e. Password **or** by using `JWT Authentication`.
+
+
+## Basic Auth
+
 $$section
 ### Password $(id="password")
 Password to connect to Trino.
+$$
+
+## JWT Auth Config
+
+$$section
+### JWT $(id="jwt")
+JWT can be used to authenticate with trino.
+Follow the steps in the [official trino](https://trino.io/docs/current/security/jwt.html) documentation to setup trino with jwt.
+
 $$
 
 $$section
@@ -54,11 +73,6 @@ $$
 $$section
 ### Proxies $(id="proxies")
 Proxies for the connection to Trino data source
-$$
-
-$$section
-### Params $(id="params")
-URL parameters for connection to the Trino data source
 $$
 
 $$section

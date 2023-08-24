@@ -34,6 +34,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -434,6 +435,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     target = recursive ? target.queryParam("recursive", true) : target;
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     TestUtils.delete(target, TestSuite.class, authHeaders);
+  }
+
+  public TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId) throws IOException {
+    WebTarget target = getCollection().path("/executionSummary");
+    if (testSuiteId != null) {
+      target = target.queryParam("testSuiteId", testSuiteId);
+    }
+    return TestUtils.get(target, TestSummary.class, authHeaders);
   }
 
   private void verifyTestSuites(ResultList<TestSuite> actualTestSuites, List<CreateTestSuite> expectedTestSuites) {
