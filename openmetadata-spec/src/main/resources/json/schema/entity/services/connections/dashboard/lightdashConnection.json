@@ -34,7 +34,7 @@
       "type": "string",
       "format": "password"
     },
-    "projectUUID": {
+     "projectUUID": {
       "title": "Project UUID",
       "description": "The Project UUID for your Lightdash instance",
       "type": "string"
@@ -56,5 +56,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "apiKey", "projectUUID", "spaceUUID"]
+  "required": ["hostPort", "apiKey","projectUUID","spaceUUID"]
 }

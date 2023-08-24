@@ -1,6 +1,6 @@
 source:
   type: lightdash
-  serviceName: local_lightdash
+  serviceName: local_test2
   serviceConnection:
     config:
       type: Lightdash

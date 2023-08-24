@@ -31,6 +31,7 @@ class LightdashDashboard(BaseModel):
     firstViewedAt: str
     pinnedListUuid: Optional[str]
     pinnedListOrder: Optional[float]
+    charts: Optional[List[LightdashChart]]
 
 
 class LightdashChartList(BaseModel):

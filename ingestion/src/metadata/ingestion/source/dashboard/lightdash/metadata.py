@@ -110,7 +110,6 @@ class LightdashSource(DashboardServiceSource):
                 f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.uuid}-"
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
-            logger.warning("!!!!Context: " + str(self.context))
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.uuid,
                 sourceUrl=dashboard_url,
@@ -147,7 +146,6 @@ class LightdashSource(DashboardServiceSource):
         """
         charts = self.charts
         for chart in charts:
-            logger.warning("Chart: " + str(chart))
             try:
                 chart_url = (
                     f"{clean_uri(self.service_connection.hostPort)}/question/{chart.uuid}-"
@@ -158,7 +156,6 @@ class LightdashSource(DashboardServiceSource):
                 ):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                logger.warning("Before create chart")
                 yield CreateChartRequest(
                     name=chart.uuid,
                     displayName=chart.name,
@@ -166,7 +163,6 @@ class LightdashSource(DashboardServiceSource):
                     sourceUrl=chart_url,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
-                logger.warning(f"Creating chart [{chart.name}]")
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -182,26 +178,17 @@ class LightdashSource(DashboardServiceSource):
         Args:
             dashboard_details
         """
-        if not db_service_name:
-            return
         chart_list, dashboard_name = (
-            dashboard_details.ordered_cards,
-            str(dashboard_details.id),
+            dashboard_details.charts,
+            str(dashboard_details.uuid),
         )
         for chart in chart_list:
             try:
-                chart_details = chart.card
-                if (
-                    chart_details.dataset_query is None
-                    or chart_details.dataset_query.type is None
-                ):
-                    continue
-                if chart_details.dataset_query.type == "native":
-                    yield from self._yield_lineage_from_query(
-                        chart_details=chart_details,
-                        db_service_name=db_service_name,
-                        dashboard_name=dashboard_name,
-                    ) or []
+                yield from self._yield_lineage_from_query(
+                    chart_details=chart,
+                    db_service_name=db_service_name,
+                    dashboard_name=dashboard_name,
+                ) or []
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
