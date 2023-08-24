@@ -184,7 +184,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         )}
 
         <EntityVersionTimeLine
-          show
           currentVersion={version}
           versionHandler={versionHandler}
           versionList={versionList}
