@@ -37,7 +37,6 @@ import {
   AuthType,
 } from '../../generated/entity/teams/user';
 import { getSettingPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Description from '../common/description/Description';
 import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
@@ -48,6 +47,8 @@ import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
 import { BotsDetailProps } from './BotDetails.interfaces';
 import './BotDetails.style.less';
+
+import { ReactComponent as IconBotProfile } from '../../assets/svg/bot-profile.svg';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -197,11 +198,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
               <div className="d-flex flex-col">
-                <SVGIcons
-                  alt="bot-profile"
-                  icon={Icons.BOT_PROFILE}
-                  width="280px"
-                />
+                <IconBotProfile widths="280px" />
 
                 <Space className="p-b-md" direction="vertical" size={8}>
                   <div className="mt-4 w-full d-flex">

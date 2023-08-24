@@ -47,6 +47,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { compare, Operation } from 'fast-json-patch';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -239,11 +240,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: string) => {
       try {
         setIsIngestionPipelineLoading(true);
-        const response = await getIngestionPipelines(
-          ['owner', 'pipelineStatuses'],
-          getDecodedFqn(serviceFQN),
-          paging
-        );
+        const response = await getIngestionPipelines({
+          arrQueryFields: ['owner', 'pipelineStatuses'],
+          serviceFilter: getDecodedFqn(serviceFQN),
+          paging,
+          pipelineType: [
+            PipelineType.Metadata,
+            PipelineType.Usage,
+            PipelineType.Lineage,
+            PipelineType.Profiler,
+            PipelineType.Dbt,
+          ],
+        });
 
         if (response.data) {
           setIngestionPipelines(response.data);

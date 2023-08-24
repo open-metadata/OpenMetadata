@@ -860,6 +860,11 @@
         "sql"
       ],
       "additionalProperties": false
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "type": "string",
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
     }
   },
   "properties": {
@@ -1023,6 +1028,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "$ref" : "#/definitions/fileFormat"
     }
   },
   "required": [
