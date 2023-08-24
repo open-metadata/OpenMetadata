@@ -47,7 +47,7 @@ import { getLinkForFqn } from 'utils/ServiceUtils';
 import { getUsagePercentile } from 'utils/TableUtils';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
 
-interface ServiceVersionMainTabContentProps {
+export interface ServiceVersionMainTabContentProps {
   serviceName: string;
   serviceDetails: ServicesType;
   data: ServicePageData[];
