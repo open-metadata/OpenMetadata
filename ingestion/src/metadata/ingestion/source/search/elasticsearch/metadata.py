@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearchC
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.source.search.elasticsearch.parser import parse_es_index_mapping
 from metadata.ingestion.source.search.search_service import SearchServiceSource

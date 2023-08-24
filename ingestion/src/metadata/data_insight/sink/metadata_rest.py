@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger

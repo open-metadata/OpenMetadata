@@ -20,7 +20,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.utils.logger import ingestion_logger
 

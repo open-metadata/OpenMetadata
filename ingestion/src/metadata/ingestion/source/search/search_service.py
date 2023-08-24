@@ -34,7 +34,7 @@ from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline i
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import (
     DeleteEntity,

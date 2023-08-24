@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.steps import Sink
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 

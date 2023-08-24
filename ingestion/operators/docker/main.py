@@ -24,6 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.workflow import Workflow
 from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
+from metadata.workflow.workflow_output_handler import print_status
 
 WORKFLOW_MAP = {
     PipelineType.metadata.value: Workflow,
@@ -107,7 +108,7 @@ def main():
     workflow = workflow_class.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

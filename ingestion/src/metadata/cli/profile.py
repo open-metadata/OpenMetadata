@@ -19,7 +19,7 @@ import traceback
 from metadata.config.common import load_config_file
 from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import cli_logger
-from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
+from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error, print_status
 
 logger = cli_logger()
 
@@ -43,6 +43,6 @@ def run_profiler(config_path: str) -> None:
         sys.exit(1)
     workflow.execute()
     workflow.stop()
-    workflow.print_status()
+    print_status(workflow)
     ret = workflow.result_status()
     sys.exit(ret)

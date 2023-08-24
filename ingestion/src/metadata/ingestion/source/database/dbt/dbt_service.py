@@ -24,7 +24,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (

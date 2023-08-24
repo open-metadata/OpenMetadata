@@ -16,7 +16,7 @@ Module handles the output messages from different workflows
 import time
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Type, Union
+from typing import Dict, List, Type, Union
 
 from pydantic import BaseModel
 from tabulate import tabulate
@@ -336,12 +336,6 @@ def print_workflow_summary(workflow: BaseWorkflow) -> None:
     """
     Args:
         workflow: the workflow status to be printed
-        source: if source status must be printed
-        bulk_sink: if bull_sink status must be printed
-        processor: if processor status must be printed
-        stage: if stage status must be printed
-        source_status: alternative source status to be printed in case is different to the default of the workflow
-        processor_status: alternative processor status to be printed in case is different to the default of the workflow
 
     Returns:
         Print Workflow status when the workflow logger level is DEBUG

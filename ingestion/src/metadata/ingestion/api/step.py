@@ -13,7 +13,7 @@ Each of the ingestion steps: Source, Sink, Stage,...
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,

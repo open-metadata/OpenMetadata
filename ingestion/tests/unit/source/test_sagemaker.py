@@ -61,7 +61,7 @@ CONFIG = """
 def execute_workflow():
     workflow = Workflow.create(json.loads(CONFIG))
     workflow.execute()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

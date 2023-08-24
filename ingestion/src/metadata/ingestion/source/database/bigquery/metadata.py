@@ -48,7 +48,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     SingleProjectId,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,

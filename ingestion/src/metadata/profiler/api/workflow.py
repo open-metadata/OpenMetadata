@@ -45,7 +45,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
@@ -65,7 +65,7 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
-from metadata.utils.workflow_output_handler import print_profiler_status
+from metadata.workflow.workflow_output_handler import print_profiler_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = profiler_logger()

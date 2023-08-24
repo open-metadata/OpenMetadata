@@ -26,7 +26,7 @@ from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.stage import StageStatus
 from metadata.ingestion.api.status import StackTraceError, Status
 from metadata.utils.logger import Loggers
-from metadata.utils.workflow_output_handler import (
+from metadata.workflow.workflow_output_handler import (
     print_data_insight_status,
     print_status,
     print_test_suite_status,

@@ -33,7 +33,7 @@ from metadata.generated.schema.system.eventPublisherJob import (
     Status,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ingestion_logger

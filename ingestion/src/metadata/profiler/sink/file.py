@@ -16,7 +16,7 @@ from pathlib import Path
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.steps import Sink
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.logger import profiler_logger
 

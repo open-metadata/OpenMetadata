@@ -19,7 +19,7 @@ import traceback
 from metadata.config.common import load_config_file
 from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger
-from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
+from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error, print_status
 
 logger = cli_logger()
 
@@ -44,6 +44,6 @@ def run_test(config_path: str) -> None:
 
     workflow.execute()
     workflow.stop()
-    workflow.print_status()
+    print_status(workflow)
     ret = workflow.result_status()
     sys.exit(ret)

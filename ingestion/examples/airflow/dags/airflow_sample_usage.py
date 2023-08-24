@@ -14,6 +14,8 @@ from datetime import timedelta
 
 from airflow import DAG
 
+from metadata.workflow.workflow_output_handler import print_status
+
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
@@ -86,7 +88,7 @@ def metadata_ingestion_workflow():
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

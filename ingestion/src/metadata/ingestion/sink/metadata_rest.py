@@ -14,7 +14,7 @@ It picks up the generated Entities and send them
 to the OM API.
 """
 import traceback
-from functools import singledispatch
+from functools import singledispatch, wraps
 from typing import Optional, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -35,7 +35,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.status import StackTraceError, Either
+from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
@@ -66,7 +67,7 @@ class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
 
 
-class MetadataRestSink(Sink[Entity]):
+class MetadataRestSink(Sink):
     """
     Sink implementation that sends OM Entities
     to the OM server API
@@ -90,27 +91,27 @@ class MetadataRestSink(Sink[Entity]):
         self.team_entities = {}
 
         # Prepare write record dispatching
-        self.write_record = singledispatch(self.write_record)
-        self.write_record.register(AddLineageRequest, self.write_lineage)
-        self.write_record.register(OMetaUserProfile, self.write_users)
-        self.write_record.register(OMetaTagAndClassification, self.write_classification)
-        self.write_record.register(DeleteEntity, self.delete_entity)
-        self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
-        self.write_record.register(DataModelLink, self.write_datamodel)
-        self.write_record.register(DashboardUsage, self.write_dashboard_usage)
-        self.write_record.register(
+        self._run_dispatch = singledispatch(self._run_dispatch)
+        self._run_dispatch.register(AddLineageRequest, self.write_lineage)
+        self._run_dispatch.register(OMetaUserProfile, self.write_users)
+        self._run_dispatch.register(OMetaTagAndClassification, self.write_classification)
+        self._run_dispatch.register(DeleteEntity, self.delete_entity)
+        self._run_dispatch.register(OMetaPipelineStatus, self.write_pipeline_status)
+        self._run_dispatch.register(DataModelLink, self.write_datamodel)
+        self._run_dispatch.register(DashboardUsage, self.write_dashboard_usage)
+        self._run_dispatch.register(
             OMetaTableProfileSampleData, self.write_profile_sample_data
         )
-        self.write_record.register(OMetaTestSuiteSample, self.write_test_suite_sample)
-        self.write_record.register(OMetaTestCaseSample, self.write_test_case_sample)
-        self.write_record.register(
+        self._run_dispatch.register(OMetaTestSuiteSample, self.write_test_suite_sample)
+        self._run_dispatch.register(OMetaTestCaseSample, self.write_test_case_sample)
+        self._run_dispatch.register(
             OMetaLogicalTestSuiteSample, self.write_logical_test_suite_sample
         )
-        self.write_record.register(
+        self._run_dispatch.register(
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
-        self.write_record.register(OMetaTopicSampleData, self.write_topic_sample_data)
-        self.write_record.register(
+        self._run_dispatch.register(OMetaTopicSampleData, self.write_topic_sample_data)
+        self._run_dispatch.register(
             OMetaIndexSampleData, self.write_search_index_sample_data
         )
 
@@ -119,44 +120,38 @@ class MetadataRestSink(Sink[Entity]):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
+    def _run_dispatch(self, record: Entity) -> Either:
+        logger.debug(f"Processing Create request {type(record)}")
+        return self.write_create_request(record)
+
     @calculate_execution_time
-    def write_record(self, record: Entity) -> None:
+    def _run(self, record: Entity) -> Either:
         """
         Default implementation for the single dispatch
         """
+        log = f"{type(record).__name__} [{record.name.__root__}]"
+        try:
+            return self._run_dispatch(record)
+        except (APIError, HTTPError) as err:
+            error = f"Failed to ingest {log} due to api request failure: {err}"
+            return Either(left=StackTraceError(name=log, error=error, stack_trace=traceback.format_exc()))
+        except Exception as exc:
+            error = f"Failed to ingest {log}: {exc}"
+            return Either(left=StackTraceError(name=log, error=error, stack_trace=traceback.format_exc()))
 
-        logger.debug(f"Processing Create request {type(record)}")
-        self.write_create_request(record)
-
-    def write_create_request(self, entity_request) -> None:
+    def write_create_request(self, entity_request) -> Either:
         """
         Send to OM the request creation received as is.
         :param entity_request: Create Entity request
         """
-        log = f"{type(entity_request).__name__} [{entity_request.name.__root__}]"
-        try:
-            created = self.metadata.create_or_update(entity_request)
-            if created:
-                self.status.records_written(
-                    f"{type(created).__name__}: {created.fullyQualifiedName.__root__}"
-                )
-                logger.debug(f"Successfully ingested {log}")
-            else:
-                error = f"Failed to ingest {log}"
-                logger.error(error)
-                self.status.failed(log, error, None)
-        except (APIError, HTTPError) as err:
-            error = f"Failed to ingest {log} due to api request failure: {err}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(log, error, traceback.format_exc())
-        except Exception as exc:
-            error = f"Failed to ingest {log}: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(log, error, traceback.format_exc())
+        created = self.metadata.create_or_update(entity_request)
+        if created:
+            return Either(right=created)
+        else:
+            error = f"Failed to ingest {type(entity_request).__name__}"
+            return Either(left=StackTraceError(name=type(entity_request).__name__, error=error, stack_trace=None))
 
-    def write_datamodel(self, datamodel_link: DataModelLink) -> None:
+    def write_datamodel(self, datamodel_link: DataModelLink) -> Either:
         """
         Send to OM the DataModel based on a table ID
         :param datamodel_link: Table ID + Data Model
@@ -165,7 +160,7 @@ class MetadataRestSink(Sink[Entity]):
         table: Table = datamodel_link.table_entity
 
         if table:
-            self.metadata.ingest_table_data_model(
+            data_model = self.metadata.ingest_table_data_model(
                 table=table, data_model=datamodel_link.datamodel
             )
             logger.debug(
