@@ -29,7 +29,7 @@ def get_bigquery_client(
     impersonate_service_account: Optional[str] = None,
     quota_project_id: Optional[str] = None,
     scopes: Optional[List[str]] = None,
-    lifetime: Optional[int] = None,
+    lifetime: Optional[int] = 3600,
 ) -> bigquery.Client:
     """Get a BigQuery client
 
@@ -44,12 +44,8 @@ def get_bigquery_client(
     Returns:
         bigquery.Client: client
     """
-    # pylint: disable=R1705
     if impersonate_service_account is None:
         credentials = get_gcp_default_credentials(quota_project_id=quota_project_id)
-        return bigquery.Client(
-            credentials=credentials, project=project_id, location=location
-        )
     else:
         credentials = get_gcp_impersonate_credentials(
             impersonate_service_account=impersonate_service_account,
@@ -57,6 +53,6 @@ def get_bigquery_client(
             scopes=scopes,
             lifetime=lifetime,
         )
-        return bigquery.Client(
-            credentials=credentials, project=project_id, location=location
-        )
+    return bigquery.Client(
+        credentials=credentials, project=project_id, location=location
+    )

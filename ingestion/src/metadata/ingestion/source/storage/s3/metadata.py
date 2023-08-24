@@ -145,6 +145,7 @@ class S3Source(StorageServiceSource):
             service=self.context.objectstore_service.fullyQualifiedName,
             parent=container_details.parent,
             sourceUrl=container_details.sourceUrl,
+            fileFormats=container_details.file_formats,
         )
 
     def _generate_container_details(

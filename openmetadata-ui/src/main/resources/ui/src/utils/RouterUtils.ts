@@ -298,7 +298,7 @@ export const getTagPath = (fqn?: string) => {
   let path = ROUTES.TAGS;
   if (fqn) {
     path = ROUTES.TAG_DETAILS;
-    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+    path = path.replace(PLACEHOLDER_TAG_NAME, getEncodedFqn(fqn));
   }
 
   return path;

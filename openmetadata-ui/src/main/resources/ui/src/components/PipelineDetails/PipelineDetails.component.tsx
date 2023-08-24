@@ -101,7 +101,6 @@ const PipelineDetails = ({
     entityName,
     tier,
     tags,
-    entityFqn,
     followers,
   } = useMemo(() => {
     return {
@@ -114,7 +113,6 @@ const PipelineDetails = ({
       tier: getTierTags(pipelineDetails.tags ?? []),
       tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
       entityName: getEntityName(pipelineDetails),
-      entityFqn: pipelineDetails.fullyQualifiedName ?? '',
       followers: pipelineDetails.followers ?? [],
     };
   }, [pipelineDetails]);
@@ -390,7 +388,7 @@ const PipelineDetails = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFqn={entityFqn}
+            entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             hasEditPermission={
               pipelinePermissions.EditDescription || pipelinePermissions.EditAll
@@ -410,7 +408,7 @@ const PipelineDetails = ({
         width: 300,
         render: (tags, record, index) => (
           <TableTags<Task>
-            entityFqn={entityFqn}
+            entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -431,7 +429,7 @@ const PipelineDetails = ({
         width: 300,
         render: (tags, record, index) => (
           <TableTags<Task>
-            entityFqn={entityFqn}
+            entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -448,7 +446,6 @@ const PipelineDetails = ({
     [
       deleted,
       editTask,
-      entityFqn,
       hasTagEditAccess,
       pipelinePermissions,
       getEntityName,
