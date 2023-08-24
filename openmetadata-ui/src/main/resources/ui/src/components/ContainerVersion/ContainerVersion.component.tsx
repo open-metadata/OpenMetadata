@@ -215,10 +215,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     ]
   );
 
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
-
   return (
     <>
       {isVersionLoading ? (
