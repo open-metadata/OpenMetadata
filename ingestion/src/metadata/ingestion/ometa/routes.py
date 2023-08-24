@@ -38,9 +38,6 @@ from metadata.generated.schema.api.data.createGlossaryTerm import (
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
-from metadata.generated.schema.api.data.createSearchIndex import (
-    CreateSearchIndexRequest,
-)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -62,9 +59,6 @@ from metadata.generated.schema.api.services.createMlModelService import (
 )
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
-)
-from metadata.generated.schema.api.services.createSearchService import (
-    CreateSearchServiceRequest,
 )
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
@@ -97,7 +91,6 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.report import Report
-from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
@@ -113,7 +106,6 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
@@ -148,8 +140,6 @@ ROUTES = {
     CreateQueryRequest.__name__: "/queries",
     Container.__name__: "/containers",
     CreateContainerRequest.__name__: "/containers",
-    SearchIndex.__name__: "/searchIndexes",
-    CreateSearchIndexRequest.__name__: "/searchIndexes",
     # Classifications
     Tag.__name__: "/tags",
     CreateTagRequest.__name__: "/tags",
@@ -189,8 +179,6 @@ ROUTES = {
     CreateMlModelServiceRequest.__name__: "/services/mlmodelServices",
     MetadataService.__name__: "/services/metadataServices",
     CreateMetadataServiceRequest.__name__: "/services/metadataServices",
-    SearchService.__name__: "/services/searchServices",
-    CreateSearchServiceRequest.__name__: "/services/searchServices",
     IngestionPipeline.__name__: "/services/ingestionPipelines",
     TestConnectionDefinition.__name__: "/services/testConnectionDefinitions",
     # Data Quality
