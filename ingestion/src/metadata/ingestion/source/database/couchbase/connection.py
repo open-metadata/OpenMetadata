@@ -15,8 +15,6 @@ Source connection handler
 from functools import partial
 from typing import Optional
 
-from couchbase.cluster import Cluster
-from couchbase.options import ClusterOptions
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -35,6 +33,8 @@ def get_connection(connection: CouchbaseConnection):
     """
     # pylint: disable=import-outside-toplevel
     from couchbase.auth import PasswordAuthenticator
+    from couchbase.cluster import Cluster
+    from couchbase.options import ClusterOptions
 
     auth = PasswordAuthenticator(
         connection.username, connection.password.get_secret_value()
@@ -54,6 +54,8 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    # pylint: disable=import-outside-toplevel
+    from couchbase.cluster import Cluster
 
     class SchemaHolder(BaseModel):
         database: Optional[str]
