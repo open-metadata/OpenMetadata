@@ -55,7 +55,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.helpers import calculate_execution_time
-from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger
+from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger, get_log_name
 
 logger = ingestion_logger()
 
@@ -131,7 +131,7 @@ class MetadataRestSink(Sink):
         """
         Default implementation for the single dispatch
         """
-        log = f"{type(record).__name__} [{record.name.__root__}]"
+        log = get_log_name(record)
         try:
             return self._run_dispatch(record)
         except (APIError, HTTPError) as err:
@@ -187,74 +187,31 @@ class MetadataRestSink(Sink):
                 )
             )
 
-    def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
+    def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> Either:
         """
         Send a UsageRequest update to a dashboard entity
         :param dashboard_usage: dashboard entity and usage request
         """
-        try:
-            self.metadata.publish_dashboard_usage(
-                dashboard=dashboard_usage.dashboard,
-                dashboard_usage_request=dashboard_usage.usage,
-            )
-            logger.debug(
-                f"Successfully ingested usage for {dashboard_usage.dashboard.fullyQualifiedName.__root__}"
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write dashboard usage [{dashboard_usage}]: {exc}")
+        self.metadata.publish_dashboard_usage(
+            dashboard=dashboard_usage.dashboard,
+            dashboard_usage_request=dashboard_usage.usage,
+        )
+        return Either(right=dashboard_usage.dashboard)
 
-    def write_classification(self, record: OMetaTagAndClassification) -> None:
-        """PUT Classification and Tag to OM API
+    def write_classification(self, record: OMetaTagAndClassification) -> Either:
+        """PUT Classification and Tag to OM API"""
+        self.metadata.create_or_update(record.classification_request)
+        tag = self.metadata.create_or_update(record.tag_request)
+        return Either(right=tag)
 
-        Args:
-            record (OMetaTagAndClassification): Tag information
-
-        Return:
-            None
-
-        """
-        try:
-            self.metadata.create_or_update(record.classification_request)
-            self.status.records_written(
-                f"Classification: {record.classification_request.name.__root__}"
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected error writing classification [{record.classification_request}]: {exc}"
-            )
-        try:
-            self.metadata.create_or_update(record.tag_request)
-            self.status.records_written(f"Tag: {record.tag_request.name.__root__}")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected error writing classification [{record.tag_request}]: {exc}"
-            )
-
-    def write_lineage(self, add_lineage: AddLineageRequest):
-        try:
-            created_lineage = self.metadata.add_lineage(add_lineage)
-            created_lineage_info = created_lineage["entity"]["fullyQualifiedName"]
-            logger.debug(f"Successfully added Lineage from {created_lineage_info}")
-            self.status.records_written(f"Lineage from: {created_lineage_info}")
-        except (APIError, ValidationError) as err:
-            error = f"Failed to ingest lineage [{add_lineage}]: {err}"
-            logger.debug(traceback.format_exc())
-            logger.error(error)
-            self.status.failed(
-                get_add_lineage_log_str(add_lineage), error, traceback.format_exc()
-            )
-        except (KeyError, ValueError) as err:
-            error = f"Failed to extract lineage information for [{add_lineage}] after sink: {err}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(
-                get_add_lineage_log_str(add_lineage), error, traceback.format_exc()
-            )
+    def write_lineage(self, add_lineage: AddLineageRequest) -> Either:
+        created_lineage = self.metadata.add_lineage(add_lineage)
+        return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
+        """
+        Internal helper method for write_user
+        """
         try:
             role = self.metadata.create_or_update(create_role)
             self.role_entities[role.name] = str(role.id.__root__)
@@ -266,6 +223,9 @@ class MetadataRestSink(Sink):
         return None
 
     def _create_team(self, create_team: CreateTeamRequest) -> Optional[Team]:
+        """
+        Internal helper method for write_user
+        """
         try:
             team = self.metadata.create_or_update(create_team)
             self.team_entities[team.name.__root__] = str(team.id.__root__)
@@ -276,7 +236,7 @@ class MetadataRestSink(Sink):
 
         return None
 
-    def write_users(self, record: OMetaUserProfile):
+    def write_users(self, record: OMetaUserProfile) -> Either:
         """
         Given a User profile (User + Teams + Roles create requests):
         1. Check if role & team exist, otherwise create
@@ -330,29 +290,16 @@ class MetadataRestSink(Sink):
         metadata_user = CreateUserRequest(**user_profile)
 
         # Create user
-        try:
-            user = self.metadata.create_or_update(metadata_user)
-            self.status.records_written(user.displayName)
-            logger.debug(f"User: {user.displayName}")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected error writing user [{metadata_user}]: {exc}")
+        user = self.metadata.create_or_update(metadata_user)
+        return Either(right=user)
 
-    def delete_entity(self, record: DeleteEntity):
-        try:
-            self.metadata.delete(
-                entity=type(record.entity),
-                entity_id=record.entity.id,
-                recursive=record.mark_deleted_entities,
-            )
-            logger.debug(
-                f"{record.entity.name} doesn't exist in source state, marking it as deleted"
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected error deleting table [{record.entity.name}]: {exc}"
-            )
+    def delete_entity(self, record: DeleteEntity) -> Either:
+        self.metadata.delete(
+            entity=type(record.entity),
+            entity_id=record.entity.id,
+            recursive=record.mark_deleted_entities,
+        )
+        return Either(right=record)
 
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:
         """

@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from metadata.utils.logger import get_log_name
+
 # Entities are instances of BaseModel
 Entity = BaseModel
 
@@ -39,7 +41,7 @@ class Either(BaseModel):
     """
 
     left: Optional[StackTraceError]
-    right: Optional[Entity]
+    right: Optional[Any]
 
 
 class Status(BaseModel):
@@ -58,11 +60,7 @@ class Status(BaseModel):
         """
         Clean up the status results we want to show
         """
-
-        record_name = record.name.__root__ if hasattr(record, "name") else ""
-        scanned_record = f"[{type(record)}] {record_name}"
-
-        self.records.append(scanned_record)
+        self.records.append(get_log_name(record))
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
