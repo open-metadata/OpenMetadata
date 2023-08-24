@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row, Tooltip, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { ReactComponent as GovernIcon } from 'assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
@@ -48,50 +48,68 @@ const LeftSidebar = () => {
         key: 'governance',
         popupClassName: 'govern-menu',
         label: (
-          <div
-            className="d-flex flex-col items-center"
-            data-testid="governance">
-            <GovernIcon className="m-0" width={30} />
-            <Typography.Text className="left-panel-label">
-              {t('label.govern', { lng: 'en-US' })}
-            </Typography.Text>
-          </div>
+          <Tooltip
+            overlayClassName="left-panel-tooltip"
+            placement="right"
+            title={
+              <Typography.Text className="left-panel-label">
+                {t('label.govern')}
+              </Typography.Text>
+            }>
+            <div
+              className="d-flex flex-col items-center"
+              data-testid="governance">
+              <GovernIcon className="m-0" width={30} />
+            </div>
+          </Tooltip>
         ),
         children: [
           {
             key: 'glossary',
             label: (
-              <NavLink
-                className="no-underline"
-                data-testid="appbar-item-glossary"
-                to={{
-                  pathname: ROUTES.GLOSSARY,
-                }}>
-                <span className="left-panel-item p-y-xss">
-                  <GlossaryIcon className="m-0" width={30} />
+              <Tooltip
+                overlayClassName="left-panel-tooltip"
+                placement="right"
+                title={
                   <Typography.Text className="left-panel-label">
-                    {t('label.glossary', { lng: 'en-US' })}
+                    {t('label.glossary')}
                   </Typography.Text>
-                </span>
-              </NavLink>
+                }>
+                <NavLink
+                  className="no-underline"
+                  data-testid="appbar-item-glossary"
+                  to={{
+                    pathname: ROUTES.GLOSSARY,
+                  }}>
+                  <span className="left-panel-item p-y-xss">
+                    <GlossaryIcon className="m-0" width={30} />
+                  </span>
+                </NavLink>
+              </Tooltip>
             ),
           },
           {
             key: 'tags',
             label: (
-              <NavLink
-                className="no-underline"
-                data-testid="appbar-item-tags"
-                to={{
-                  pathname: ROUTES.TAGS,
-                }}>
-                <div className="left-panel-item p-y-xss">
-                  <ClassificationIcon className="m-0" width={30} />
+              <Tooltip
+                overlayClassName="left-panel-tooltip"
+                placement="right"
+                title={
                   <Typography.Text className="left-panel-label">
-                    {t('label.classification', { lng: 'en-US' })}
+                    {t('label.classification')}
                   </Typography.Text>
-                </div>
-              </NavLink>
+                }>
+                <NavLink
+                  className="no-underline"
+                  data-testid="appbar-item-tags"
+                  to={{
+                    pathname: ROUTES.TAGS,
+                  }}>
+                  <div className="left-panel-item p-y-xss">
+                    <ClassificationIcon className="m-0" width={30} />
+                  </div>
+                </NavLink>
+              </Tooltip>
             ),
           },
         ],
@@ -117,15 +135,21 @@ const LeftSidebar = () => {
             to={{
               pathname: '/explore/tables',
             }}>
-            <div
-              className={`left-panel-item  ${
-                location.pathname.startsWith('/explore') ? 'active' : ''
-              }`}>
-              <ExploreIcon className="m-0" width={30} />
-              <Typography.Text className="left-panel-label">
-                {t('label.explore', { lng: 'en-US' })}
-              </Typography.Text>
-            </div>
+            <Tooltip
+              overlayClassName="left-panel-tooltip"
+              placement="right"
+              title={
+                <Typography.Text className="left-panel-label">
+                  {t('label.explore')}
+                </Typography.Text>
+              }>
+              <div
+                className={`left-panel-item  ${
+                  location.pathname.startsWith('/explore') ? 'active' : ''
+                }`}>
+                <ExploreIcon className="m-0" width={30} />
+              </div>
+            </Tooltip>
           </NavLink>
         </Col>
         <Col span={24}>
@@ -135,15 +159,23 @@ const LeftSidebar = () => {
             to={{
               pathname: ROUTES.DATA_QUALITY,
             }}>
-            <div
-              className={`left-panel-item  ${
-                location.pathname.includes(ROUTES.DATA_QUALITY) ? 'active' : ''
-              }`}>
-              <QualityIcon className="m-0" width={30} />
-              <Typography.Text className="left-panel-label">
-                {t('label.quality', { lng: 'en-US' })}
-              </Typography.Text>
-            </div>
+            <Tooltip
+              overlayClassName="left-panel-tooltip"
+              placement="right"
+              title={
+                <Typography.Text className="left-panel-label">
+                  {t('label.quality')}
+                </Typography.Text>
+              }>
+              <div
+                className={`left-panel-item  ${
+                  location.pathname.includes(ROUTES.DATA_QUALITY)
+                    ? 'active'
+                    : ''
+                }`}>
+                <QualityIcon className="m-0" width={30} />
+              </div>
+            </Tooltip>
           </NavLink>
         </Col>
         <Col span={24}>
@@ -153,15 +185,23 @@ const LeftSidebar = () => {
             to={{
               pathname: ROUTES.DATA_INSIGHT,
             }}>
-            <div
-              className={`left-panel-item  ${
-                location.pathname.includes(ROUTES.DATA_INSIGHT) ? 'active' : ''
-              }`}>
-              <InsightsIcon className="m-0" width={30} />
-              <Typography.Text className="left-panel-label">
-                {t('label.insight-plural', { lng: 'en-US' })}
-              </Typography.Text>
-            </div>
+            <Tooltip
+              overlayClassName="left-panel-tooltip"
+              placement="right"
+              title={
+                <Typography.Text className="left-panel-label">
+                  {t('label.insight-plural')}
+                </Typography.Text>
+              }>
+              <div
+                className={`left-panel-item  ${
+                  location.pathname.includes(ROUTES.DATA_INSIGHT)
+                    ? 'active'
+                    : ''
+                }`}>
+                <InsightsIcon className="m-0" width={30} />
+              </div>
+            </Tooltip>
           </NavLink>
         </Col>
         <Menu
@@ -180,27 +220,39 @@ const LeftSidebar = () => {
             to={{
               pathname: ROUTES.SETTINGS,
             }}>
-            <div
-              className={`left-panel-item  ${
-                location.pathname.startsWith('/settings') ? 'active' : ''
-              }`}>
-              <SettingsIcon className="m-0" width={30} />
-              <Typography.Text className="left-panel-label">
-                {t('label.setting-plural', { lng: 'en-US' })}
-              </Typography.Text>
-            </div>
+            <Tooltip
+              overlayClassName="left-panel-tooltip"
+              placement="right"
+              title={
+                <Typography.Text className="left-panel-label">
+                  {t('label.setting-plural')}
+                </Typography.Text>
+              }>
+              <div
+                className={`left-panel-item  ${
+                  location.pathname.startsWith('/settings') ? 'active' : ''
+                }`}>
+                <SettingsIcon className="m-0" width={30} />
+              </div>
+            </Tooltip>
           </NavLink>
         </Col>
         <Col span={24}>
-          <div
-            className="left-panel-item cursor-pointer"
-            data-testid="appbar-item-logout"
-            onClick={handleLogoutClick}>
-            <LogoutIcon className="m-0" width={30} />
-            <Typography.Text className="left-panel-label">
-              {t('label.logout', { lng: 'en-US' })}
-            </Typography.Text>
-          </div>
+          <Tooltip
+            overlayClassName="left-panel-tooltip"
+            placement="right"
+            title={
+              <Typography.Text className="left-panel-label">
+                {t('label.logout')}
+              </Typography.Text>
+            }>
+            <div
+              className="left-panel-item cursor-pointer"
+              data-testid="appbar-item-logout"
+              onClick={handleLogoutClick}>
+              <LogoutIcon className="m-0" width={30} />
+            </div>
+          </Tooltip>
         </Col>
       </Row>
       {showConfirmLogoutModal && (
