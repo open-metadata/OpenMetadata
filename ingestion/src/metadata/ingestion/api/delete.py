@@ -14,8 +14,11 @@ Delete methods
 import traceback
 from typing import Dict, Iterable, Optional, Type
 
-from metadata.ingestion.models.delete_entity import DeleteEntity, logger
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 def delete_entity_from_source(

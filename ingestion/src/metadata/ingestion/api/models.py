@@ -11,12 +11,13 @@
 """
 Generic models
 """
-from typing import Any, Optional
+from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel
 
 # Entities are instances of BaseModel
 Entity = BaseModel
+T = TypeVar("T")
 
 
 class StackTraceError(BaseModel):
@@ -29,7 +30,7 @@ class StackTraceError(BaseModel):
     stack_trace: Optional[str]
 
 
-class Either(BaseModel):
+class Either(BaseModel, Generic[T]):
     """
     Any execution should return us Either an Entity of an error for us to handle
     - left: Optional error we encounter
@@ -37,4 +38,4 @@ class Either(BaseModel):
     """
 
     left: Optional[StackTraceError]
-    right: Optional[Any]
+    right: Optional[T]

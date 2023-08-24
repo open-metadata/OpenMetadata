@@ -15,9 +15,9 @@ to the OM API.
 """
 import traceback
 from functools import singledispatch
-from typing import Optional, TypeVar
+from typing import Any, Dict, Optional, TypeVar, Union
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
@@ -28,14 +28,26 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.pipeline import PipelineStatus
+from metadata.generated.schema.entity.data.searchIndex import (
+    SearchIndex,
+    SearchIndexSampleData,
+)
+from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.schema import Topic
+from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -95,7 +107,7 @@ class MetadataRestSink(Sink):
         self._run_dispatch.register(AddLineageRequest, self.write_lineage)
         self._run_dispatch.register(OMetaUserProfile, self.write_users)
         self._run_dispatch.register(
-            OMetaTagAndClassification, self.write_classification
+            OMetaTagAndClassification, self.write_classification_and_tag
         )
         self._run_dispatch.register(DeleteEntity, self.delete_entity)
         self._run_dispatch.register(OMetaPipelineStatus, self.write_pipeline_status)
@@ -122,12 +134,12 @@ class MetadataRestSink(Sink):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def _run_dispatch(self, record: Entity) -> Either:
+    def _run_dispatch(self, record: Entity) -> Either[Any]:
         logger.debug(f"Processing Create request {type(record)}")
         return self.write_create_request(record)
 
     @calculate_execution_time
-    def _run(self, record: Entity) -> Either:
+    def _run(self, record: Entity) -> Either[Any]:
         """
         Default implementation for the single dispatch
         """
@@ -149,7 +161,7 @@ class MetadataRestSink(Sink):
                 )
             )
 
-    def write_create_request(self, entity_request) -> Either:
+    def write_create_request(self, entity_request) -> Either[Entity]:
         """
         Send to OM the request creation received as is.
         :param entity_request: Create Entity request
@@ -165,7 +177,7 @@ class MetadataRestSink(Sink):
                 )
             )
 
-    def write_datamodel(self, datamodel_link: DataModelLink) -> Either:
+    def write_datamodel(self, datamodel_link: DataModelLink) -> Either[DataModel]:
         """
         Send to OM the DataModel based on a table ID
         :param datamodel_link: Table ID + Data Model
@@ -187,7 +199,9 @@ class MetadataRestSink(Sink):
                 )
             )
 
-    def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> Either:
+    def write_dashboard_usage(
+        self, dashboard_usage: DashboardUsage
+    ) -> Either[Dashboard]:
         """
         Send a UsageRequest update to a dashboard entity
         :param dashboard_usage: dashboard entity and usage request
@@ -198,13 +212,15 @@ class MetadataRestSink(Sink):
         )
         return Either(right=dashboard_usage.dashboard)
 
-    def write_classification(self, record: OMetaTagAndClassification) -> Either:
+    def write_classification_and_tag(
+        self, record: OMetaTagAndClassification
+    ) -> Either[Tag]:
         """PUT Classification and Tag to OM API"""
         self.metadata.create_or_update(record.classification_request)
         tag = self.metadata.create_or_update(record.tag_request)
         return Either(right=tag)
 
-    def write_lineage(self, add_lineage: AddLineageRequest) -> Either:
+    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage)
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
@@ -236,7 +252,7 @@ class MetadataRestSink(Sink):
 
         return None
 
-    def write_users(self, record: OMetaUserProfile) -> Either:
+    def write_users(self, record: OMetaUserProfile) -> Either[User]:
         """
         Given a User profile (User + Teams + Roles create requests):
         1. Check if role & team exist, otherwise create
@@ -293,7 +309,7 @@ class MetadataRestSink(Sink):
         user = self.metadata.create_or_update(metadata_user)
         return Either(right=user)
 
-    def delete_entity(self, record: DeleteEntity) -> Either:
+    def delete_entity(self, record: DeleteEntity) -> Either[Entity]:
         self.metadata.delete(
             entity=type(record.entity),
             entity_id=record.entity.id,
@@ -301,7 +317,9 @@ class MetadataRestSink(Sink):
         )
         return Either(right=record)
 
-    def write_pipeline_status(self, record: OMetaPipelineStatus) -> Either:
+    def write_pipeline_status(
+        self, record: OMetaPipelineStatus
+    ) -> Either[PipelineStatus]:
         """
         Use the /status endpoint to add PipelineStatus
         data to a Pipeline Entity
@@ -311,7 +329,9 @@ class MetadataRestSink(Sink):
         )
         return Either(right=pipeline)
 
-    def write_profile_sample_data(self, record: OMetaTableProfileSampleData) -> Either:
+    def write_profile_sample_data(
+        self, record: OMetaTableProfileSampleData
+    ) -> Either[Table]:
         """
         Use the /tableProfile endpoint to ingest sample profile data
         """
@@ -320,7 +340,9 @@ class MetadataRestSink(Sink):
         )
         return Either(right=table)
 
-    def write_test_suite_sample(self, record: OMetaTestSuiteSample) -> Either:
+    def write_test_suite_sample(
+        self, record: OMetaTestSuiteSample
+    ) -> Either[TestSuite]:
         """
         Use the /testSuites endpoint to ingest sample test suite
         """
@@ -331,13 +353,9 @@ class MetadataRestSink(Sink):
 
     def write_logical_test_suite_sample(
         self, record: OMetaLogicalTestSuiteSample
-    ) -> Either:
+    ) -> Either[TestSuite]:
         """Create logical test suite and add tests cases to it"""
         test_suite = self.metadata.create_or_update(record.test_suite)
-        logger.debug(
-            f"Successfully created logical test Suite {record.test_suite.name.__root__}"
-        )
-        self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
         self.metadata.add_logical_test_cases(
             CreateLogicalTestCases(
                 testSuiteId=test_suite.id,
@@ -346,7 +364,7 @@ class MetadataRestSink(Sink):
         )
         return Either(right=test_suite)
 
-    def write_test_case_sample(self, record: OMetaTestCaseSample) -> Either:
+    def write_test_case_sample(self, record: OMetaTestCaseSample) -> Either[TestCase]:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
@@ -355,7 +373,7 @@ class MetadataRestSink(Sink):
 
     def write_test_case_results_sample(
         self, record: OMetaTestCaseResultsSample
-    ) -> Either:
+    ) -> Either[TestCaseResult]:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
@@ -365,7 +383,9 @@ class MetadataRestSink(Sink):
         )
         return Either(right=record.test_case_results)
 
-    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either:
+    def write_topic_sample_data(
+        self, record: OMetaTopicSampleData
+    ) -> Either[Union[TopicSampleData, Topic]]:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
@@ -379,7 +399,9 @@ class MetadataRestSink(Sink):
         logger.debug(f"No sample data to PUT for {get_log_name(record.topic)}")
         return Either(right=record.topic)
 
-    def write_search_index_sample_data(self, record: OMetaIndexSampleData) -> Either:
+    def write_search_index_sample_data(
+        self, record: OMetaIndexSampleData
+    ) -> Either[Union[SearchIndexSampleData, SearchIndex]]:
         """
         Ingest Search Index Sample Data
         """

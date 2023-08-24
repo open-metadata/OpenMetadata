@@ -98,7 +98,7 @@ class IterStep(Step, ABC):
     def _iter(self, *args, **kwargs) -> Iterable[Either]:
         """Main entrypoint to run through the Iterator"""
 
-    def run(self) -> Iterable[Either]:
+    def run(self) -> Iterable[Optional[Entity]]:
         """
         Run the step and handle the status and exceptions
 
@@ -106,7 +106,13 @@ class IterStep(Step, ABC):
         in order to create a generator with `yield`.
         """
         try:
-            yield from self._iter()
+            for result in self._iter():
+                if result.left:
+                    self.status.failed(result.left)
+                    yield None
+
+                self.status.scanned(result.right)
+                yield result.right
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err

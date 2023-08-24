@@ -172,7 +172,9 @@ class TopologyRunnerMixin(Generic[C]):
             *context_names, entity_request.name.__root__
         )
 
-    def sink_request(self, stage: NodeStage, entity_request: C) -> Iterable[Entity]:
+    def sink_request(
+        self, stage: NodeStage, entity_request: Either[C]
+    ) -> Iterable[Either[Entity]]:
         """
         Validate that the entity was properly updated or retry if
         ack_sink is flagged.
@@ -185,17 +187,21 @@ class TopologyRunnerMixin(Generic[C]):
         """
 
         # Either use the received request or the acknowledged Entity
-        entity = entity_request
+        entity = entity_request.right
 
         if stage.nullable and entity is None:
             raise ValueError("Value unexpectedly None")
 
-        if entity is not None:
+        # Check that we properly received a Right response to process
+        if entity_request.right is not None:
+
+            # We need to acknowledge that the Entity has been properly sent to the server
+            # to update the context
             if stage.ack_sink:
                 entity = None
 
                 entity_fqn = self.fqn_from_context(
-                    stage=stage, entity_request=entity_request
+                    stage=stage, entity_request=entity_request.right
                 )
 
                 # we get entity from OM if we do not want to overwrite existing data in OM
@@ -210,7 +216,6 @@ class TopologyRunnerMixin(Generic[C]):
                     tries = 3
                     while not entity and tries > 0:
                         yield entity_request
-                        # Improve validation logic
                         entity = self.metadata.get_by_name(
                             entity=stage.type_,
                             fqn=entity_fqn,
@@ -228,12 +233,17 @@ class TopologyRunnerMixin(Generic[C]):
                     )
 
             else:
-                yield entity
+                yield entity_request
 
             if stage.context and not stage.cache_all:
                 self.update_context(key=stage.context, value=entity)
             if stage.context and stage.cache_all:
                 self.append_context(key=stage.context, value=entity)
+
+        else:
+            # if entity_request.right is None, means that we have a Left. We yield the Either and
+            # let the step take care of the
+            yield entity_request
 
     def _is_force_overwrite_enabled(self) -> bool:
         return self.metadata.config and self.metadata.config.forceEntityOverwriting
