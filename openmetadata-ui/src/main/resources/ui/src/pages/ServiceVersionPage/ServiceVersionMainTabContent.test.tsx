@@ -144,7 +144,6 @@ const props: ServiceVersionMainTabContentProps = {
   serviceDetails: MOCK_DATABASE_SERVICE,
   entityType: EntityType.DATABASE_SERVICE,
   changeDescription: MOCK_CHANGE_DESCRIPTION,
-  isVersionView: true,
 };
 
 describe('ServiceVersionMainTabContent tests', () => {

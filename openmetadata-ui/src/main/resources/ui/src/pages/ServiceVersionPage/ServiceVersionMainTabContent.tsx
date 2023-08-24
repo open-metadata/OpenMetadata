@@ -54,7 +54,6 @@ export interface ServiceVersionMainTabContentProps {
   isServiceLoading: boolean;
   paging: Paging;
   currentPage: number;
-  isVersionView?: boolean;
   pagingHandler: (cursorType: string | number, activePage?: number) => void;
   entityType: EntityType;
   changeDescription: ChangeDescription;
@@ -70,7 +69,6 @@ function ServiceVersionMainTabContent({
   serviceDetails,
   entityType,
   changeDescription,
-  isVersionView = false,
 }: ServiceVersionMainTabContentProps) {
   const { t } = useTranslation();
   const { serviceFQN, serviceCategory } = useParams<{
@@ -246,7 +244,7 @@ function ServiceVersionMainTabContent({
       <Col
         className="entity-tag-right-panel-container"
         data-testid="entity-right-panel"
-        flex={isVersionView ? '220px' : '320px'}>
+        flex="220px">
         <Space className="w-full" direction="vertical" size="large">
           {Object.keys(TagSource).map((tagType) => (
             <TagsContainerV2

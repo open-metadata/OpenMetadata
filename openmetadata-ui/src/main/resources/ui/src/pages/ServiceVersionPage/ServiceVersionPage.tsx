@@ -384,7 +384,6 @@ function ServiceVersionPage() {
               count: paging.total,
               children: (
                 <ServiceVersionMainTabContent
-                  isVersionView
                   changeDescription={changeDescription}
                   currentPage={currentPage}
                   data={data}
