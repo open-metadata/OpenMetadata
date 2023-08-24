@@ -37,7 +37,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -181,7 +181,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {entities.map((entity) => (
+                {entities.map((entity, i) => (
                   <Line
                     dataKey={entity}
                     hide={
@@ -190,7 +190,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                         : false
                     }
                     key={entity}
-                    stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       entity === activeMouseHoverKey
@@ -219,7 +219,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                   target={targetValue}
                 />
               </Col>
-              {entities.map((entity) => {
+              {entities.map((entity, i) => {
                 return (
                   <Col key={entity} span={24}>
                     <EntitySummaryProgressBar
@@ -229,6 +229,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                       }`}
                       latestData={latestData}
                       progress={latestData[entity]}
+                      strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   </Col>
                 );

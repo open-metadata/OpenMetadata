@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Progress, Row, Typography } from 'antd';
-import { TOTAL_ENTITY_CHART_COLOR } from 'constants/DataInsight.constants';
 import { round } from 'lodash';
 import React, { ReactNode } from 'react';
 
@@ -21,6 +20,7 @@ type EntitySummaryProgressBarProps = {
   entity: string;
   latestData: Record<string, number>;
   label?: ReactNode;
+  strokeColor?: string;
 };
 
 const EntitySummaryProgressBar = ({
@@ -29,6 +29,7 @@ const EntitySummaryProgressBar = ({
   latestData,
   progress,
   label,
+  strokeColor,
 }: EntitySummaryProgressBarProps) => {
   const pluralizeName = (entity: string) => {
     return entity + 's';
@@ -54,7 +55,7 @@ const EntitySummaryProgressBar = ({
           percent={progress}
           showInfo={false}
           size="small"
-          strokeColor={TOTAL_ENTITY_CHART_COLOR[entity]}
+          strokeColor={strokeColor}
         />
       </Col>
     </Row>

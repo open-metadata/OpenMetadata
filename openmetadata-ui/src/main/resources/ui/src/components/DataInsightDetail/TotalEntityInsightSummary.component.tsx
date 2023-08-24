@@ -12,6 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
+import { TOTAL_ENTITY_CHART_COLOR } from 'constants/DataInsight.constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CustomStatistic from './CustomStatistic';
@@ -48,7 +49,7 @@ const TotalEntityInsightSummary = ({
           value={total}
         />
       </Col>
-      {entities.map((entity) => {
+      {entities.map((entity, i) => {
         const progress = (latestData[entity] / Number(total)) * 100;
 
         return (
@@ -57,6 +58,7 @@ const TotalEntityInsightSummary = ({
               entity={entity}
               latestData={latestData}
               progress={progress}
+              strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
             />
           </Col>
         );

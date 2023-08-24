@@ -37,7 +37,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -150,7 +150,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {entities.map((entity) => (
+                {entities.map((entity, i) => (
                   <Line
                     dataKey={entity}
                     hide={
@@ -159,7 +159,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                         : false
                     }
                     key={entity}
-                    stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       entity === activeMouseHoverKey

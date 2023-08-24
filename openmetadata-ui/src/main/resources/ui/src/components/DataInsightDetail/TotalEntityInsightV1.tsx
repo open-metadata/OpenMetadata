@@ -114,12 +114,12 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
                   <XAxis dataKey="timestamp" />
                   <YAxis tickFormatter={(value) => axisTickFormatter(value)} />
                   <Tooltip />
-                  {entities.map((entity) => (
+                  {entities.map((entity, i) => (
                     <Area
                       dataKey={entity}
-                      fill={TOTAL_ENTITY_CHART_COLOR[entity]}
+                      fill={TOTAL_ENTITY_CHART_COLOR[i]}
                       key={entity}
-                      stroke={TOTAL_ENTITY_CHART_COLOR[entity]}
+                      stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   ))}
                 </AreaChart>

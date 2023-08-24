@@ -37,8 +37,8 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  TIER_BAR_COLOR_MAP,
   TIER_DATA,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -156,7 +156,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {tiers.map((tier) => (
+                {tiers.map((tier, i) => (
                   <Line
                     dataKey={tier}
                     hide={
@@ -165,7 +165,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                         : false
                     }
                     key={tier}
-                    stroke={TIER_BAR_COLOR_MAP[tier]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       tier === activeMouseHoverKey
@@ -192,7 +192,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   showLabel={false}
                 />
               </Col>
-              {tiers.map((tiers) => {
+              {tiers.map((tiers, i) => {
                 return (
                   <Col key={uniqueId()} span={24}>
                     <EntitySummaryProgressBar
@@ -201,6 +201,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                       latestData={latestData}
                       pluralize={false}
                       progress={latestData[tiers]}
+                      strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   </Col>
                 );
