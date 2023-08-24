@@ -17,11 +17,11 @@ import StarterKit from '@tiptap/starter-kit';
 import { isNil } from 'lodash';
 import React, { useState } from 'react';
 import './block-editor.less';
-import BubbleMenu from './BubbleMenu';
+import LinkModal, { LinkData } from './Components/LinkModal';
 import SlashCommand from './Extensions/slash-command';
 import { getSuggestionItems } from './Extensions/slash-command/items';
 import renderItems from './Extensions/slash-command/renderItems';
-import LinkModal, { LinkData } from './LinkModal';
+import BubbleMenu from './Menu/BubbleMenu';
 
 const BlockEditor = () => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
