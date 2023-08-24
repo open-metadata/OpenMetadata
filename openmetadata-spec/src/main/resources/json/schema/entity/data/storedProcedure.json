@@ -91,6 +91,10 @@
       "description": "Reference to Database Schema that contains this stored procedure.",
       "$ref": "../../type/entityReference.json"
     },
+    "database": {
+      "description": "Reference to Database that contains this stored procedure.",
+      "$ref": "../../type/entityReference.json"
+    },
     "owner": {
       "description": "Owner of this Query.",
       "$ref": "../../type/entityReference.json",
