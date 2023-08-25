@@ -28,6 +28,7 @@ const BlockEditor = () => {
 
   const editor = useEditor({
     autofocus: true,
+    editable: true,
     extensions: [
       StarterKit.configure({
         heading: {
@@ -93,12 +94,6 @@ const BlockEditor = () => {
           return '';
         },
       }),
-      SlashCommand.configure({
-        suggestion: {
-          items: getSuggestionItems,
-          render: renderItems,
-        },
-      }),
       LinkExtension.configure({
         autolink: false,
         openOnClick: false,
@@ -108,6 +103,12 @@ const BlockEditor = () => {
           target: '_blank',
         },
         validate: (href) => /^https?:\/\//.test(href),
+      }),
+      SlashCommand.configure({
+        suggestion: {
+          items: getSuggestionItems,
+          render: renderItems,
+        },
       }),
     ],
   });

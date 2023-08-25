@@ -144,8 +144,6 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         imgSrc: DividerImage,
       },
     ] as SuggestionItem[]
-  )
-    .filter((item) =>
-      item.title.toLowerCase().startsWith(props.query.toLowerCase())
-    )
-    .slice(0, 12);
+  ).filter((item) =>
+    item.title.toLowerCase().startsWith(props.query.toLowerCase())
+  );

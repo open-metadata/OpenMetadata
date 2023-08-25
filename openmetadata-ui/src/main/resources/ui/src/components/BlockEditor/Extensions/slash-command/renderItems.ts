@@ -28,9 +28,13 @@ const renderItems = () => {
         editor: props.editor,
       });
 
+      if (!props.clientRect) {
+        return;
+      }
+
       popup = tippy('body', {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        getReferenceClientRect: props.clientRect as any,
+        getReferenceClientRect:
+          props.clientRect as Props['getReferenceClientRect'],
         appendTo: () => document.body,
         content: component.element,
         showOnCreate: true,
@@ -39,13 +43,17 @@ const renderItems = () => {
         placement: 'bottom-start',
       });
     },
-    onUpdate(props: SuggestionProps) {
+    onUpdate: (props: SuggestionProps) => {
       suggestionProps = props;
       component.updateProps(props);
 
+      if (!props.clientRect) {
+        return;
+      }
+
       popup[0].setProps({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        getReferenceClientRect: props.clientRect as any,
+        getReferenceClientRect:
+          props.clientRect as Props['getReferenceClientRect'],
       });
     },
     onKeyDown(props: SuggestionKeyDownProps) {
