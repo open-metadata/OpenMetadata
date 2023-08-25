@@ -140,3 +140,75 @@ elasticsearch:
     ...
 ...
 ```
+
+# How to configure external database like PostgreSQL with OpenMetadata Helm Charts ?
+
+OpenMetadata Supports PostgreSQL as one of the Database Dependencies. OpenMetadata Helm Charts by default does not include PostgreSQL as Database Dependencies. In order to configure Helm Charts with External Database like PostgreSQL, follow the below guide to make the helm values change and upgrade / install OpenMetadata helm charts with the same.
+
+## Upgrade Airflow Helm Dependencies Helm Charts to connect to External Database like PostgreSQL
+
+We ship [airflow-helm](https://github.com/airflow-helm/charts/tree/main/charts/airflow) as one of OpenMetadata Dependencies with default values to connect to MySQL Database as part of `externalDatabase` configurations.
+
+You can find more information on setting the `externalDatabase` as part of helm values [here](https://github.com/airflow-helm/charts/blob/main/charts/airflow/docs/faq/database/external-database.md).
+
+With OpenMetadata Dependencies Helm Charts, your helm values would look something like below -
+
+```yaml
+...
+airflow:
+  externalDatabase:
+    type: postgresql
+    host: <postgresql_endpoint>
+    port: 5432
+    database: <airflow_database_name>
+    user: <airflow_database_login_user>
+    passwordSecret: airflow-postgresql-secrets
+    passwordSecretKey: airflow-postgresql-password
+...
+```
+
+For the above code, it is assumed you are creating a kubernetes secret for storing Airflow Database login Credentials. A sample command to create the secret will be `kubectl create secret generic airflow-postgresql-secrets --from-literal=airflow-postgresql-password=<password>`.
+
+## Upgrade OpenMetadata Helm Charts to connect to External Database like PostgreSQL
+
+Update the `openmetadata.config.database.*` helm values for OpenMetadata Application to connect to External Database like PostgreSQL.
+
+With OpenMetadata Helm Charts, your helm values would look something like below -
+
+```yaml
+openmetadata:
+  config:
+    ...
+    database:
+      host: <postgresql_endpoint>
+      port: 5432
+      driverClass: org.postgresql.Driver
+      dbScheme: postgresql
+      dbUseSSL: true
+      databaseName: <openmetadata_database_name>
+      auth:
+        username: <database_login_user>
+        password:
+          secretRef: openmetadata-postgresql-secrets
+          secretKey: openmetadata-postgresql-password
+```
+For the above code, it is assumed you are creating a kubernetes secret for storing OpenMetadata Database login Credentials. A sample command to create the secret will be `kubectl create secret generic openmetadata-postgresql-secrets --from-literal=openmetadata-postgresql-password=<password>`.
+
+Once you make the above changes to your helm values, run the below command to install/upgrade helm charts -
+
+```commandline
+helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies --values <<path-to-values-file>> --namespace <kubernetes_namespace>
+helm upgrade --install openmetadata open-metadata/openmetadata --values <<path-to-values-file>> --namespace <kubernetes_namespace>
+```
+
+# Getting an error when install OpenMetadata Dependencies Helm Charts on EKS with EFS
+
+If you are facing the below issue -
+
+```
+MountVolume.SetUp failed for volume "openmetadata-dependencies-dags-pv" : rpc error: code = Internal desc = Could not mount "fs-012345abcdef:/airflow-dags" at "/var/lib/kubelet/pods/xyzabc-123-0062-44c3-b0e9-fa193c19f41c/volumes/kubernetes.io~csi/openmetadata-dependencies-dags-pv/mount": mount failed: exit status 1 Mounting command: mount Mounting arguments: -t efs -o tls fs-012345abcdef:/airflow-dags /var/lib/kubelet/pods/xyzabc-123-0062-44c3-b0e9-fa193c19f41c/volumes/kubernetes.io~csi/openmetadata-dependencies-dags-pv/mount Output: Failed to locate an available port in the range [20049, 20449], try specifying a different port range in /etc/amazon/efs/efs-utils.conf
+```
+
+This error is typically related to EKS Cluster not able to reach to EFS File systems. You can check the security groups associated between the connectivity EFS and EKS. [Here is an article](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/efs-create-filesystem.md) which further describes the steps required to create Security Group Rules for EKS to use EFS over `port 2049`.
+
+It can also happen if the mount targets are already available for EKS Nodes but the Nodes do not pick that up. In such cases, you can do an [AWS AutoScaling Group instance refresh](https://docs.aws.amazon.com/autoscaling/ec2/userguide/start-instance-refresh.html) in order for EKS nodes to get the available mount targets.
