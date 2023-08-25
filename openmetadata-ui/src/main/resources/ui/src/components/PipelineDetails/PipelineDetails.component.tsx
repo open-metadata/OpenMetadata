@@ -42,7 +42,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
@@ -83,7 +82,7 @@ const PipelineDetails = ({
   versionHandler,
   pipelineFQN,
   onExtensionUpdate,
-  handleDeleteAction,
+  handleToggleDelete,
 }: PipeLineDetailsProp) => {
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -255,7 +254,7 @@ const PipelineDetails = ({
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -491,7 +490,7 @@ const PipelineDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
 

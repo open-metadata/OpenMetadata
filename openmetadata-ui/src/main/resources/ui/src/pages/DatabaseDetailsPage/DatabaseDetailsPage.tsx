@@ -61,7 +61,6 @@ import {
   restoreDatabase,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -545,7 +544,7 @@ const DatabaseDetails: FunctionComponent = () => {
     databaseSchemaPagingHandler,
   ]);
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setDatabase((prev) => {
       if (!prev) {
         return prev;
@@ -564,7 +563,7 @@ const DatabaseDetails: FunctionComponent = () => {
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -596,7 +595,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
 

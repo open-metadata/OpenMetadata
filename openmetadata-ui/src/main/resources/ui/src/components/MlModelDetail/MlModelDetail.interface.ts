@@ -27,5 +27,5 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   versionHandler: () => void;
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
   createThread: (data: CreateThread) => void;
-  handleDeleteAction: () => void;
+  handleToggleDelete: () => void;
 }

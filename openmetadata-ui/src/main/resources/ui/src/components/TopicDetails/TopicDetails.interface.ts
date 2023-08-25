@@ -25,7 +25,7 @@ export interface TopicDetailsProps {
   unFollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;
   onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
-  handleDeleteAction: () => void;
+  handleToggleDelete: () => void;
 }
 
 export interface TopicConfigObjectInterface {

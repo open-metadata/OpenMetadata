@@ -35,7 +35,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -60,7 +59,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   createThread,
   onTopicUpdate,
   topicPermissions,
-  handleDeleteAction,
+  handleToggleDelete,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -148,7 +147,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -245,7 +244,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
 

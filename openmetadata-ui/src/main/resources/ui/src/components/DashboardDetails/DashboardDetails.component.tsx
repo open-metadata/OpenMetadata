@@ -38,7 +38,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
@@ -74,7 +73,7 @@ const DashboardDetails = ({
   versionHandler,
   createThread,
   onDashboardUpdate,
-  handleDeleteAction,
+  handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -284,7 +283,7 @@ const DashboardDetails = ({
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -404,7 +403,7 @@ const DashboardDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
 

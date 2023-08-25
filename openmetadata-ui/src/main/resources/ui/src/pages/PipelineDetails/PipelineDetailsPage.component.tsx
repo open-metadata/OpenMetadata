@@ -244,7 +244,7 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setPipelineDetails((prev) => {
       if (!prev) {
         return prev;
@@ -285,7 +285,7 @@ const PipelineDetailsPage = () => {
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
       followPipelineHandler={followPipeline}
-      handleDeleteAction={handleDeleteAction}
+      handleToggleDelete={handleToggleDelete}
       paging={paging}
       pipelineDetails={pipelineDetails}
       pipelineFQN={pipelineFQN}

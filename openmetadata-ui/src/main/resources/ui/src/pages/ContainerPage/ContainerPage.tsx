@@ -58,7 +58,6 @@ import {
   removeContainerFollower,
   restoreContainer,
 } from 'rest/storageAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -365,7 +364,7 @@ const ContainerPage = () => {
     }
   };
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setContainerData((prev) => {
       if (!prev) {
         return prev;
@@ -377,7 +376,7 @@ const ContainerPage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
 
@@ -390,7 +389,7 @@ const ContainerPage = () => {
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,

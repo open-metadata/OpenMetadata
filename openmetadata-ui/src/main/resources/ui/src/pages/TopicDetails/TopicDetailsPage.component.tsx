@@ -210,7 +210,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setTopicDetails((prev) => {
       if (!prev) {
         return prev;
@@ -249,7 +249,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       createThread={createThread}
       fetchTopic={() => fetchTopicDetail(topicFQN)}
       followTopicHandler={followTopic}
-      handleDeleteAction={handleDeleteAction}
+      handleToggleDelete={handleToggleDelete}
       topicDetails={topicDetails}
       topicPermissions={topicPermissions}
       unFollowTopicHandler={unFollowTopic}

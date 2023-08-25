@@ -291,7 +291,7 @@ const DataModelsPage = () => {
     }
   };
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setDataModelData((prev) => {
       if (!prev) {
         return prev;
@@ -335,8 +335,8 @@ const DataModelsPage = () => {
       dataModelPermissions={dataModelPermissions}
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}
-      handleDeleteAction={handleDeleteAction}
       handleFollowDataModel={handleFollowDataModel}
+      handleToggleDelete={handleToggleDelete}
       handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}

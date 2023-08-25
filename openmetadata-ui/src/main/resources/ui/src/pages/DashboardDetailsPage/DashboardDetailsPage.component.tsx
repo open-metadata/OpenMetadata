@@ -281,7 +281,7 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setDashboardDetails((prev) => {
       if (!prev) {
         return prev;
@@ -324,7 +324,7 @@ const DashboardDetailsPage = () => {
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}
-      handleDeleteAction={handleDeleteAction}
+      handleToggleDelete={handleToggleDelete}
       unFollowDashboardHandler={unFollowDashboard}
       versionHandler={versionHandler}
       onDashboardUpdate={onDashboardUpdate}

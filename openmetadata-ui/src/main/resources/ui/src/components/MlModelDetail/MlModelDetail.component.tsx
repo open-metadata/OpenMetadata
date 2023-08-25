@@ -34,7 +34,6 @@ import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
@@ -69,7 +68,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   createThread,
   versionHandler,
   tagUpdateHandler,
-  handleDeleteAction,
+  handleToggleDelete,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -224,7 +223,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         // Autoclose timer
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -359,7 +358,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
 

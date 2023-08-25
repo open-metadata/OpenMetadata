@@ -46,5 +46,5 @@ export interface DashboardDetailsProps {
     updatedDashboard: Dashboard,
     key: keyof Dashboard
   ) => Promise<void>;
-  handleDeleteAction: () => void;
+  handleToggleDelete: () => void;
 }

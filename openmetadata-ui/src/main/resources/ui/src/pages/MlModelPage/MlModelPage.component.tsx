@@ -265,7 +265,7 @@ const MlModelPage = () => {
     );
   };
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setMlModelDetail((prev) => {
       if (!prev) {
         return prev;
@@ -301,7 +301,7 @@ const MlModelPage = () => {
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
       followMlModelHandler={followMlModel}
-      handleDeleteAction={handleDeleteAction}
+      handleToggleDelete={handleToggleDelete}
       mlModelDetail={mlModelDetail}
       settingsUpdateHandler={settingsUpdateHandler}
       tagUpdateHandler={onTagUpdate}

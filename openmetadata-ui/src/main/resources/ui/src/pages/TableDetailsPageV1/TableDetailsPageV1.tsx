@@ -70,7 +70,6 @@ import {
   removeFollower,
   restoreTable,
 } from 'rest/tableAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -728,7 +727,7 @@ const TableDetailsPageV1 = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setTableDetails((prev) => {
       if (!prev) {
         return prev;
@@ -747,7 +746,7 @@ const TableDetailsPageV1 = () => {
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -825,7 +824,7 @@ const TableDetailsPageV1 = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 

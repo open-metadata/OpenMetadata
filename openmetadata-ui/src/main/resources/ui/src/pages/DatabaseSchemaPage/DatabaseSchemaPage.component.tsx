@@ -57,7 +57,6 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
@@ -404,7 +403,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [getEntityFeedCount]
   );
 
-  const handleDeleteAction = () => {
+  const handleToggleDelete = () => {
     setDatabaseSchema((prev) => {
       if (!prev) {
         return prev;
@@ -423,7 +422,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -446,7 +445,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 

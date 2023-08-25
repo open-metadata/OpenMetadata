@@ -37,7 +37,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDataModel } from 'rest/dataModelsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getFeedCounts } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
@@ -59,7 +58,7 @@ const DataModelDetails = ({
   handleUpdateDescription,
   handleColumnUpdateDataModel,
   onUpdateDataModel,
-  handleDeleteAction,
+  handleToggleDelete,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -171,7 +170,7 @@ const DataModelDetails = ({
         }),
         2000
       );
-      handleDeleteAction();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -184,7 +183,7 @@ const DataModelDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      handleDataAssetAfterDeleteAction(isSoftDelete, handleDeleteAction),
+      isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
 

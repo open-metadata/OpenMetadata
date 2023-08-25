@@ -33,5 +33,5 @@ export interface DataModelDetailsProps {
     updatedDataModel: DashboardDataModel,
     key: keyof DashboardDataModel
   ) => Promise<void>;
-  handleDeleteAction: () => void;
+  handleToggleDelete: () => void;
 }
