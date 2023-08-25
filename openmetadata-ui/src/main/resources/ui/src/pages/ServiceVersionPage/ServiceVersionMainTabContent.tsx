@@ -98,7 +98,7 @@ function ServiceVersionMainTabContent({
           </Col>
 
           <Col data-testid="table-container" span={24}>
-            <Space className="w-full m-b-md" direction="vertical" size="large">
+            <Space className="w-full m-b-md" direction="vertical" size="middle">
               <Table
                 bordered
                 columns={tableColumn}

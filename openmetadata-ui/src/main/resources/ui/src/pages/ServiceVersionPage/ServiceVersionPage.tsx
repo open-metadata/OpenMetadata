@@ -499,7 +499,7 @@ function ServiceVersionPage() {
   return (
     <PageLayoutV1
       className="version-page-container"
-      pageTitle={t('label.entity-detail-plural', {
+      pageTitle={t('label.entity-version-detail-plural', {
         entity: getEntityName(currentVersionData),
       })}>
       {versionComponent()}
