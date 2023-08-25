@@ -92,7 +92,7 @@ class Profiler(Generic[TMetric]):
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
         self._metrics = metrics
-        self._profile_date = datetime.now(tz=timezone.utc).timestamp()
+        self._profile_date = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
         self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.validate_composed_metric()

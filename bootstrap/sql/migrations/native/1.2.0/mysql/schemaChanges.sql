@@ -57,3 +57,17 @@ CREATE TABLE IF NOT EXISTS search_index_entity (
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REPLACE(json, '$.airflowConfig.retries', 0)
 WHERE JSON_EXTRACT(json, '$.airflowConfig.retries') IS NOT NULL;
+
+
+-- create stored procedure entity
+CREATE TABLE IF NOT EXISTS stored_procedure_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
