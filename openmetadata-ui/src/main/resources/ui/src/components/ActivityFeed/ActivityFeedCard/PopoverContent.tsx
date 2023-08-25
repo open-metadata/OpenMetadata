@@ -205,7 +205,7 @@ const PopoverContent: FC<Props> = ({
         <Icon
           component={IconFeedDelete}
           data-testid="delete-message"
-          style={{ fontSize: '18px' }}
+          style={{ fontSize: '16px' }}
           onClick={handleDelete}
         />
       ) : null}

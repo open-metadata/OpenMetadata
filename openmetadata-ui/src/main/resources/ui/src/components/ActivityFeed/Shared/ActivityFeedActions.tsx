@@ -187,7 +187,7 @@ const ActivityFeedActions = ({
             className="toolbar-button"
             component={DeleteIcon}
             data-testid="delete-message"
-            style={{ fontSize: '18px' }}
+            style={{ fontSize: '16px' }}
             onClick={() => setShowDeleteDialog(true)}
           />
         )}
