@@ -13,7 +13,6 @@
 
 import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import BlockEditor from 'components/BlockEditor/BlockEditor';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
@@ -204,7 +203,6 @@ const AddRolePage = () => {
                 </Space>
               </Form>
             </div>
-            <BlockEditor />
           </div>
         ),
         minWidth: 700,
