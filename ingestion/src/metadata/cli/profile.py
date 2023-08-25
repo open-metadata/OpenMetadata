@@ -45,8 +45,8 @@ def run_profiler(config_path: str) -> None:
         logger.debug(traceback.format_exc())
         print_init_error(exc, workflow_config_dict, WorkflowType.PROFILE)
         sys.exit(1)
+
     workflow.execute()
     workflow.stop()
     print_status(workflow)
-    ret = workflow.result_status()
-    sys.exit(ret)
+    workflow.raise_from_status()

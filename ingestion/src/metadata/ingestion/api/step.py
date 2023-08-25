@@ -107,12 +107,13 @@ class IterStep(Step, ABC):
         """
         try:
             for result in self._iter():
-                if result.left:
+                if result.left is not None:
                     self.status.failed(result.left)
                     yield None
 
-                self.status.scanned(result.right)
-                yield result.right
+                if result.right is not None:
+                    self.status.scanned(result.right)
+                    yield result.right
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err

@@ -448,7 +448,7 @@ def print_failures_if_apply(failures: List[Failure]) -> None:
         all_data = [get_failures(failure) for failure in failures]
         # create a single of dictionaries
         data = [f for fs in all_data for f in fs]
-        # creat a dictionary with a key and a list of values from the list
+        # create a dictionary with a key and a list of values from the list
         error_table = {k: [dic[k] for dic in data] for k in data[0]}
         if len(list(error_table.items())[0][1]) > 100:
             log_ansi_encoded_string(

@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
 Base workflow definition.
 
@@ -105,7 +104,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         we are defining Sources as Generators.
         """
         for record in self.source.run():
-            self.source.status.scanned(record)
             processed_record = record
             for step in self.steps:
                 # We only process the records for these Step types

@@ -170,7 +170,10 @@ def log_ansi_encoded_string(
 
 @singledispatch
 def get_log_name(record: Entity) -> str:
-    return f"{type(record).__name__} [{record.name.__root__}]"
+    try:
+        return f"{type(record).__name__} [{record.name.__root__}]"
+    except Exception:
+        return str(record)
 
 
 @get_log_name.register

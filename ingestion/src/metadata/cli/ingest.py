@@ -49,5 +49,4 @@ def run_ingest(config_path: str) -> None:
     workflow.execute()
     workflow.stop()
     print_status(workflow)
-    ret = workflow.result_status()
-    sys.exit(ret)
+    workflow.raise_from_status()
