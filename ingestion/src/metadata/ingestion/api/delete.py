@@ -14,6 +14,7 @@ Delete methods
 import traceback
 from typing import Dict, Iterable, Optional, Type
 
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
 from metadata.utils.logger import utils_logger
@@ -27,7 +28,7 @@ def delete_entity_from_source(
     entity_source_state,
     mark_deleted_entity: bool = True,
     params: Optional[Dict[str, str]] = None,
-) -> Iterable[DeleteEntity]:
+) -> Iterable[Either[DeleteEntity]]:
     """
     Method to delete the entities
     :param metadata: OMeta client
@@ -40,10 +41,17 @@ def delete_entity_from_source(
         entity_state = metadata.list_all_entities(entity=entity_type, params=params)
         for entity in entity_state:
             if str(entity.fullyQualifiedName.__root__) not in entity_source_state:
-                yield DeleteEntity(
-                    entity=entity,
-                    mark_deleted_entities=mark_deleted_entity,
+                yield Either(
+                    right=DeleteEntity(
+                        entity=entity,
+                        mark_deleted_entities=mark_deleted_entity,
+                    )
                 )
     except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Error deleting {entity_type.__class__}: {exc}")
+        yield Either(
+            left=StackTraceError(
+                name="Delete Entity",
+                error=f"Error deleting {entity_type.__class__}: {exc}",
+                stack_trace=traceback.format_exc(),
+            )
+        )

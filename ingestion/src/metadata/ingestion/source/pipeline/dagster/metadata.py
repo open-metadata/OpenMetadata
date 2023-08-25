@@ -145,12 +145,12 @@ class DagsterSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to yield pipeline for {pipeline_details}: {exc}")
 
-    def yield_tag(self, *_, **__) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
             tags=[self.context.repository_name],
             classification_name=DAGSTER_TAG_CATEGORY,
             tag_description="Dagster Tag",
-            classification_desciption="Tags associated with dagster entities",
+            classification_description="Tags associated with dagster entities",
             include_tags=self.source_config.includeTags,
         )
 
@@ -210,7 +210,7 @@ class DagsterSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: DagsterPipeline
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Not implemented, as this connector does not create any lineage
         """

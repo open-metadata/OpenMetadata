@@ -8,8 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-
 """
 Tag utils Module
 """
@@ -30,7 +28,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -43,7 +41,7 @@ def get_ometa_tag_and_classification(
     tags: List[str],
     classification_name: str,
     tag_description: Optional[str],
-    classification_desciption: Optional[str],
+    classification_description: Optional[str],
     include_tags: bool = True,
     tag_fqn: Optional[FullyQualifiedEntityName] = None,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -57,7 +55,7 @@ def get_ometa_tag_and_classification(
                     fqn=tag_fqn,
                     classification_request=CreateClassificationRequest(
                         name=classification_name,
-                        description=classification_desciption,
+                        description=classification_description,
                     ),
                     tag_request=CreateTagRequest(
                         classification=classification_name,
@@ -70,9 +68,13 @@ def get_ometa_tag_and_classification(
                     f"Classification {classification_name}, Tag {tag} Ingested"
                 )
             except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Error yielding tag-{tag}: {err}")
-                yield Either
+                yield Either(
+                    left=StackTraceError(
+                        name=tag,
+                        error=f"Error yielding tag [{tag}]: [{err}]",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
 
 @functools.lru_cache(maxsize=512)

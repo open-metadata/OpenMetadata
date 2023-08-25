@@ -37,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -90,10 +91,14 @@ class DomodatabaseSource(DatabaseServiceSource):
         database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName,
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName,
+            )
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -102,10 +107,12 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName,
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName,
+            )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -156,7 +163,7 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
@@ -179,13 +186,15 @@ class DomodatabaseSource(DatabaseServiceSource):
                     table_name=table_id,
                 ),
             )
-            yield table_request
-            self.register_record(table_request=table_request)
+            yield Either(right=table_request)
         except Exception as exc:
-            error = f"Unexpected exception for table [{table_id}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_id, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table_id,
+                    error=f"Unexpected exception for table [{table_id}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_columns(self, table_object: List[SchemaColumn]):
         row_order = 1
@@ -202,10 +211,12 @@ class DomodatabaseSource(DatabaseServiceSource):
             row_order += 1
         return columns
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """No tags to send"""
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         yield from []
 
     def get_source_url(
@@ -226,3 +237,6 @@ class DomodatabaseSource(DatabaseServiceSource):
         self, schema: str, table: str
     ) -> str:
         return table
+
+    def close(self) -> None:
+        self.client.client.close()

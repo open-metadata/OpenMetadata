@@ -448,7 +448,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             )
             yield parsed_column
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
             v for v in self.context.table_views if v.view_definition is not None
@@ -460,7 +460,9 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 connection_type=self.service_connection.type.value,
             )
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         pass
 
     def close(self):

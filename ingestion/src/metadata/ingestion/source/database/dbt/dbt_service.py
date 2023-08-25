@@ -201,7 +201,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     @abstractmethod
     def yield_dbt_tags(
         self, dbt_objects: DbtObjects
-    ) -> Iterable[OMetaTagAndClassification]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Create and yeild tags from DBT
         """

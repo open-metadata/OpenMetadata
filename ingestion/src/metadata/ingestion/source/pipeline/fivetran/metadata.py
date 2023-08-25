@@ -118,7 +118,7 @@ class FivetranSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: FivetranPipelineDetails
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse all the stream available in the connection and create a lineage between them
         :param pipeline_details: pipeline_details object from airbyte

@@ -125,7 +125,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
     def yield_dashboard_chart(
         self, dashboard_details: FetchDashboard
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
@@ -177,7 +177,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
     def yield_datamodel(
         self, dashboard_details: FetchDashboard
-    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+    ) -> Optional[Iterable[Either[CreateDashboardDataModelRequest]]]:
 
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):

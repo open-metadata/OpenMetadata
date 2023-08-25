@@ -157,7 +157,7 @@ class SplineSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: ExecutionEvent
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse all the executions available and create lineage
         """

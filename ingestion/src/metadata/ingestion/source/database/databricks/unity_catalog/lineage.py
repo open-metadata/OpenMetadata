@@ -110,7 +110,7 @@ class DatabricksUnityCatalogLineageSource(Source[AddLineageRequest]):
             return LineageDetails(columnsLineage=col_lineage)
         return None
 
-    def next_record(self) -> Iterable[AddLineageRequest]:
+    def next_record(self) -> Iterable[Either[AddLineageRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

@@ -241,7 +241,7 @@ class AtlasSource(Source):
                         tags=[ATLAS_TABLE_TAG],
                         classification_name=ATLAS_TAG_CATEGORY,
                         tag_description="Atlas Cluster Tag",
-                        classification_desciption="Tags associated with atlas entities",
+                        classification_description="Tags associated with atlas entities",
                     )
 
                     table_fqn = fqn.build(
@@ -297,7 +297,7 @@ class AtlasSource(Source):
                     tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
                     classification_name=ATLAS_TAG_CATEGORY,
                     tag_description="Atlas Cluster Tag",
-                    classification_desciption="Tags associated with atlas entities",
+                    classification_description="Tags associated with atlas entities",
                 )
                 classification_tags = get_tag_labels(
                     metadata=self.metadata,
@@ -344,7 +344,7 @@ class AtlasSource(Source):
                 continue
         return om_cols
 
-    def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
+    def ingest_lineage(self, source_guid, name) -> Iterable[Either[AddLineageRequest]]:
         """
         Fetch and ingest lineage
         """

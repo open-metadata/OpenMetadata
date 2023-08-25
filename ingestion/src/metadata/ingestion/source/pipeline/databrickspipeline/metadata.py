@@ -14,7 +14,7 @@ Databricks pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List
 
 from pydantic import ValidationError
 
@@ -216,7 +216,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources
         """

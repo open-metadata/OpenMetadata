@@ -687,7 +687,7 @@ class SampleDataSource(
                     ),
                 )
 
-    def ingest_topics(self) -> Iterable[CreateTopicRequest]:
+    def ingest_topics(self) -> Iterable[Either[CreateTopicRequest]]:
         """
         Ingest Sample Topics
         """
@@ -888,7 +888,7 @@ class SampleDataSource(
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
-    def ingest_data_models(self) -> Iterable[CreateDashboardDataModelRequest]:
+    def ingest_data_models(self) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         for data_model in self.data_models["datamodels"]:
             try:
                 data_model_ev = CreateDashboardDataModelRequest(
@@ -911,7 +911,7 @@ class SampleDataSource(
                     f"Unexpected exception ingesting chart [{data_model}]: {err}"
                 )
 
-    def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
+    def ingest_dashboards(self) -> Iterable[Either[CreateDashboardRequest]]:
         for dashboard in self.dashboards["dashboards"]:
             dashboard_ev = CreateDashboardRequest(
                 name=dashboard["name"],
@@ -944,7 +944,7 @@ class SampleDataSource(
             )
             yield pipeline_ev
 
-    def ingest_lineage(self) -> Iterable[AddLineageRequest]:
+    def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         for edge in self.lineage:
             from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
             to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)

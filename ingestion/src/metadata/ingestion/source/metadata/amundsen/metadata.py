@@ -103,7 +103,7 @@ SUPERSET_DEFAULT_CONFIG = {
 }
 
 
-class AmundsenSource(Source[Entity]):
+class AmundsenSource(Source):
     """
     Amundsen source class
     """
@@ -314,7 +314,7 @@ class AmundsenSource(Source[Entity]):
                 tags=tags,
                 classification_name=AMUNDSEN_TAG_CATEGORY,
                 tag_description="Amundsen Table Tag",
-                classification_desciption="Tags associated with amundsen entities",
+                classification_description="Tags associated with amundsen entities",
             )
 
             table_request = CreateTableRequest(

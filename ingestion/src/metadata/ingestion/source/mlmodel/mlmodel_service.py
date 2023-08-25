@@ -176,7 +176,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
-    def mark_mlmodels_as_deleted(self) -> Iterable[DeleteEntity]:
+    def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """
         Method to mark the mlmodels as deleted
         """

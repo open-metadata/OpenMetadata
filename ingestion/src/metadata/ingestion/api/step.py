@@ -122,6 +122,6 @@ class IterStep(Step, ABC):
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
-                    name="unknown", error=error, stack_trace=traceback.format_exc()
+                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
                 )
             )

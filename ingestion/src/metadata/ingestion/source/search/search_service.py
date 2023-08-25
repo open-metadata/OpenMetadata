@@ -189,7 +189,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
-    def mark_search_indexes_as_deleted(self) -> Iterable[DeleteEntity]:
+    def mark_search_indexes_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """
         Method to mark the search index as deleted
         """

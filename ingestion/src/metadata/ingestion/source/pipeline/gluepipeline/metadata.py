@@ -14,7 +14,7 @@ Glue pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -174,7 +174,7 @@ class GluepipelineSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources
         """

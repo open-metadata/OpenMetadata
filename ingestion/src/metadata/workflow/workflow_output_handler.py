@@ -14,7 +14,9 @@ Module handles the output messages from different workflows
 """
 
 import time
+import traceback
 from enum import Enum
+from logging import Logger
 from pathlib import Path
 from typing import Dict, List, Type, Union
 
@@ -31,10 +33,10 @@ from metadata.ingestion.api.parser import (
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
-from metadata.workflow.base import BaseWorkflow
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
 WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
@@ -195,7 +197,7 @@ def print_init_error(
         print_more_info(workflow_type)
 
 
-def print_status(workflow: BaseWorkflow) -> None:
+def print_status(workflow: "BaseWorkflow") -> None:
     """
     Print the workflow results
     """
@@ -333,7 +335,7 @@ def get_generic_step_name(step: Step) -> str:
             return step_types.__name__
 
 
-def print_workflow_summary(workflow: BaseWorkflow) -> None:
+def print_workflow_summary(workflow: "BaseWorkflow") -> None:
     """
     Args:
         workflow: the workflow status to be printed
@@ -462,3 +464,29 @@ def print_failures_if_apply(failures: List[Failure]) -> None:
         log_ansi_encoded_string(
             message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}"
         )
+
+
+def report_ingestion_status(logger: Logger, workflow: "BaseWorkflow") -> None:
+    """
+    Given a logger, use it to INFO the workflow status
+    """
+    try:
+        for step in [workflow.source] + list(workflow.steps):
+            logger.info(
+                f"{get_generic_step_name(step)}: Processed {len(step.status.records)} records,"
+                f" filtered {len(step.status.filtered)} records,"
+                f" found {len(step.status.failures)} errors"
+            )
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Wild exception reporting status - {exc}")
+
+
+def get_ingestion_status_timer(
+    interval: int, logger: Logger, workflow: "BaseWorkflow"
+) -> RepeatedTimer:
+    """
+    Prepare the threading Timer to execute the report_ingestion_status
+    """
+    return RepeatedTimer(interval, report_ingestion_status, logger, workflow)

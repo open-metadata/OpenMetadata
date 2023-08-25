@@ -54,12 +54,14 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
 from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
 from metadata.timer.repeated_timer import RepeatedTimer
-from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import data_insight_logger, set_loggers_level
 from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
 from metadata.workflow.base import REPORTS_INTERVAL_SECONDS
-from metadata.workflow.workflow_output_handler import print_data_insight_status
+from metadata.workflow.workflow_output_handler import (
+    get_ingestion_status_timer,
+    print_data_insight_status,
+)
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = data_insight_logger()

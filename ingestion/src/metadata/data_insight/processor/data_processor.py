@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from metadata.generated.schema.analytics.reportData import ReportData
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -29,7 +29,7 @@ class DataProcessor(abc.ABC):
 
     Attributes:
         _data_processor_type: used to instantiate the correct class object
-        subclasses: dictionnary mapping _data_processor_type to object
+        subclasses: dictionary mapping _data_processor_type to object
     """
 
     _data_processor_type: Optional[str] = None
@@ -49,7 +49,7 @@ class DataProcessor(abc.ABC):
     def __init__(self, metadata: OpenMetadata):
         self.metadata = metadata
         self.timestamp = datetime.now(timezone.utc).timestamp() * 1000
-        self.processor_status = SourceStatus()
+        self.processor_status = Status()
 
     @abc.abstractmethod
     def fetch_data(self):

@@ -383,7 +383,7 @@ class AirflowSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirflowDagDetails
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse xlets and add lineage between Pipelines and Tables
         :param pipeline_details: SerializedDAG from airflow metadata DB

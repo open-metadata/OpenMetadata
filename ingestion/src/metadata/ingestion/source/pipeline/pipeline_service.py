@@ -153,7 +153,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     @abstractmethod
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources
         """
@@ -180,7 +180,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Yields lineage if config is enabled
         """
@@ -189,7 +189,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_tag(
         self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[OMetaTagAndClassification]]:
+    ) -> Optional[Iterable[Either[OMetaTagAndClassification]]]:
         """
         Method to fetch pipeline tags
         """
@@ -240,7 +240,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.pipeline_source_state.add(pipeline_fqn)
         self.status.scanned(pipeline_fqn)
 
-    def mark_pipelines_as_deleted(self) -> Iterable[DeleteEntity]:
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """
         Method to mark the pipelines as deleted
         """

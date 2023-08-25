@@ -114,7 +114,7 @@ class DomopipelineSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         return
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:

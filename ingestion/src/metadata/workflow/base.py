@@ -37,8 +37,8 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
-from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.workflow.workflow_output_handler import get_ingestion_status_timer
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
