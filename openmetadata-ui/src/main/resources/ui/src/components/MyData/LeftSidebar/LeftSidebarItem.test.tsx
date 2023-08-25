@@ -11,26 +11,21 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { SETTING_ITEM } from 'constants/LeftSidebar.constants';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import LeftSidebar from './LeftSidebar.component';
+import LeftSidebarItem from './LeftSidebarItem.component';
 
-describe('LeftSidebar', () => {
-  it('renders sidebar links correctly', () => {
+describe('LeftSidebar Items', () => {
+  it('renders sidebar items data', () => {
     render(
       <BrowserRouter>
-        <LeftSidebar />
+        <LeftSidebarItem data={SETTING_ITEM} />
       </BrowserRouter>
     );
 
-    const exploreLink = screen.getByTestId('app-bar-item-explore');
-    const qualityLink = screen.getByTestId('app-bar-item-data-quality');
-    const insightLink = screen.getByTestId('app-bar-item-data-insight');
-    const settingsLink = screen.getByTestId('app-bar-item-settings');
+    const item = screen.getByTestId('app-bar-item-settings');
 
-    expect(exploreLink).toBeInTheDocument();
-    expect(qualityLink).toBeInTheDocument();
-    expect(insightLink).toBeInTheDocument();
-    expect(settingsLink).toBeInTheDocument();
+    expect(item).toBeInTheDocument();
   });
 });

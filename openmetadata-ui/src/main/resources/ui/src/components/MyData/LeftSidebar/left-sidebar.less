@@ -54,6 +54,8 @@
 }
 
 .left-panel-item {
+  cursor: pointer;
+  color: @text-grey-muted;
   .ant-menu-submenu-vertical {
     .ant-menu-submenu-title {
       margin: 0;
@@ -76,16 +78,12 @@
   svg {
     color: @primary-color;
   }
-  .left-panel-label {
-    color: @text-color;
-  }
 }
 
 .govern-menu {
   width: 100px !important;
   .ant-menu-item {
     height: auto !important;
-    padding: 8px 0 0 !important;
     margin: 0;
   }
   .ant-menu-item:hover,
@@ -100,8 +98,15 @@
     }
   }
   .ant-menu-vertical {
-    min-width: 100px !important;
+    min-width: 58px !important;
+    width: 58px;
+    margin-top: 3px;
+    margin-left: 4px;
     .ant-menu-item {
+      margin: 0;
+    }
+
+    .ant-menu-item:not(:last-child) {
       margin: 0;
     }
   }
