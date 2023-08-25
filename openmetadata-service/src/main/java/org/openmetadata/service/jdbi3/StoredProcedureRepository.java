@@ -6,7 +6,6 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -16,15 +15,18 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class StoredProcedureRepository extends EntityRepository<StoredProcedure> {
+  static final String PATCH_FIELDS = "storedProcedureCode";
+  static final String UPDATE_FIELDS = "storedProcedureCode";
+
   public StoredProcedureRepository(CollectionDAO dao) {
     super(
         StoredProcedureResource.COLLECTION_PATH,
-        Entity.SEARCH_INDEX,
+        STORED_PROCEDURE,
         StoredProcedure.class,
         dao.storedProcedureDAO(),
         dao,
-        "",
-        "");
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -73,7 +75,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
   @Override
   public StoredProcedure setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
-    storedProcedure.setService(getContainer(storedProcedure.getDatabaseSchema().getId()));
+    setDefaultFields(storedProcedure);
     storedProcedure.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
     return storedProcedure;
   }
@@ -83,16 +85,22 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     return storedProcedure;
   }
 
+  private void setDefaultFields(StoredProcedure storedProcedure) {
+    EntityReference schemaRef = getContainer(storedProcedure.getId());
+    DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
+    storedProcedure.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
+  }
+
   @Override
   public StoredProcedureUpdater getUpdater(StoredProcedure original, StoredProcedure updated, Operation operation) {
     return new StoredProcedureUpdater(original, updated, operation);
   }
 
-  public void setService(SearchIndex searchIndex, EntityReference service) {
-    if (service != null && searchIndex != null) {
+  public void setService(StoredProcedure storedProcedure, EntityReference service) {
+    if (service != null && storedProcedure != null) {
       addRelationship(
-          service.getId(), searchIndex.getId(), service.getType(), Entity.SEARCH_INDEX, Relationship.CONTAINS);
-      searchIndex.setService(service);
+          service.getId(), storedProcedure.getId(), service.getType(), STORED_PROCEDURE, Relationship.CONTAINS);
+      storedProcedure.setService(service);
     }
   }
 

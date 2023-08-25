@@ -1816,7 +1816,7 @@ public interface CollectionDAO {
   interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
     @Override
     default String getTableName() {
-      return "search_index_entity";
+      return "stored_procedure_entity";
     }
 
     @Override

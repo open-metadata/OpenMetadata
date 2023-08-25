@@ -20,6 +20,7 @@ import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -40,7 +41,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owner,usageSummary,tags,extension,domain";
+  static final String FIELDS = "owner,tags,followers,extension,domain";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -55,7 +56,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     super(StoredProcedure.class, new StoredProcedureRepository(dao), authorizer);
   }
 
-  public static class StoredProcedureList extends ResultList<StoredProcedureList> {
+  public static class StoredProcedureList extends ResultList<StoredProcedure> {
     /* Required for serde */
   }
 
@@ -281,6 +282,50 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure = getStoredProcedure(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, storedProcedure);
+  }
+
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollower",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this Stored Procedure",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "StoredProcedure for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the StoredProcedure", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the Stored Procedure.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Stored Procedure", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @DELETE

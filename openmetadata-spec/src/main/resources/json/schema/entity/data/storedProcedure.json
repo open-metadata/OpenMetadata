@@ -2,11 +2,19 @@
   "$id": "https://open-metadata.org/schema/entity/data/storedProcedure.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StoredProcedure",
+  "$comment": "@om-entity-type",
   "description": "A `StoredProcedure` entity that contains the set of code statements with an assigned name  and is defined in a `Database Schema`.\"",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.StoredProcedure",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
+    "entityName": {
+      "description": "Name of a Stored Procedure. Expected to be unique within a database schema.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^((?!::).)*$"
+    },
     "storedProcedureCode": {
       "properties": {
         "language": {
@@ -49,7 +57,7 @@
     },
     "name": {
       "description": "Name of Stored Procedure.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a Stored Procedure.",
@@ -103,6 +111,11 @@
     "description": "Service type this table is hosted in.",
     "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
   },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
     "owner": {
       "description": "Owner of this Query.",
       "$ref": "../../type/entityReference.json",
