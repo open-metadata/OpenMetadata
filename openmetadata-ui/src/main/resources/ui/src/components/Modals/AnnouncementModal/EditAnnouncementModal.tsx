@@ -87,8 +87,8 @@ const EditAnnouncementModal: FC<Props> = ({
         initialValues={{
           title: announcementTitle,
           description: announcement.description,
-          startTime: moment(announcement.startTime),
-          endTime: moment(announcement.endTime),
+          startTime: moment.unix(announcement.startTime),
+          endTime: moment.unix(announcement.endTime),
         }}
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
@@ -118,7 +118,7 @@ const EditAnnouncementModal: FC<Props> = ({
                 required: true,
               },
             ]}>
-            <DatePicker />
+            <DatePicker className="w-full" />
           </Form.Item>
           <Form.Item
             label={t('label.end-date-time-zone', {
@@ -131,7 +131,7 @@ const EditAnnouncementModal: FC<Props> = ({
                 required: true,
               },
             ]}>
-            <DatePicker />
+            <DatePicker className="w-full" />
           </Form.Item>
         </Space>
         <Form.Item

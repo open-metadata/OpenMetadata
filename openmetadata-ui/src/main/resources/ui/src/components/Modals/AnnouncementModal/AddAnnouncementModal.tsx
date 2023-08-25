@@ -148,7 +148,7 @@ const AddAnnouncementModal: FC<Props> = ({
                 required: true,
               },
             ]}>
-            <DatePicker />
+            <DatePicker className="w-full" />
           </Form.Item>
           <Form.Item
             label={t('label.end-date-time-zone', {
@@ -161,7 +161,7 @@ const AddAnnouncementModal: FC<Props> = ({
                 required: true,
               },
             ]}>
-            <DatePicker />
+            <DatePicker className="w-full" />
           </Form.Item>
         </Space>
         <Form.Item
