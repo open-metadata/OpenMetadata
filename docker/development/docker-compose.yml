@@ -69,7 +69,6 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
       
       # Migration 
       MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
@@ -225,7 +224,6 @@ services:
       dockerfile: docker/development/Dockerfile
     container_name: openmetadata_server
     environment:
-      OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}

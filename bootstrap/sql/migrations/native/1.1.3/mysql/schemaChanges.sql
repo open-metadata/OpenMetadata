@@ -1,3 +1,14 @@
+-- Update table and column profile timestamps to be in milliseconds
+UPDATE entity_extension_time_series
+    SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.timestamp'),
+    '$.timestamp',
+    JSON_EXTRACT(json, '$.timestamp') * 1000
+    )
+WHERE
+    extension  in ('table.tableProfile', 'table.columnProfile');
+;
+
 -- Create report data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS report_data_time_series (
     entityFQNHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
