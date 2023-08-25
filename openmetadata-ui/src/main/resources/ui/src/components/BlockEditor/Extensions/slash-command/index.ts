@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { Extension } from '@tiptap/core';
+import { PluginKey } from '@tiptap/pm/state';
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
 
 export default Extension.create({
-  name: 'slashCommands',
+  name: 'slashCommand',
 
   addOptions() {
     return {
       ...this.parent?.(),
-      suggestion: {
+      slashSuggestion: {
         char: '/',
         startOfLine: true,
         command: ({ editor, range, props }) => {
@@ -32,7 +33,8 @@ export default Extension.create({
   addProseMirrorPlugins() {
     return [
       Suggestion({
-        ...this.options.suggestion,
+        pluginKey: new PluginKey('slashSuggestion'),
+        ...this.options.slashSuggestion,
         editor: this.editor,
       }),
     ];

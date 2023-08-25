@@ -15,7 +15,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { isNil } from 'lodash';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './block-editor.less';
 import LinkModal, { LinkData } from './Components/LinkModal';
 import SlashCommand from './Extensions/slash-command';
@@ -79,7 +79,7 @@ const BlockEditor = () => {
         validate: (href) => /^https?:\/\//.test(href),
       }),
       SlashCommand.configure({
-        suggestion: {
+        slashSuggestion: {
           items: getSuggestionItems,
           render: renderItems,
         },
@@ -115,6 +115,12 @@ const BlockEditor = () => {
   const menus = !isNil(editor) && (
     <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
   );
+
+  useEffect(() => {
+    return () => {
+      !editor?.isDestroyed && editor?.destroy();
+    };
+  }, [editor]);
 
   return (
     <>
