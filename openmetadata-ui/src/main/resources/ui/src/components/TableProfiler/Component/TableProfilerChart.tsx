@@ -87,8 +87,8 @@ const TableProfilerChart = ({
     setIsLoading(true);
     await fetchTableProfiler(fqn, dateRangeObj);
     await fetchSystemProfiler(fqn, {
-      startTs: dateRangeObj.startTs * 1000,
-      endTs: dateRangeObj.endTs * 1000,
+      startTs: dateRangeObj.startTs,
+      endTs: dateRangeObj.endTs,
     });
     setIsLoading(false);
   };

@@ -57,9 +57,9 @@ function DatePickerMenu({
     dateStrings
   ) => {
     if (values) {
-      const startTs = values[0]?.set({ h: 0, m: 0 }).utc().unix() ?? 0;
+      const startTs = (values[0]?.set({ h: 0, m: 0 }).utc().unix() ?? 0) * 1000;
 
-      const endTs = values[1]?.set({ h: 23, m: 59 }).utc().unix() ?? 0;
+      const endTs = (values[1]?.set({ h: 23, m: 59 }).utc().unix() ?? 0) * 1000;
 
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
 

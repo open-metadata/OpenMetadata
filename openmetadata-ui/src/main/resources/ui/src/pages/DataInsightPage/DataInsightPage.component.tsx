@@ -161,9 +161,8 @@ const DataInsightPage = () => {
       setSelectedDaysFilter(daysValue ?? 0);
       setChartFilter((previous) => ({
         ...previous,
-        // Converting coming data to milliseconds
-        startTs: value.startTs * 1000,
-        endTs: value.endTs * 1000,
+        startTs: value.startTs,
+        endTs: value.endTs,
       }));
     }
   };
