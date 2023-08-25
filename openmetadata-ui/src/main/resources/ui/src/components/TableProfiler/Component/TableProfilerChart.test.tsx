@@ -23,7 +23,7 @@ const mockTimeValue = {
   endMilli: 1670667984000,
   startMilli: 1670408784000,
 };
-const mockDateRangeObject = { startTs: 1670408784, endTs: 1670667984 };
+const mockDateRangeObject = { startTs: 1670408784000, endTs: 1670667984000 };
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ datasetFQN: mockFQN })),
@@ -87,8 +87,8 @@ describe('TableProfilerChart component test', () => {
       endTs: mockTimeValue.endMilli,
     });
     expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
-      startTs: mockTimeValue.startSec,
-      endTs: mockTimeValue.endSec,
+      startTs: mockTimeValue.startMilli,
+      endTs: mockTimeValue.endMilli,
     });
   });
 
@@ -110,8 +110,8 @@ describe('TableProfilerChart component test', () => {
       endTs: mockTimeValue.endMilli,
     });
     expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
-      startTs: startTime.inSec,
-      endTs: mockTimeValue.endSec,
+      startTs: startTime.inMilli,
+      endTs: mockTimeValue.endMilli,
     });
   });
 });

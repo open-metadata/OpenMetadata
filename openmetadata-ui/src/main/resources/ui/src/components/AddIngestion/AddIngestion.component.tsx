@@ -14,7 +14,7 @@
 import { Form, Input, Typography } from 'antd';
 import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { LOADING_STATE } from 'enums/common.enum';
-import { isUndefined, omit, trim } from 'lodash';
+import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../constants/Ingestions.constant';
@@ -132,7 +132,9 @@ const AddIngestion = ({
 
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval,
+        scheduleInterval: isEmpty(scheduleInterval)
+          ? undefined
+          : scheduleInterval,
         startDate: date,
         retries: extraData.retries,
       },
@@ -179,7 +181,9 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval,
+          scheduleInterval: isEmpty(scheduleInterval)
+            ? undefined
+            : scheduleInterval,
           retries: extraData.retries,
         },
         loggerLevel: workflowData?.enableDebugLog
