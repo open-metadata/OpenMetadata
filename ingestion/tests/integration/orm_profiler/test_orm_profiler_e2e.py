@@ -212,9 +212,6 @@ class ProfilerWorkflowTest(TestCase):
         )
         assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.main.users"
 
-    @pytest.mark.skip(
-        "need to reactivate once https://github.com/open-metadata/OpenMetadata/issues/8930 is handled. Skipping to prevent Cypress failure"
-    )
     def test_profiler_workflow(self):
         """
         Prepare and execute the profiler workflow
@@ -539,8 +536,7 @@ class ProfilerWorkflowTest(TestCase):
         ).profile
 
         assert profile.rowCount == 4.0
-        # uncomment when reactivate once https://github.com/open-metadata/OpenMetadata/issues/8930 is fixed
-        # assert profile.profileSample is None
+        assert profile.profileSample is None
 
         workflow_config["processor"] = {
             "type": "orm-profiler",
