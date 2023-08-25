@@ -80,6 +80,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -168,6 +169,9 @@ public interface CollectionDAO {
   TableDAO tableDAO();
 
   @CreateSqlObject
+  QueryDAO queryDAO();
+
+  @CreateSqlObject
   UsageDAO usageDAO();
 
   @CreateSqlObject
@@ -249,7 +253,7 @@ public interface CollectionDAO {
   FeedDAO feedDAO();
 
   @CreateSqlObject
-  QueryDAO queryDAO();
+  StoredProcedureDAO storedProcedureDAO();
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
@@ -1806,6 +1810,23 @@ public interface CollectionDAO {
       }
       String condition = filter.getCondition(getTableName());
       return listAfter(getTableName(), getNameColumn(), condition, condition, limit, after);
+    }
+  }
+
+  interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
+    @Override
+    default String getTableName() {
+      return "stored_procedure_entity";
+    }
+
+    @Override
+    default Class<StoredProcedure> getEntityClass() {
+      return StoredProcedure.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
     }
   }
 

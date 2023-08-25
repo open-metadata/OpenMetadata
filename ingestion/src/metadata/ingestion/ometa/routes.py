@@ -41,6 +41,9 @@ from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -98,6 +101,7 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
@@ -150,6 +154,8 @@ ROUTES = {
     CreateContainerRequest.__name__: "/containers",
     SearchIndex.__name__: "/searchIndexes",
     CreateSearchIndexRequest.__name__: "/searchIndexes",
+    StoredProcedure.__name__: "/storedProcedures",
+    CreateStoredProcedureRequest.__name__: "/storedProcedures",
     # Classifications
     Tag.__name__: "/tags",
     CreateTagRequest.__name__: "/tags",
