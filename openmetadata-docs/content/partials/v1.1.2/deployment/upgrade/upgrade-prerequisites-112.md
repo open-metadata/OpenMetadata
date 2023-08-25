@@ -27,7 +27,7 @@ You can learn more about how the migration process works [here](/deployment/upgr
 ```python
 python -m venv venv
 source venv/bin/activate
-pip install openmetadata-ingestion~=1.1.1
+pip install openmetadata-ingestion~=1.1.2
 ```
 
 Validate the installed metadata version with `python -m metadata --version`
@@ -87,20 +87,76 @@ For example, if you are upgrading the server to the version `x.y.z`, you will ne
 pip install openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.1`.
+The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.2`.
 You will find specific instructions for each connector [here](/connectors).
 
-## 1.1.1 - Stable Release 🎉
+## 1.1.2 - Stable Release 🎉
 
-OpenMetadata 1.1 is a stable release. Please check the [release notes](/releases/latest-release).
+OpenMetadata 1.1.2 is a stable release. Please check the [release notes](/releases/latest-release).
 
 If you are upgrading production this is the recommended version to upgrade to.
 
 ## Deprecation Notice
 
+In 1.2 we will completely remove the Bots configured with SSO. Only JWT will be available then. Please, upgrade your bots if you haven't done so. Note that the UI already does not allow creating bots with SSO.
 
-## Breaking Changes for 1.1 Stable Release
+## Breaking Changes for 1.1.2 Stable Release
+
+**Openmetadata yaml config updates**
+
+Following are the changes in the `openmetadata.yaml` which needs to be verified before going forward:
+
+1. Searchtype has been added in the `elasticsearch` configuration to choose between `opensearch` or `elasticsearch`:
+
+```
+elasticsearch:
+  searchType: ${SEARCH_TYPE:- "elasticsearch"}
+```
+
+2. Migration configuration:
+
+```
+migrationConfiguration:
+  flywayPath: "./bootstrap/sql/migrations/flyway"
+  nativePath: "./bootstrap/sql/migrations/native"
+```
+
+3. Web Configuration:
+
+```
+web:
+  uriPath: ${WEB_CONF_URI_PATH:-"/api"}
+  hsts:
+    enabled: ${WEB_CONF_HSTS_ENABLED:-false}
+    maxAge: ${WEB_CONF_HSTS_MAX_AGE:-"365 days"}
+    includeSubDomains: ${WEB_CONF_HSTS_INCLUDE_SUBDOMAINS:-"true"}
+    preload: ${WEB_CONF_HSTS_PRELOAD:-"true"}
+  frame-options:
+    enabled: ${WEB_CONF_FRAME_OPTION_ENABLED:-false}
+    option: ${WEB_CONF_FRAME_OPTION:-"SAMEORIGIN"}
+    origin: ${WEB_CONF_FRAME_ORIGIN:-""}
+  content-type-options:
+    enabled: ${WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED:-false}
+  xss-protection:
+    enabled: ${WEB_CONF_XSS_PROTECTION_ENABLED:-false}
+    on: ${WEB_CONF_XSS_PROTECTION_ON:-true}
+    block: ${WEB_CONF_XSS_PROTECTION_BLOCK:-true}
+  csp:
+    enabled: ${WEB_CONF_XSS_CSP_ENABLED:-false}
+    policy: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
+    reportOnlyPolicy: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
+  referrer-policy:
+    enabled: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_REFERRER_POLICY_OPTION:-"SAME_ORIGIN"}
+  permission-policy:
+    enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+```
+
+
 
 ### Service Connection Changes
 
-### Other Changes
+`Trino` has deprecated the params property. The contents will automatically be passed to `connectionOptions`. We have added support for authType to distinguish between `basicAuth` and `jwtAuth`.
+
+
