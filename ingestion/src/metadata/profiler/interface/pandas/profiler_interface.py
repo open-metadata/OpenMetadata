@@ -354,7 +354,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                         profile_results["columns"][column].update(
                             {
                                 "name": column,
-                                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                                "timestamp": int(
+                                    datetime.now(tz=timezone.utc).timestamp() * 1000
+                                ),
                                 **profile,
                             }
                         )
