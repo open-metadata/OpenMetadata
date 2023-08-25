@@ -859,7 +859,7 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
 
     cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="app-bar-item-glossary"]').click();
+    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 

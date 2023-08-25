@@ -243,7 +243,7 @@ describe('Add and Remove Owner', () => {
     cy.get('[data-testid="governance"]').should('be.visible').click();
     cy.get('[data-testid="app-bar-item-glossary"]')
       .should('be.visible')
-      .click({ waitForAnimations: true });
+      .click({ waitForAnimations: true, force: true });
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
     interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
