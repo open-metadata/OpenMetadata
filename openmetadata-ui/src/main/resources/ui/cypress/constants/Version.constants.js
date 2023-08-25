@@ -512,7 +512,6 @@ const CONTAINER_PATCH_PAYLOAD = [
 export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   Table: {
     name: TABLE_NAME,
-    term: TABLE_NAME,
     serviceName: 'sample_data',
     entity: 'tables',
     entityCreationDetails: TABLE_DETAILS_FOR_VERSION_TEST,
@@ -526,7 +525,6 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   },
   Topic: {
     name: TOPIC_NAME,
-    term: TOPIC_NAME,
     serviceName: 'sample_kafka',
     entity: 'topics',
     entityCreationDetails: TOPIC_DETAILS_FOR_VERSION_TEST,
@@ -541,7 +539,6 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   // TODO - Remove the comment after this issue is resolved https://github.com/open-metadata/OpenMetadata/issues/12924
   // Dashboard: {
   //   name: DASHBOARD_NAME,
-  //   term: DASHBOARD_NAME,
   //   serviceName: 'sample_superset',
   //   entity: 'dashboards',
   //   entityCreationDetails: DASHBOARD_DETAILS_FOR_VERSION_TEST,
@@ -551,7 +548,6 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   // },
   Pipeline: {
     name: PIPELINE_NAME,
-    term: PIPELINE_NAME,
     serviceName: 'sample_airflow',
     entity: 'pipelines',
     entityCreationDetails: PIPELINE_DETAILS_FOR_VERSION_TEST,
@@ -565,7 +561,6 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   },
   'ML Model': {
     name: ML_MODEL_NAME,
-    term: ML_MODEL_NAME,
     serviceName: 'mlflow_svc',
     entity: 'mlmodels',
     entityCreationDetails: ML_MODEL_DETAILS_FOR_VERSION_TEST,
@@ -579,7 +574,6 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   },
   Container: {
     name: CONTAINER_NAME,
-    term: CONTAINER_NAME,
     serviceName: 's3_storage_sample',
     entity: 'containers',
     entityCreationDetails: CONTAINER_DETAILS_FOR_VERSION_TEST,

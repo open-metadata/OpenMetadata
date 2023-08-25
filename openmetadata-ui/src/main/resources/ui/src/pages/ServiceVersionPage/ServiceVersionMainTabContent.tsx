@@ -22,11 +22,7 @@ import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ChangeDescription } from 'generated/entity/type';
-import { Paging } from 'generated/type/paging';
 import { TagSource } from 'generated/type/tagLabel';
-import { ServicesType } from 'interface/service.interface';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useMemo } from 'react';
@@ -37,18 +33,7 @@ import {
 } from 'utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from 'utils/ServiceMainTabContentUtils';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
-
-export interface ServiceVersionMainTabContentProps {
-  serviceName: string;
-  serviceDetails: ServicesType;
-  data: ServicePageData[];
-  isServiceLoading: boolean;
-  paging: Paging;
-  currentPage: number;
-  pagingHandler: (cursorType: string | number, activePage?: number) => void;
-  entityType: EntityType;
-  changeDescription: ChangeDescription;
-}
+import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 function ServiceVersionMainTabContent({
   serviceName,

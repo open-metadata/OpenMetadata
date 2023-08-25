@@ -19,9 +19,8 @@ import {
   MOCK_DATABASE_SERVICE,
 } from 'mocks/Service.mock';
 import React from 'react';
-import ServiceVersionMainTabContent, {
-  ServiceVersionMainTabContentProps,
-} from './ServiceVersionMainTabContent';
+import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
+import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 const mockParams = {
   serviceCategory: 'databaseServices',

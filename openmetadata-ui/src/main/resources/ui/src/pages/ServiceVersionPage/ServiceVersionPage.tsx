@@ -14,7 +14,6 @@
 import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -24,7 +23,6 @@ import { OperationPermission } from 'components/PermissionProvider/PermissionPro
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import {
   getServiceDetailsPath,
-  getServiceVersionPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from 'constants/constants';
@@ -35,7 +33,6 @@ import { ChangeDescription } from 'generated/entity/type';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
 import { Paging } from 'generated/type/paging';
-import { TagLabel } from 'generated/type/tagLabel';
 import { ServicesType } from 'interface/service.interface';
 import { isEmpty, toString } from 'lodash';
 import { PagingWithoutTotal, ServiceTypes } from 'Models';
@@ -60,6 +57,7 @@ import {
   getEntityVersionByField,
 } from 'utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getServiceVersionPath } from 'utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -78,11 +76,6 @@ function ServiceVersionPage() {
     serviceFQN: string;
     version: string;
   }>();
-  const [tier, setTier] = useState<TagLabel>();
-  const [owner, setOwner] = useState<ServicesType['owner']>();
-  const [breadcrumbLinks, setBreadcrumbLinks] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [data, setData] = useState<Array<ServicePageData>>([]);
@@ -99,6 +92,12 @@ function ServiceVersionPage() {
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
+
+  const tier = useMemo(
+    () => getTierTags(currentVersionData.tags ?? []),
+    [currentVersionData]
+  );
+  const owner = useMemo(() => currentVersionData.owner, [currentVersionData]);
 
   const changeDescription = useMemo(
     () => currentVersionData.changeDescription ?? ({} as ChangeDescription),
@@ -125,6 +124,11 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
+  const breadcrumbLinks = useMemo(
+    () => getEntityBreadcrumbs(currentVersionData, entityType),
+    [currentVersionData, entityType]
+  );
+
   const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
     () =>
       getCommonExtraInfoForVersionDetails(
@@ -133,21 +137,6 @@ function ServiceVersionPage() {
         tier
       ),
     [currentVersionData.changeDescription, owner, tier]
-  );
-
-  const setEntityState = useCallback(
-    (
-      tags: TagLabel[],
-      owner: ServicesType['owner'],
-      data: ServicesType,
-      titleBreadCrumb: TitleBreadcrumbProps['titleLinks']
-    ) => {
-      setTier(getTierTags(tags));
-      setOwner(owner);
-      setCurrentVersionData(data);
-      setBreadcrumbLinks(titleBreadCrumb);
-    },
-    []
   );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -333,12 +322,7 @@ function ServiceVersionPage() {
             version
           );
 
-          setEntityState(
-            response.tags ?? [],
-            response.owner,
-            response,
-            getEntityBreadcrumbs(response, entityType)
-          );
+          setCurrentVersionData(response);
         }
       } finally {
         setIsVersionDataLoading(false);
@@ -347,7 +331,6 @@ function ServiceVersionPage() {
     [
       viewVersionPermission,
       serviceCategory,
-      setEntityState,
       entityType,
       version,
       getOtherDetails,
