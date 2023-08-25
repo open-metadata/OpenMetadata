@@ -57,7 +57,12 @@ class LightdashApiClient:
             response = self.client.get(
                 f"api/v1/projects/{self.config.projectUUID}/charts"
             )
-            response_json_results = response["results"]
+            response_json_results = response.get("results")
+            if response_json_results is None:
+                logger.warning(
+                    "Failed to fetch the charts list for the Lightdash Connector"
+                )
+                return []
 
             if len(response_json_results) > 0:
                 charts_list = []
@@ -80,7 +85,13 @@ class LightdashApiClient:
             response = self.client.get(
                 f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}"
             )
-            results = response["results"]
+            results = response.get("results")
+            if results is None:
+                logger.warning(
+                    "Failed to fetch the dashboard list for the Lightdash Connector"
+                )
+                return []
+
             dashboards_raw = results["dashboards"]
 
             if len(dashboards_raw) > 0:
@@ -101,7 +112,14 @@ class LightdashApiClient:
         charts_uuid_list = []
         for dashboard in dashboards_list:
             response = self.client.get(f"api/v1/dashboards/{dashboard.uuid}")
-            response_json_results = response["results"]
+            response_json_results = response.get("results")
+
+            if response_json_results is None:
+                logger.warning(
+                    "Failed to fetch dashboard charts for the Lightdash Connector"
+                )
+                return
+
             charts = response_json_results["tiles"]
             charts_properties = [chart["properties"] for chart in charts]
 
@@ -109,7 +127,6 @@ class LightdashApiClient:
                 charts_uuid_list.append(chart["savedChartUuid"])
 
             dashboard.charts = self.get_charts_objects(charts_uuid_list)
-        return dashboards_list
 
     def get_charts_objects(self, charts_uuid_list) -> List[LightdashChart]:
         all_charts = self.get_charts_list()

@@ -167,18 +167,3 @@ class LightdashSource(DashboardServiceSource):
         Args:
             dashboard_details
         """
-        chart_list, dashboard_name = (
-            dashboard_details.charts,
-            str(dashboard_details.uuid),
-        )
-        for chart in chart_list:
-            try:
-                yield from self._yield_lineage_from_query(
-                    chart_details=chart,
-                    db_service_name=db_service_name,
-                    dashboard_name=dashboard_name,
-                ) or []
-
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.error(f"Error creating chart [{chart}]: {exc}")
