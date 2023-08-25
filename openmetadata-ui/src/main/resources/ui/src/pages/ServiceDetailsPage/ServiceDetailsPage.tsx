@@ -39,7 +39,6 @@ import ServiceConnectionDetails from 'components/ServiceConnectionDetails/Servic
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import {
   getServiceDetailsPath,
-  getServiceVersionPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from 'constants/constants';
@@ -103,7 +102,10 @@ import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getEditConnectionPath } from 'utils/RouterUtils';
+import {
+  getEditConnectionPath,
+  getServiceVersionPath,
+} from 'utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
