@@ -140,11 +140,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             yield Either(right=topic)
 
         except Exception as exc:
-            yield Either(left=StackTraceError(
-                name=topic_details.topic_name,
-                error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
-                stack_trace=traceback.format_exc()
-            ))
+            yield Either(
+                left=StackTraceError(
+                    name=topic_details.topic_name,
+                    error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     @staticmethod
     def add_properties_to_topic_from_resource(
@@ -222,11 +224,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
                 messages = self.consumer_client.consume(num_messages=10, timeout=10)
             except Exception as exc:
-                yield Either(left=StackTraceError(
-                    name=topic_details.topic_name,
-                    error=f"Failed to fetch sample data from topic {topic_name}: {exc}",
-                    stack_trace=traceback.format_exc()
-                ))
+                yield Either(
+                    left=StackTraceError(
+                        name=topic_details.topic_name,
+                        error=f"Failed to fetch sample data from topic {topic_name}: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
             else:
                 if messages:
                     for message in messages:
@@ -245,10 +249,12 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             )
             if self.consumer_client:
                 self.consumer_client.unsubscribe()
-            yield Either(right=OMetaTopicSampleData(
-                topic=self.context.topic,
-                sample_data=TopicSampleData(messages=sample_data),
-            ))
+            yield Either(
+                right=OMetaTopicSampleData(
+                    topic=self.context.topic,
+                    sample_data=TopicSampleData(messages=sample_data),
+                )
+            )
 
     def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
         if schema_type == SchemaType.Avro:

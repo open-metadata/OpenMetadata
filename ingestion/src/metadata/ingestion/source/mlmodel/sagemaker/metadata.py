@@ -13,6 +13,7 @@
 import traceback
 from typing import Iterable, List, Optional
 
+from metadata.ingestion.api.models import Either
 from pydantic import BaseModel, Extra, Field, ValidationError
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
@@ -77,9 +78,7 @@ class SagemakerSource(MlModelServiceSource):
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
     ) -> Iterable[SageMakerModel]:
-        """
-        List and filters models
-        """
+        """List and filters models"""
         args, has_more_models, models = {"MaxResults": 100}, True, []
         try:
             while has_more_models:
@@ -127,12 +126,10 @@ class SagemakerSource(MlModelServiceSource):
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model: SageMakerModel
-    ) -> Iterable[CreateMlModelRequest]:
+    ) -> Iterable[Either[CreateMlModelRequest]]:
         """
         Prepare the Request model
         """
-        self.status.scanned(model.name)
-
         mlmodel_request = CreateMlModelRequest(
             name=model.name,
             algorithm=self._get_algorithm(),  # Setting this to a constant

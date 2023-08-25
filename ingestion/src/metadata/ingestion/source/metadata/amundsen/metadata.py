@@ -52,6 +52,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
@@ -137,25 +138,25 @@ class AmundsenSource(Source):
         return cls(config, metadata_config)
 
     def prepare(self):
-        pass
+        """Nothing to prepare"""
 
-    def next_record(self) -> Iterable[Entity]:
+    def _iter(self) -> Iterable[Either[Entity]]:
         table_entities = self.client.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
         for table in table_entities:
-            yield from self.create_table_entity(table)
+            yield from Either(right=self.create_table_entity(table))
 
         user_entities = self.client.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
         for user in user_entities:
-            yield from self.create_user_entity(user)
-            yield from self.add_owner_to_entity(user)
+            yield from Either(right=self.create_user_entity(user))
+            yield from Either(right=self.add_owner_to_entity(user))
 
         dashboard_entities = self.client.execute_query(NEO4J_AMUNDSEN_DASHBOARD_QUERY)
         for dashboard in dashboard_entities:
-            yield from self.create_dashboard_service(dashboard)
-            yield from self.create_chart_entity(dashboard)
-            yield from self.create_dashboard_entity(dashboard)
+            yield from Either(right=self.create_dashboard_service(dashboard))
+            yield from Either(right=self.create_chart_entity(dashboard))
+            yield from Either(right=self.create_dashboard_entity(dashboard))
 
-    def create_user_entity(self, user):
+    def create_user_entity(self, user) -> Iterable[Either[OMetaUserProfile]]:
         try:
             user_metadata = CreateUserRequest(
                 email=user["email"],
@@ -166,21 +167,23 @@ class AmundsenSource(Source):
                 name=user["team_name"],
                 teamType=team.TeamType.Department.value,
             )
-            self.status.scanned(str(user_metadata.email))
-            yield OMetaUserProfile(
-                user=user_metadata,
-                teams=[team_metadata],
+            yield Either(
+                right=OMetaUserProfile(
+                    user=user_metadata,
+                    teams=[team_metadata],
+                )
             )
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create user entity [{user}]: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name=user.name,
+                    error=f"Failed to create user entity [{user}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def add_owner_to_entity(self, user):
-        """Add owner information to table entity
-
-        Args:
-            user: Amundsen user (previously added to OM)
-        """
+    def add_owner_to_entity(self, user) -> Iterable[Either[CreateTableRequest]]:
+        """Add owner information to table entity"""
         user_entity_ref = self.metadata.get_entity_reference(
             entity=User, fqn=user["full_name"].lower().replace(" ", "_")
         )
@@ -206,7 +209,7 @@ class AmundsenSource(Source):
                     table_entity: Table = self.metadata.get_by_name(
                         entity=Table, fqn=table_fqn
                     )
-                    yield CreateTableRequest(
+                    table = CreateTableRequest(
                         name=table_entity.name,
                         tableType=table_entity.tableType,
                         description=table_entity.description,
@@ -215,11 +218,19 @@ class AmundsenSource(Source):
                         columns=table_entity.columns,
                         owner=user_entity_ref,
                     )
+                    yield Either(right=table)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Failed to create user entity [{user}]: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name=user.get("full_name") or "User",
+                        error=f"Failed to add table from user [{user}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
-    def _yield_create_database(self, table):
+    def _yield_create_database(self, table) -> Iterable[Either[CreateDatabaseRequest]]:
         try:
             service_entity = self.get_database_service(table["database"])
             table_name = ""
@@ -234,7 +245,7 @@ class AmundsenSource(Source):
                 else "default",
                 service=service_entity.fullyQualifiedName.__root__,
             )
-            yield database_request
+            yield Either(right=database_request)
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
@@ -246,16 +257,21 @@ class AmundsenSource(Source):
                 entity=Database, fqn=database_fqn
             )
         except Exception as err:
-            logger.error(f"Failed to Ingest database due to - {err}")
-            logger.debug(traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name="Database",
+                    error=f"Failed to Ingest database due to - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def _yield_create_database_schema(self, table):
+    def _yield_create_database_schema(self, table) -> Iterable[Either[DatabaseSchema]]:
         try:
             database_schema_request = CreateDatabaseSchemaRequest(
                 name=table["schema"],
                 database=self.database_object.fullyQualifiedName,
             )
-            yield database_schema_request
+            yield Either(right=database_schema_request)
             database_schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
@@ -268,10 +284,15 @@ class AmundsenSource(Source):
                 entity=DatabaseSchema, fqn=database_schema_fqn
             )
         except Exception as err:
-            logger.error(f"Failed to Ingest database due to - {err}")
-            logger.debug(traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name="Database Schema",
+                    error=f"Failed to Ingest database schema due to - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def create_table_entity(self, table):
+    def create_table_entity(self, table) -> Iterable[Either[Entity]]:
         """
         Process table details and return CreateTableRequest
         """
@@ -330,35 +351,40 @@ class AmundsenSource(Source):
                 ),
                 columns=columns,
             )
-            yield table_request
+            yield Either(right=table_request)
 
-            self.status.scanned(table["name"])
         except Exception as exc:
-            error = f"Failed to create table entity [{table}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table.get("name"), error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table.get("name") or "Table",
+                    error=f"Failed to create table entity [{table}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def create_dashboard_service(self, dashboard: dict):
+    def create_dashboard_service(
+        self, dashboard: dict
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         service_name = dashboard["cluster"]
         SUPERSET_DEFAULT_CONFIG["serviceName"] = service_name
         config = WorkflowSource.parse_obj(SUPERSET_DEFAULT_CONFIG)
         create_service_entity = self.metadata.get_create_service_from_source(
             entity=DashboardService, config=config
         )
-        yield create_service_entity
+        yield Either(right=create_service_entity)
         logger.info(f"Created Dashboard Service {service_name}")
         self.dashboard_service = self.metadata.get_by_name(
             entity=DashboardService, fqn=service_name
         )
 
-    def create_dashboard_entity(self, dashboard):
+    def create_dashboard_entity(
+        self, dashboard
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to process dashboard and return CreateDashboardRequest
         """
         try:
-            self.status.scanned(dashboard["name"])
-            yield CreateDashboardRequest(
+            dashboard_request = CreateDashboardRequest(
                 name=dashboard["name"],
                 displayName=dashboard["name"],
                 sourceUrl=dashboard["url"],
@@ -369,13 +395,17 @@ class AmundsenSource(Source):
                 ),
                 service=self.dashboard_service.fullyQualifiedName,
             )
+            yield Either(right=dashboard_request)
         except Exception as exc:
-            error = f"Failed to create dashboard entity [{dashboard}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(dashboard["name"], error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard.get("name") or "Dashboard",
+                    error=f"Failed to create dashboard entity [{dashboard}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def create_chart_entity(self, dashboard):
+    def create_chart_entity(self, dashboard) -> Iterable[Either[CreateChartRequest]]:
         for name, chart_id, chart_type, url in zip(
             dashboard["chart_names"],
             dashboard["chart_ids"],
@@ -389,8 +419,7 @@ class AmundsenSource(Source):
                 chartType=get_standard_chart_type(chart_type).value,
                 service=self.dashboard_service.fullyQualifiedName,
             )
-            self.status.scanned(name)
-            yield chart
+            yield Either(right=chart)
 
     def close(self):
         if self.client is not None:

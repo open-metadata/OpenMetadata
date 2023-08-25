@@ -14,6 +14,8 @@ Base class for ingesting mlmodel services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from metadata.ingestion.api.models import Either
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
@@ -140,46 +142,34 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_mlmodel(self, *args, **kwargs) -> Iterable[CreateMlModelRequest]:
-        """
-        Method to return MlModel Entities
-        """
+    def yield_mlmodel(self, *args, **kwargs) -> Iterable[Either[CreateMlModelRequest]]:
+        """Method to return MlModel Entities"""
 
     @abstractmethod
     def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:
-        """
-        Get the Hyper Parameters from the MlModel
-        """
+        """Get the Hyper Parameters from the MlModel"""
 
     @abstractmethod
     def _get_ml_store(self, *args, **kwargs) -> Optional[MlStore]:
-        """
-        Get the Ml Store from the model version object
-        """
+        """Get the Ml Store from the model version object"""
 
     @abstractmethod
     def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:
-        """
-        Pick up features
-        """
+        """Pick up features"""
 
     @abstractmethod
     def _get_algorithm(self, *args, **kwargs) -> str:
-        """
-        Return the algorithm for a given model
-        """
+        """Return the algorithm for a given model"""
 
     def close(self):
-        pass
+        """By default, nothing to close"""
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """
-        Method to mark the mlmodels as deleted
-        """
+        """Method to mark the mlmodels as deleted"""
         if self.source_config.markDeletedMlModels:
             yield from delete_entity_from_source(
                 metadata=self.metadata,
@@ -193,7 +183,8 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def register_record(self, mlmodel_request: CreateMlModelRequest) -> None:
         """
-        Mark the mlmodel record as scanned and update the mlmodel_source_state
+        Mark the mlmodel record as scanned and update
+        the mlmodel_source_state
         """
         mlmodel_fqn = fqn.build(
             self.metadata,
@@ -203,7 +194,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.mlmodel_source_state.add(mlmodel_fqn)
-        self.status.scanned(mlmodel_fqn)
 
     def prepare(self):
-        pass
+        """By default, nothing to prepare"""

@@ -132,11 +132,13 @@ class KinesisSource(MessagingServiceSource):
             yield Either(right=topic)
 
         except Exception as exc:
-            yield Either(left=StackTraceError(
-                name=topic_details.topic_name,
-                error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
-                stack_trace=traceback.format_exc()
-            ))
+            yield Either(
+                left=StackTraceError(
+                    name=topic_details.topic_name,
+                    error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         return topic_details.topic_name
@@ -188,22 +190,26 @@ class KinesisSource(MessagingServiceSource):
     def yield_topic_sample_data(
         self, topic_details: BrokerTopicDetails
     ) -> Iterable[OMetaTopicSampleData]:
-        """Method to Get Sample Data of Messaging Entity """
+        """Method to Get Sample Data of Messaging Entity"""
         try:
             if self.context.topic and self.generate_sample_data:
-                yield Either(right=OMetaTopicSampleData(
-                    topic=self.context.topic,
-                    sample_data=self._get_sample_data(
-                        topic_details.topic_name,
-                        topic_details.topic_metadata.partitions,
-                    ),
-                ))
+                yield Either(
+                    right=OMetaTopicSampleData(
+                        topic=self.context.topic,
+                        sample_data=self._get_sample_data(
+                            topic_details.topic_name,
+                            topic_details.topic_metadata.partitions,
+                        ),
+                    )
+                )
         except Exception as err:
-            yield Either(left=StackTraceError(
-                name=topic_details.topic_name,
-                error=f"Error while yielding topic sample data for topic: {topic_details.topic_name} - {err}",
-                stack_trace=traceback.format_exc()
-            ))
+            yield Either(
+                left=StackTraceError(
+                    name=topic_details.topic_name,
+                    error=f"Error while yielding topic sample data for topic: {topic_details.topic_name} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def _get_sample_data(self, topic_name, partitions) -> TopicSampleData:
         data = []

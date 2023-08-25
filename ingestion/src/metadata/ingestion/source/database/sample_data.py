@@ -1007,7 +1007,7 @@ class SampleDataSource(
             for feature in model.get("mlFeatures", [])
         ]
 
-    def ingest_mlmodels(self) -> Iterable[CreateMlModelRequest]:
+    def ingest_mlmodels(self) -> Iterable[Either[CreateMlModelRequest]]:
         """
         Convert sample model data into a Model Entity
         to feed the metastore

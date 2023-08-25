@@ -15,6 +15,7 @@ import json
 import traceback
 from typing import Iterable, List, Optional, Tuple, cast
 
+from metadata.ingestion.api.models import Either
 from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from pydantic import ValidationError
@@ -99,13 +100,9 @@ class MlflowSource(MlModelServiceSource):
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model_and_version: Tuple[RegisteredModel, ModelVersion]
-    ) -> Iterable[CreateMlModelRequest]:
-        """
-        Prepare the Request model
-        """
+    ) -> Iterable[Either[CreateMlModelRequest]]:
+        """Prepare the Request model"""
         model, latest_version = model_and_version
-        self.status.scanned(model.name)
-
         run = self.client.get_run(latest_version.run_id)
 
         source_url = (
@@ -125,8 +122,7 @@ class MlflowSource(MlModelServiceSource):
             service=self.context.mlmodel_service.fullyQualifiedName,
             sourceUrl=source_url,
         )
-        yield mlmodel_request
-        self.register_record(mlmodel_request=mlmodel_request)
+        yield Either(right=mlmodel_request)
 
     def _get_hyper_params(  # pylint: disable=arguments-differ
         self,

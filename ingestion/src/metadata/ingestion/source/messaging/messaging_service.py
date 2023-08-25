@@ -145,7 +145,9 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to Get Messaging Entity
         """
 
-    def yield_topic_sample_data(self, topic_details: Any) -> Iterable[Either[TopicSampleData]]:
+    def yield_topic_sample_data(
+        self, topic_details: Any
+    ) -> Iterable[Either[TopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
