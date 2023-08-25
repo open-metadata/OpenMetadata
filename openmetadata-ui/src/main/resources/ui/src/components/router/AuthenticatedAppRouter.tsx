@@ -12,7 +12,6 @@
  */
 
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
-import ServiceVersionPage from 'pages/ServiceVersionPage/ServiceVersionPage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -140,6 +139,9 @@ const EntityVersionPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/EntityVersionPage/EntityVersionPage.component')
   )
+);
+const ServiceVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/ServiceVersionPage/ServiceVersionPage'))
 );
 const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/explore/ExplorePageV1.component'))
