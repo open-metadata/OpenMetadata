@@ -95,6 +95,7 @@ public final class Entity {
   // Data asset entities
   //
   public static final String TABLE = "table";
+  public static final String STORED_PROCEDURE = "storedProcedure";
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRICS = "metrics";

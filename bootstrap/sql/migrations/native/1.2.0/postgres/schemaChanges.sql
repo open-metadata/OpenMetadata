@@ -56,3 +56,16 @@ CREATE TABLE IF NOT EXISTS search_index_entity (
 -- We were hardcoding retries to 0. Since we are now using the IngestionPipeline to set them, keep existing ones to 0.
 UPDATE ingestion_pipeline_entity
 SET json = jsonb_set(json::jsonb, '{airflowConfig,retries}', '0', true);
+
+-- create stored procedure entity
+CREATE TABLE IF NOT EXISTS stored_procedure_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+    );
