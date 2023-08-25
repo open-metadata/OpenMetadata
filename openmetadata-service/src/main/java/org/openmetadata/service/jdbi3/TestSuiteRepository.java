@@ -3,17 +3,20 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
@@ -58,6 +61,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
+
     return new TestSummary()
         .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
         .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
@@ -77,18 +81,44 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   private HashMap<String, Integer> getResultSummary(TestSuite testSuite) {
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
-      String status = resultSummary.getStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    if (testSuite.getExecutable()) {
+      // for executable test suite, we'll have the summary in the test suite itself
+      for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
+        String status = resultSummary.getStatus().toString();
+        testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+      }
+    } else {
+      // for logical test suite, we'll need to fetch the summary from the test cases
+      // as test cases can be dynamically added or removed
+      List<EntityReference> testCasesEntityRef = getTestCases(testSuite);
+      List<String> testCaseFQNHashes =
+          testCasesEntityRef.stream()
+              .map(EntityReference::getFullyQualifiedName)
+              .collect(Collectors.toList())
+              .stream()
+              .map(FullyQualifiedName::buildHash)
+              .collect(Collectors.toList());
+
+      List<String> jsonList =
+          daoCollection
+              .entityExtensionTimeSeriesDao()
+              .getLatestExtensionByFQNs(testCaseFQNHashes, TESTCASE_RESULT_EXTENSION);
+      for (String json : jsonList) {
+        TestCaseResult testCaseResult;
+        testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+        String status = testCaseResult.getTestCaseStatus().toString();
+        testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+      }
     }
 
     return testCaseSummary;
   }
 
   private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
-    if (entity.getTestCaseResultSummary().isEmpty()) return new TestSummary();
+    if ((entity.getTestCaseResultSummary().isEmpty()) && (entity.getExecutable())) return new TestSummary();
     HashMap<String, Integer> testSummary = getResultSummary(entity);
-    return buildTestSummary(testSummary, entity.getTestCaseResultSummary().size());
+    int total = testSummary.values().stream().mapToInt(Integer::intValue).sum();
+    return buildTestSummary(testSummary, total);
   }
 
   private TestSummary getTestCasesExecutionSummary(List<TestSuite> entities) {
@@ -101,7 +131,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       for (Map.Entry<String, Integer> entry : testSummary.entrySet()) {
         testsSummary.put(entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
       }
-      total += testSuite.getTestCaseResultSummary().size();
+      total += testSummary.values().stream().mapToInt(Integer::intValue).sum();
     }
 
     return buildTestSummary(testsSummary, total);
@@ -111,14 +141,13 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     TestSummary testSummary;
     if (testSuiteId == null) {
       ListFilter filter = new ListFilter();
+      // if we are fetching the summary for all test suites we will
+      // only return the executable test suites to not count the same test case multiple times
       filter.addQueryParam("testSuiteType", "executable");
       List<TestSuite> testSuites = listAll(EntityUtil.Fields.EMPTY_FIELDS, filter);
       testSummary = getTestCasesExecutionSummary(testSuites);
     } else {
       TestSuite testSuite = find(testSuiteId, Include.ALL);
-      if (!Boolean.TRUE.equals(testSuite.getExecutable())) {
-        throw new IllegalArgumentException("Test Suite is not executable. Please provide an executable test suite.");
-      }
       testSummary = getTestCasesExecutionSummary(testSuite);
     }
 

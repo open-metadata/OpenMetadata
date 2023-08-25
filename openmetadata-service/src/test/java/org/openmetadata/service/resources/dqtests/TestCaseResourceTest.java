@@ -342,6 +342,21 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> getTestSummary(ADMIN_AUTH_HEADERS, randomUUID),
         NOT_FOUND,
         "testSuite instance for " + randomUUID + " not found");
+
+    // Test that we can get the test summary for a logical test suite and that
+    // adding a logical test suite does not change the total number of tests
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+    TestSuite logicalTestSuite = testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+    List<UUID> testCaseIds = new ArrayList<>();
+    testCaseIds.add(testCase1.getId());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, null);
+
+    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(1, testSummary.getTotal());
+    assertEquals(1, testSummary.getFailed());
   }
 
   @Test
