@@ -369,7 +369,7 @@ const getGraphFilteredData = (
     .map((data) => {
       if (data.timestamp && data.entityType) {
         let value;
-        const timestamp = customFormatDateTime(data.timestamp, 'MMM, dd');
+        const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
         if (!entities.includes(data.entityType ?? '')) {
           entities.push(data.entityType ?? '');
         }
@@ -474,7 +474,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   const filteredData = rawData.map((data) => {
     if (data.timestamp && data.entityTier) {
       const tiering = data.entityTier;
-      const timestamp = customFormatDateTime(data.timestamp, 'MMM, dd');
+      const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
       if (!tiers.includes(tiering)) {
         tiers.push(tiering);
       }
@@ -522,7 +522,7 @@ export const getFormattedActiveUsersData = (
   const formattedData = activeUsers.map((user) => ({
     ...user,
     timestampValue: user.timestamp,
-    timestamp: customFormatDateTime(user.timestamp, 'MM, dd'),
+    timestamp: customFormatDateTime(user.timestamp, 'MMM dd'),
   }));
 
   const latestCount = Number(last(formattedData)?.activeUsers);
@@ -606,7 +606,7 @@ export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
   const timeStamps: string[] = [];
 
   const formattedData = kpiResults.map((kpiResult) => {
-    const timestamp = customFormatDateTime(kpiResult.timestamp, 'MMM, dd');
+    const timestamp = customFormatDateTime(kpiResult.timestamp, 'MMM dd');
     const kpiFqn = kpiResult.kpiFqn ?? '';
     const currentKpi = kpiList.find((kpi) => kpi.fullyQualifiedName === kpiFqn);
     const kpiTarget = kpiResult.targetResult[0];

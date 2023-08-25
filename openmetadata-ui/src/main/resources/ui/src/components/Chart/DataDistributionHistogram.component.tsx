@@ -72,7 +72,7 @@ const DataDistributionHistogram = ({
 
         const graphDate = customFormatDateTime(
           columnProfile?.timestamp || 0,
-          'MMM, dd'
+          'MMM dd'
         );
 
         return (

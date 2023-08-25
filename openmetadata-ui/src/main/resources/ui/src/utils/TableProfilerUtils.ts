@@ -15,7 +15,7 @@ import { MetricChartType } from 'components/ProfilerDashboard/profilerDashboard.
 import { findLast, sortBy } from 'lodash';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import { TableProfile } from '../generated/entity/data/table';
-import { formatDateTime } from './date-time/DateTimeUtils';
+import { customFormatDateTime } from './date-time/DateTimeUtils';
 
 export const calculateRowCountMetrics = (
   profiler: TableProfile[],
@@ -25,7 +25,7 @@ export const calculateRowCountMetrics = (
   const rowCountMetricData: MetricChartType['data'] = [];
 
   updateProfilerData.forEach((data) => {
-    const timestamp = formatDateTime(data.timestamp);
+    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
 
     rowCountMetricData.push({
       name: timestamp,
@@ -52,7 +52,7 @@ export const calculateSystemMetrics = (
   const operationDateMetrics: MetricChartType['data'] = [];
 
   updateProfilerData.forEach((data) => {
-    const timestamp = formatDateTime(data.timestamp);
+    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
 
     operationMetrics.push({
       name: timestamp,
@@ -88,7 +88,7 @@ export const calculateSystemMetrics = (
       ...item,
       stackId: stackId,
       latestValue: operation?.timestamp
-        ? formatDateTime(operation?.timestamp)
+        ? customFormatDateTime(operation?.timestamp, 'MMM dd, hh:mm')
         : '--',
     };
   });

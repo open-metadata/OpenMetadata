@@ -23,7 +23,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import {
-  formatDateTimeFromSeconds,
+  formatDateTime,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from 'utils/date-time/DateTimeUtils';
@@ -117,19 +117,18 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   {r.timestamp && (
                     <p>
                       {`${t('label.execution-date')}:`}{' '}
-                      {formatDateTimeFromSeconds(r.timestamp)}
+                      {formatDateTime(r.timestamp)}
                     </p>
                   )}
                   {r.startDate && (
                     <p>
                       {t('label.start-entity', { entity: t('label.date') })}:{' '}
-                      {formatDateTimeFromSeconds(r.startDate)}
+                      {formatDateTime(r.startDate)}
                     </p>
                   )}
                   {r.endDate && (
                     <p>
-                      {`${t('label.end-date')}:`}{' '}
-                      {formatDateTimeFromSeconds(r.endDate)}
+                      {`${t('label.end-date')}:`} {formatDateTime(r.endDate)}
                     </p>
                   )}
                 </div>

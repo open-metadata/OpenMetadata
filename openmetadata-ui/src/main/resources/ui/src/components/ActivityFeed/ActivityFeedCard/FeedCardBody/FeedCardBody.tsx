@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTime } from 'utils/date-time/DateTimeUtils';
+import { formatDateTimeFromSeconds } from 'utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -107,9 +107,9 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           <Space direction="vertical" size={4}>
             <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
               {t('label.schedule')}{' '}
-              {formatDateTime(announcementDetails.startTime)}{' '}
+              {formatDateTimeFromSeconds(announcementDetails.startTime)}{' '}
               {t('label.to-lowercase')}{' '}
-              {formatDateTime(announcementDetails.endTime)}
+              {formatDateTimeFromSeconds(announcementDetails.endTime)}
             </Typography.Text>
             <Typography.Text className="font-medium">
               {postMessage}

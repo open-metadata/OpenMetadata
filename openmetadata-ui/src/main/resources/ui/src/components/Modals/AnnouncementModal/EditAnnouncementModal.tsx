@@ -47,8 +47,8 @@ const EditAnnouncementModal: FC<Props> = ({
     startTime,
     endTime,
   }: CreateAnnouncement) => {
-    const startTimeMs = startTime.valueOf();
-    const endTimeMs = endTime.valueOf();
+    const startTimeMs = startTime.unix();
+    const endTimeMs = endTime.unix();
 
     if (startTimeMs >= endTimeMs) {
       showErrorToast(t('message.announcement-invalid-start-time'));

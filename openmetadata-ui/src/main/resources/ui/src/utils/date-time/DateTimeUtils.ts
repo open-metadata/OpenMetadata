@@ -200,8 +200,13 @@ export const getCurrentSeconds = () => DateTime.now().toUnixInteger();
  */
 export const getCurrentMillis = () => DateTime.now().toMillis();
 
+export const getCurrentUnixInteger = () => DateTime.now().toUnixInteger();
+
 export const getEpochMillisForPastDays = (days: number) =>
   DateTime.now().minus({ days }).toMillis();
+
+export const getUnixSecondsForPastDays = (days: number) =>
+  DateTime.now().minus({ days }).toUnixInteger();
 
 /**
  *

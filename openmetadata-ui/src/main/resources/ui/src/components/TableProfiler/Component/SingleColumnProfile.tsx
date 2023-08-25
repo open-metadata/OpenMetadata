@@ -30,7 +30,7 @@ import { first, isString, last, sortBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getColumnProfilerList } from 'rest/tableAPI';
-import { formatDateTime } from 'utils/date-time/DateTimeUtils';
+import { customFormatDateTime } from 'utils/date-time/DateTimeUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
@@ -99,7 +99,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     const sumMetricData: MetricChartType['data'] = [];
     const quartileMetricData: MetricChartType['data'] = [];
     updateProfilerData.forEach((col) => {
-      const x = formatDateTime(col.timestamp);
+      const x = customFormatDateTime(col.timestamp, 'MMM dd, hh:mm');
 
       countMetricData.push({
         name: x,

@@ -32,7 +32,9 @@ import { useTranslation } from 'react-i18next';
 import { getPipelineStatus } from 'rest/pipelineAPI';
 import {
   getCurrentMillis,
+  getCurrentUnixInteger,
   getEpochMillisForPastDays,
+  getUnixSecondsForPastDays,
 } from 'utils/date-time/DateTimeUtils';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
@@ -58,9 +60,9 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
-    getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
+    getUnixSecondsForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
-  const [endTime, setEndTime] = useState(getCurrentMillis());
+  const [endTime, setEndTime] = useState(getCurrentUnixInteger());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(false);
