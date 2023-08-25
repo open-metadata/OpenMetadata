@@ -27,8 +27,6 @@ const BlockEditor = () => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
   const editor = useEditor({
-    autofocus: true,
-    editable: true,
     extensions: [
       StarterKit.configure({
         heading: {
@@ -67,31 +65,7 @@ const BlockEditor = () => {
             return 'Type / to get started';
           }
 
-          if (node.type.name === 'paragraph') {
-            const selectedNode = coreEditor.view.domAtPos(
-              coreEditor.state.selection.from
-            ).node;
-            if (
-              selectedNode.nodeName === 'P' &&
-              selectedNode.firstChild?.parentElement?.id === node.attrs.id
-            ) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const parentNode = (coreEditor.state.selection.$from as any)
-                .path[3];
-              if (
-                parentNode?.type?.name === 'blockquote' &&
-                parentNode?.content?.content?.[
-                  parentNode?.content?.content?.length - 1
-                ]?.attrs?.id === node.attrs?.id
-              ) {
-                return 'Type or hit enter to exit quote';
-              }
-
-              return 'Type / for commands';
-            }
-          }
-
-          return '';
+          return 'Type / for commands';
         },
       }),
       LinkExtension.configure({
