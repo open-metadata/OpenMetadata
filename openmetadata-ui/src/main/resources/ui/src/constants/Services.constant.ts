@@ -13,6 +13,7 @@
 
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
+import lightDash from 'assets/img/service-icon-lightdash.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
@@ -173,6 +174,7 @@ export const MS_AZURE = msAzure;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
+export const LIGHT_DASH = lightDash;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
