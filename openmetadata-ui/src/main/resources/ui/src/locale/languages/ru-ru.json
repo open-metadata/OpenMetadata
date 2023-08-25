@@ -348,6 +348,7 @@
     "entity-proportion": "Доля \"{{entity}}\"",
     "entity-service": "Сервис {{entity}}",
     "entity-type-plural": "Тип {{entity}}",
+    "entity-version-detail-plural": "{{entity}} Version Details",
     "event-publisher-plural": "Издатели события",
     "event-type": "Тип события",
     "every": "Каждый",
