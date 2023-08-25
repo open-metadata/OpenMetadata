@@ -1,11 +1,15 @@
+"""Lightdash models"""
+
 from typing import List, Optional
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel
 
 
 class LightdashChart(BaseModel):
     """
     Lightdash chart model
     """
+
     name: str
     organizationUuid: str
     uuid: str

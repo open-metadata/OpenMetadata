@@ -27,7 +27,6 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.lightdash.client import LightdashApiClient
-
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -38,7 +37,7 @@ def get_connection(connection: LightdashConnection) -> LightdashApiClient:
     Create connection
     """
     try:
-        logger.debug('creating a new Lightdash connection')
+        logger.debug("creating a new Lightdash connection")
         return LightdashApiClient(connection)
     except Exception as exc:
         msg = "Unknown error connecting with {connection}: {exc}."
@@ -46,19 +45,15 @@ def get_connection(connection: LightdashConnection) -> LightdashApiClient:
 
 
 def test_connection(
-        metadata: OpenMetadata,
-        client: LightdashApiClient,
-        service_connection: LightdashConnection,
-        automation_workflow: Optional[AutomationWorkflow] = None,
+    metadata: OpenMetadata,
+    client: LightdashApiClient,
+    service_connection: LightdashConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
 
     def custom_executor():
         return client.get_dashboards_list()

@@ -12,16 +12,14 @@
 REST Auth & Client for Lightdash
 """
 import traceback
+from typing import List
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.utils.logger import utils_logger
-from typing import List
 from metadata.ingestion.source.dashboard.lightdash.models import (
     LightdashChart,
     LightdashDashboard,
-    LightdashChartList,
-    LightdashDashboardList,
 )
+from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
@@ -56,7 +54,9 @@ class LightdashApiClient:
         Get List of all charts
         """
         try:
-            response = self.client.get(f"api/v1/projects/{self.config.projectUUID}/charts")
+            response = self.client.get(
+                f"api/v1/projects/{self.config.projectUUID}/charts"
+            )
             response_json_results = response["results"]
 
             if len(response_json_results) > 0:
@@ -66,7 +66,9 @@ class LightdashApiClient:
                 return charts_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the charts list for the Lightdash Connector")
+            logger.warning(
+                "Failed to fetch the charts list for the Lightdash Connector"
+            )
         return []
 
     def get_dashboards_list(self) -> List[LightdashDashboard]:
@@ -75,7 +77,9 @@ class LightdashApiClient:
         """
 
         try:
-            response = self.client.get(f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}")
+            response = self.client.get(
+                f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}"
+            )
             results = response["results"]
             dashboards_raw = results["dashboards"]
 
@@ -88,7 +92,9 @@ class LightdashApiClient:
                 return dashboards_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list for the Lightdash Connector")
+            logger.warning(
+                "Failed to fetch the dashboard list for the Lightdash Connector"
+            )
         return []
 
     def add_dashboard_lineage(self, dashboards_list) -> None:

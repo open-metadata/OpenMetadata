@@ -17,9 +17,6 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as LineageDashboard,
-)
 from metadata.generated.schema.entity.services.connections.dashboard.lightdashConnection import (
     LightdashConnection,
 )
@@ -30,22 +27,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.lightdash.models import (
-    LightdashDashboard,
-    LightdashDashboardList,
     LightdashChart,
-    LightdashChartList,
+    LightdashDashboard,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import (
-    clean_uri,
-    get_standard_chart_type,
-    replace_special_with,
-)
+from metadata.utils.helpers import clean_uri, replace_special_with
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -70,9 +59,9 @@ class LightdashSource(DashboardServiceSource):
         return cls(config, metadata_config)
 
     def __init__(
-            self,
-            config: WorkflowSource,
-            metadata_config: OpenMetadataConnection,
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
         self.charts: List[LightdashChart] = []
@@ -93,14 +82,16 @@ class LightdashSource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: LightdashDashboard) -> LightdashDashboard:
+    def get_dashboard_details(
+        self, dashboard: LightdashDashboard
+    ) -> LightdashDashboard:
         """
         Get Dashboard Details
         """
         return dashboard
 
     def yield_dashboard(
-            self, dashboard_details: LightdashDashboard
+        self, dashboard_details: LightdashDashboard
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
@@ -135,7 +126,7 @@ class LightdashSource(DashboardServiceSource):
             )
 
     def yield_dashboard_chart(
-            self, dashboard_details: LightdashChart
+        self, dashboard_details: LightdashChart
     ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
 
@@ -151,9 +142,7 @@ class LightdashSource(DashboardServiceSource):
                     f"{clean_uri(self.service_connection.hostPort)}/question/{chart.uuid}-"
                     f"{replace_special_with(raw=chart.name.lower(), replacement='-')}"
                 )
-                if filter_by_chart(
-                        self.source_config.chartFilterPattern, chart.name
-                ):
+                if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 yield CreateChartRequest(
@@ -169,9 +158,9 @@ class LightdashSource(DashboardServiceSource):
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
 
     def yield_dashboard_lineage_details(
-            self,
-            dashboard_details: LightdashDashboard,
-            db_service_name: Optional[str],
+        self,
+        dashboard_details: LightdashDashboard,
+        db_service_name: Optional[str],
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 
