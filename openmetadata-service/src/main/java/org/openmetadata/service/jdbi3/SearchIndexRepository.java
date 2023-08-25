@@ -54,6 +54,12 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
+
+  public SearchIndexRepository(CollectionDAO dao) {
+    super(
+        SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
+  }
+
   @Override
   public void setFullyQualifiedName(SearchIndex searchIndex) {
     searchIndex.setFullyQualifiedName(
@@ -61,11 +67,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     if (searchIndex.getFields() != null) {
       setFieldFQN(searchIndex.getFullyQualifiedName(), searchIndex.getFields());
     }
-  }
-
-  public SearchIndexRepository(CollectionDAO dao) {
-    super(
-        SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
   }
 
   @Override
