@@ -12,12 +12,14 @@
  */
 import LinkExtension from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import tippy, { Instance, Props } from 'tippy.js';
 import './block-editor.less';
 import LinkModal, { LinkData } from './Components/LinkModal';
+import LinkPopup from './Components/LinkPopup';
 import SlashCommand from './Extensions/slash-command';
 import { getSuggestionItems } from './Extensions/slash-command/items';
 import renderItems from './Extensions/slash-command/renderItems';
@@ -25,6 +27,8 @@ import BubbleMenu from './Menu/BubbleMenu';
 
 const BlockEditor = () => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_, setHtmlState] = useState<string>('');
 
   const editor = useEditor({
     extensions: [
@@ -85,6 +89,10 @@ const BlockEditor = () => {
         },
       }),
     ],
+
+    onUpdate({ editor }) {
+      setHtmlState(editor.getHTML());
+    },
   });
 
   const handleLinkToggle = () => {
@@ -98,18 +106,85 @@ const BlockEditor = () => {
     }
   };
 
-  const handleLinkSave = (values: LinkData) => {
+  const handleLinkSave = (values: LinkData, op: 'edit' | 'add') => {
     if (isNil(editor)) {
       return;
     }
     // set the link
-    editor?.chain().focus().setLink({ href: values.href }).run();
+    if (op === 'edit') {
+      editor
+        ?.chain()
+        .focus()
+        .extendMarkRange('link')
+        .updateAttributes('link', {
+          href: values.href,
+        })
+        .run();
+    }
+
+    if (op === 'add') {
+      editor?.chain().focus().setLink({ href: values.href }).run();
+    }
 
     // move cursor at the end
     editor?.chain().selectTextblockEnd().run();
 
     // close the modal
     handleLinkToggle();
+  };
+
+  const handleUnlink = () => {
+    if (isNil(editor)) {
+      return;
+    }
+
+    editor?.chain().focus().extendMarkRange('link').unsetLink().run();
+
+    // move cursor at the end
+    editor?.chain().selectTextblockEnd().run();
+  };
+
+  const handleLinkPopup = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    let popup: Instance<Props>[] = [];
+    let component: ReactRenderer;
+    const target = e.target as HTMLElement;
+    if (target.nodeName === 'A') {
+      const href = target.getAttribute('href');
+
+      component = new ReactRenderer(LinkPopup, {
+        editor: editor as Editor,
+        props: {
+          href,
+          handleLinkToggle: () => {
+            handleLinkToggle();
+            if (!isEmpty(popup)) {
+              popup[0].hide();
+            }
+          },
+          handleUnlink: () => {
+            handleUnlink();
+            if (!isEmpty(popup)) {
+              popup[0].hide();
+            }
+          },
+        },
+      });
+
+      popup = tippy('body', {
+        getReferenceClientRect: () => target.getBoundingClientRect(),
+        appendTo: () => document.body,
+        content: component.element,
+        showOnCreate: true,
+        interactive: true,
+        trigger: 'manual',
+        placement: 'top',
+        hideOnClick: true,
+      });
+    } else {
+      if (!isEmpty(popup)) {
+        popup[0].hide();
+      }
+    }
   };
 
   const menus = !isNil(editor) && (
@@ -129,11 +204,16 @@ const BlockEditor = () => {
           data={{ href: editor?.getAttributes('link').href }}
           isOpen={isLinkModalOpen}
           onCancel={handleLinkCancel}
-          onSave={handleLinkSave}
+          onSave={(values) =>
+            handleLinkSave(
+              values,
+              editor?.getAttributes('link').href ? 'edit' : 'add'
+            )
+          }
         />
       )}
       <div className="block-editor-wrapper">
-        <EditorContent editor={editor} />
+        <EditorContent editor={editor} onMouseDown={handleLinkPopup} />
         {menus}
       </div>
     </>

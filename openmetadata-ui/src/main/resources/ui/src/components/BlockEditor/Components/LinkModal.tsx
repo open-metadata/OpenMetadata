@@ -48,7 +48,7 @@ const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
         layout="vertical"
         onFinish={handleSubmit}>
         <Form.Item label="Link" name="href">
-          <Input />
+          <Input autoFocus />
         </Form.Item>
       </Form>
     </Modal>

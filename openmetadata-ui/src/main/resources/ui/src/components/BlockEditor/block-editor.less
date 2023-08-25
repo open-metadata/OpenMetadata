@@ -12,6 +12,10 @@
  */
 @import (reference) url('../../styles/variables.less');
 
+@border-radius: 6px;
+@border-color: #e8e8ed;
+@markdown-bg-color: #f8f8fa;
+
 .block-editor-wrapper {
   // show placeholder when editor is in focused mode
   .tiptap p.is-node-empty:last-child::before {
@@ -23,6 +27,138 @@
   }
   .tippy-box {
     max-width: 400px !important;
+  }
+  .tiptap {
+    font-size: 14px;
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0px !important;
+      border: none;
+      padding: 24px 0px 0px 0px;
+      color: @text-color;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 48px;
+      font-weight: 600;
+    }
+
+    h2 {
+      font-size: 20px;
+      line-height: 32px;
+      font-weight: 600;
+    }
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    h4 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    h5 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    a {
+      color: @primary-color;
+      text-decoration: none;
+      line-height: 24px;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-left: 35px;
+    }
+
+    th,
+    td {
+      border: 1px solid @border-color;
+      margin: 0;
+      padding: 8px 16px;
+    }
+
+    th {
+      background: @markdown-bg-color;
+      color: @text-color;
+      font-weight: 500;
+    }
+
+    blockquote {
+      border-left: 4px solid @border-color;
+      padding-left: 16px;
+      margin-left: 25px;
+    }
+
+    strong {
+      font-weight: bold;
+    }
+
+    code {
+      white-space: break-spaces;
+      background: @markdown-bg-color;
+      color: @text-color;
+    }
+
+    pre {
+      margin: 0px;
+      padding: 0px;
+      background: transparent;
+      margin-top: 16px;
+      code {
+        display: block;
+        padding: 15px;
+        overflow: auto;
+        border-radius: 8px;
+        border-bottom: 2px solid @border-color;
+      }
+    }
+
+    img {
+      border-radius: @border-radius;
+      margin-top: 10px;
+      max-width: 100%;
+    }
+
+    li:not(:last-child) {
+      margin-bottom: 5px;
+    }
+
+    p {
+      margin-top: 10px;
+      margin-bottom: 0px;
+      color: @text-color;
+      word-break: break-word;
+      line-height: 20px;
+      &:first-child {
+        margin-top: 0px;
+      }
+      &:last-child {
+        margin-bottom: 0px;
+      }
+    }
+
+    ul {
+      list-style: disc !important;
+      li {
+        &::before {
+          content: none;
+        }
+      }
+    }
   }
 }
 
@@ -68,5 +204,17 @@
     .ant-modal-body {
       padding: 16px;
     }
+  }
+}
+
+.link-popup {
+  padding: 4px;
+  background: @white;
+  border: @global-border;
+  border-radius: 20px;
+
+  button,
+  a {
+    color: @text-color !important;
   }
 }
