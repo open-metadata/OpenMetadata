@@ -13,7 +13,7 @@ Mixin class containing Query specific methods
 
 To be used by OpenMetadata class
 """
-
+import hashlib
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
 
 
@@ -31,6 +32,21 @@ class OMetaQueryMixin:
 
     To be inherited by OpenMetadata
     """
+
+    client: REST
+
+    def _get_query_hash(self, query: str) -> str:
+        result = hashlib.md5(query.encode())
+        return str(result.hexdigest())
+
+    def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:
+        query_hash = self._get_query_hash(query=query.query.__root__)
+        query_entity = self.get_by_name(entity=Query, fqn=query_hash)
+        if query_entity is None:
+            resp = self.client.put(self.get_suffix(Query), data=query.json())
+            if resp and resp.get("id"):
+                query_entity = Query(**resp)
+        return query_entity
 
     def ingest_entity_queries_data(
         self, entity: Union[Table, Dashboard], queries: List[CreateQueryRequest]
@@ -42,13 +58,13 @@ class OMetaQueryMixin:
         :param queries: CreateQueryRequest to add
         """
         for create_query in queries:
-            query = self.client.put(self.get_suffix(Query), data=create_query.json())
-            if query and query.get("id"):
+            query = self._get_or_create_query(create_query)
+            if query:
                 table_ref = EntityReference(id=entity.id.__root__, type="table")
                 # convert object to json array string
                 table_ref_json = "[" + table_ref.json() + "]"
                 self.client.put(
-                    f"{self.get_suffix(Query)}/{query.get('id')}/usage",
+                    f"{self.get_suffix(Query)}/{model_str(query.id)}/usage",
                     data=table_ref_json,
                 )
 
