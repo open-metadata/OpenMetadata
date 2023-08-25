@@ -1,3 +1,14 @@
+-- Update table and column profile timestamps to be in milliseconds
+UPDATE entity_extension_time_series
+    SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.timestamp'),
+    '$.timestamp',
+    JSON_EXTRACT(json, '$.timestamp') * 1000
+    )
+WHERE
+    extension  in ('table.tableProfile', 'table.columnProfile');
+;
+
 ALTER TABLE automations_workflow MODIFY COLUMN nameHash VARCHAR(256) COLLATE ascii_bin,MODIFY COLUMN workflowType VARCHAR(256) COLLATE ascii_bin, MODIFY COLUMN status VARCHAR(256) COLLATE ascii_bin;
 ALTER TABLE entity_extension MODIFY COLUMN extension VARCHAR(256) COLLATE ascii_bin;
 ALTER TABLE entity_extension_time_series MODIFY COLUMN entityFQNHash VARCHAR(768) COLLATE ascii_bin, MODIFY COLUMN jsonSchema VARCHAR(50) COLLATE ascii_bin, MODIFY COLUMN extension VARCHAR(100) COLLATE ascii_bin,
