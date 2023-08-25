@@ -30,6 +30,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -45,7 +46,7 @@ def get_ometa_tag_and_classification(
     classification_desciption: Optional[str],
     include_tags: bool = True,
     tag_fqn: Optional[FullyQualifiedEntityName] = None,
-) -> Optional[Iterable[OMetaTagAndClassification]]:
+) -> Iterable[Either[OMetaTagAndClassification]]:
     """
     Returns the OMetaTagAndClassification object
     """
@@ -64,13 +65,14 @@ def get_ometa_tag_and_classification(
                         description=tag_description,
                     ),
                 )
-                yield classification
+                yield Either(right=classification)
                 logger.debug(
                     f"Classification {classification_name}, Tag {tag} Ingested"
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Error yielding tag-{tag}: {err}")
+                yield Either
 
 
 @functools.lru_cache(maxsize=512)
