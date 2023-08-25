@@ -178,6 +178,23 @@ export const TOTAL_ENTITY_CHART_COLOR = [
   '#FF7C50',
   '#AD4F82',
   '#C870C5',
+  '#ED7014',
+  '#FCAE1E',
+  '#B56727',
+  '#F9E076',
+  '#3CB043',
+  '#48AAAD',
+  '#0492C2',
+  '#A1045A',
+  '#B65FCF',
+  '#67032F',
+  '#4E2A84',
+  '#78184A',
+  '#563C5C',
+  '#5F5498',
+  '#4E8C9C',
+  '#F4F2FF',
+  '#ECFBFF',
 ];
 
 export const KPI_WIDGET_GRAPH_COLORS = ['#5F5498', '#4E8C9C'];

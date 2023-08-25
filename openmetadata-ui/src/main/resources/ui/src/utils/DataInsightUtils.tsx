@@ -65,6 +65,8 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
   [
     DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
     DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+    DataInsightChartType.PercentageOfServicesWithDescription,
+    DataInsightChartType.PercentageOfServicesWithOwner,
   ].includes(dataInsightChartType);
 
 export const renderLegend = (
@@ -373,11 +375,11 @@ const getGraphFilteredData = (
 
   const filteredData = rawData
     .map((data) => {
-      if (data.timestamp && data.entityType) {
+      if (data.timestamp && (data.entityType || data.serviceName)) {
         let value;
         const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
-        if (!entities.includes(data.entityType ?? '')) {
-          entities.push(data.entityType ?? '');
+        if (!entities.includes(data.entityType ?? data.serviceName ?? '')) {
+          entities.push(data.entityType ?? data.serviceName ?? '');
         }
 
         if (!timestamps.includes(timestamp)) {
@@ -390,10 +392,12 @@ const getGraphFilteredData = (
 
             break;
           case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+          case DataInsightChartType.PercentageOfServicesWithDescription:
             value = (data.completedDescriptionFraction ?? 0) * 100;
 
             break;
           case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+          case DataInsightChartType.PercentageOfServicesWithOwner:
             value = (data.hasOwnerFraction ?? 0) * 100;
 
             break;
@@ -410,7 +414,7 @@ const getGraphFilteredData = (
         return {
           timestamp: timestamp,
           timestampValue: data.timestamp,
-          [data.entityType]: value,
+          [data.entityType ?? data.serviceName ?? '']: value,
         };
       }
 

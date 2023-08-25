@@ -65,9 +65,15 @@ interface Props {
   chartFilter: ChartFilter;
   kpi: Kpi | undefined;
   selectedDays: number;
+  dataInsightChartName: DataInsightChartType;
 }
 
-const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
+const OwnerInsight: FC<Props> = ({
+  chartFilter,
+  kpi,
+  selectedDays,
+  dataInsightChartName,
+}) => {
   const [totalEntitiesOwnerByType, setTotalEntitiesOwnerByType] =
     useState<DataInsightChartResult>();
 
@@ -85,7 +91,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
   } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesOwnerByType?.data ?? [],
-      DataInsightChartType.PercentageOfEntitiesWithOwnerByType
+      dataInsightChartName
     );
   }, [totalEntitiesOwnerByType]);
 
@@ -104,8 +110,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
     try {
       const params = {
         ...chartFilter,
-        dataInsightChartName:
-          DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+        dataInsightChartName,
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
       const response = await getAggregateChartData(params);

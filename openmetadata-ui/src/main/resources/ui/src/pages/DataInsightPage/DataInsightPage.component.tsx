@@ -424,6 +424,9 @@ const DataInsightPage = () => {
             <Col span={24}>
               <DescriptionInsight
                 chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
+                }
                 kpi={descriptionKpi}
                 selectedDays={selectedDaysFilter}
               />
@@ -431,6 +434,29 @@ const DataInsightPage = () => {
             <Col span={24}>
               <OwnerInsight
                 chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfEntitiesWithOwnerByType
+                }
+                kpi={ownerKpi}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+            <Col span={24}>
+              <DescriptionInsight
+                chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfServicesWithDescription
+                }
+                kpi={descriptionKpi}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+            <Col span={24}>
+              <OwnerInsight
+                chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfServicesWithOwner
+                }
                 kpi={ownerKpi}
                 selectedDays={selectedDaysFilter}
               />
