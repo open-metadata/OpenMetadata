@@ -114,13 +114,11 @@ function ServiceVersionPage() {
     [servicePermissions]
   );
 
-  const entityType = useMemo(
-    () => getEntityTypeFromServiceCategory(serviceCategory),
-    [serviceCategory]
-  );
-
-  const resourceEntity = useMemo(
-    () => getResourceEntityFromServiceCategory(serviceCategory),
+  const [entityType, resourceEntity] = useMemo(
+    () => [
+      getEntityTypeFromServiceCategory(serviceCategory),
+      getResourceEntityFromServiceCategory(serviceCategory),
+    ],
     [serviceCategory]
   );
 
