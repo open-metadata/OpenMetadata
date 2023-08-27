@@ -153,6 +153,7 @@ class MetabaseSource(DashboardServiceSource):
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield Either(right=dashboard_request)
+            self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
