@@ -41,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
@@ -135,17 +136,19 @@ class S3Source(StorageServiceSource):
 
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
-    ) -> Iterable[CreateContainerRequest]:
-        yield CreateContainerRequest(
-            name=container_details.name,
-            prefix=container_details.prefix,
-            numberOfObjects=container_details.number_of_objects,
-            size=container_details.size,
-            dataModel=container_details.data_model,
-            service=self.context.objectstore_service.fullyQualifiedName,
-            parent=container_details.parent,
-            sourceUrl=container_details.sourceUrl,
-            fileFormats=container_details.file_formats,
+    ) -> Iterable[Either[CreateContainerRequest]]:
+        yield Either(
+            right=CreateContainerRequest(
+                name=container_details.name,
+                prefix=container_details.prefix,
+                numberOfObjects=container_details.number_of_objects,
+                size=container_details.size,
+                dataModel=container_details.data_model,
+                service=self.context.objectstore_service.fullyQualifiedName,
+                parent=container_details.parent,
+                sourceUrl=container_details.sourceUrl,
+                fileFormats=container_details.file_formats,
+            )
         )
 
     def _generate_container_details(

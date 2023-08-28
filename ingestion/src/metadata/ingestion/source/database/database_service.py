@@ -166,9 +166,7 @@ class DatabaseServiceSource(
     context = create_source_context(topology)
 
     def prepare(self):
-        """
-        By default, there is no preparation needed
-        """
+        """By default, there is no preparation needed"""
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config

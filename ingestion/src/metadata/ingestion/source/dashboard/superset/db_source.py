@@ -15,7 +15,6 @@ Superset source module
 import traceback
 from typing import Iterable, Optional
 
-from metadata.ingestion.api.models import Either, StackTraceError
 from sqlalchemy import sql
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
@@ -35,6 +34,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
     FetchChart,

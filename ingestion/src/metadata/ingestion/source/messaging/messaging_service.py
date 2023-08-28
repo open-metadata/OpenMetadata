@@ -179,8 +179,10 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
             yield topic_details
 
     def yield_create_request_messaging_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=MessagingService, config=config
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=MessagingService, config=config
+            )
         )
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -218,7 +220,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.topic_source_state.add(topic_fqn)
-        self.status.scanned(topic_request.name.__root__)
 
     def close(self):
         """By default, nothing to close"""

@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifiConnecti
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -132,7 +133,7 @@ class NifiSource(PipelineServiceSource):
 
     def yield_pipeline(
         self, pipeline_details: NifiPipelineDetails
-    ) -> Iterable[CreatePipelineRequest]:
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from Nifi
@@ -145,18 +146,17 @@ class NifiSource(PipelineServiceSource):
             tasks=self._get_tasks_from_details(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
-        yield pipeline_request
+        yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: NifiPipelineDetails
-    ) -> Optional[OMetaPipelineStatus]:
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         """
         Method to get task & pipeline status.
         Based on the latest refresh data.
         https://github.com/open-metadata/OpenMetadata/issues/6955
         """
-        logger.info("Pipeline Status is not yet supported on Nifi")
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: NifiPipelineDetails
@@ -167,7 +167,6 @@ class NifiSource(PipelineServiceSource):
         :return: Lineage request
         https://github.com/open-metadata/OpenMetadata/issues/6950
         """
-        logger.info("Lineage is not yet supported on Nifi")
 
     @staticmethod
     def _get_connections_from_process_group(
@@ -209,9 +208,7 @@ class NifiSource(PipelineServiceSource):
         ]
 
     def get_pipelines_list(self) -> Iterable[NifiPipelineDetails]:
-        """
-        Get List of all pipelines
-        """
+        """Get List of all pipelines"""
         for process_group in self.connection.list_process_groups():
             try:
                 yield NifiPipelineDetails(
@@ -239,7 +236,4 @@ class NifiSource(PipelineServiceSource):
                 )
 
     def get_pipeline_name(self, pipeline_details: NifiPipelineDetails) -> str:
-        """
-        Get Pipeline Name
-        """
         return pipeline_details.name

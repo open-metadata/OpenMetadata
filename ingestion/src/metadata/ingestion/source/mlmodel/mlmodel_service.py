@@ -14,8 +14,6 @@ Base class for ingesting mlmodel services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
-from metadata.ingestion.api.models import Either
-
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
@@ -37,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -130,8 +129,10 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         yield self.config
 
     def yield_create_request_mlmodel_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=MlModelService, config=config
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=MlModelService, config=config
+            )
         )
 
     @abstractmethod
