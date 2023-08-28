@@ -37,7 +37,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import React, {
@@ -59,6 +59,7 @@ import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
+import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
 import {
@@ -117,6 +118,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setShowDeletedTables(value);
     setCurrentTablesPage(INITIAL_PAGING_VALUE);
   };
+
+  const { version: currentVersion } = useMemo(
+    () => databaseSchema,
+    [databaseSchema]
+  );
 
   const { tags, tier } = useMemo(
     () => ({
@@ -249,7 +255,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             updatedDatabaseSchemaDetails
           );
           if (response) {
-            setDatabaseSchema(updatedDatabaseSchemaDetails);
+            setDatabaseSchema(response);
             setDescription(updatedHTML);
             getEntityFeedCount();
           } else {
@@ -434,6 +440,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [tableData, getSchemaTables]
   );
 
+  const versionHandler = useCallback(() => {
+    currentVersion &&
+      history.push(
+        getDatabaseSchemaVersionPath(
+          databaseSchemaFQN,
+          toString(currentVersion)
+        )
+      );
+  }, [currentVersion, databaseSchemaFQN]);
+
   useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [databaseSchemaFQN]);
@@ -597,6 +613,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 onOwnerUpdate={handleUpdateOwner}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
+                onVersionClick={versionHandler}
               />
             )}
           </Col>
