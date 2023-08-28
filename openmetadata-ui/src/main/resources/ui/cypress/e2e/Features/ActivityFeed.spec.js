@@ -282,7 +282,7 @@ describe('Activity feed', () => {
       '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'
     )
       .invoke('text')
-      .then((text) => expect(text).to.contain(feedText1));
+      .then((text) => expect(text.trim()).to.contain(feedText1.trim()));
   });
 
   it('Assigned task should appear to task tab', () => {
