@@ -25,6 +25,8 @@ import {
   diffWordsWithSpace,
 } from 'diff';
 import { Column as DataModelColumn } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Field } from 'generated/entity/data/topic';
@@ -218,7 +220,13 @@ export const getTagsDiff = (
 };
 
 export const getEntityVersionTags = (
-  currentVersionData: VersionData | Glossary | GlossaryTerm | ServicesType,
+  currentVersionData:
+    | VersionData
+    | Glossary
+    | GlossaryTerm
+    | ServicesType
+    | Database
+    | DatabaseSchema,
   changeDescription: ChangeDescription
 ) => {
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
@@ -741,4 +749,31 @@ export const getConstraintChanges = (
   ];
 
   return { addedConstraintDiffs, deletedConstraintDiffs };
+};
+
+const getMutuallyExclusiveDiffLabel = (value: boolean) => {
+  if (value) {
+    return t('label.yes');
+  } else {
+    return t('label.no');
+  }
+};
+
+export const getMutuallyExclusiveDiff = (
+  changeDescription: ChangeDescription,
+  field: string,
+  fallbackText?: string
+) => {
+  const fieldDiff = getDiffByFieldName(field, changeDescription, true);
+  const oldField = getChangedEntityOldValue(fieldDiff);
+  const newField = getChangedEntityNewValue(fieldDiff);
+
+  const oldDisplayField = getMutuallyExclusiveDiffLabel(oldField);
+  const newDisplayField = getMutuallyExclusiveDiffLabel(newField);
+
+  return getTextDiff(
+    toString(oldDisplayField) ?? '',
+    toString(newDisplayField),
+    toString(fallbackText)
+  );
 };
