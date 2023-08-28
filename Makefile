@@ -246,6 +246,9 @@ generate-schema-docs:  ## Generates markdown files for documenting the JSON Sche
 	@echo "Generating Schema docs"
 	python -m pip install "jsonschema2md"
 	python scripts/generate_docs_schemas.py
+	
+
+.PHONY: update_all
 
 .PHONY: update_all
 update_all: ## To update all the release related files
