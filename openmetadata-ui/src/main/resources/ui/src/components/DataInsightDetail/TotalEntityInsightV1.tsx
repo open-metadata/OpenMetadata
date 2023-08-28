@@ -27,9 +27,9 @@ import {
 } from 'recharts';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from 'utils/TimeUtils';
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -66,8 +66,8 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
     setIsLoading(true);
     try {
       const params = {
-        startTs: getPastDaysDateTimeMillis(selectedDays),
-        endTs: getCurrentDateTimeMillis(),
+        startTs: getEpochMillisForPastDays(selectedDays),
+        endTs: getCurrentMillis(),
         dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };

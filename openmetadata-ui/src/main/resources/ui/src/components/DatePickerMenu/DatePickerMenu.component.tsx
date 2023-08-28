@@ -23,11 +23,11 @@ import { isUndefined } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDaysCount, getTimestampLabel } from 'utils/DatePickerMenuUtils';
 import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from 'utils/TimeUtils';
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
+import { getDaysCount, getTimestampLabel } from 'utils/DatePickerMenuUtils';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
 import './DatePickerMenu.style.less';
 
@@ -87,9 +87,9 @@ function DatePickerMenu({
 
     const selectedNumberOfDays = filterRange.days;
     const keyString = key as keyof typeof PROFILER_FILTER_RANGE;
-    const startTs = getPastDaysDateTimeMillis(selectedNumberOfDays);
+    const startTs = getEpochMillisForPastDays(selectedNumberOfDays);
 
-    const endTs = getCurrentDateTimeMillis();
+    const endTs = getCurrentMillis();
 
     setSelectedTimeRange(PROFILER_FILTER_RANGE[keyString].title);
     setSelectedTimeRangeKey(keyString);
