@@ -81,7 +81,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCaseResult original =
         JsonUtils.readValue(
             daoCollection
-                .entityExtensionTimeSeriesDao()
+                .dataQualityDataTimeSeriesDao()
                 .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
             TestCaseResult.class);
 
@@ -91,7 +91,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updated.getTestCaseFailureStatus().setUpdatedBy(user);
       updated.getTestCaseFailureStatus().setUpdatedAt(System.currentTimeMillis());
       daoCollection
-          .entityExtensionTimeSeriesDao()
+          .dataQualityDataTimeSeriesDao()
           .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
       change = ENTITY_UPDATED;
     }
@@ -202,12 +202,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
-    storeTimeSeries(
-        testCase.getFullyQualifiedName(),
-        TESTCASE_RESULT_EXTENSION,
-        TEST_CASE_RESULT_FIELD,
-        JsonUtils.pojoToJson(testCaseResult),
-        testCaseResult.getTimestamp());
+    daoCollection
+        .dataQualityDataTimeSeriesDao()
+        .insert(
+            testCase.getFullyQualifiedName(),
+            TESTCASE_RESULT_EXTENSION,
+            TEST_CASE_RESULT_FIELD,
+            JsonUtils.pojoToJson(testCaseResult));
 
     setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, TEST_SUITE_FIELD));
     setTestSuiteSummary(testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
@@ -223,10 +224,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
     TestCaseResult storedTestCaseResult =
-        JsonUtils.readValue(getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp), TestCaseResult.class);
+        JsonUtils.readValue(
+            daoCollection
+                .dataQualityDataTimeSeriesDao()
+                .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
+            TestCaseResult.class);
 
     if (storedTestCaseResult != null) {
-      deleteExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
+      daoCollection.dataQualityDataTimeSeriesDao().deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       testCase.setTestCaseResult(storedTestCaseResult);
       ChangeDescription change = deleteTestCaseChangeDescription(testCase.getVersion(), storedTestCaseResult);
       ChangeEvent changeEvent = getChangeEvent(updatedBy, testCase, change, entityType, testCase.getVersion());
@@ -290,7 +295,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private TestCaseResult getTestCaseResult(TestCase testCase) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
+        daoCollection
+            .dataQualityDataTimeSeriesDao()
+            .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
         TestCaseResult.class);
   }
 
@@ -298,7 +305,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestCaseResult> testCaseResults;
     testCaseResults =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, TESTCASE_RESULT_EXTENSION, startTs, endTs), TestCaseResult.class);
+            daoCollection
+                .dataQualityDataTimeSeriesDao()
+                .listBetweenTimestampsByOrder(
+                    fqn, TESTCASE_RESULT_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
+            TestCaseResult.class);
     return new ResultList<>(testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
   }
 
