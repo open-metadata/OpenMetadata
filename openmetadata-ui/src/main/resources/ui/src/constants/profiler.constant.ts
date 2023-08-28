@@ -13,11 +13,11 @@
 
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
-import i18n from 'utils/i18next/LocalUtil';
 import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from 'utils/TimeUtils';
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
+import i18n from 'utils/i18next/LocalUtil';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -117,9 +117,8 @@ export const DEFAULT_SELECTED_RANGE = {
 };
 
 export const DEFAULT_RANGE_DATA = {
-  startTs: getPastDaysDateTimeMillis(DEFAULT_SELECTED_RANGE.days),
-
-  endTs: getCurrentDateTimeMillis(),
+  startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
+  endTs: getCurrentMillis(),
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];

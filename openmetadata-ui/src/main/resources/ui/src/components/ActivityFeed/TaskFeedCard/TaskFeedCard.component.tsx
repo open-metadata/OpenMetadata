@@ -23,13 +23,10 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getNameFromFQN } from 'utils/CommonUtils';
+import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
 import EntityLink from 'utils/EntityLink';
 import { getEntityFQN, getEntityType, prepareFeedLink } from 'utils/FeedUtils';
 import { getTaskDetailPath } from 'utils/TasksUtils';
-import {
-  getDateTimeFromMilliSeconds,
-  getDayTimeByTimeStamp,
-} from 'utils/TimeUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
@@ -162,9 +159,9 @@ const TaskFeedCard = ({
               </UserPopOverCard>
               {t('message.created-this-task-lowercase')}
               {timeStamp && (
-                <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
+                <Tooltip title={formatDateTime(timeStamp)}>
                   <span className="p-l-xss" data-testid="timestamp">
-                    {getDayTimeByTimeStamp(timeStamp)}
+                    {getRelativeTime(timeStamp)}
                   </span>
                 </Tooltip>
               )}

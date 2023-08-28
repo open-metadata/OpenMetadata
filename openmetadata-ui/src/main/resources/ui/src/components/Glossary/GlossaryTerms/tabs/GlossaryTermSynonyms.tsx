@@ -179,7 +179,7 @@ const GlossaryTermSynonyms = ({
         <Typography.Text className="right-panel-label">
           {t('label.synonym-plural')}
         </Typography.Text>
-        {permissions.EditAll && synonyms.length > 0 && (
+        {permissions.EditAll && synonyms.length > 0 && isViewMode && (
           <Tooltip
             placement="bottomLeft"
             title={

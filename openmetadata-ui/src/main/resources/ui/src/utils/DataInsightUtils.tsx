@@ -56,10 +56,7 @@ import {
   DataInsightChartTooltipProps,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
-import {
-  getDateByTimeStamp,
-  getFormattedDateFromMilliSeconds,
-} from './TimeUtils';
+import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
   [
@@ -162,10 +159,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = getDateByTimeStamp(
-      payload[0].payload.timestampValue || 0,
-      'MMM dd, yyyy'
-    );
+    const timestamp = formatDate(payload[0].payload.timestampValue || 0);
 
     return (
       <Card
@@ -377,7 +371,7 @@ const getGraphFilteredData = (
     .map((data) => {
       if (data.timestamp && (data.entityType || data.serviceName)) {
         let value;
-        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+        const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
         if (!entities.includes(data.entityType ?? data.serviceName ?? '')) {
           entities.push(data.entityType ?? data.serviceName ?? '');
         }
@@ -484,7 +478,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   const filteredData = rawData.map((data) => {
     if (data.timestamp && data.entityTier) {
       const tiering = data.entityTier;
-      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+      const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
       if (!tiers.includes(tiering)) {
         tiers.push(tiering);
       }
@@ -532,9 +526,7 @@ export const getFormattedActiveUsersData = (
   const formattedData = activeUsers.map((user) => ({
     ...user,
     timestampValue: user.timestamp,
-    timestamp: user.timestamp
-      ? getFormattedDateFromMilliSeconds(user.timestamp)
-      : '',
+    timestamp: customFormatDateTime(user.timestamp, 'MMM dd'),
   }));
 
   const latestCount = Number(last(formattedData)?.activeUsers);
@@ -618,7 +610,7 @@ export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
   const timeStamps: string[] = [];
 
   const formattedData = kpiResults.map((kpiResult) => {
-    const timestamp = getFormattedDateFromMilliSeconds(kpiResult.timestamp);
+    const timestamp = customFormatDateTime(kpiResult.timestamp, 'MMM dd');
     const kpiFqn = kpiResult.kpiFqn ?? '';
     const currentKpi = kpiList.find((kpi) => kpi.fullyQualifiedName === kpiFqn);
     const kpiTarget = kpiResult.targetResult[0];

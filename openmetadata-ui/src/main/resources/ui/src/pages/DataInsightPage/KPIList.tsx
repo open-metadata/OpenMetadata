@@ -26,6 +26,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
+import { formatDateTime } from 'utils/date-time/DateTimeUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getKpiPath,
@@ -38,7 +39,6 @@ import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { formatDateTime } from '../../utils/TimeUtils';
 
 const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   const history = useHistory();
@@ -101,7 +101,7 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography.Text> {formatDateTime(startDate)}</Typography.Text>
+          <Typography.Text>{formatDateTime(startDate)}</Typography.Text>
         ),
       },
       {
