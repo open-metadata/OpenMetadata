@@ -13,7 +13,6 @@ Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional
-from metadata.readers.dataframe.reader_factory import SupportedTypes
 
 from pandas import DataFrame
 
@@ -49,6 +48,7 @@ from metadata.ingestion.source.connections import get_connection, get_test_conne
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.logger import ingestion_logger
@@ -171,14 +171,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         sample_key: str,
         config_source: ConfigSource,
         client: Any,
-        metadata_entry: MetadataEntry
+        metadata_entry: MetadataEntry,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
         data_structure_details = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=sample_key, bucket_name=bucket_name, key_extension=SupportedTypes(metadata_entry.structureFormat)
+                key=sample_key,
+                bucket_name=bucket_name,
+                key_extension=SupportedTypes(metadata_entry.structureFormat),
             ),
         )
         columns = []

@@ -296,8 +296,7 @@ class S3Source(StorageServiceSource):
             candidate_keys = [
                 entry["Key"]
                 for entry in response[S3_CLIENT_ROOT_RESPONSE]
-                if entry
-                and entry.get("Key")
+                if entry and entry.get("Key")
             ]
             # pick a random key out of the candidates if any were returned
             if candidate_keys:

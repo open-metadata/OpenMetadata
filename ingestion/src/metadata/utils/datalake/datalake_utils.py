@@ -50,14 +50,15 @@ def fetch_dataframe(
                 config_source=config_source,
                 client=client,
             )
-            try: 
+            try:
                 df_wrapper: DatalakeColumnWrapper = df_reader.read(
                     key=key, bucket_name=bucket_name, **kwargs
                 )
                 return df_wrapper.dataframes
             except Exception as err:
                 logger.error(
-                    f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
+                    f"Error fetching file [{bucket_name}/{key}] using "
+                    f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
     except Exception as err:
         logger.error(
