@@ -36,22 +36,23 @@ const EntitySummaryProgressBar = ({
   };
 
   return (
-    <Row className="m-b-xs">
+    <Row className="m-b-xs" data-testid="entity-summary-container">
       <Col
         className="d-flex justify-between items-center text-xs"
         md={12}
         sm={24}>
-        <Typography.Paragraph className="m-b-0">
+        <Typography.Paragraph className="m-b-0" data-testid="entity-name">
           {pluralize ? pluralizeName(entity) : entity}
         </Typography.Paragraph>
 
-        <Typography.Paragraph className="m-b-0">
+        <Typography.Paragraph className="m-b-0" data-testid="entity-value">
           {label ?? round(latestData[entity] || 0, 2)}
         </Typography.Paragraph>
       </Col>
       <Col md={12} sm={24}>
         <Progress
           className="p-l-xss"
+          data-testid="progress-bar"
           percent={progress}
           showInfo={false}
           size="small"

@@ -38,7 +38,7 @@ const TotalEntityInsightSummary = ({
   const { t } = useTranslation();
 
   return (
-    <Row gutter={gutter}>
+    <Row data-testid="total-entity-insight-summary-container" gutter={gutter}>
       <Col className="p-b-sm" span={24}>
         <CustomStatistic
           changeInValue={relativePercentage}
