@@ -34,6 +34,7 @@ import {
   EntityDiffProps,
   EntityDiffWithMultiChanges,
 } from 'interface/EntityVersion.interface';
+import { ServicesType } from 'interface/service.interface';
 import {
   cloneDeep,
   isEmpty,
@@ -217,7 +218,7 @@ export const getTagsDiff = (
 };
 
 export const getEntityVersionTags = (
-  currentVersionData: VersionData | Glossary | GlossaryTerm,
+  currentVersionData: VersionData | Glossary | GlossaryTerm | ServicesType,
   changeDescription: ChangeDescription
 ) => {
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);

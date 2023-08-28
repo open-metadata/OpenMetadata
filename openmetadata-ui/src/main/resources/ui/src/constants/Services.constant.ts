@@ -14,6 +14,7 @@
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { EntityType } from 'enums/entity.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { StorageServiceType } from 'generated/entity/data/container';
@@ -415,12 +416,12 @@ export const ADVANCED_PROPERTIES = [
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
 
-export const SERVICE_CATEGORIES = [
-  ServiceCategory.DATABASE_SERVICES,
-  ServiceCategory.MESSAGING_SERVICES,
-  ServiceCategory.DASHBOARD_SERVICES,
-  ServiceCategory.PIPELINE_SERVICES,
-  ServiceCategory.ML_MODEL_SERVICES,
-  ServiceCategory.METADATA_SERVICES,
-  ServiceCategory.STORAGE_SERVICES,
+export const SERVICE_TYPES = [
+  EntityType.DATABASE_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.STORAGE_SERVICE,
 ];

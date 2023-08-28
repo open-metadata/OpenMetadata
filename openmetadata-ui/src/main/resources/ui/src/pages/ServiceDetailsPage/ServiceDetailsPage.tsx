@@ -64,7 +64,7 @@ import { LabelType, State } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from 'interface/service.interface';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import {
   PagingWithoutTotal,
   ServicesUpdateRequest,
@@ -101,7 +101,10 @@ import { getTopics } from 'rest/topicsAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getEditConnectionPath } from 'utils/RouterUtils';
+import {
+  getEditConnectionPath,
+  getServiceVersionPath,
+} from 'utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -183,6 +186,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
+
+  const { version: currentVersion } = useMemo(
+    () => serviceDetails,
+    [serviceDetails]
+  );
 
   const fetchServicePermission = async () => {
     setIsLoading(true);
@@ -1019,6 +1027,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
     activeTab,
   ]);
 
+  const versionHandler = () => {
+    currentVersion &&
+      history.push(
+        getServiceVersionPath(
+          serviceCategory,
+          serviceFQN,
+          toString(currentVersion)
+        )
+      );
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1051,6 +1070,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={() => Promise.resolve()}
               onTierUpdate={handleUpdateTier}
+              onVersionClick={versionHandler}
             />
           </Col>
 

@@ -11,22 +11,20 @@
  *  limitations under the License.
  */
 
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityType } from 'enums/entity.enum';
-import { EntityReference } from 'generated/entity/type';
+import { ChangeDescription } from 'generated/entity/type';
+import { Paging } from 'generated/type/paging';
 import { ServicesType } from 'interface/service.interface';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 
-export interface DataAssetsVersionHeaderProps {
-  breadcrumbLinks: TitleBreadcrumbProps['titleLinks'];
-  version: string;
-  deleted: boolean;
-  displayName: string;
-  serviceName?: string;
-  currentVersionData: VersionData | ServicesType;
-  ownerDisplayName: React.ReactNode;
-  tierDisplayName: React.ReactNode;
-  ownerRef: EntityReference | undefined;
-  onVersionClick: () => void;
+export interface ServiceVersionMainTabContentProps {
+  serviceName: string;
+  serviceDetails: ServicesType;
+  data: ServicePageData[];
+  isServiceLoading: boolean;
+  paging: Paging;
+  currentPage: number;
+  pagingHandler: (cursorType: string | number, activePage?: number) => void;
   entityType: EntityType;
+  changeDescription: ChangeDescription;
 }

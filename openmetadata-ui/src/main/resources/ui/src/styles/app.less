@@ -542,14 +542,20 @@ a[href].link-text-grey,
 
 .diff-added {
   background: @success-background-color;
-  color: @success-color;
   width: fit-content;
+  color: @success-color;
+  * {
+    color: @success-color;
+  }
 }
 
 .diff-removed {
-  color: @text-grey-muted;
   text-decoration: line-through;
   width: fit-content;
+  color: @text-grey-muted;
+  * {
+    color: @text-grey-muted;
+  }
 }
 
 .diff-description {

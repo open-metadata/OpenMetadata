@@ -170,6 +170,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                   entityType={EntityType.DASHBOARD_DATA_MODEL}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
+                  serviceName={currentVersionData.service?.name}
                   tierDisplayName={tierDisplayName}
                   version={version}
                   onVersionClick={backHandler}
@@ -183,7 +184,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         )}
 
         <EntityVersionTimeLine
-          show
           currentVersion={version}
           versionHandler={versionHandler}
           versionList={versionList}
