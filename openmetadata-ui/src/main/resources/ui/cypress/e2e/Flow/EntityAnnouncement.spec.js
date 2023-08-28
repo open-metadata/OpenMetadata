@@ -12,9 +12,9 @@
  */
 
 import {
-  getCurrentLocaleDate,
-  getFutureLocaleDateFromCurrentDate,
-} from '../../../src/utils/TimeUtils';
+  getCurrentISODate,
+  getFutureDateString,
+} from '../../../src/utils/date-time/DateTimeUtils';
 import {
   descriptionBox,
   interceptURL,
@@ -79,8 +79,8 @@ describe('Entity Announcement', () => {
         cy.get('[data-testid="manage-button"]').click();
         cy.get('[data-testid="announcement-button"]').click();
       }
-      const startDate = getCurrentLocaleDate();
-      const endDate = getFutureLocaleDateFromCurrentDate(5);
+      const startDate = getCurrentISODate();
+      const endDate = getFutureDateString(5);
 
       cy.get('[data-testid="announcement-error"]')
         .should('be.visible')
@@ -98,8 +98,8 @@ describe('Entity Announcement', () => {
       verifyResponseStatusCode('@waitForAnnouncement', 201);
       cy.get('.Toastify__close-button >').should('be.visible').click();
       // Create InActive Announcement
-      const InActiveStartDate = getFutureLocaleDateFromCurrentDate(6);
-      const InActiveEndDate = getFutureLocaleDateFromCurrentDate(11);
+      const InActiveStartDate = getFutureDateString(6);
+      const InActiveEndDate = getFutureDateString(11);
 
       createAnnouncement(
         'InActive Announcement Title',
