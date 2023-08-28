@@ -80,6 +80,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -104,6 +105,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
@@ -165,6 +167,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TableDAO tableDAO();
+
+  @CreateSqlObject
+  QueryDAO queryDAO();
 
   @CreateSqlObject
   UsageDAO usageDAO();
@@ -248,7 +253,7 @@ public interface CollectionDAO {
   FeedDAO feedDAO();
 
   @CreateSqlObject
-  QueryDAO queryDAO();
+  StoredProcedureDAO storedProcedureDAO();
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
@@ -1808,6 +1813,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
+    @Override
+    default String getTableName() {
+      return "stored_procedure_entity";
+    }
+
+    @Override
+    default Class<StoredProcedure> getEntityClass() {
+      return StoredProcedure.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface QueryDAO extends EntityDAO<Query> {
     @Override
     default String getTableName() {
@@ -2797,12 +2819,16 @@ public interface CollectionDAO {
         @Bind("after") String after,
         @Bind("relation") int relation);
 
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
+    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     int checkEmailExists(@Bind("email") String email);
 
-    @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
+    @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     String findUserByEmail(@Bind("email") String email);
+
+    @Override
+    default User findEntityByName(String fqn, Include include) {
+      return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);
+    }
   }
 
   interface ChangeEventDAO {

@@ -114,12 +114,12 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   useEffect(() => {
-    if (selectedQuery && selectedQuery.id) {
+    if (selectedQuery?.id) {
       fetchResourcePermission();
     }
   }, [selectedQuery]);
 
-  const handleQueryUpdate = async (updatedQuery: Query, key: keyof Query) => {
+  const handleQueryUpdate = async (updatedQuery: Query) => {
     if (isUndefined(selectedQuery)) {
       return;
     }
@@ -128,12 +128,12 @@ const TableQueries: FC<TableQueriesProp> = ({
 
     try {
       const res = await patchQueries(selectedQuery.id || '', jsonPatch);
-      setSelectedQuery((pre) => (pre ? { ...pre, [key]: res[key] } : res));
+      setSelectedQuery((pre) => (pre ? { ...pre, ...res } : res));
       setTableQueries((pre) => {
         return {
           ...pre,
           data: pre.data.map((query) =>
-            query.id === updatedQuery.id ? { ...query, [key]: res[key] } : query
+            query.id === updatedQuery.id ? { ...query, ...res } : query
           ),
         };
       });
@@ -257,6 +257,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     return (
       <div className="flex-center font-medium mt-24" data-testid="no-queries">
         <ErrorPlaceHolder
+          buttonId="add-query-btn"
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
           permission={permissions?.query.Create}
@@ -282,14 +283,13 @@ const TableQueries: FC<TableQueriesProp> = ({
     </Col>
   ) : (
     tableQueries.data.map((query) => (
-      <Col key={query.id} span={24}>
+      <Col data-testid="query-card" key={query.id} span={24}>
         <QueryCard
           afterDeleteAction={fetchTableQuery}
           isExpanded={false}
           permission={queryPermissions}
           query={query}
           selectedId={selectedQuery?.id}
-          tableId={tableId}
           onQuerySelection={handleSelectedQuery}
           onQueryUpdate={handleQueryUpdate}
           onUpdateVote={updateVote}
