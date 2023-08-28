@@ -22,6 +22,8 @@ import tippy, { Instance, Props } from 'tippy.js';
 import './block-editor.less';
 import LinkModal, { LinkData } from './Components/LinkModal';
 import LinkPopup from './Components/LinkPopup';
+import { Mention } from './Extensions/mention';
+import mentionSuggestion from './Extensions/mention/suggestions';
 import SlashCommand from './Extensions/slash-command';
 import { getSuggestionItems } from './Extensions/slash-command/items';
 import renderItems from './Extensions/slash-command/renderItems';
@@ -100,6 +102,9 @@ const BlockEditor = () => {
           class: 'om-task-item',
         },
       }),
+      Mention.configure({
+        suggestion: mentionSuggestion,
+      }),
     ],
 
     onUpdate({ editor }) {
@@ -160,6 +165,11 @@ const BlockEditor = () => {
     let popup: Instance<Props>[] = [];
     let component: ReactRenderer;
     const target = e.target as HTMLElement;
+    const dataType = target.getAttribute('data-type');
+
+    if (dataType === 'mention') {
+      return;
+    }
     if (target.nodeName === 'A') {
       const href = target.getAttribute('href');
 

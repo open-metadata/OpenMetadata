@@ -11,17 +11,26 @@
  *  limitations under the License.
  */
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { Image, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isInViewport } from 'components/BlockEditor/helpers';
-import { isEmpty } from 'lodash';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 
-export interface SlashCommandRef {
+export interface MentionItem {
+  id: string;
+  name: string;
+  fqn: string;
+  label: string;
+  type: string;
+  href: string;
+}
+
+export interface MentionRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
 }
 
-export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
+export default forwardRef<MentionRef, SuggestionProps<MentionItem>>(
   (props, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const { items, command } = props;
@@ -38,9 +47,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
       setSelectedIndex((prev) => {
         const newIndex = (prev + items.length - 1) % items.length;
         const commandListing = document.getElementById(
-          `editor-command-${items[newIndex].title}`
+          `mention-item-${items[newIndex].id}`
         );
-        const commandList = document.getElementById('editor-commands-viewport');
+        const commandList = document.getElementById('mention-viewport');
         if (
           commandList &&
           commandListing &&
@@ -57,9 +66,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
       setSelectedIndex((prev) => {
         const newIndex = (prev + 1) % items.length;
         const commandListing = document.getElementById(
-          `editor-command-${items[newIndex].title}`
+          `mention-item-${items[newIndex].id}`
         );
-        const commandList = document.getElementById('editor-commands-viewport');
+        const commandList = document.getElementById('mention-viewport');
         if (
           commandList &&
           commandListing &&
@@ -100,32 +109,21 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
       },
     }));
 
-    if (isEmpty(items)) {
-      return null;
-    }
-
     return (
       <Space
-        className="slash-menu-wrapper"
+        className="mention-menu-wrapper"
         direction="vertical"
-        id="editor-commands-viewport">
+        id="mention-viewport">
         {items.map((item, index) => (
           <Space
-            className={classNames('w-full cursor-pointer slash-command-item', {
+            className={classNames('w-full cursor-pointer mention-item', {
               'bg-grey-2': index === selectedIndex,
             })}
-            id={`editor-command-${item.title}`}
-            key={item.title}
+            id={`mention-item-${item.id}`}
+            key={item.id}
             onClick={() => selectItem(index)}>
-            <Image
-              className="slash-command-image"
-              preview={false}
-              src={item.imgSrc}
-            />
-            <Space direction="vertical" size={0}>
-              <Typography className="font-bold">{item.title}</Typography>
-              <Typography>{item.description}</Typography>
-            </Space>
+            <ProfilePicture id="" name={item.name} />
+            <Typography className="font-bold">{item.label}</Typography>
           </Space>
         ))}
       </Space>

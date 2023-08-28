@@ -57,7 +57,7 @@ const renderItems = () => {
       });
     },
     onKeyDown(props: SuggestionKeyDownProps) {
-      if (props.event.key === 'Escape') {
+      if (props.event.key === 'Escape' && !popup[0].state.isDestroyed) {
         popup[0].hide();
 
         return true;
