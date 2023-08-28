@@ -20,11 +20,11 @@ import { Link, useParams } from 'react-router-dom';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
 import { getTeamByName } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { getUserPath } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,
   WEB_CHARTS,
 } from '../../constants/DataInsight.constants';
-import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -183,7 +183,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
       <Typography.Paragraph className="font-medium">
         {t('label.data-insight-summary', {
           organization:
-            getEntityName(OrganizationDetails) || t('label.open-metadata'),
+            getEntityName(OrganizationDetails) ?? t('label.open-metadata'),
         })}
       </Typography.Paragraph>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>

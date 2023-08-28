@@ -42,7 +42,7 @@ const CustomStatistic = ({
         </Typography.Paragraph>
       </Col>
       <Col className="text-right">
-        {Boolean(changeInValue) && !isNil(changeInValue) && (
+        {!isNil(changeInValue) && (
           <Typography.Paragraph className="m-b-0">
             <Typography.Text
               className="d-block"
@@ -53,7 +53,7 @@ const CustomStatistic = ({
               )}%`}
             </Typography.Text>
             <Typography.Text className="d-block">
-              {Boolean(duration) &&
+              {!isNil(duration) &&
                 t('label.days-change-lowercase', {
                   days: duration,
                 })}
