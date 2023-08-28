@@ -253,7 +253,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(testCaseResult), 1);
 
-    // Add new date for TableCaseResult
+    // Add new data for TableCaseResult
     TestCaseResult newTestCaseResult =
         new TestCaseResult()
             .withResult("tested")
@@ -352,11 +352,25 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase1.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
-    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, null);
-
     testSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     assertEquals(1, testSummary.getTotal());
     assertEquals(1, testSummary.getFailed());
+
+    // add a new test case to the logical test suite to validate if the
+    // summary is updated correctly
+    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.add(testCase.getId());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(2, testSummary.getTotal());
+
+    // remove test case from logical test suite and validate
+    // the summary is updated as expected
+    deleteLogicalTestCase(logicalTestSuite, testCase.getId());
+
+    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(1, testSummary.getTotal());
   }
 
   @Test
