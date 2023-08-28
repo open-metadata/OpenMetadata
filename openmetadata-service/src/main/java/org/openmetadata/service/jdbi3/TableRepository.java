@@ -51,25 +51,8 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnJoin;
-import org.openmetadata.schema.type.ColumnProfile;
-import org.openmetadata.schema.type.ColumnProfilerConfig;
-import org.openmetadata.schema.type.DailyCount;
-import org.openmetadata.schema.type.DataModel;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.JoinedWith;
-import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.SystemProfile;
-import org.openmetadata.schema.type.TableConstraint;
-import org.openmetadata.schema.type.TableData;
-import org.openmetadata.schema.type.TableJoins;
-import org.openmetadata.schema.type.TableProfile;
-import org.openmetadata.schema.type.TableProfilerConfig;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskDetails;
-import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.util.LifeCycle;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -99,6 +82,7 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
+  public static final String TABLE_LIFE_CYCLE_EXTENSION = "table.lifeCycle";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_COLUMN_EXTENSION = "table.column.";
   public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
@@ -207,6 +191,64 @@ public class TableRepository extends EntityRepository<Table> {
         joins.getStartDate(), table.getFullyQualifiedName(), FIELD_RELATION_TABLE_TYPE, joins.getDirectTableJoins());
 
     return table.withJoins(getJoins(table));
+  }
+
+  @Transaction
+  public Table addLifeCycle(String fqn, LifeCycle lifeCycle) {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityByName(fqn);
+    table.setService(getContainer(table.getId()));
+
+    LifeCycle currentLifeCycle = getLifeCycleData(table);
+    if (currentLifeCycle == null) {
+      currentLifeCycle = new LifeCycle();
+    }
+
+    if (lifeCycle.getCreated() != null) {
+      if (currentLifeCycle.getCreated() == null
+              || lifeCycle.getCreated().getCreatedAt().compareTo(currentLifeCycle.getCreated().getCreatedAt()) > 0) {
+        currentLifeCycle.setCreated(lifeCycle.getCreated());
+      }
+    }
+
+    if (lifeCycle.getAccessed() != null) {
+      if (currentLifeCycle.getAccessed() == null
+          || lifeCycle.getAccessed().getAccessedAt().compareTo(currentLifeCycle.getAccessed().getAccessedAt()) > 0) {
+        currentLifeCycle.setAccessed(lifeCycle.getAccessed());
+      }
+    }
+
+    if (lifeCycle.getUpdated() != null) {
+      if (currentLifeCycle.getUpdated() == null
+          || lifeCycle.getUpdated().getUpdatedAt().compareTo(currentLifeCycle.getUpdated().getUpdatedAt()) > 0) {
+        currentLifeCycle.setUpdated(lifeCycle.getUpdated());
+      }
+    }
+
+    if (lifeCycle.getDeleted() != null) {
+      if (currentLifeCycle.getDeleted() == null
+          || lifeCycle.getDeleted().getDeletedAt().compareTo(currentLifeCycle.getDeleted().getDeletedAt()) > 0) {
+        currentLifeCycle.setDeleted(lifeCycle.getDeleted());
+      }
+    }
+
+    daoCollection
+        .tableEntityExtensionDAO()
+        .insert(
+            table.getId().toString(), TABLE_LIFE_CYCLE_EXTENSION, "lifeCycle", JsonUtils.pojoToJson(currentLifeCycle));
+
+    table.setLifeCycle(currentLifeCycle);
+    return table.withLifeCycle(currentLifeCycle);
+  }
+
+  @Transaction
+  public LifeCycle getLifeCycle(String fqn) {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityByName(fqn);
+    table.setService(getContainer(table.getId()));
+
+    LifeCycle lifeCycle = getLifeCycleData(table);
+    return lifeCycle;
   }
 
   @Transaction
@@ -968,6 +1010,14 @@ public class TableRepository extends EntityRepository<Table> {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     return JsonUtils.readObjects(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
+  }
+
+  private LifeCycle getLifeCycleData(Table table) {
+    LifeCycle lifeCycle =
+        JsonUtils.readValue(
+            daoCollection.tableEntityExtensionDAO().getExtension(table.getId().toString(), TABLE_LIFE_CYCLE_EXTENSION),
+            LifeCycle.class);
+    return lifeCycle;
   }
 
   private void getCustomMetrics(boolean setMetrics, Table table) {
