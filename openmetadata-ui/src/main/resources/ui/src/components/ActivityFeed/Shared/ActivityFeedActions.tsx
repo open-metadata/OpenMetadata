@@ -157,7 +157,7 @@ const ActivityFeedActions = ({
               className="toolbar-button"
               component={IconReaction}
               data-testid="add-reactions"
-              style={{ fontSize: '20px' }}
+              style={{ fontSize: '16px' }}
             />
           </Popover>
         )}
@@ -167,7 +167,7 @@ const ActivityFeedActions = ({
             className="toolbar-button"
             component={IconReply}
             data-testid="add-reply"
-            style={{ fontSize: '20px' }}
+            style={{ fontSize: '16px' }}
             onClick={onReply}
           />
         )}
@@ -177,7 +177,7 @@ const ActivityFeedActions = ({
             className="toolbar-button"
             component={IconEdit}
             data-testid="edit-message"
-            style={{ fontSize: '22px' }}
+            style={{ fontSize: '16px' }}
             onClick={onEditPost}
           />
         )}

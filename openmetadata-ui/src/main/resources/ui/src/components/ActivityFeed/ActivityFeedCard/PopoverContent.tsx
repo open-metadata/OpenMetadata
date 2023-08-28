@@ -179,7 +179,7 @@ const PopoverContent: FC<Props> = ({
         <Icon
           component={IconReaction}
           data-testid="add-reactions"
-          style={{ fontSize: '20px' }}
+          style={{ fontSize: '16px' }}
         />
       </Popover>
 
@@ -187,7 +187,7 @@ const PopoverContent: FC<Props> = ({
         <Icon
           component={IconReplyFeed}
           data-testid="add-reply"
-          style={{ fontSize: '20px' }}
+          style={{ fontSize: '16px' }}
           onClick={handleReply}
         />
       )}
@@ -196,7 +196,7 @@ const PopoverContent: FC<Props> = ({
         <Icon
           component={IconEdit}
           data-testid="edit-message"
-          style={{ fontSize: '22px' }}
+          style={{ fontSize: '16px' }}
           onClick={handleEdit}
         />
       )}
