@@ -38,22 +38,27 @@ def fetch_dataframe(
     # dispatch to handle fetching of data from multiple file formats (csv, tsv, json, avro and parquet)
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
-
     try:
-        for supported_type in SupportedTypes:
-            if key.endswith(supported_type.value):
-
-                df_reader = get_reader(
-                    type_=supported_type,
-                    config_source=config_source,
-                    client=client,
-                )
-
+        key_extension: Optional[SupportedTypes] = file_fqn.key_extension or next(
+            supported_type or None
+            for supported_type in SupportedTypes
+            if key.endswith(supported_type.value)
+        )
+        if key_extension and not key.endswith("/"):
+            df_reader = get_reader(
+                type_=key_extension,
+                config_source=config_source,
+                client=client,
+            )
+            try: 
                 df_wrapper: DatalakeColumnWrapper = df_reader.read(
                     key=key, bucket_name=bucket_name, **kwargs
                 )
                 return df_wrapper.dataframes
-
+            except Exception as err:
+                logger.error(
+                    f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
+                )
     except Exception as err:
         logger.error(
             f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
@@ -64,14 +69,14 @@ def fetch_dataframe(
     return None
 
 
-def get_file_format_type(
-    key: str,
-) -> Optional[str]:
-    """
-    Method to get file format type
-    """
-    for supported_type in SupportedTypes:
-        if key.endswith(supported_type.value):
-            return supported_type.value
-
-    return None
+def get_file_format_type(key_name, metadata_entry=None):
+    for supported_types in SupportedTypes:
+        if key_name.endswith(supported_types.value):
+            return supported_types
+        if metadata_entry:
+            entry: list = [
+                entry for entry in metadata_entry.entries if key_name == entry.dataPath
+            ]
+            if entry and supported_types.value == entry[0].structureFormat:
+                return supported_types
+    return False

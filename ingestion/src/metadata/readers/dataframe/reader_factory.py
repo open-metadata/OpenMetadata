@@ -26,6 +26,9 @@ from metadata.readers.dataframe.json import JSONDataFrameReader
 from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 from metadata.readers.models import ConfigSource
 
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 class SupportedTypes(Enum):
     CSV = "csv"

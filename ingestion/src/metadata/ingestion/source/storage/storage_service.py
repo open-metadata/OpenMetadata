@@ -13,6 +13,7 @@ Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 
 from pandas import DataFrame
 
@@ -54,7 +55,6 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 KEY_SEPARATOR = "/"
 
 
@@ -171,13 +171,14 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         sample_key: str,
         config_source: ConfigSource,
         client: Any,
+        metadata_entry: MetadataEntry
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
         data_structure_details = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=sample_key, bucket_name=bucket_name
+                key=sample_key, bucket_name=bucket_name, key_extension=SupportedTypes(metadata_entry.structureFormat)
             ),
         )
         columns = []
@@ -197,6 +198,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Optional[List[Column]]:
         """Get the columns from the file and partition information"""
         extracted_cols = self.extract_column_definitions(
-            container_name, sample_key, config_source, client
+            container_name, sample_key, config_source, client, metadata_entry
         )
         return (metadata_entry.partitionColumns or []) + (extracted_cols or [])

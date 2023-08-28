@@ -42,6 +42,7 @@ from metadata.ingestion.source.storage.s3.metadata import (
     S3ContainerDetails,
     S3Source,
 )
+from metadata.ingestion.source.storage.storage_service import _load_metadata_file_s3
 
 MOCK_OBJECT_STORE_CONFIG = {
     "source": {
@@ -173,13 +174,12 @@ class StorageUnitTest(TestCase):
             self.object_store_source.fetch_buckets(), EXPECTED_S3_BUCKETS
         )
 
-    def test_load_metadata_file(self):
-        self.object_store_source._is_metadata_file_present = lambda bucket_name: True
+    def test_load_metadata_file_s3(self):
         self.object_store_source.s3_client.get_object = (
             lambda Bucket, Key: self._compute_mocked_metadata_file_response()
         )
-        container_config: StorageContainerConfig = (
-            self.object_store_source._load_metadata_file(bucket_name="test")
+        container_config: StorageContainerConfig = _load_metadata_file_s3(
+            bucket_name="test", client=self.object_store_source.s3_client
         )
 
         self.assertEqual(1, len(container_config.entries))
@@ -193,9 +193,10 @@ class StorageUnitTest(TestCase):
         )
 
     def test_no_metadata_file_returned_when_file_not_present(self):
-        self.object_store_source._is_metadata_file_present = lambda bucket_name: False
         self.assertIsNone(
-            self.object_store_source._load_metadata_file(bucket_name="test")
+            _load_metadata_file_s3(
+                bucket_name="test", client=self.object_store_source.s3_client
+            )
         )
 
     def test_generate_unstructured_container(self):
@@ -366,7 +367,7 @@ class StorageUnitTest(TestCase):
         self.object_store_source._get_sample_file_prefix = (
             lambda metadata_entry: "/transactions"
         )
-        self.object_store_source.prefix_exits = lambda bucket_name, prefix: True
+        prefix_exits = lambda bucket_name, prefix: True
         self.object_store_source.s3_client.list_objects_v2 = (
             lambda Bucket, Prefix: MOCK_S3_OBJECT_FILE_PATHS
         )

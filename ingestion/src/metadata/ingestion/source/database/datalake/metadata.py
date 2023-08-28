@@ -57,6 +57,7 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.columns import clean_dataframe
+from metadata.ingestion.source.storage.manifest_utils import _load_metadata_file_s3
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils import fqn
@@ -67,6 +68,8 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.s3_utils import list_s3_objects
 
 logger = ingestion_logger()
+
+OBJECT_FILTERED_OUT_MESSAGE = "Object Filtered Out"
 
 DATALAKE_DATA_TYPES = {
     **dict.fromkeys(["int64", "INT", "int32"], DataType.INT.value),
@@ -262,32 +265,13 @@ class DatalakeSource(DatabaseServiceSource):
                 for key in bucket.list_blobs(prefix=prefix):
                     table_name = self.standardize_table_name(bucket_name, key.name)
                     # adding this condition as the gcp blobs also contains directory, which we can filter out
-                    if table_name.endswith("/") or not self.check_valid_file_type(
-                        key.name
+                    if self.filter_dl_table(table_name):
+                        continue
+                    if table_name.endswith("/") or not get_file_format_type(
+                        key_name=key.name
                     ):
                         logger.debug(
                             f"Object filtered due to unsupported file type: {key.name}"
-                        )
-                        continue
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
-
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Object Filtered Out",
                         )
                         continue
 
@@ -296,35 +280,21 @@ class DatalakeSource(DatabaseServiceSource):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
+                metadata_entry = _load_metadata_file_s3(bucket_name, client=self.client)
                 for key in list_s3_objects(self.client, **kwargs):
                     table_name = self.standardize_table_name(bucket_name, key["Key"])
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Object Filtered Out",
-                        )
+                    if self.filter_dl_table(table_name):
                         continue
-                    if not self.check_valid_file_type(key["Key"]):
+                    file_extension = get_file_format_type(
+                        key_name=key["Key"], metadata_entry=metadata_entry
+                    )
+                    if not file_extension:
                         logger.debug(
                             f"Object filtered due to unsupported file type: {key['Key']}"
                         )
                         continue
 
-                    yield table_name, TableType.Regular
+                    yield table_name, TableType.Regular, file_extension
             if isinstance(self.service_connection.configSource, AzureConfig):
                 container_client = self.client.get_container_client(bucket_name)
 
@@ -332,27 +302,11 @@ class DatalakeSource(DatabaseServiceSource):
                     name_starts_with=prefix or None
                 ):
                     table_name = self.standardize_table_name(bucket_name, file.name)
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Object Filtered Out",
-                        )
+                    if self.filter_dl_table(table_name):
                         continue
-                    if not self.check_valid_file_type(file.name):
+                    if not get_file_format_type(
+                        key_name=file.name,
+                    ):
                         logger.debug(
                             f"Object filtered due to unsupported file type: {file.name}"
                         )
@@ -366,7 +320,7 @@ class DatalakeSource(DatabaseServiceSource):
         From topology.
         Prepare a table request and pass it to the sink
         """
-        table_name, table_type = table_name_and_type
+        table_name, table_type, table_extension = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
         try:
             table_constraints = None
@@ -376,6 +330,7 @@ class DatalakeSource(DatabaseServiceSource):
                 file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
                     bucket_name=schema_name,
+                    key_extension=table_extension,
                 ),
             )
 
@@ -388,7 +343,7 @@ class DatalakeSource(DatabaseServiceSource):
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
-                    fileFormat=get_file_format_type(table_name),
+                    fileFormat=table_extension.value if table_extension else None,
                 )
                 yield Either(right=table_request)
                 self.register_record(table_request)
@@ -577,10 +532,29 @@ class DatalakeSource(DatabaseServiceSource):
     ) -> str:
         return table
 
-    def check_valid_file_type(self, key_name):
-        for supported_types in SupportedTypes:
-            if key_name.endswith(supported_types.value):
-                return True
+    def filter_dl_table(self, table_name: str):
+        """Filters Datalake Tables based on filterPattern"""
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service.name.__root__,
+            database_name=self.context.database.name.__root__,
+            schema_name=self.context.database_schema.name.__root__,
+            table_name=table_name,
+            skip_es_search=True,
+        )
+
+        if filter_by_table(
+            self.config.sourceConfig.config.tableFilterPattern,
+            table_fqn
+            if self.config.sourceConfig.config.useFqnForFiltering
+            else table_name,
+        ):
+            self.status.filter(
+                table_fqn,
+                OBJECT_FILTERED_OUT_MESSAGE,
+            )
+            return True
         return False
 
     def close(self):

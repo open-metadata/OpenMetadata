@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 object store extraction metadata"""
-import json
 import secrets
 import traceback
 from datetime import datetime, timedelta
@@ -35,7 +34,6 @@ from metadata.generated.schema.entity.services.connections.storage.s3Connection 
 )
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
-    StorageContainerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -49,15 +47,12 @@ from metadata.ingestion.source.storage.s3.models import (
 )
 from metadata.ingestion.source.storage.storage_service import (
     KEY_SEPARATOR,
-    OPENMETADATA_TEMPLATE_FILE_NAME,
     StorageServiceSource,
 )
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-S3_CLIENT_ROOT_RESPONSE = "Contents"
 
 
 class S3Metric(Enum):
@@ -99,8 +94,8 @@ class S3Source(StorageServiceSource):
                 )
                 self._bucket_cache[bucket_response.name] = self.context.container
 
-                metadata_config = self._load_metadata_file(
-                    bucket_name=bucket_response.name
+                metadata_config = _load_metadata_file_s3(
+                    bucket_name=bucket_response.name, client=self.s3_client
                 )
                 if metadata_config:
                     for metadata_entry in metadata_config.entries:
@@ -262,34 +257,6 @@ class S3Source(StorageServiceSource):
             )
         return 0
 
-    def _load_metadata_file(self, bucket_name: str) -> Optional[StorageContainerConfig]:
-        """
-        Load the metadata template file from the root of the bucket, if it exists
-        """
-        if self._is_metadata_file_present(bucket_name=bucket_name):
-            try:
-                logger.info(
-                    f"Found metadata template file at - s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
-                )
-                response_object = self.s3_client.get_object(
-                    Bucket=bucket_name, Key=OPENMETADATA_TEMPLATE_FILE_NAME
-                )
-                content = json.load(response_object["Body"])
-                metadata_config = StorageContainerConfig.parse_obj(content)
-                return metadata_config
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed loading metadata file s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}-{exc}"
-                )
-        return None
-
-    def _is_metadata_file_present(self, bucket_name: str):
-        return self.prefix_exits(
-            bucket_name=bucket_name,
-            prefix=OPENMETADATA_TEMPLATE_FILE_NAME,
-        )
-
     def _generate_unstructured_container(
         self, bucket_response: S3BucketResponse
     ) -> S3ContainerDetails:
@@ -317,7 +284,9 @@ class S3Source(StorageServiceSource):
         """
         prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
         # no objects found in the data path
-        if not self.prefix_exits(bucket_name=bucket_name, prefix=prefix):
+        if not prefix_exits(
+            bucket_name=bucket_name, prefix=prefix, client=self.s3_client
+        ):
             logger.warning(f"Ignoring metadata entry {prefix} - no files found")
             return None
         # this will look only in the first 1000 files under that path (default for list_objects_v2).
@@ -329,7 +298,6 @@ class S3Source(StorageServiceSource):
                 for entry in response[S3_CLIENT_ROOT_RESPONSE]
                 if entry
                 and entry.get("Key")
-                and entry["Key"].endswith(metadata_entry.structureFormat)
             ]
             # pick a random key out of the candidates if any were returned
             if candidate_keys:
@@ -348,22 +316,6 @@ class S3Source(StorageServiceSource):
                 f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}"
             )
             return None
-
-    def prefix_exits(self, bucket_name: str, prefix: str) -> bool:
-        """
-        Checks if a given prefix exists in a bucket
-        """
-        try:
-            res = self.s3_client.list_objects_v2(
-                Bucket=bucket_name, Prefix=prefix, MaxKeys=1
-            )
-            return S3_CLIENT_ROOT_RESPONSE in res
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed when trying to check if S3 prefix {prefix} exists in bucket {bucket_name}"
-            )
-            return False
 
     def get_aws_bucket_region(self, bucket_name: str) -> str:
         """

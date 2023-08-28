@@ -38,3 +38,4 @@ class DatalakeTableSchemaWrapper(BaseModel):
 
     key: str
     bucket_name: str
+    key_extension: Optional[Any]
