@@ -18,6 +18,16 @@
             "om_stemmer"
           ]
         },
+        "om_analyzer_jp" : {
+          "tokenizer" : "kuromoji_tokenizer",
+          "type" : "custom",
+          "filter" : [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
+          ]
+        },
         "om_ngram": {
           "tokenizer": "ngram",
           "min_gram": 1,
@@ -42,7 +52,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -60,7 +70,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -74,7 +84,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "ngram": {
             "type": "text",
@@ -95,99 +105,7 @@
       "href": {
         "type": "text"
       },
-      "sourceUrl": {
-        "type": "text"
-      },
-      "columns": {
-        "properties": {
-          "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "dataType": {
-            "type": "text"
-          },
-          "dataTypeDisplay": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text",
-            "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "norms": false
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "tags": {
-            "properties": {
-              "tagFQN": {
-                "type": "keyword"
-              },
-              "labelType": {
-                "type": "keyword"
-              },
-              "description": {
-                "type": "text"
-              },
-              "source": {
-                "type": "keyword"
-              },
-              "state": {
-                "type": "keyword"
-              }
-            }
-          },
-          "ordinalPosition": {
-            "type": "integer"
-          }
-        }
-      },
-      "databaseSchema": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "text"
-          },
-          "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "database": {
+      "owner": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -204,6 +122,15 @@
           "name": {
             "type": "keyword",
             "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -261,8 +188,12 @@
             "type": "text"
           }
         }
+
       },
-      "owner": {
+      "serviceType": {
+        "type": "keyword"
+      },
+      "database": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -279,52 +210,6 @@
           "name": {
             "type": "keyword",
             "normalizer": "lowercase_normalizer",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "location": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -380,31 +265,6 @@
           }
         }
       },
-      "deleted": {
-        "type": "text"
-      },
-      "followers": {
-        "type": "keyword"
-      },
-      "tier": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -424,33 +284,11 @@
           }
         }
       },
-      "serviceType": {
-        "type": "keyword"
+      "deleted": {
+        "type": "text"
       },
-      "entityType": {
-        "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
-      "column_suggest": {
-        "type": "completion"
-      },
-      "schema_suggest": {
-        "type": "completion"
-      },
-      "database_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
+      "sourceUrl": {
+        "type": "text"
       }
     }
   }

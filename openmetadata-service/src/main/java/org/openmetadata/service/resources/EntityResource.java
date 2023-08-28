@@ -56,8 +56,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  public static SearchClient searchClient = null;
-  public static ElasticSearchConfiguration esConfig = null;
+  public static SearchClient searchClient;
+  public static ElasticSearchConfiguration esConfig;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;

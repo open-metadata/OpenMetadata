@@ -174,9 +174,7 @@ public class OpenSearchClientImpl implements SearchClient {
         // creating alias for indexes
         IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
         IndicesAliasesRequest.AliasActions aliasAction =
-            IndicesAliasesRequest.AliasActions.add()
-                .index(elasticSearchIndexType.indexName)
-                .alias("sourceUrlSearchAlias");
+            IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias("SearchAlias");
         aliasesRequest.addAliasAction(aliasAction);
         client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
       }
@@ -204,9 +202,7 @@ public class OpenSearchClientImpl implements SearchClient {
       // creating alias for indexes
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       IndicesAliasesRequest.AliasActions aliasAction =
-          IndicesAliasesRequest.AliasActions.add()
-              .index(elasticSearchIndexType.indexName)
-              .alias("sourceUrlSearchAlias");
+          IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias("SearchAlias");
       aliasesRequest.addAliasAction(aliasAction);
       client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
       if (exists) {
@@ -238,16 +234,14 @@ public class OpenSearchClientImpl implements SearchClient {
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (exists) {
         // check if the alias is exist or not
-        GetAliasesRequest getAliasesRequest = new GetAliasesRequest("sourceUrlSearchAlias");
+        GetAliasesRequest getAliasesRequest = new GetAliasesRequest("SearchAlias");
         GetAliasesResponse getAliasesResponse = client.indices().getAlias(getAliasesRequest, RequestOptions.DEFAULT);
         boolean aliasExists = getAliasesResponse.getAliases().containsKey(elasticSearchIndexType.indexName);
         // deleting alias for indexes if exists
         if (aliasExists) {
           IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
           IndicesAliasesRequest.AliasActions aliasAction =
-              IndicesAliasesRequest.AliasActions.remove()
-                  .index(elasticSearchIndexType.indexName)
-                  .alias("sourceUrlSearchAlias");
+              IndicesAliasesRequest.AliasActions.remove().index(elasticSearchIndexType.indexName).alias("SearchAlias");
           aliasesRequest.addAliasAction(aliasAction);
           client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
         }
@@ -377,7 +371,7 @@ public class OpenSearchClientImpl implements SearchClient {
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     QueryBuilder wildcardQuery = QueryBuilders.queryStringQuery(sourceUrl).field("sourceUrl").escape(true);
     org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest("sourceUrlSearchAlias");
+        new org.opensearch.action.search.SearchRequest("SearchAlias");
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(wildcardQuery);
     searchRequest.source(searchSourceBuilder);
@@ -788,7 +782,7 @@ public class OpenSearchClientImpl implements SearchClient {
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
     deleteEntityFromElasticSearch(deleteRequest);
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("sourceUrlSearchAlias");
+    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
     if (!CommonUtil.nullOrEmpty(field)) {
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
     }
