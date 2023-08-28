@@ -676,9 +676,7 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !tablePermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}
@@ -686,6 +684,7 @@ const TableDetailsPageV1 = () => {
             hasEditAccess={
               tablePermissions.EditAll || tablePermissions.EditCustomFields
             }
+            hasPermission={tablePermissions.ViewAll}
           />
         ),
       },
@@ -829,7 +828,7 @@ const TableDetailsPageV1 = () => {
     if (tableDetails) {
       fetchQueryCount();
     }
-  }, [tableDetails]);
+  }, [tableDetails?.fullyQualifiedName]);
 
   const onThreadPanelClose = () => {
     setThreadLink('');

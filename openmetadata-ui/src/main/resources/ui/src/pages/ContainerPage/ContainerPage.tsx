@@ -590,9 +590,7 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !containerPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             entityDetails={
               containerData as CustomPropertyProps['entityDetails']
@@ -600,6 +598,7 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={hasEditCustomFieldsPermission}
+            hasPermission={containerPermissions.ViewAll}
           />
         ),
       },
