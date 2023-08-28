@@ -48,7 +48,7 @@ const TagsV1 = ({
     () =>
       isGlossaryTag ? (
         <IconTerm
-          className="flex-shrink"
+          className="flex-shrink m-r-xss"
           data-testid="glossary-icon"
           height={12}
           name="glossary-icon"
@@ -56,7 +56,7 @@ const TagsV1 = ({
         />
       ) : (
         <IconTag
-          className="flex-shrink"
+          className="flex-shrink m-r-xss"
           data-testid="tags-icon"
           height={12}
           name="tag-icon"
@@ -100,7 +100,7 @@ const TagsV1 = ({
       <div className="d-flex w-full">
         {tagColorBar}
         <div className="d-flex items-center p-x-xs w-full">
-          <span className="m-r-xss">{startIcon}</span>
+          {startIcon}
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"
