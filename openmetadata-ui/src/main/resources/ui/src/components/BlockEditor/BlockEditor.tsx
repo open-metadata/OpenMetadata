@@ -12,6 +12,8 @@
  */
 import LinkExtension from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import TaskItem from '@tiptap/extension-task-item';
+import TaskList from '@tiptap/extension-task-list';
 import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { isEmpty, isNil } from 'lodash';
@@ -86,6 +88,16 @@ const BlockEditor = () => {
         slashSuggestion: {
           items: getSuggestionItems,
           render: renderItems,
+        },
+      }),
+      TaskList.configure({
+        HTMLAttributes: {
+          class: 'om-task-list',
+        },
+      }),
+      TaskItem.configure({
+        HTMLAttributes: {
+          class: 'om-task-item',
         },
       }),
     ],

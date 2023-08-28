@@ -99,8 +99,6 @@
 
     blockquote {
       border-left: 4px solid @border-color;
-      padding-left: 16px;
-      margin-left: 25px;
     }
 
     strong {
@@ -151,12 +149,14 @@
       }
     }
 
+    ol {
+      list-style-type: decimal !important;
+    }
     ul {
-      list-style: disc !important;
-      li {
-        &::before {
-          content: none;
-        }
+      list-style-type: disc !important;
+      li.om-task-item {
+        display: flex;
+        gap: 4px;
       }
     }
   }

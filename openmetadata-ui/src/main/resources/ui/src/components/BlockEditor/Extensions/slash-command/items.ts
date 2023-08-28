@@ -20,6 +20,7 @@ import H3Image from 'assets/svg/markdown/ic-slash-h3.png';
 import NumberedListImage from 'assets/svg/markdown/ic-slash-numbered-list.png';
 import QuoteImage from 'assets/svg/markdown/ic-slash-quote.png';
 import TextImage from 'assets/svg/markdown/ic-slash-text.png';
+import TaskListImage from 'assets/svg/markdown/ic-task-list.png';
 
 export enum SuggestionItemType {
   BASIC_BLOCKS = 'Basic blocks',
@@ -122,6 +123,16 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
           editor.chain().focus().deleteRange(range).toggleOrderedList().run();
         },
         imgSrc: NumberedListImage,
+      },
+      {
+        title: 'Task List',
+        description: 'Create a task list',
+        shortcut: null,
+        type: SuggestionItemType.BASIC_BLOCKS,
+        command: ({ editor, range }) => {
+          editor.chain().focus().deleteRange(range).toggleTaskList().run();
+        },
+        imgSrc: TaskListImage,
       },
       {
         title: 'Quote',
