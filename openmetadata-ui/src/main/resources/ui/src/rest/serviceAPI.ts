@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { configOptions } from 'constants/constants';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { isNil } from 'lodash';
 import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
 import { ServiceResponse, ServicesType } from '../interface/service.interface';
@@ -111,4 +112,27 @@ export const deleteService = (
   id: string
 ): Promise<AxiosResponse> => {
   return APIClient.delete(`/services/${serviceCat}/${id}`);
+};
+
+export const getServiceVersions = async (
+  serviceCategory: string,
+  id: string
+) => {
+  const url = `/services/${serviceCategory}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getServiceVersionData = async (
+  serviceCategory: string,
+  id: string,
+  version: string
+) => {
+  const url = `/services/${serviceCategory}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<ServicesType>(url);
+
+  return response.data;
 };
