@@ -360,7 +360,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       // Get the latest result to set the testSuite summary field
       String result =
           daoCollection
-              .entityExtensionTimeSeriesDao()
+              .dataQualityDataTimeSeriesDao()
               .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION);
       if (result != null) {
         TestCaseResult testCaseResult = JsonUtils.readValue(result, TestCaseResult.class);

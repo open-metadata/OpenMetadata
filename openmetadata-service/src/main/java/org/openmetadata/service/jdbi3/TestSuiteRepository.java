@@ -117,7 +117,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       testSummary = getTestCasesExecutionSummary(testSuites);
     } else {
       // don't want to get it from the cache as test results summary may be stale
-      TestSuite testSuite = dao.findEntityById(testSuiteId, Include.ALL);
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "", Include.ALL, false);
       testSummary = getTestCasesExecutionSummary(testSuite);
     }
     return testSummary;
