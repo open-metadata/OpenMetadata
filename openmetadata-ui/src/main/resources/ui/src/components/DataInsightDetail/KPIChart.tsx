@@ -212,7 +212,10 @@ const KPIChart: FC<Props> = ({
           {graphData.length ? (
             <>
               <Col span={DI_STRUCTURE.leftContainerSpan}>
-                <ResponsiveContainer debounce={1} minHeight={400}>
+                <ResponsiveContainer
+                  debounce={1}
+                  id="kpi-chart"
+                  minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
                       stroke={GRAPH_BACKGROUND_COLOR}

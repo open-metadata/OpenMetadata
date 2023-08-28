@@ -341,7 +341,10 @@ const DataInsightPage = () => {
             </div>
 
             {createKPIPermission && (
-              <Button type="primary" onClick={handleAddKPI}>
+              <Button
+                data-testid="add-kpi-btn"
+                type="primary"
+                onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
                 })}
@@ -426,6 +429,9 @@ const DataInsightPage = () => {
                 dataInsightChartName={
                   DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
                 }
+                header={t('label.data-insight-description-summary-type', {
+                  type: t('label.data-asset'),
+                })}
                 kpi={descriptionKpi}
                 selectedDays={selectedDaysFilter}
               />
@@ -436,6 +442,9 @@ const DataInsightPage = () => {
                 dataInsightChartName={
                   DataInsightChartType.PercentageOfEntitiesWithOwnerByType
                 }
+                header={t('label.data-insight-owner-summary-type', {
+                  type: t('label.data-asset'),
+                })}
                 kpi={ownerKpi}
                 selectedDays={selectedDaysFilter}
               />
@@ -446,6 +455,9 @@ const DataInsightPage = () => {
                 dataInsightChartName={
                   DataInsightChartType.PercentageOfServicesWithDescription
                 }
+                header={t('label.data-insight-description-summary-type', {
+                  type: t('label.service'),
+                })}
                 kpi={descriptionKpi}
                 selectedDays={selectedDaysFilter}
               />
@@ -456,6 +468,9 @@ const DataInsightPage = () => {
                 dataInsightChartName={
                   DataInsightChartType.PercentageOfServicesWithOwner
                 }
+                header={t('label.data-insight-owner-summary-type', {
+                  type: t('label.service'),
+                })}
                 kpi={ownerKpi}
                 selectedDays={selectedDaysFilter}
               />

@@ -66,6 +66,7 @@ interface Props {
   kpi: Kpi | undefined;
   selectedDays: number;
   dataInsightChartName: DataInsightChartType;
+  header?: string;
 }
 
 const OwnerInsight: FC<Props> = ({
@@ -73,6 +74,7 @@ const OwnerInsight: FC<Props> = ({
   kpi,
   selectedDays,
   dataInsightChartName,
+  header,
 }) => {
   const [totalEntitiesOwnerByType, setTotalEntitiesOwnerByType] =
     useState<DataInsightChartResult>();
@@ -143,12 +145,12 @@ const OwnerInsight: FC<Props> = ({
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
-      id={DataInsightChartType.PercentageOfEntitiesWithOwnerByType}
+      id={dataInsightChartName}
       loading={isLoading}
       title={
         <PageHeader
           data={{
-            header: t('label.data-insight-owner-summary'),
+            header,
             subHeader: t('message.field-insight', {
               field: t('label.owner'),
             }),
@@ -160,7 +162,7 @@ const OwnerInsight: FC<Props> = ({
           <Col span={DI_STRUCTURE.leftContainerSpan}>
             <ResponsiveContainer
               debounce={1}
-              id="owner-summary-graph"
+              id={`${dataInsightChartName}-graph`}
               minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid

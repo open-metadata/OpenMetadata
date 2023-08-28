@@ -133,7 +133,10 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
+            <ResponsiveContainer
+              debounce={1}
+              id="entity-summary-chart"
+              minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
                   stroke={GRAPH_BACKGROUND_COLOR}

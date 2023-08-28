@@ -66,6 +66,7 @@ interface Props {
   kpi: Kpi | undefined;
   selectedDays: number;
   dataInsightChartName: DataInsightChartType;
+  header?: string;
 }
 
 const DescriptionInsight: FC<Props> = ({
@@ -73,6 +74,7 @@ const DescriptionInsight: FC<Props> = ({
   kpi,
   selectedDays,
   dataInsightChartName,
+  header,
 }) => {
   const [totalEntitiesDescriptionByType, setTotalEntitiesDescriptionByType] =
     useState<DataInsightChartResult>();
@@ -144,12 +146,12 @@ const DescriptionInsight: FC<Props> = ({
     <Card
       className="data-insight-card"
       data-testid="entity-description-percentage-card"
-      id={DataInsightChartType.PercentageOfEntitiesWithDescriptionByType}
+      id={dataInsightChartName}
       loading={isLoading}
       title={
         <PageHeader
           data={{
-            header: t('label.data-insight-description-summary'),
+            header,
             subHeader: t('message.field-insight', {
               field: t('label.description-lowercase'),
             }),
@@ -161,7 +163,7 @@ const DescriptionInsight: FC<Props> = ({
           <Col span={DI_STRUCTURE.leftContainerSpan}>
             <ResponsiveContainer
               debounce={1}
-              id="description-summary-graph"
+              id={`${dataInsightChartName}-graph`}
               minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
