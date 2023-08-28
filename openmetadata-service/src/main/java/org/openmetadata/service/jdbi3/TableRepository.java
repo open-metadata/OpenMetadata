@@ -357,12 +357,13 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    storeTimeSeries(
-        table.getFullyQualifiedName(),
-        TABLE_PROFILE_EXTENSION,
-        "tableProfile",
-        JsonUtils.pojoToJson(createTableProfile.getTableProfile()),
-        createTableProfile.getTableProfile().getTimestamp());
+    daoCollection
+        .profilerDataTimeSeriesDao()
+        .insert(
+            table.getFullyQualifiedName(),
+            TABLE_PROFILE_EXTENSION,
+            "tableProfile",
+            JsonUtils.pojoToJson(createTableProfile.getTableProfile()));
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
       // Validate all the columns
@@ -370,31 +371,25 @@ public class TableRepository extends EntityRepository<Table> {
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
-      storeTimeSeries(
-          column.getFullyQualifiedName(),
-          TABLE_COLUMN_PROFILE_EXTENSION,
-          "columnProfile",
-          JsonUtils.pojoToJson(columnProfile),
-          columnProfile.getTimestamp());
+      daoCollection
+          .profilerDataTimeSeriesDao()
+          .insert(
+              column.getFullyQualifiedName(),
+              TABLE_COLUMN_PROFILE_EXTENSION,
+              "columnProfile",
+              JsonUtils.pojoToJson(columnProfile));
     }
 
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
     if (systemProfiles != null && !systemProfiles.isEmpty()) {
       for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
-        String storedSystemProfile =
-            getExtensionAtTimestampWithOperation(
+        daoCollection
+            .profilerDataTimeSeriesDao()
+            .insert(
                 table.getFullyQualifiedName(),
                 SYSTEM_PROFILE_EXTENSION,
-                systemProfile.getTimestamp(),
-                systemProfile.getOperation().value());
-        storeTimeSeriesWithOperation(
-            table.getFullyQualifiedName(),
-            SYSTEM_PROFILE_EXTENSION,
-            "systemProfile",
-            JsonUtils.pojoToJson(systemProfile),
-            systemProfile.getTimestamp(),
-            systemProfile.getOperation().value(),
-            storedSystemProfile != null);
+                "systemProfile",
+                JsonUtils.pojoToJson(systemProfile));
       }
     }
 
@@ -420,11 +415,13 @@ public class TableRepository extends EntityRepository<Table> {
       throw new IllegalArgumentException("entityType must be table, column or system");
     }
 
-    Object storedTableProfile = JsonUtils.readValue(getExtensionAtTimestamp(fqn, extension, timestamp), classMapper);
+    Object storedTableProfile =
+        JsonUtils.readValue(
+            daoCollection.profilerDataTimeSeriesDao().getExtensionAtTimestamp(fqn, extension, timestamp), classMapper);
     if (storedTableProfile == null) {
       throw new EntityNotFoundException(String.format("Failed to find table profile for %s at %s", fqn, timestamp));
     }
-    deleteExtensionAtTimestamp(fqn, extension, timestamp);
+    daoCollection.profilerDataTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
   }
 
   @Transaction
@@ -432,7 +429,11 @@ public class TableRepository extends EntityRepository<Table> {
     List<TableProfile> tableProfiles;
     tableProfiles =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs), TableProfile.class);
+            daoCollection
+                .profilerDataTimeSeriesDao()
+                .listBetweenTimestampsByOrder(
+                    fqn, TABLE_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
+            TableProfile.class);
     return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
@@ -441,7 +442,11 @@ public class TableRepository extends EntityRepository<Table> {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs), ColumnProfile.class);
+            daoCollection
+                .profilerDataTimeSeriesDao()
+                .listBetweenTimestampsByOrder(
+                    fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
+            ColumnProfile.class);
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
@@ -450,7 +455,11 @@ public class TableRepository extends EntityRepository<Table> {
     List<SystemProfile> systemProfiles;
     systemProfiles =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs), SystemProfile.class);
+            daoCollection
+                .profilerDataTimeSeriesDao()
+                .listBetweenTimestampsByOrder(
+                    fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
+            SystemProfile.class);
     return new ResultList<>(systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 
@@ -458,7 +467,9 @@ public class TableRepository extends EntityRepository<Table> {
     for (Column column : columnList) {
       ColumnProfile columnProfile =
           JsonUtils.readValue(
-              getLatestExtensionFromTimeseries(column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+              daoCollection
+                  .profilerDataTimeSeriesDao()
+                  .getLatestExtension(column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
               ColumnProfile.class);
       column.setProfile(columnProfile);
       if (column.getChildren() != null) {
@@ -472,7 +483,9 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
-            getLatestExtensionFromTimeseries(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
+            daoCollection
+                .profilerDataTimeSeriesDao()
+                .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
             TableProfile.class);
     table.setProfile(tableProfile);
     setColumnProfile(table.getColumns());
