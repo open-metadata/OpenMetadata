@@ -755,8 +755,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new RuntimeException(e);
       }
     }
-    // Override to perform any operation required after an entity update.
-    // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
   @Transaction

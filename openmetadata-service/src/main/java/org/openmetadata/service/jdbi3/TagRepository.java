@@ -124,11 +124,6 @@ public class TagRepository extends EntityRepository<Tag> {
     return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
   }
 
-  //  @Override
-  //  protected void postCreate(Tag tag) {
-  //
-  //  }
-
   private Integer getUsageCount(Tag tag) {
     return tag.getUsageCount() != null
         ? tag.getUsageCount()

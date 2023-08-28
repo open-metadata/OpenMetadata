@@ -56,8 +56,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  public static SearchClient searchClient;
-  public static ElasticSearchConfiguration esConfig;
+  public static SearchClient searchClient = null;
+  public static ElasticSearchConfiguration esConfig = null;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
@@ -244,8 +244,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response = repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
-    repository.postUpdate(response.getEntity());
     addHref(uriInfo, response.getEntity());
+    repository.postUpdate(response.getEntity());
     return response.toResponse();
   }
 

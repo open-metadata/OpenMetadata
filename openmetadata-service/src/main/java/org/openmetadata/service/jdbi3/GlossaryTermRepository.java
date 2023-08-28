@@ -190,6 +190,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  protected void postDelete(GlossaryTerm entity) {
+    // Cleanup all the tag labels using this glossary term
+    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
+  }
+
+  @Override
   protected void deleteFromSearch(GlossaryTerm entity, String changeType) {
     if (supportsSearchIndex) {
       String scriptTxt =

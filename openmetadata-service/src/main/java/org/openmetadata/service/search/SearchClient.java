@@ -87,26 +87,6 @@ public interface SearchClient {
 
   void addTestCaseFromLogicalTestSuite(Object testSuite) throws IOException;
 
-  //  default void updateTestCase(ChangeEvent event) throws IOException {
-  //    SearchIndexDefinition.ElasticSearchIndexType indexType =
-  // IndexUtil.getIndexMappingByEntityType(Entity.TEST_CASE);
-  //    // creating a new test case will return a TestCase entity while bulk adding test cases will return
-  //    // the logical test suite entity with the newly added test cases
-  //    EntityInterface entityInterface = (EntityInterface) event.getEntity();
-  //    if (entityInterface instanceof TestCase) {
-  //      processTestCase((TestCase) entityInterface, event, indexType);
-  //    } else {
-  //      addTestCaseFromLogicalTestSuite((TestSuite) entityInterface, event, indexType);
-  //    }
-  //  }
-
-  //  void updateTestSuite(ChangeEvent event) throws IOException;
-  //
-  //  void processTestCase(TestCase testCase, ChangeEvent event, ElasticSearchIndexType indexType) throws IOException;
-  //
-  //  void addTestCaseFromLogicalTestSuite(TestSuite testSuite, ChangeEvent event, ElasticSearchIndexType indexType)
-  //      throws IOException;
-
   void close();
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {

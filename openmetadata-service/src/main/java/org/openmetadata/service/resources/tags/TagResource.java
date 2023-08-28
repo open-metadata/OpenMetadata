@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -70,7 +71,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -168,9 +168,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    esConfig = config.getElasticSearchConfiguration();
-    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
+  public void initialize(OpenMetadataApplicationConfig config)
+      throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
+          InstantiationException, IllegalAccessException {
+    super.initialize(config);
     // TODO: Once we have migrated to the version above 0.13.1, then this can be removed
     migrateTags();
     // Find tag definitions and load classifications from the json file, if necessary

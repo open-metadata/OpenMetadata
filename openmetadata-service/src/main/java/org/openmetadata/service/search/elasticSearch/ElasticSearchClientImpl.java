@@ -775,7 +775,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     String entityType = entity.getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "", Include.ALL));
+    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "*", Include.ALL));
     updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
@@ -830,7 +830,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       updateRequest = applyESChangeEvent(entity);
     } else {
       ElasticSearchIndex elasticSearchIndex =
-          SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "", Include.ALL));
+          SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "*", Include.ALL));
       Map<String, Object> doc = elasticSearchIndex.buildESDoc();
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
       updateRequest.script(script);
@@ -839,20 +839,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
     updateElasticSearch(updateRequest);
   }
-
-  @Override
-  //  public void updateSearchForEntityUpdated(
-  //      SearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event) throws
-  // IOException {
-  //    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
-  //    if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
-  //      updateRequest = applyESChangeEvent(event);
-  //    } else {
-  //      ElasticSearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, event.getEntity());
-  //      scriptedUpsert(elasticSearchIndex.buildESDoc(), updateRequest);
-  //    }
-  //    updateElasticSearch(updateRequest);
-  //  }
 
   public void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     if (updateRequest != null) {
@@ -894,45 +880,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
-  //  public void processTestCase(
-  //      TestCase testCase, ChangeEvent event, SearchIndexDefinition.ElasticSearchIndexType indexType) throws
-  // IOException {
-  //    // Process creation of test cases (linked to an executable test suite
-  //    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testCase.getId().toString());
-  //    TestCaseIndex testCaseIndex;
-  //
-  //    switch (event.getEventType()) {
-  //      case ENTITY_CREATED:
-  //        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
-  //        updateRequest.doc(JsonUtils.pojoToJson(testCaseIndex.buildESDocForCreate()), XContentType.JSON);
-  //        updateRequest.docAsUpsert(true);
-  //        updateElasticSearch(updateRequest);
-  //        break;
-  //      case ENTITY_UPDATED:
-  //        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
-  //        scriptedUpsert(testCaseIndex.buildESDoc(), updateRequest);
-  //        updateElasticSearch(updateRequest);
-  //        break;
-  //      case ENTITY_SOFT_DELETED:
-  //        softDeleteOrRestoreEntity(updateRequest, true);
-  //        updateElasticSearch(updateRequest);
-  //        break;
-  //      case ENTITY_DELETED:
-  //        EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
-  //        TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
-  //        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-  //          // Delete the test case from the index if deleted from an executable test suite
-  //          DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
-  //          deleteEntityFromElasticSearch(deleteRequest);
-  //        } else {
-  //          // for non-executable test suites, simply remove the testSuite from the testCase and update the index
-  //          scriptedDeleteTestCase(updateRequest, testSuite.getId());
-  //          updateElasticSearch(updateRequest);
-  //        }
-  //        break;
-  //    }
-  //  }
-
   /** */
   @Override
   public void close() {
@@ -942,40 +889,6 @@ public class ElasticSearchClientImpl implements SearchClient {
       LOG.error("Failed to close elastic search", e);
     }
   }
-
-  //  private void scriptedUpsert(Object doc, UpdateRequest updateRequest) {
-  //    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-  //    updateRequest.script(script);
-  //    updateRequest.scriptedUpsert(true);
-  //    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-  //  }
-  //
-  //  private void scriptedUserUpsert(Object index, UpdateRequest updateRequest) {
-  //    String scriptTxt = "for (k in params.keySet()) {ctx._source.put(k, params.get(k)) }";
-  //    Map<String, Object> doc = JsonUtils.getMap(index);
-  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
-  //    updateRequest.script(script);
-  //    updateRequest.scriptedUpsert(true);
-  //  }
-  //
-  //  private void scriptedTeamUpsert(Object index, UpdateRequest updateRequest) {
-  //    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-  //    Map<String, Object> doc = JsonUtils.getMap(index);
-  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
-  //    updateRequest.script(script);
-  //    updateRequest.scriptedUpsert(true);
-  //  }
-
-  //  private void scriptedDeleteTestCase(UpdateRequest updateRequest, UUID testSuiteId) {
-  //    // Remove logical test suite from test case `testSuite` field
-  //    String scriptTxt =
-  //        "for (int i = 0; i < ctx._source.testSuite.length; i++) { if (ctx._source.testSuite[i].id == '%s') {
-  // ctx._source.testSuite.remove(i) }}";
-  //    scriptTxt = String.format(scriptTxt, testSuiteId);
-  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-  //    updateRequest.script(script);
-  //  }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
