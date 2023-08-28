@@ -583,9 +583,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     placement="topRight"
                     title={t('label.setting-plural')}>
                     <Button
+                      className="flex-center"
                       data-testid="profiler-setting-btn"
                       onClick={() => handleSettingModal(true)}>
-                      <SettingIcon className="self-center" />
+                      <SettingIcon />
                     </Button>
                   </Tooltip>
                 )}
