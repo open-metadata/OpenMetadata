@@ -16,35 +16,22 @@ import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { NO_DATA_PLACEHOLDER, PAGE_SIZE } from 'constants/constants';
-import { ServiceCategory } from 'enums/service.enum';
-import { Database } from 'generated/entity/data/database';
-import { Pipeline } from 'generated/entity/data/pipeline';
+import { PAGE_SIZE } from 'constants/constants';
 import { Paging } from 'generated/type/paging';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { ServicesType } from 'interface/service.interface';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import {
-  getEntityTypeFromServiceCategory,
-  getLinkForFqn,
-} from 'utils/ServiceUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-  getUsagePercentile,
-} from 'utils/TableUtils';
+import { useParams } from 'react-router-dom';
+import { getServiceMainTabColumns } from 'utils/ServiceMainTabContentUtils';
+import { getEntityTypeFromServiceCategory } from 'utils/ServiceUtils';
+import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { ServicePageData } from './ServiceDetailsPage';
 
 interface ServiceMainTabContentProps {
@@ -148,110 +135,11 @@ function ServiceMainTabContent({
     setIsEdit(false);
   };
 
-  const tableColumn: ColumnsType<ServicePageData> = useMemo(() => {
-    return [
-      {
-        title: t('label.name'),
-        dataIndex: 'displayName',
-        key: 'displayName',
-        width: 280,
-        render: (_, record: ServicePageData) => {
-          return (
-            <Link
-              to={getLinkForFqn(
-                serviceCategory,
-                record.fullyQualifiedName ?? ''
-              )}>
-              <Typography.Paragraph
-                ellipsis={{
-                  rows: 2,
-                  tooltip: true,
-                }}
-                style={{ width: 280, color: 'inherit' }}>
-                {getEntityName(record)}
-              </Typography.Paragraph>
-            </Link>
-          );
-        },
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description: ServicePageData['description']) =>
-          !isUndefined(description) && description.trim() ? (
-            <RichTextEditorPreviewer markdown={description} />
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </span>
-          ),
-      },
-      ...(ServiceCategory.PIPELINE_SERVICES === serviceCategory
-        ? [
-            {
-              title: t('label.schedule-interval'),
-              dataIndex: 'scheduleInterval',
-              key: 'scheduleInterval',
-              render: (scheduleInterval: Pipeline['scheduleInterval']) =>
-                scheduleInterval ? (
-                  <span>{scheduleInterval}</span>
-                ) : (
-                  <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
-                ),
-            },
-          ]
-        : []),
-      {
-        title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
-        render: (owner: ServicePageData['owner']) =>
-          !isUndefined(owner) ? (
-            <Space data-testid="owner-data">
-              <ProfilePicture
-                id=""
-                name={owner.name ?? ''}
-                type="circle"
-                width="24"
-              />
-              <Typography.Text data-testid={`${owner.name}-owner-name`}>
-                {getEntityName(owner)}
-              </Typography.Text>
-            </Space>
-          ) : (
-            <Typography.Text data-testid="no-owner-text">--</Typography.Text>
-          ),
-      },
-      {
-        title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        width: 200,
-        key: 'tags',
-        render: (_, record: ServicePageData) => (
-          <TagsViewer tags={record.tags ?? []} />
-        ),
-      },
-      ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
-        ? [
-            {
-              title: t('label.usage'),
-              dataIndex: 'usageSummary',
-              key: 'usageSummary',
-              render: (usageSummary: Database['usageSummary']) => (
-                <Typography.Text>
-                  {getUsagePercentile(
-                    usageSummary?.weeklyStats?.percentileRank ?? 0
-                  )}
-                </Typography.Text>
-              ),
-            },
-          ]
-        : []),
-    ];
-  }, [serviceCategory]);
+  const tableColumn: ColumnsType<ServicePageData> = useMemo(
+    () => getServiceMainTabColumns(serviceCategory),
+    [serviceCategory]
+  );
+
   const entityType = useMemo(
     () => getEntityTypeFromServiceCategory(serviceCategory),
     [serviceCategory]

@@ -348,6 +348,7 @@
     "entity-proportion": "{{entity}}比例",
     "entity-service": "{{entity}}服务",
     "entity-type-plural": "{{entity}} Type",
+    "entity-version-detail-plural": "{{entity}} Version Details",
     "event-publisher-plural": "事件发布者",
     "event-type": "事件类型",
     "every": "每个",
