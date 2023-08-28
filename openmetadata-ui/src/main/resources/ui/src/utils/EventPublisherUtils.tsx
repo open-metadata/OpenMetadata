@@ -27,7 +27,7 @@ import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconTaskOpen } from '../assets/svg/in-progress.svg';
 import { ReactComponent as IconTaskStopped } from '../assets/svg/pending-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { getDateTimeByTimeStampWithZone } from './TimeUtils';
+import { formatDateTimeWithTimezone } from './date-time/DateTimeUtils';
 
 export const getStatusResultBadgeIcon = (status?: string) => {
   switch (status) {
@@ -187,7 +187,7 @@ export const getJobDetailsCard = (
               )}:`}</span>
               <span className="m-l-xs">
                 {jobData?.timestamp
-                  ? getDateTimeByTimeStampWithZone(jobData?.timestamp)
+                  ? formatDateTimeWithTimezone(jobData?.timestamp)
                   : '--'}
               </span>
             </div>
@@ -198,7 +198,7 @@ export const getJobDetailsCard = (
               )}:`}</span>
               <p className="m-l-xs">
                 {error
-                  ? getDateTimeByTimeStampWithZone(error?.lastFailedAt ?? 0)
+                  ? formatDateTimeWithTimezone(error?.lastFailedAt ?? 0)
                   : '--'}
               </p>
             </div>
