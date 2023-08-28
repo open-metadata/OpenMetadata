@@ -41,8 +41,8 @@ import { searchData } from 'rest/miscAPI';
 import { postQuery } from 'rest/queryAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
+import { getCurrentMillis } from 'utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
-import { getCurrentDateTimeStamp } from 'utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const AddQueryPage = () => {
@@ -151,7 +151,7 @@ const AddQueryPage = () => {
           type: EntityType.TABLE,
         })),
       ],
-      queryDate: getCurrentDateTimeStamp(),
+      queryDate: getCurrentMillis(),
     };
 
     try {

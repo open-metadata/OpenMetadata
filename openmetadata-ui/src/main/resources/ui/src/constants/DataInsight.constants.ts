@@ -14,13 +14,13 @@
 import { RowProps } from 'antd/lib/grid/row';
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
-import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from '../utils/TimeUtils';
 import { DEFAULT_SELECTED_RANGE } from './profiler.constant';
 
 export const BAR_CHART_MARGIN: Margin = {
@@ -111,8 +111,8 @@ export const TIER_DATA = {
 };
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
-  startTs: getPastDaysDateTimeMillis(DEFAULT_SELECTED_RANGE.days),
-  endTs: getCurrentDateTimeMillis(),
+  startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
+  endTs: getCurrentMillis(),
 };
 
 export const ENTITIES_CHARTS = [

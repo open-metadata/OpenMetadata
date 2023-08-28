@@ -40,11 +40,6 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../../utils/TimeUtils', () => ({
-  getUTCDateTime: jest.fn(),
-  getTimeZone: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),

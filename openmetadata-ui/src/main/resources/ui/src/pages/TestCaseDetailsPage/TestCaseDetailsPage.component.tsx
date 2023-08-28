@@ -23,10 +23,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getTestCaseByFqn } from 'rest/testAPI';
+import { formatDateTime } from 'utils/date-time/DateTimeUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDataQualityPagePath } from 'utils/RouterUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import './TestCaseDetailsPage.style.less';
 
@@ -122,9 +122,7 @@ function TestCaseDetailsPage() {
               <Col span={14}>
                 <Typography.Text>
                   {testCaseData.testCaseResult?.timestamp
-                    ? getFormattedDateFromSeconds(
-                        testCaseData.testCaseResult?.timestamp
-                      )
+                    ? formatDateTime(testCaseData.testCaseResult?.timestamp)
                     : '--'}
                 </Typography.Text>
               </Col>
