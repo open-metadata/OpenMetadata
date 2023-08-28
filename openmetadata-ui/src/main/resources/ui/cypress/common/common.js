@@ -1101,7 +1101,11 @@ export const updateDescriptionForIngestedTables = (
 };
 
 export const addOwner = (ownerName, entity, isGlossaryPage) => {
-  cy.get('[data-testid="edit-owner"]').click();
+  if (isGlossaryPage) {
+    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
+  } else {
+    cy.get('[data-testid="edit-owner"]').click();
+  }
 
   interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
   cy.get('.ant-tabs [id*=tab-users]').click();

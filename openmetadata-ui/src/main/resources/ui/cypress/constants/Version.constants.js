@@ -15,6 +15,7 @@ import { uuid } from '../common/common';
 import { SERVICE_CATEGORIES } from './service.constants';
 
 export const OWNER = 'Amber Green';
+export const REVIEWER = 'Amanda York';
 export const TIER = 'Tier1';
 
 const TABLE_NAME = `cypress_version_table-${uuid()}`;
@@ -889,5 +890,98 @@ export const NEW_CLASSIFICATION_PATCH_PAYLOAD = [
     op: 'replace',
     path: '/mutuallyExclusive',
     value: true,
+  },
+];
+
+export const GLOSSARY_NAME_FOR_VERSION_TEST = `cy-glossary-version-${uuid()}`;
+export const GLOSSARY_TERM_NAME_FOR_VERSION_TEST1 = `cy-glossary-term-version-${uuid()}`;
+export const GLOSSARY_TERM_NAME_FOR_VERSION_TEST2 = `cy-glossary-term-version-${uuid()}`;
+
+export const GLOSSARY_FOR_VERSION_TEST = {
+  name: GLOSSARY_NAME_FOR_VERSION_TEST,
+  displayName: GLOSSARY_NAME_FOR_VERSION_TEST,
+  description: '',
+};
+
+export const GLOSSARY_TERM_FOR_VERSION_TEST1 = {
+  name: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
+  displayName: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
+  glossary: GLOSSARY_NAME_FOR_VERSION_TEST,
+  description: '',
+};
+
+export const GLOSSARY_TERM_FOR_VERSION_TEST2 = {
+  name: GLOSSARY_TERM_NAME_FOR_VERSION_TEST2,
+  displayName: GLOSSARY_TERM_NAME_FOR_VERSION_TEST2,
+  glossary: GLOSSARY_NAME_FOR_VERSION_TEST,
+  description: '',
+};
+
+export const GLOSSARY_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/tags/1',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PII.Sensitive',
+    },
+  },
+  {
+    op: 'replace',
+    path: '/description',
+    value: COMMON_UPDATED_DESCRIPTION,
+  },
+];
+
+export const GLOSSARY_TERM_PATCH_PAYLOAD2 = [
+  {
+    op: 'add',
+    path: '/synonyms/0',
+    value: 'test-synonym',
+  },
+  {
+    op: 'add',
+    path: '/references/0',
+    value: {
+      name: 'reference1',
+      endpoint: 'https://example.com',
+    },
+  },
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/tags/1',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PII.Sensitive',
+    },
+  },
+  {
+    op: 'replace',
+    path: '/description',
+    value: COMMON_UPDATED_DESCRIPTION,
   },
 ];
