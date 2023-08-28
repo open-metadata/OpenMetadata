@@ -97,7 +97,7 @@ This docker compose file contains only the docker compose services for OpenMetad
 You can also run the below command to fetch the docker compose file directly from the terminal -
 
 ```bash
-wget https://github.com/open-metadata/OpenMetadata/releases/download/1.1.1-release/docker-compose-openmetadata-server.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.1.2-release/docker-compose-openmetadata-server.yml
 ```
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
