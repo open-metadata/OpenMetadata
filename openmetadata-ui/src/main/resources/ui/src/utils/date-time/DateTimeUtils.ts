@@ -205,17 +205,11 @@ export const getCurrentUnixInteger = () => DateTime.now().toUnixInteger();
 export const getEpochMillisForPastDays = (days: number) =>
   DateTime.now().minus({ days }).toMillis();
 
+export const getEpochMillisForFutureDays = (days: number) =>
+  DateTime.now().plus({ days }).toMillis();
+
 export const getUnixSecondsForPastDays = (days: number) =>
   DateTime.now().minus({ days }).toUnixInteger();
-
-/**
- * "Get a future date from the current date by adding a number of days to it."
- *
- * The function takes a number of days as an argument and returns a future date
- * @param {number} days - number - The number of days to add to the current date.
- */
-export const getFutureDateString = (days: number) =>
-  DateTime.now().plus({ days: days }).toISO({ includeOffset: false });
 
 /**
  *
