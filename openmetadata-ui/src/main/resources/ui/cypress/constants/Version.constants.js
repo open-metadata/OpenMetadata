@@ -784,9 +784,9 @@ const STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST = {
   },
 };
 
-export const NEW_SERVICE_DESCRIPTION = 'Description for newly added service';
+export const COMMON_UPDATED_DESCRIPTION = 'Description for newly added service';
 
-const SERVICE_PATCH_PAYLOAD = [
+export const COMMON_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/tags/0',
@@ -810,7 +810,7 @@ const SERVICE_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: NEW_SERVICE_DESCRIPTION,
+    value: COMMON_UPDATED_DESCRIPTION,
   },
 ];
 
@@ -819,42 +819,75 @@ export const SERVICE_DETAILS_FOR_VERSION_TEST = {
     serviceName: DATABASE_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
     entityCreationDetails: DATABASE_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.databases',
   },
   Messaging: {
     serviceName: MESSAGING_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
     entityCreationDetails: MESSAGING_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.messaging',
   },
   Dashboard: {
     serviceName: DASHBOARD_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
     entityCreationDetails: DASHBOARD_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.dashboards',
   },
   Pipeline: {
     serviceName: PIPELINE_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
     entityCreationDetails: PIPELINE_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.pipelines',
   },
   'ML Model': {
     serviceName: ML_MODEL_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
     entityCreationDetails: ML_MODEL_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.mlModels',
   },
   Storage: {
     serviceName: STORAGE_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
     entityCreationDetails: STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.storages',
   },
 };
+
+export const DATABASE_DETAILS_FOR_VERSION_TEST = {
+  name: `0-cy-database-${uuid()}`,
+  service: DATABASE_SERVICE_NAME,
+};
+
+export const DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST = {
+  name: `0-cy-database-schema-${uuid()}`,
+  database: `${DATABASE_SERVICE_NAME}.${DATABASE_DETAILS_FOR_VERSION_TEST.name}`,
+};
+
+export const NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME = `cy-version-classification-${uuid()}`;
+export const NEW_SYSTEM_CLASSIFICATION_FOR_VERSION_TEST_NAME = `cy-version-classification-${uuid()}`;
+
+export const NEW_CLASSIFICATION_FOR_VERSION_TEST = {
+  name: NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME,
+  displayName: NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME,
+  provider: 'system',
+  description: ``,
+};
+
+export const NEW_CLASSIFICATION_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/description',
+    value: COMMON_UPDATED_DESCRIPTION,
+  },
+  {
+    op: 'replace',
+    path: '/mutuallyExclusive',
+    value: true,
+  },
+];

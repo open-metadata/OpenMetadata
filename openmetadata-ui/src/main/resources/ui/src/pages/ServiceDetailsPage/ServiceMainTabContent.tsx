@@ -49,14 +49,6 @@ interface ServiceMainTabContentProps {
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
 }
 
-const tableComponent = {
-  body: {
-    row: ({ children }: { children: React.ReactNode }) => (
-      <tr data-testid="row">{children}</tr>
-    ),
-  },
-};
-
 function ServiceMainTabContent({
   serviceName,
   servicePermission,
@@ -192,14 +184,13 @@ function ServiceMainTabContent({
                 <Table
                   bordered
                   columns={tableColumn}
-                  components={tableComponent}
                   data-testid="service-children-table"
                   dataSource={data}
                   locale={{
                     emptyText: <ErrorPlaceHolder className="m-y-md" />,
                   }}
                   pagination={false}
-                  rowKey="id"
+                  rowKey="name"
                   size="small"
                 />
               )}
