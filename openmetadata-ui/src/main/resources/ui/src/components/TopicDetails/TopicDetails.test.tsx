@@ -58,6 +58,7 @@ const topicDetailsProps: TopicDetailsProps = {
   versionHandler: jest.fn(),
   createThread: jest.fn(),
   topicPermissions: DEFAULT_ENTITY_PERMISSION,
+  handleToggleDelete: jest.fn(),
 };
 
 const mockParams = {
