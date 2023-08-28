@@ -215,56 +215,73 @@ function DatabaseSchemaVersionPage() {
     [tableData, getSchemaTables]
   );
 
-  const versionHandler = (newVersion = version) => {
-    history.push(
-      getDatabaseSchemaVersionPath(databaseSchemaFQN, toString(newVersion))
-    );
-  };
+  const versionHandler = useCallback(
+    (newVersion = version) => {
+      history.push(
+        getDatabaseSchemaVersionPath(databaseSchemaFQN, toString(newVersion))
+      );
+    },
+    [databaseSchemaFQN]
+  );
 
   const backHandler = useCallback(() => {
     history.push(getDatabaseSchemaDetailsPath(databaseSchemaFQN));
   }, [databaseSchemaFQN]);
 
-  const tabs: TabsProps['items'] = [
-    {
-      label: <TabsLabel id={EntityTabs.TABLE} name={t('label.table-plural')} />,
-      key: EntityTabs.TABLE,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="p-t-sm m-x-lg" flex="auto">
-            <SchemaTablesTab
-              isVersionView
-              currentTablesPage={currentPage}
-              databaseSchemaDetails={currentVersionData}
-              description={description}
-              tableData={tableData}
-              tableDataLoading={isTableDataLoading}
-              tablePaginationHandler={tablePaginationHandler}
-            />
-          </Col>
-          <Col
-            className="entity-tag-right-panel-container"
-            data-testid="entity-right-panel"
-            flex="220px">
-            <Space className="w-full" direction="vertical" size="large">
-              {Object.keys(TagSource).map((tagType) => (
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={databaseSchemaFQN}
-                  entityType={EntityType.DATABASE_SCHEMA}
-                  key={tagType}
-                  permission={false}
-                  selectedTags={tags}
-                  showTaskHandler={false}
-                  tagType={TagSource[tagType as TagSource]}
-                />
-              ))}
-            </Space>
-          </Col>
-        </Row>
-      ),
-    },
-  ];
+  const tabs: TabsProps['items'] = useMemo(
+    () => [
+      {
+        label: (
+          <TabsLabel id={EntityTabs.TABLE} name={t('label.table-plural')} />
+        ),
+        key: EntityTabs.TABLE,
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <SchemaTablesTab
+                isVersionView
+                currentTablesPage={currentPage}
+                databaseSchemaDetails={currentVersionData}
+                description={description}
+                tableData={tableData}
+                tableDataLoading={isTableDataLoading}
+                tablePaginationHandler={tablePaginationHandler}
+              />
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV2
+                    displayType={DisplayType.READ_MORE}
+                    entityFqn={databaseSchemaFQN}
+                    entityType={EntityType.DATABASE_SCHEMA}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    showTaskHandler={false}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
+            </Col>
+          </Row>
+        ),
+      },
+    ],
+    [
+      currentPage,
+      currentVersionData,
+      description,
+      tableData,
+      isTableDataLoading,
+      tablePaginationHandler,
+      databaseSchemaFQN,
+      tags,
+    ]
+  );
 
   const versionComponent = () => {
     if (isLoading) {

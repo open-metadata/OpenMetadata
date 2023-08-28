@@ -335,15 +335,18 @@ function ServiceVersionPage() {
     ]
   );
 
-  const versionHandler = (newVersion = version) => {
-    history.push(
-      getServiceVersionPath(serviceCategory, serviceFQN, toString(newVersion))
-    );
-  };
+  const versionHandler = useCallback(
+    (newVersion = version) => {
+      history.push(
+        getServiceVersionPath(serviceCategory, serviceFQN, toString(newVersion))
+      );
+    },
+    [serviceCategory, serviceFQN]
+  );
 
   const backHandler = useCallback(() => {
     history.push(getServiceDetailsPath(serviceFQN, serviceCategory));
-  }, []);
+  }, [serviceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
     (cursorType: string | number, activePage?: number) => {
