@@ -70,6 +70,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
   }
 
+  @Override
+  public void postUpdate(DatabaseSchema entity) {}
+
   private List<EntityReference> getTables(DatabaseSchema schema) {
     return schema == null
         ? Collections.emptyList()

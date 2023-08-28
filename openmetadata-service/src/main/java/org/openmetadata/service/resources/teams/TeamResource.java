@@ -67,6 +67,7 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -111,6 +112,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    esConfig = config.getElasticSearchConfiguration();
+    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     repository.initOrganization();
   }
 

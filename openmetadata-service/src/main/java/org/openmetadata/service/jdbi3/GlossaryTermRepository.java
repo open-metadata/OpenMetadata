@@ -22,11 +22,13 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
 import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -188,9 +190,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  protected void postDelete(GlossaryTerm entity) {
-    // Cleanup all the tag labels using this glossary term
-    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
+  protected void deleteFromSearch(GlossaryTerm entity, String changeType) {
+    if (supportsSearchIndex) {
+      String scriptTxt =
+          "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+      try {
+        searchClient.updateSearchEntityDeleted(entity.getEntityReference(), scriptTxt, "tags.tagFQN");
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {

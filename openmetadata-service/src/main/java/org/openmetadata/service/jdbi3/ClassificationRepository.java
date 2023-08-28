@@ -15,7 +15,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
+import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -32,7 +34,6 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -99,6 +100,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
           .withState(TagLabel.State.values()[r.getInt("state")])
           .withTagFQN(r.getString("tagFQN"));
+    }
+  }
+
+  @SuppressWarnings("unused")
+  public void postUpdate(Classification entity) {
+    String scriptTxt = "ctx._source.disabled=true";
+    try {
+      searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 

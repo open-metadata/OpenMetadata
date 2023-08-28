@@ -124,10 +124,8 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -207,6 +205,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearchIndex = false;
+
   EntityRepository(
       String collectionPath,
       String entityType,
@@ -743,7 +742,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @SuppressWarnings("unused")
-  protected void postUpdate(T entity) {
+  public void postUpdate(T entity) {
+    if (supportsSearchIndex) {
+      try {
+        if (entity.getEntityReference().getType().equals(Entity.TEST_SUITE)) {
+          searchClient.addTestCaseFromLogicalTestSuite(entity);
+        } else {
+          String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+          searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
     // Override to perform any operation required after an entity update.
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
@@ -818,6 +829,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
+    postUpdate(entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -869,6 +881,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> delete(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.getEntity());
+    deleteFromSearch(response.getEntity(), response.getChangeType());
     return response;
   }
 
@@ -884,16 +897,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {
-//    if (supportsSearchIndex){
-//      try {
-//        searchClient.updateSearchEntityDeleted(entity.getEntityReference(),"","");
-//      } catch (IOException e) {
-//        throw new RuntimeException(e);
-//      }
-//    }
-    // Override this method to perform any operation required after deletion.
-    // For example ingestion pipeline deletes a pipeline in AirFlow.
+  protected void postDelete(T entity) {}
+
+  protected void deleteFromSearch(T entity, String changeType) {
+    if (supportsSearchIndex) {
+      try {
+        if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+          searchClient.softDeleteOrRestoreEntityFromSearch(
+              entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
+        } else {
+          searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  public void restoreFromSearch(T entity) {
+    if (supportsSearchIndex) {
+      try {
+        searchClient.softDeleteOrRestoreEntityFromSearch(entity.getEntityReference(), false);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   private DeleteResponse<T> delete(String updatedBy, T original, boolean recursive, boolean hardDelete) {
@@ -1363,6 +1391,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
     updater.update();
+    restoreFromSearch(updated);
     return new PutResponse<>(Status.OK, updated, RestUtil.ENTITY_RESTORED);
   }
 

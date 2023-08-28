@@ -86,11 +86,14 @@ public class IndexUtil {
   public static SearchIndexDefinition.ElasticSearchIndexType getIndexMappingByEntityType(String type) {
     if (type.equalsIgnoreCase(Entity.TABLE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
+    } else if (type.equalsIgnoreCase(Entity.DASHBOARD)
+        || type.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
+        || type.equalsIgnoreCase(Entity.CHART)
+        || type.equalsIgnoreCase(Entity.DASHBOARD_DATA_MODEL)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
+    } else if (type.equalsIgnoreCase(Entity.PIPELINE) || type.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
+    } else if (type.equalsIgnoreCase(Entity.TOPIC) || type.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.USER)) {
       return SearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX;
@@ -98,7 +101,7 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
       return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
+    } else if (type.equalsIgnoreCase(Entity.MLMODEL) || type.equalsIgnoreCase(Entity.MLMODEL_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
       return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
@@ -110,7 +113,7 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
+    } else if (type.equalsIgnoreCase(Entity.CONTAINER) || type.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return SearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;

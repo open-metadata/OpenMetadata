@@ -1,5 +1,40 @@
 package org.openmetadata.service.search.elasticSearch;
 
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
+import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -42,12 +77,9 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.index.query.RangeQueryBuilder;
-import org.elasticsearch.index.query.TermQueryBuilder;
-import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
 import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
-import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
@@ -76,28 +108,13 @@ import org.elasticsearch.xcontent.XContentParser;
 import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.entity.classification.Classification;
-import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.Database;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Glossary;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.services.MessagingService;
-import org.openmetadata.schema.entity.services.MlModelService;
-import org.openmetadata.schema.entity.services.PipelineService;
-import org.openmetadata.schema.entity.services.StorageService;
-import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -110,8 +127,6 @@ import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
-import org.openmetadata.service.search.indexes.DatabaseIndex;
-import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.ElasticSearchIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
@@ -119,52 +134,10 @@ import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
-import org.openmetadata.service.search.indexes.TeamIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.util.JsonUtils;
-
-import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
-import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
-import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
-import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 @Slf4j
 public class ElasticSearchClientImpl implements SearchClient {
@@ -798,50 +771,11 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
-  public void updateEntity(ChangeEvent event) throws IOException {
-    String entityType = event.getEntityType();
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
-
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        updateSearchForEntityCreated(indexType, entityType, event);
-        break;
-      case ENTITY_UPDATED:
-        updateSearchForEntityUpdated(indexType, entityType, event);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreEntity(updateRequest, true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_RESTORED:
-        softDeleteOrRestoreEntity(updateRequest, false);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
-        deleteEntityFromElasticSearch(deleteRequest);
-        break;
-    }
-  }
-
-  @Override
-  public void updateSearchForEntityCreated(
-      SearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
-    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityType, event.getEntity());
-    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    updateElasticSearch(updateRequest);
-  }
-
-  @Override
   public void updateSearchEntityCreated(EntityReference entity) throws IOException {
     String entityType = entity.getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "*", Include.ALL));
+    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "", Include.ALL));
     updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
@@ -849,19 +783,21 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
-  public void updateSearchEntityDeleted(EntityReference entity,String scripts,String field) throws IOException {
+  public void updateSearchEntityDeleted(EntityReference entity, String scriptTxt, String field) throws IOException {
     String entityType = entity.getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
     deleteEntityFromElasticSearch(deleteRequest);
-    if (!CommonUtil.nullOrEmpty(scripts)) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("sourceUrlSearchAlias");
+    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("sourceUrlSearchAlias");
+    if (!CommonUtil.nullOrEmpty(field)) {
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
+    }
+    if (!CommonUtil.nullOrEmpty(scriptTxt)) {
       Script script =
           new Script(
               ScriptType.INLINE,
               Script.DEFAULT_SCRIPT_LANG,
-              String.format(scripts, entity.getFullyQualifiedName()),
+              String.format(scriptTxt, entity.getFullyQualifiedName()),
               new HashMap<>());
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
@@ -869,446 +805,59 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
-  public void updateSearchForEntityUpdated(
-      SearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
-    if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
-      updateRequest = applyESChangeEvent(event);
+  public void softDeleteOrRestoreEntityFromSearch(EntityReference entity, boolean delete) throws IOException {
+    String entityType = entity.getType();
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+    String scriptTxt = "ctx._source.deleted=" + delete;
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+    updateRequest.script(script);
+    updateElasticSearch(updateRequest);
+  }
+
+  /**
+   * @param entity
+   * @param scriptTxt
+   * @throws IOException
+   */
+  @Override
+  public void updateSearchEntityUpdated(EntityReference entity, String scriptTxt) throws IOException {
+    String entityType = entity.getType();
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+    EntityInterface entityInterface = Entity.getEntity(entity, "", Include.ALL);
+    if (Objects.equals(entityInterface.getVersion(), entityInterface.getChangeDescription().getPreviousVersion())) {
+      updateRequest = applyESChangeEvent(entity);
     } else {
-      ElasticSearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, event.getEntity());
-      scriptedUpsert(elasticSearchIndex.buildESDoc(), updateRequest);
+      ElasticSearchIndex elasticSearchIndex =
+          SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "", Include.ALL));
+      Map<String, Object> doc = elasticSearchIndex.buildESDoc();
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+      updateRequest.script(script);
+      updateRequest.scriptedUpsert(true);
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     }
     updateElasticSearch(updateRequest);
   }
 
   @Override
-  public void updateUser(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(
-            SearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    UserIndex userIndex;
+  //  public void updateSearchForEntityUpdated(
+  //      SearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event) throws
+  // IOException {
+  //    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
+  //    if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+  //      updateRequest = applyESChangeEvent(event);
+  //    } else {
+  //      ElasticSearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, event.getEntity());
+  //      scriptedUpsert(elasticSearchIndex.buildESDoc(), updateRequest);
+  //    }
+  //    updateElasticSearch(updateRequest);
+  //  }
 
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        updateSearchForEntityCreated(SearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX, USER, event);
-        break;
-      case ENTITY_UPDATED:
-        userIndex = new UserIndex((User) event.getEntity());
-        scriptedUserUpsert(userIndex.buildESDoc(), updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreEntity(updateRequest, true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_RESTORED:
-        softDeleteOrRestoreEntity(updateRequest, false);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(
-                SearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX.indexName,
-                event.getEntityId().toString());
-        deleteEntityFromElasticSearch(deleteRequest);
-        break;
-    }
-  }
-
-  @Override
-  public void updateTeam(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(
-            SearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    TeamIndex teamIndex;
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        teamIndex = new TeamIndex((Team) event.getEntity());
-        updateRequest.doc(JsonUtils.pojoToJson(teamIndex.buildESDoc()), XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_UPDATED:
-        teamIndex = new TeamIndex((Team) event.getEntity());
-        scriptedTeamUpsert(teamIndex.buildESDoc(), updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreEntity(updateRequest, true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_RESTORED:
-        softDeleteOrRestoreEntity(updateRequest, false);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(
-                SearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName,
-                event.getEntityId().toString());
-        deleteEntityFromElasticSearch(deleteRequest);
-        break;
-    }
-  }
-
-  @Override
-  public void updateGlossaryTerm(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(
-            SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName,
-            event.getEntityId().toString());
-    GlossaryTermIndex glossaryTermIndex;
-
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        glossaryTermIndex = new GlossaryTermIndex((GlossaryTerm) event.getEntity());
-        updateRequest.doc(JsonUtils.pojoToJson(glossaryTermIndex.buildESDoc()), XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_UPDATED:
-        glossaryTermIndex = new GlossaryTermIndex((GlossaryTerm) event.getEntity());
-        scriptedUpsert(glossaryTermIndex.buildESDoc(), updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreEntity(updateRequest, true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_RESTORED:
-        softDeleteOrRestoreEntity(updateRequest, false);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteByQueryRequest request =
-            new DeleteByQueryRequest(SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
-        new DeleteRequest(
-            SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName,
-            event.getEntityId().toString());
-        GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
-        request.setQuery(
-            QueryBuilders.boolQuery()
-                .should(QueryBuilders.matchQuery("id", glossaryTerm.getId().toString()))
-                .should(QueryBuilders.matchQuery("parent.id", glossaryTerm.getId().toString())));
-        deleteEntityFromElasticSearchByQuery(request);
-        break;
-    }
-  }
-
-  @Override
-  public void updateGlossary(ChangeEvent event) throws IOException {
-    if (event.getEventType() == ENTITY_DELETED) {
-      Glossary glossary = (Glossary) event.getEntity();
-      DeleteByQueryRequest request =
-          new DeleteByQueryRequest(SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
-      request.setQuery(
-          QueryBuilders.boolQuery().should(QueryBuilders.matchQuery("glossary.id", glossary.getId().toString())));
-      deleteEntityFromElasticSearchByQuery(request);
-    }
-  }
-
-  @Override
-  public void updateTag(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(
-            SearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    TagIndex tagIndex;
-
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        tagIndex = new TagIndex((Tag) event.getEntity());
-        updateRequest.doc(JsonUtils.pojoToJson(tagIndex.buildESDoc()), XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_UPDATED:
-        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
-          updateRequest = applyESChangeEvent(event);
-        } else {
-          tagIndex = new TagIndex((Tag) event.getEntity());
-          scriptedUpsert(tagIndex.buildESDoc(), updateRequest);
-        }
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreEntity(updateRequest, true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_RESTORED:
-        softDeleteOrRestoreEntity(updateRequest, false);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(
-                SearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName,
-                event.getEntityId().toString());
-        deleteEntityFromElasticSearch(deleteRequest);
-
-        String[] indexes =
-            new String[] {
-              SearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName,
-              SearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName,
-              SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName,
-              SearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName,
-              SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName,
-              SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName,
-              SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName
-            };
-        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexes);
-        updateByQueryRequest.setQuery(new MatchQueryBuilder(ES_TAG_FQN_FIELD, event.getEntityFullyQualifiedName()));
-        String scriptTxt =
-            "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-        Script script =
-            new Script(
-                ScriptType.INLINE,
-                Script.DEFAULT_SCRIPT_LANG,
-                String.format(scriptTxt, event.getEntityFullyQualifiedName()),
-                new HashMap<>());
-        updateByQueryRequest.setScript(script);
-        updateElasticSearchByQuery(updateByQueryRequest);
-    }
-  }
-
-  @Override
-  public void updateDatabase(ChangeEvent event) throws IOException {
-    Database database = (Database) event.getEntity();
-    SearchIndexDefinition.ElasticSearchIndexType indexType =
-        IndexUtil.getIndexMappingByEntityType(event.getEntityType());
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, database.getId().toString());
-    DatabaseIndex databaseIndex;
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        databaseIndex = new DatabaseIndex((Database) event.getEntity());
-        updateRequest.doc(JsonUtils.pojoToJson(databaseIndex.buildESDoc()), XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_UPDATED:
-        databaseIndex = new DatabaseIndex((Database) event.getEntity());
-        scriptedUpsert(databaseIndex.buildESDoc(), updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-        BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-        queryBuilder.must(new TermQueryBuilder(UpdateSearchEventsConstant.DATABASE_ID, database.getId()));
-        request.setQuery(queryBuilder);
-        deleteEntityFromElasticSearchByQuery(request);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreChildren(
-            indexType.indexName, UpdateSearchEventsConstant.DATABASE_ID, database.getId().toString(), true);
-        break;
-      case ENTITY_RESTORED:
-        softDeleteOrRestoreChildren(
-            indexType.indexName, UpdateSearchEventsConstant.DATABASE_ID, database.getId().toString(), false);
-        break;
-    }
-  }
-
-  @Override
-  public void updateDatabaseSchema(ChangeEvent event) throws IOException {
-    DatabaseSchema databaseSchema = (DatabaseSchema) event.getEntity();
-    SearchIndexDefinition.ElasticSearchIndexType indexType =
-        IndexUtil.getIndexMappingByEntityType(event.getEntityType());
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, databaseSchema.getId().toString());
-    DatabaseSchemaIndex databaseSchemaIndex;
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        databaseSchemaIndex = new DatabaseSchemaIndex((DatabaseSchema) event.getEntity());
-        updateRequest.doc(JsonUtils.pojoToJson(databaseSchemaIndex.buildESDoc()), XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_UPDATED:
-        databaseSchemaIndex = new DatabaseSchemaIndex((DatabaseSchema) event.getEntity());
-        scriptedUpsert(databaseSchemaIndex.buildESDoc(), updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-        BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-        queryBuilder.must(new TermQueryBuilder(UpdateSearchEventsConstant.DATABASE_SCHEMA_ID, databaseSchema.getId()));
-        request.setQuery(queryBuilder);
-        deleteEntityFromElasticSearchByQuery(request);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreChildren(
-            indexType.indexName,
-            UpdateSearchEventsConstant.DATABASE_SCHEMA_ID,
-            databaseSchema.getId().toString(),
-            true);
-        break;
-      case ENTITY_RESTORED:
-        softDeleteOrRestoreChildren(
-            indexType.indexName,
-            UpdateSearchEventsConstant.DATABASE_SCHEMA_ID,
-            databaseSchema.getId().toString(),
-            false);
-        break;
-    }
-  }
-
-  @Override
-  public void updateDatabaseService(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TABLE);
-    DatabaseService databaseService = (DatabaseService) event.getEntity();
-    if (event.getEventType() == ENTITY_DELETED) {
-      DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, databaseService.getId().toString()));
-      deleteEntityFromElasticSearchByQuery(request);
-    } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
-      // set deleted flag to true on all the tables
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, databaseService.getId().toString(), true);
-    } else if (event.getEventType() == ENTITY_RESTORED) {
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, databaseService.getId().toString(), false);
-    }
-  }
-
-  @Override
-  public void updatePipelineService(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.PIPELINE);
-    PipelineService pipelineService = (PipelineService) event.getEntity();
-    if (event.getEventType() == ENTITY_DELETED) {
-      DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, pipelineService.getId().toString()));
-      deleteEntityFromElasticSearchByQuery(request);
-    } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
-      // set deleted flag to true on all the pipelines
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, pipelineService.getId().toString(), true);
-    } else if (event.getEventType() == ENTITY_RESTORED) {
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, pipelineService.getId().toString(), false);
-    }
-  }
-
-  @Override
   public void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     if (updateRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  @Override
-  public void updateMlModelService(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.MLMODEL);
-    MlModelService mlModelService = (MlModelService) event.getEntity();
-    if (event.getEventType() == ENTITY_DELETED) {
-      DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, mlModelService.getId().toString()));
-      deleteEntityFromElasticSearchByQuery(request);
-    } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
-      // set deleted flag to true on all the pipelines
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, mlModelService.getId().toString(), true);
-    } else if (event.getEventType() == ENTITY_RESTORED) {
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, mlModelService.getId().toString(), false);
-    }
-  }
-
-  @Override
-  public void updateStorageService(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.CONTAINER);
-    StorageService storageService = (StorageService) event.getEntity();
-    if (event.getEventType() == ENTITY_DELETED) {
-      DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, storageService.getId().toString()));
-      deleteEntityFromElasticSearchByQuery(request);
-    } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
-      // set deleted flag to true on all the containers
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, storageService.getId().toString(), true);
-    } else if (event.getEventType() == ENTITY_RESTORED) {
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, storageService.getId().toString(), false);
-    }
-  }
-
-  @Override
-  public void updateMessagingService(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TOPIC);
-    MessagingService messagingService = (MessagingService) event.getEntity();
-    if (event.getEventType() == ENTITY_DELETED) {
-      DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(
-          new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, messagingService.getId().toString()));
-      deleteEntityFromElasticSearchByQuery(request);
-    } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
-      // set deleted flag to true on all the containers
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, messagingService.getId().toString(), true);
-    } else if (event.getEventType() == ENTITY_RESTORED) {
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, messagingService.getId().toString(), false);
-    }
-  }
-
-  @Override
-  public void updateDashboardService(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.DASHBOARD);
-    DashboardService dashboardService = (DashboardService) event.getEntity();
-    if (event.getEventType() == ENTITY_DELETED) {
-      DeleteByQueryRequest request = new DeleteByQueryRequest(indexType.indexName);
-      request.setQuery(
-          new TermQueryBuilder(UpdateSearchEventsConstant.SERVICE_ID, dashboardService.getId().toString()));
-      deleteEntityFromElasticSearchByQuery(request);
-    } else if (event.getEventType() == ENTITY_SOFT_DELETED) {
-      // set deleted flag to true on all the containers
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, dashboardService.getId().toString(), true);
-    } else if (event.getEventType() == ENTITY_RESTORED) {
-      softDeleteOrRestoreChildren(
-          indexType.indexName, UpdateSearchEventsConstant.SERVICE_ID, dashboardService.getId().toString(), true);
-    }
-  }
-
-  @Override
-  public void updateClassification(ChangeEvent event) throws IOException {
-    Classification classification = (Classification) event.getEntity();
-    String indexName = SearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName;
-    if (event.getEventType() == ENTITY_DELETED) {
-      DeleteByQueryRequest request = new DeleteByQueryRequest(indexName);
-      String fqnMatch = classification.getName() + ".*";
-      request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
-      deleteEntityFromElasticSearchByQuery(request);
-    } else if (event.getEventType() == ENTITY_UPDATED) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(new MatchQueryBuilder("tag.classification.id", classification.getId().toString()));
-      String scriptTxt = "ctx._source.disabled=true";
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
-    }
-  }
-
-  @Override
-  public void updateTestSuite(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TEST_CASE);
-    TestSuite testSuite = (TestSuite) event.getEntity();
-    UUID testSuiteId = testSuite.getId();
-
-    if (event.getEventType() == ENTITY_DELETED) {
-      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-        DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
-        deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
-        deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-      } else {
-        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexType.indexName);
-        updateByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
-        String scriptTxt =
-            "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
-        Script script =
-            new Script(
-                ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, String.format(scriptTxt, testSuiteId), new HashMap<>());
-        updateByQueryRequest.setScript(script);
-        updateElasticSearchByQuery(updateByQueryRequest);
-      }
     }
   }
 
@@ -1320,9 +869,8 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
-  public void addTestCaseFromLogicalTestSuite(
-      TestSuite testSuite, ChangeEvent event, SearchIndexDefinition.ElasticSearchIndexType indexType)
-      throws IOException {
+  public void addTestCaseFromLogicalTestSuite(Object testSuiteObj) throws IOException {
+    TestSuite testSuite = (TestSuite) testSuiteObj;
     // Process creation of test cases (linked to a logical test suite) by adding reference to existing test cases
     List<EntityReference> testCaseReferences = testSuite.getTests();
     TestSuite testSuiteReference =
@@ -1336,54 +884,54 @@ public class ElasticSearchClientImpl implements SearchClient {
             .withHref(testSuite.getHref())
             .withExecutable(testSuite.getExecutable());
     Map<String, Object> testSuiteDoc = JsonUtils.getMap(testSuiteReference);
-    if (event.getEventType() == ENTITY_UPDATED) {
-      for (EntityReference testcaseReference : testCaseReferences) {
-        UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
-        String scripText = "ctx._source.testSuites.add(params)";
-        Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
-        updateRequest.script(script);
-        updateElasticSearch(updateRequest);
-      }
+    for (EntityReference testcaseReference : testCaseReferences) {
+      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TEST_SUITE);
+      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
+      String scripText = "ctx._source.testSuites.add(params)";
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
+      updateRequest.script(script);
+      updateElasticSearch(updateRequest);
     }
   }
 
-  public void processTestCase(
-      TestCase testCase, ChangeEvent event, SearchIndexDefinition.ElasticSearchIndexType indexType) throws IOException {
-    // Process creation of test cases (linked to an executable test suite
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testCase.getId().toString());
-    TestCaseIndex testCaseIndex;
-
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
-        updateRequest.doc(JsonUtils.pojoToJson(testCaseIndex.buildESDocForCreate()), XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_UPDATED:
-        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
-        scriptedUpsert(testCaseIndex.buildESDoc(), updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteOrRestoreEntity(updateRequest, true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
-        TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
-        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-          // Delete the test case from the index if deleted from an executable test suite
-          DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
-          deleteEntityFromElasticSearch(deleteRequest);
-        } else {
-          // for non-executable test suites, simply remove the testSuite from the testCase and update the index
-          scriptedDeleteTestCase(updateRequest, testSuite.getId());
-          updateElasticSearch(updateRequest);
-        }
-        break;
-    }
-  }
+  //  public void processTestCase(
+  //      TestCase testCase, ChangeEvent event, SearchIndexDefinition.ElasticSearchIndexType indexType) throws
+  // IOException {
+  //    // Process creation of test cases (linked to an executable test suite
+  //    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testCase.getId().toString());
+  //    TestCaseIndex testCaseIndex;
+  //
+  //    switch (event.getEventType()) {
+  //      case ENTITY_CREATED:
+  //        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
+  //        updateRequest.doc(JsonUtils.pojoToJson(testCaseIndex.buildESDocForCreate()), XContentType.JSON);
+  //        updateRequest.docAsUpsert(true);
+  //        updateElasticSearch(updateRequest);
+  //        break;
+  //      case ENTITY_UPDATED:
+  //        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
+  //        scriptedUpsert(testCaseIndex.buildESDoc(), updateRequest);
+  //        updateElasticSearch(updateRequest);
+  //        break;
+  //      case ENTITY_SOFT_DELETED:
+  //        softDeleteOrRestoreEntity(updateRequest, true);
+  //        updateElasticSearch(updateRequest);
+  //        break;
+  //      case ENTITY_DELETED:
+  //        EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
+  //        TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
+  //        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+  //          // Delete the test case from the index if deleted from an executable test suite
+  //          DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
+  //          deleteEntityFromElasticSearch(deleteRequest);
+  //        } else {
+  //          // for non-executable test suites, simply remove the testSuite from the testCase and update the index
+  //          scriptedDeleteTestCase(updateRequest, testSuite.getId());
+  //          updateElasticSearch(updateRequest);
+  //        }
+  //        break;
+  //    }
+  //  }
 
   /** */
   @Override
@@ -1395,68 +943,45 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
-  private void scriptedUpsert(Object doc, UpdateRequest updateRequest) {
-    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-    updateRequest.script(script);
-    updateRequest.scriptedUpsert(true);
-    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-  }
+  //  private void scriptedUpsert(Object doc, UpdateRequest updateRequest) {
+  //    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+  //    updateRequest.script(script);
+  //    updateRequest.scriptedUpsert(true);
+  //    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+  //  }
+  //
+  //  private void scriptedUserUpsert(Object index, UpdateRequest updateRequest) {
+  //    String scriptTxt = "for (k in params.keySet()) {ctx._source.put(k, params.get(k)) }";
+  //    Map<String, Object> doc = JsonUtils.getMap(index);
+  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
+  //    updateRequest.script(script);
+  //    updateRequest.scriptedUpsert(true);
+  //  }
+  //
+  //  private void scriptedTeamUpsert(Object index, UpdateRequest updateRequest) {
+  //    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+  //    Map<String, Object> doc = JsonUtils.getMap(index);
+  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
+  //    updateRequest.script(script);
+  //    updateRequest.scriptedUpsert(true);
+  //  }
 
-  private void scriptedUserUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt = "for (k in params.keySet()) {ctx._source.put(k, params.get(k)) }";
-    Map<String, Object> doc = JsonUtils.getMap(index);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
-    updateRequest.script(script);
-    updateRequest.scriptedUpsert(true);
-  }
-
-  private void scriptedTeamUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    Map<String, Object> doc = JsonUtils.getMap(index);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
-    updateRequest.script(script);
-    updateRequest.scriptedUpsert(true);
-  }
-
-  private void softDeleteOrRestoreEntity(UpdateRequest updateRequest, boolean delete) {
-    String scriptTxt = "ctx._source.deleted=" + delete;
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-    updateRequest.script(script);
-  }
-
-  private void softDeleteOrRestoreChildren(String indexName, String parentField, String parentValue, boolean delete)
-      throws IOException {
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-    updateByQueryRequest.setQuery(new MatchQueryBuilder(parentField, parentValue));
-    String scriptTxt = "ctx._source.deleted=" + delete;
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-    updateByQueryRequest.setScript(script);
-    updateElasticSearchByQuery(updateByQueryRequest);
-  }
-
-  private void scriptedDeleteTestCase(UpdateRequest updateRequest, UUID testSuiteId) {
-    // Remove logical test suite from test case `testSuite` field
-    String scriptTxt =
-        "for (int i = 0; i < ctx._source.testSuite.length; i++) { if (ctx._source.testSuite[i].id == '%s') { ctx._source.testSuite.remove(i) }}";
-    scriptTxt = String.format(scriptTxt, testSuiteId);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-    updateRequest.script(script);
-  }
+  //  private void scriptedDeleteTestCase(UpdateRequest updateRequest, UUID testSuiteId) {
+  //    // Remove logical test suite from test case `testSuite` field
+  //    String scriptTxt =
+  //        "for (int i = 0; i < ctx._source.testSuite.length; i++) { if (ctx._source.testSuite[i].id == '%s') {
+  // ctx._source.testSuite.remove(i) }}";
+  //    scriptTxt = String.format(scriptTxt, testSuiteId);
+  //    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+  //    updateRequest.script(script);
+  //  }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
     if (deleteRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
-    if (deleteRequest != null) {
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      deleteRequest.setRefresh(true);
-      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1483,31 +1008,26 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
-  private org.elasticsearch.action.search.SearchRequest searchRequest(
-      String[] indexes, String field, String value, int batchSize, int from) {
-    org.elasticsearch.action.search.SearchRequest searchRequest =
-        new org.elasticsearch.action.search.SearchRequest(indexes);
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.matchQuery(field, value));
-    searchSourceBuilder.from(from);
-    searchSourceBuilder.size(batchSize);
-    searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
-    searchRequest.source(searchSourceBuilder);
-    return searchRequest;
-  }
+  public UpdateRequest applyESChangeEvent(EntityReference entity) {
+    String entityType = entity.getType();
+    SearchIndexDefinition.ElasticSearchIndexType esIndexType = IndexUtil.getIndexMappingByEntityType(entityType);
+    UUID entityId = entity.getId();
 
-  private Script generateTagScript(List<TagLabel> listTags) {
-    StringBuilder scriptTxt = new StringBuilder();
-    Map<String, Object> fieldRemoveParams = new HashMap<>();
-    fieldRemoveParams.put("tags", listTags);
-    scriptTxt.append("ctx._source.tags=params.tags;");
-    scriptTxt.append("ctx._source.tags.removeAll(params.tags);");
-    fieldRemoveParams.put("tags", listTags);
-    return new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt.toString(), fieldRemoveParams);
-  }
+    String scriptTxt = "";
+    Map<String, Object> fieldParams = new HashMap<>();
 
-  private UpdateRequest updateRequests(String entityType, String entityId, Script script) {
-    return new UpdateRequest(IndexUtil.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId).script(script);
+    // TODO : Make it return
+
+    // Populate Script Text
+    getScriptWithParams(entity, scriptTxt, fieldParams);
+    if (!CommonUtil.nullOrEmpty(scriptTxt)) {
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, fieldParams);
+      UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
+      updateRequest.script(script);
+      return updateRequest;
+    } else {
+      return null;
+    }
   }
 
   @Override

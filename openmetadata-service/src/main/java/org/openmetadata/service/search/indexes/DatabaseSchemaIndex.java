@@ -4,7 +4,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DatabaseSchemaIndex {
+public class DatabaseSchemaIndex implements ElasticSearchIndex {
   final DatabaseSchema databaseSchema;
 
   public DatabaseSchemaIndex(DatabaseSchema databaseSchema) {

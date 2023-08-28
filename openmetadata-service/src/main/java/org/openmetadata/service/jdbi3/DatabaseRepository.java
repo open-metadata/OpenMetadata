@@ -71,6 +71,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
         : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
+  @Override
+  public void postUpdate(Database entity) {}
+
   public Database setFields(Database database, Fields fields) {
     database.setService(getContainer(database.getId()));
     database.setDatabaseSchemas(

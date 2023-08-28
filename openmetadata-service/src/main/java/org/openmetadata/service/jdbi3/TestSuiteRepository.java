@@ -3,8 +3,10 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +43,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -151,6 +154,27 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       storeExecutableRelationship(entity);
     }
   }
+
+  @Override
+  protected void deleteFromSearch(TestSuite entity, String changeType) {
+    if (supportsSearchIndex) {
+      try {
+        if (Boolean.TRUE.equals(entity.getExecutable())) {
+          searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "testSuites.fullyQualifiedName");
+        } else {
+          String scriptTxt =
+              "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";
+          searchClient.updateSearchEntityDeleted(
+              entity.getEntityReference(), scriptTxt, "testSuites.fullyQualifiedName");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  @Override
+  protected void postCreate(TestSuite entity) {}
 
   public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =

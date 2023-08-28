@@ -120,6 +120,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -189,6 +190,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
+    esConfig = config.getElasticSearchConfiguration();
+    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
