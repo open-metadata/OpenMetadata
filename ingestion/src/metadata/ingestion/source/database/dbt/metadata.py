@@ -664,7 +664,10 @@ class DbtSource(DbtServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=data_model_link.datamodel.sql.__root__,
-                    error=f"Failed to parse the query {data_model_link.datamodel.sql.__root__} to capture lineage: {exc}",
+                    error=(
+                        f"Failed to parse the query {data_model_link.datamodel.sql.__root__}"
+                        f" to capture lineage: {exc}"
+                    ),
                     stack_trace=traceback.format_exc(),
                 )
             )

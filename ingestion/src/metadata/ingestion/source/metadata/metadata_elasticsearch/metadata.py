@@ -32,7 +32,6 @@ from metadata.generated.schema.system.eventPublisherJob import (
     RunMode,
     Status,
 )
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -91,7 +90,7 @@ class MetadataElasticsearchSource(Source):
                 f"Unexpected error while triggering elasticsearch reindex job: {exc}"
             )
 
-    def _iter(self):
+    def _iter(self, *_, **__):
         job_config = CreateEventPublisherJob(
             name=self.config.serviceName,
             publisherType=PublisherType.elasticSearch,

@@ -227,7 +227,10 @@ class RedashSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Lineage",
-                        error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                        error=(
+                            "Error to yield dashboard lineage details for DB "
+                            f"service name [{db_service_name}]: {exc}"
+                        ),
                         stack_trace=traceback.format_exc(),
                     )
                 )
@@ -267,7 +270,10 @@ class RedashSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Chart",
-                        error=f"Error to yield dashboard chart for widget_id: {widgets['id']} and {dashboard_details}: {exc}",
+                        error=(
+                            "Error to yield dashboard chart for widget_id: "
+                            f"{widgets['id']} and {dashboard_details}: {exc}"
+                        ),
                         stack_trace=traceback.format_exc(),
                     )
                 )

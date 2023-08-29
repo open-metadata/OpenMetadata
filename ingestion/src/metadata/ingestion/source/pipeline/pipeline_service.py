@@ -178,9 +178,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         if self.source_config.includeLineage:
             yield from self.yield_pipeline_lineage_details(pipeline_details) or []
 
-    def yield_tag(
-        self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""
 
     def close(self):

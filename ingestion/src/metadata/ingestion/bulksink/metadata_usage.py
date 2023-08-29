@@ -257,7 +257,9 @@ class MetadataUsageBulkSink(BulkSink):
                     "Could not fetch table"
                     f" {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
                 )
-                self.status.warning(f"Table: {table_usage.table}")
+                self.status.warning(
+                    f"Table: {table_usage.table}", reason="Could not fetch table"
+                )
 
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount

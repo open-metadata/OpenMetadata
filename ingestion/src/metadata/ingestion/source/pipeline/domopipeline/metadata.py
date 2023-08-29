@@ -15,8 +15,6 @@ Domo Pipeline source to extract metadata
 import traceback
 from typing import Dict, Iterable, Optional
 
-from pydantic import ValidationError
-
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -127,8 +125,7 @@ class DomopipelineSource(PipelineServiceSource):
             logger.debug(
                 f"Could not extract ID from {pipeline_details} while getting status."
             )
-            return None
-
+            return
         runs = self.connection.get_runs(pipeline_id)
         try:
             for run in runs or []:

@@ -133,8 +133,6 @@ class StageStep(Step, ABC):
                 )
             )
 
-        return None
-
 
 class IterStep(Step, ABC):
     """Steps that are run as Iterables"""

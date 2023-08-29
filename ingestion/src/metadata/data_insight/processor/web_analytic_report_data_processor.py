@@ -41,6 +41,7 @@ from metadata.generated.schema.entity.data import (
     topic,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.status import Status
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
@@ -374,5 +375,5 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
     def process(self) -> Iterable:
         yield from self.refine()
 
-    def get_status(self) -> SourceStatus:
+    def get_status(self) -> ProcessorStatus:
         return self.processor_status

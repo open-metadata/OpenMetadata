@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -64,5 +65,5 @@ class DataProcessor(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_status(self) -> SourceStatus:
+    def get_status(self) -> ProcessorStatus:
         raise NotImplementedError

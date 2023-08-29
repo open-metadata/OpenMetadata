@@ -336,6 +336,8 @@ def get_generic_step_name(step: Step) -> str:
         if isinstance(step, step_type):
             return step_type.__name__
 
+    return type(step).__name__
+
 
 def print_workflow_summary(workflow: "BaseWorkflow") -> None:
     """

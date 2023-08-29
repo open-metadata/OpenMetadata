@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either, StackTraceError112
 from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
@@ -109,7 +109,7 @@ class TableUsageStage(Stage):
                 )
             ]
 
-    def _run(self, record: QueryParserData) -> Iterable[Either[str]]:
+    def _run(self, record: QueryParserData, *_, **__) -> Iterable[Either[str]]:
         """
         Process the parsed data and store it in a file
         """

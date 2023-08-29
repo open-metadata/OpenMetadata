@@ -24,6 +24,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -203,7 +204,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         self, dbt_objects: DbtObjects
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
-        Create and yeild tags from DBT
+        Create and yield tags from DBT
         """
 
     @abstractmethod

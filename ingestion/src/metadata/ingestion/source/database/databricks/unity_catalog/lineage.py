@@ -31,6 +31,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -44,7 +45,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class DatabricksUnityCatalogLineageSource(Source[AddLineageRequest]):
+class DatabricksUnityCatalogLineageSource(Source):
     """
     Databricks Lineage Unity Catalog Source
     """
@@ -110,7 +111,7 @@ class DatabricksUnityCatalogLineageSource(Source[AddLineageRequest]):
             return LineageDetails(columnsLineage=col_lineage)
         return None
 
-    def next_record(self) -> Iterable[Either[AddLineageRequest]]:
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

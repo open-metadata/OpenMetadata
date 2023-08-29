@@ -299,7 +299,7 @@ def _create_lineage_by_table_name(
                 )
 
     except Exception as exc:
-        return Either(
+        yield Either(
             left=StackTraceError(
                 name="Lineage",
                 error=f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}",

@@ -406,7 +406,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def _get_add_lineage_request(
         to_entity: Union[Dashboard, DashboardDataModel],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
-    ) -> Either[AddLineageRequest]:
+    ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
                 right=AddLineageRequest(
@@ -422,6 +422,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     )
                 )
             )
+
+        return None
 
     def get_dashboard(self) -> Any:
         """

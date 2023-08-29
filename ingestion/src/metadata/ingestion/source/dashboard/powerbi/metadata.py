@@ -495,7 +495,10 @@ class PowerbiSource(DashboardServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=f"{db_service_name} Report Lineage",
-                    error=f"Error to yield datamodel and report lineage details for DB service name [{db_service_name}]: {exc}",
+                    error=(
+                        "Error to yield datamodel and report lineage details for DB "
+                        f"service name [{db_service_name}]: {exc}"
+                    ),
                     stack_trace=traceback.format_exc(),
                 )
             )
@@ -530,7 +533,10 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="DataModel Lineage",
-                        error=f"Error to yield datamodel lineage details for DB service name [{db_service_name}]: {exc}",
+                        error=(
+                            "Error to yield datamodel lineage details for DB "
+                            f"service name [{db_service_name}]: {exc}"
+                        ),
                         stack_trace=traceback.format_exc(),
                     )
                 )

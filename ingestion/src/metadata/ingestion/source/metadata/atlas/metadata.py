@@ -109,7 +109,7 @@ class AtlasSource(Source):
     def prepare(self):
         """Not required to implement"""
 
-    def _iter(self) -> Iterable[Either[Entity]]:
+    def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
         for service in self.service_connection.databaseServiceName or []:
             check_service = self.metadata.get_by_name(
                 entity=DatabaseService, fqn=service

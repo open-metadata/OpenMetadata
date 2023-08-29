@@ -80,9 +80,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     # All workflows execute a series of steps, aside from the source
     steps: Tuple[Step]
 
-    def __init__(
-        self, config: OpenMetadataWorkflowConfig
-    ):  # pylint: disable=too-many-locals
+    def __init__(self, config: OpenMetadataWorkflowConfig):
         """
         Disabling pylint to wait for workflow reimplementation as a topology
         """
@@ -102,7 +100,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
-        # Pick up the service connection from the API if needed
+        # Pick up the service connection from the API if neededweb_analytic_report_data_processor
         self._retrieve_service_connection_if_needed(self.service_type)
 
         # Informs the `source` and the rest of `steps` to execute

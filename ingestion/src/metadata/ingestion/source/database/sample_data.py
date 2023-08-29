@@ -517,7 +517,7 @@ class SampleDataSource(
     def prepare(self):
         """Nothing to prepare"""
 
-    def _iter(self) -> Iterable[Entity]:
+    def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_glue()
@@ -695,9 +695,6 @@ class SampleDataSource(
                         columns=table["sampleData"]["columns"],
                     ),
                 )
-
-    def ingest_topics(self) -> Iterable[Either[CreateTopicRequest]]:
-        """Ingest Sample Topics"""
 
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""

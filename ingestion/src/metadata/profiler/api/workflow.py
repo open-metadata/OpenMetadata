@@ -44,6 +44,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.api.steps import Sink
@@ -207,13 +208,12 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     continue
                 yield table
             except Exception as exc:
-                error = (
-                    f"Unexpected error filtering entities for table [{table}]: {exc}"
-                )
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
                 self.source_status.failed(
-                    table.fullyQualifiedName.__root__, error, traceback.format_exc()
+                    StackTraceError(
+                        name=table.fullyQualifiedName.__root__,
+                        error=f"Unexpected error filtering entities for table [{table}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def get_database_entities(self):
@@ -286,11 +286,13 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 self.source_config.processPiiSensitive,
             )
         except Exception as exc:
-            name = entity.fullyQualifiedName.__root__
-            error = f"Unexpected exception processing entity [{name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.error(error)
-            self.source_status.failed(name, error, traceback.format_exc())
+            self.source_status.failed(
+                StackTraceError(
+                    name=entity.fullyQualifiedName.__root__,
+                    error=f"Unexpected exception processing entity [{name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
             self.source_status.fail_all(
                 profiler_source.interface.processor_status.failures
             )

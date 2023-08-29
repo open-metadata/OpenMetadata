@@ -308,7 +308,10 @@ class QliksenseSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name=f"{dashboard_details.qDocName} Lineage",
-                        error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}",
+                        error=(
+                            "Error to yield dashboard lineage details for DB "
+                            f"service name [{db_service_name}]: {err}"
+                        ),
                         stack_trace=traceback.format_exc(),
                     )
                 )

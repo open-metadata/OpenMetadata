@@ -436,7 +436,7 @@ class CommonDbSourceService(
 
         except Exception as exc:
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            return Either(
+            yield Either(
                 left=StackTraceError(
                     name=table_name, error=error, stack_trace=traceback.format_exc()
                 )

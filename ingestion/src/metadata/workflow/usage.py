@@ -12,14 +12,11 @@
 Usage Workflow Definition
 """
 
-from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
-from metadata.utils.class_helper import get_service_type_from_source_type
+from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
 from metadata.utils.importer import (
     import_bulk_sink_type,
     import_from_module,
     import_processor_class,
-    import_sink_class,
     import_source_class,
     import_stage_class,
 )

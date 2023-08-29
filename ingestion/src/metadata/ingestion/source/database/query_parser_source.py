@@ -15,7 +15,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Iterator
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )

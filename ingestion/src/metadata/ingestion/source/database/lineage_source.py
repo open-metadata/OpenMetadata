@@ -99,7 +99,7 @@ class LineageSource(QueryParserSource, ABC):
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error processing query_dict {query_dict}: {exc}")
 
-    def _iter(self) -> Iterable[Either[AddLineageRequest]]:
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

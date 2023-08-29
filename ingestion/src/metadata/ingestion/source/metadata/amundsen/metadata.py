@@ -140,7 +140,7 @@ class AmundsenSource(Source):
     def prepare(self):
         """Nothing to prepare"""
 
-    def _iter(self) -> Iterable[Either[Entity]]:
+    def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
         table_entities = self.client.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
         for table in table_entities:
             yield from Either(right=self.create_table_entity(table))
