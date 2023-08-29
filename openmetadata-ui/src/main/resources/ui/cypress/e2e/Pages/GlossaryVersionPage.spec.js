@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// / <reference types="Cypress" />
 
 import {
   addOwner,
@@ -43,6 +44,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
   beforeEach(() => {
     cy.login();
+    interceptURL('GET', `/api/v1/glossaries?fields=*`, 'getGlossaryDetails');
     interceptURL('GET', '/api/v1/glossaryTerms?glossary=*', 'getGlossaryTerms');
     visitGlossaryPage();
   });
@@ -125,6 +127,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
   it('Glossary version page should display the version changes properly', () => {
     cy.get(`[data-menu-id*=${GLOSSARY_FOR_VERSION_TEST.displayName}]`).click();
 
+    verifyResponseStatusCode('@getGlossaryDetails', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
     cy.get('[data-testid="version-button"]').contains('0.2').click();
@@ -145,11 +148,24 @@ describe('Glossary and glossary term version pages should work properly', () => 
   it('Glossary version page should display the owner and reviewer changes properly', () => {
     cy.get(`[data-menu-id*=${GLOSSARY_FOR_VERSION_TEST.displayName}]`).click();
 
+    verifyResponseStatusCode('@getGlossaryDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
+
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaries', true);
+    addOwner(OWNER, 'glossaries', true, true);
+
+    interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
+    interceptURL(
+      'GET',
+      `/api/v1/glossaries/*/versions/0.3`,
+      'getSelectedVersionDetails'
+    );
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-owner-name"] [data-testid="diff-added-Amber Green"]'
@@ -159,9 +175,21 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
 
+    verifyResponseStatusCode('@getGlossaryDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
+
     removeOwner('glossaries', true);
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaries/*/versions/0.4`,
+      'getSelectedVersionDetails'
+    );
+
     cy.get('[data-testid="version-button"]').contains('0.4').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-owner-name"] [data-testid="diff-removed-Amber Green"]'
@@ -171,9 +199,21 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.4').click();
 
+    verifyResponseStatusCode('@getGlossaryDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
+
     addReviewer(REVIEWER, 'glossaries');
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaries/*/versions/0.5`,
+      'getSelectedVersionDetails'
+    );
+
     cy.get('[data-testid="version-button"]').contains('0.5').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-reviewer"] [data-testid="diff-added-Amanda York"]'
@@ -183,9 +223,21 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.5').click();
 
+    verifyResponseStatusCode('@getGlossaryDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
+
     removeReviewer('glossaries');
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaries/*/versions/0.6`,
+      'getSelectedVersionDetails'
+    );
+
     cy.get('[data-testid="version-button"]').contains('0.6').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-reviewer"] [data-testid="diff-removed-Amanda York"]'
@@ -273,9 +325,20 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaryTerms', true);
+    addOwner(OWNER, 'glossaryTerms', true, true);
+
+    interceptURL('GET', `/api/v1/glossaryTerms/*/versions`, 'getVersionsList');
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/*/versions/0.3`,
+      'getSelectedVersionDetails'
+    );
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
+
+    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-owner-name"] [data-testid="diff-added-Amber Green"]'
@@ -285,9 +348,23 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
 
+    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTermParents', 200);
+    verifyResponseStatusCode('@getChildGlossaryTerms', 200);
+
     removeOwner('glossaryTerms', true);
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/*/versions/0.4`,
+      'getSelectedVersionDetails'
+    );
+
     cy.get('[data-testid="version-button"]').contains('0.4').click();
+
+    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-owner-name"] [data-testid="diff-removed-Amber Green"]'
@@ -297,9 +374,23 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.4').click();
 
+    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTermParents', 200);
+    verifyResponseStatusCode('@getChildGlossaryTerms', 200);
+
     addReviewer(REVIEWER, 'glossaryTerms');
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/*/versions/0.5`,
+      'getSelectedVersionDetails'
+    );
+
     cy.get('[data-testid="version-button"]').contains('0.5').click();
+
+    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-reviewer"] [data-testid="diff-added-Amanda York"]'
@@ -309,9 +400,23 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.5').click();
 
+    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTermParents', 200);
+    verifyResponseStatusCode('@getChildGlossaryTerms', 200);
+
     removeReviewer('glossaryTerms');
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/*/versions/0.6`,
+      'getSelectedVersionDetails'
+    );
+
     cy.get('[data-testid="version-button"]').contains('0.6').click();
+
+    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
     cy.get(
       '[data-testid="glossary-reviewer"] [data-testid="diff-removed-Amanda York"]'

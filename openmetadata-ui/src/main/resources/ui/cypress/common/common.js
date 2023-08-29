@@ -1100,8 +1100,13 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
-export const addOwner = (ownerName, entity, isGlossaryPage) => {
-  if (isGlossaryPage) {
+export const addOwner = (
+  ownerName,
+  entity,
+  isGlossaryPage,
+  isOwnerEmpty = false
+) => {
+  if (isGlossaryPage && isOwnerEmpty) {
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
   } else {
     cy.get('[data-testid="edit-owner"]').click();
