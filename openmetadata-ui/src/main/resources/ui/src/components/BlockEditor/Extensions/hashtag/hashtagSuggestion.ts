@@ -14,16 +14,20 @@ import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance, Props } from 'tippy.js';
 
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
-import { getSearchedUsers, getUserSuggestions } from 'rest/miscAPI';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
+import { getSuggestions, searchData } from 'rest/miscAPI';
+import { getEntityBreadcrumbs } from 'utils/EntityUtils';
+import { buildMentionLink } from 'utils/FeedUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { ExtensionRef } from '../types';
-import MentionList from './MentionList';
+import HashList from './HashList';
 
 export default {
   items: async ({ query }: { query: string }) => {
     if (!query) {
-      const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
+      const data = await searchData('*', 1, 5, '', '', '', SearchIndex.TABLE);
       const hits = data.data.hits.hits;
 
       return hits.map((hit) => ({
@@ -31,14 +35,19 @@ export default {
         name: hit._source.name,
         label: hit._source.displayName,
         fqn: hit._source.fullyQualifiedName,
-        href:
-          hit._source.entityType === 'user'
-            ? getUserPath(hit._source.fullyQualifiedName ?? '')
-            : getTeamAndUserDetailsPath(hit._source.fullyQualifiedName ?? ''),
+        href: buildMentionLink(
+          hit._source.entityType,
+          getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+        ),
         type: hit._source.entityType,
+        breadcrumbs: getEntityBreadcrumbs(
+          hit._source,
+          hit._source.entityType as EntityType,
+          false
+        ),
       }));
     } else {
-      const data = await getUserSuggestions(query);
+      const data = await getSuggestions(query);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
 
       return hits.map((hit) => ({
@@ -46,11 +55,16 @@ export default {
         name: hit._source.name,
         label: hit._source.displayName,
         fqn: hit._source.fullyQualifiedName,
-        href:
-          hit._source.entityType === 'user'
-            ? getUserPath(hit._source.fullyQualifiedName ?? '')
-            : getTeamAndUserDetailsPath(hit._source.fullyQualifiedName ?? ''),
+        href: buildMentionLink(
+          hit._source.entityType,
+          getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+        ),
         type: hit._source.entityType,
+        breadcrumbs: getEntityBreadcrumbs(
+          hit._source as SearchedDataProps['data'][number]['_source'],
+          hit._source.entityType as EntityType,
+          false
+        ),
       }));
     }
   },
@@ -61,7 +75,7 @@ export default {
 
     return {
       onStart: (props: SuggestionProps) => {
-        component = new ReactRenderer(MentionList, {
+        component = new ReactRenderer(HashList, {
           props,
           editor: props.editor,
         });

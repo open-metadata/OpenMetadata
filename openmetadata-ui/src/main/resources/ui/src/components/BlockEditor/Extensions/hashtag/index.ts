@@ -15,19 +15,19 @@ import { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { PluginKey } from '@tiptap/pm/state';
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
 
-export type MentionOptions = {
+export type HashtagOptions = {
   HTMLAttributes: Record<string, unknown>;
   renderLabel: (props: {
-    options: MentionOptions;
+    options: HashtagOptions;
     node: ProseMirrorNode;
   }) => string;
   suggestion: Omit<SuggestionOptions, 'editor'>;
 };
 
-export const MentionPluginKey = new PluginKey('mention');
+export const HashtagPluginKey = new PluginKey('hashtag');
 
-export const Mention = Node.create<MentionOptions>({
-  name: 'mention',
+export const Hashtag = Node.create<HashtagOptions>({
+  name: 'hashtag',
 
   addOptions() {
     return {
@@ -36,11 +36,9 @@ export const Mention = Node.create<MentionOptions>({
         return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`;
       },
       suggestion: {
-        char: '@',
-        pluginKey: MentionPluginKey,
+        char: '#',
+        pluginKey: HashtagPluginKey,
         command: ({ editor, range, props }) => {
-          // increase range.to by one when the next node is of type "text"
-          // and starts with a space character
           const nodeAfter = editor.view.state.selection.$to.nodeAfter;
           const overrideSpace = nodeAfter?.text?.startsWith(' ');
 
@@ -159,7 +157,7 @@ export const Mention = Node.create<MentionOptions>({
     return {
       Backspace: () =>
         this.editor.commands.command(({ tr, state }) => {
-          let isMention = false;
+          let isHashtag = false;
           const { selection } = state;
           const { empty, anchor } = selection;
 
@@ -172,7 +170,7 @@ export const Mention = Node.create<MentionOptions>({
               return;
             }
 
-            isMention = true;
+            isHashtag = true;
             tr.insertText(
               this.options.suggestion.char || '',
               pos,
@@ -182,7 +180,7 @@ export const Mention = Node.create<MentionOptions>({
             return false;
           });
 
-          return isMention;
+          return isHashtag;
         }),
     };
   },

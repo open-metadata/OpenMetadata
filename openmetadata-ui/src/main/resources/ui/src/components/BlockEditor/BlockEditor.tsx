@@ -22,6 +22,8 @@ import tippy, { Instance, Props } from 'tippy.js';
 import './block-editor.less';
 import LinkModal, { LinkData } from './Components/LinkModal';
 import LinkPopup from './Components/LinkPopup';
+import { Hashtag } from './Extensions/hashtag';
+import hashtagSuggestion from './Extensions/hashtag/hashtagSuggestion';
 import { Mention } from './Extensions/mention';
 import mentionSuggestion from './Extensions/mention/mentionSuggestions';
 import SlashCommand from './Extensions/slash-command';
@@ -105,6 +107,22 @@ const BlockEditor = () => {
       Mention.configure({
         suggestion: mentionSuggestion,
       }),
+      Hashtag.configure({
+        suggestion: hashtagSuggestion,
+      }),
+    ],
+
+    enableInputRules: [
+      'blockquote',
+      'bold',
+      'bulletList',
+      'code',
+      'codeBlock',
+      'horizontalRule',
+      'italic',
+      'listItem',
+      'orderedList',
+      'strike',
     ],
 
     onUpdate({ editor }) {
@@ -167,7 +185,7 @@ const BlockEditor = () => {
     const target = e.target as HTMLElement;
     const dataType = target.getAttribute('data-type');
 
-    if (dataType === 'mention') {
+    if (['mention', 'hashtag'].includes(dataType ?? '')) {
       return;
     }
     if (target.nodeName === 'A') {

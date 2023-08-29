@@ -10,27 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
+import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isInViewport } from 'components/BlockEditor/helpers';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { ExtensionRef, SuggestionItem } from '../types';
 
-export interface MentionItem {
-  id: string;
-  name: string;
-  fqn: string;
-  label: string;
-  type: string;
-  href: string;
-}
-
-export interface MentionRef {
-  onKeyDown: (props: SuggestionKeyDownProps) => boolean;
-}
-
-export default forwardRef<MentionRef, SuggestionProps<MentionItem>>(
+export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
   (props, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const { items, command } = props;
