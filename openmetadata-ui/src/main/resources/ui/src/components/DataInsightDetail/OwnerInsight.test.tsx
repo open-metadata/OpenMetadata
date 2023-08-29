@@ -63,7 +63,11 @@ describe('Test DescriptionInsight Component', () => {
       const { container } = render(<OwnerInsight {...mockProps} />);
       const card = screen.getByTestId('entity-summary-card-percentage');
 
-      const graph = queryByAttribute('id', container, 'owner-summary-graph');
+      const graph = queryByAttribute(
+        'id',
+        container,
+        `${mockProps.dataInsightChartName}-graph`
+      );
 
       expect(card).toBeInTheDocument();
       expect(graph).toBeInTheDocument();
@@ -78,7 +82,11 @@ describe('Test DescriptionInsight Component', () => {
       const { container } = render(<OwnerInsight {...mockProps} />);
       const card = screen.getByTestId('entity-summary-card-percentage');
 
-      const graph = queryByAttribute('id', container, 'owner-summary-graph');
+      const graph = queryByAttribute(
+        'id',
+        container,
+        `${mockProps.dataInsightChartName}-graph`
+      );
       const missingEntityValue = await screen.findByTestId('Table');
 
       expect(card).toBeInTheDocument();

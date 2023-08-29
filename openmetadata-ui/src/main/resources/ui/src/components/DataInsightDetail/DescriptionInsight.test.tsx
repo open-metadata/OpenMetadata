@@ -65,7 +65,7 @@ describe('Test DescriptionInsight Component', () => {
       const graph = queryByAttribute(
         'id',
         container,
-        'description-summary-graph'
+        `${mockProps.dataInsightChartName}-graph`
       );
 
       expect(card).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('Test DescriptionInsight Component', () => {
       const graph = queryByAttribute(
         'id',
         container,
-        'description-summary-graph'
+        `${mockProps.dataInsightChartName}-graph`
       );
       const missingEntityValue = await screen.findByTestId('Table');
 
