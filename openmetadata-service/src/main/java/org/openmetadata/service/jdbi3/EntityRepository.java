@@ -389,7 +389,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Initialize a given entity if it does not exist. */
-  @Transaction
+  @JdbiUnitOfWork
   public void initializeEntity(T entity) {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
@@ -434,7 +434,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** getReference is used for getting the entity references from the entity in the cache. */
-  @Transaction
+  @JdbiUnitOfWork
   public final EntityReference getReference(UUID id, Include include) throws EntityNotFoundException {
     return find(id, include).getEntityReference();
   }
@@ -442,7 +442,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @Transaction
+  @JdbiUnitOfWork
   public T find(UUID id, Include include) throws EntityNotFoundException {
     try {
       @SuppressWarnings("unchecked")
@@ -462,7 +462,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getByName(uriInfo, fqn, fields, NON_DELETED, false);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     if (!fromCache) {
@@ -498,7 +498,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @Transaction
+  @JdbiUnitOfWork
   public T findByName(String fqn, Include include) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     try {
@@ -975,7 +975,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) {
     T entity = find(entityId, NON_DELETED);
 

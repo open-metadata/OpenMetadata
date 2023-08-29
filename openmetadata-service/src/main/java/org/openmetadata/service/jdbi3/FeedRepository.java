@@ -386,7 +386,7 @@ public class FeedRepository {
     dao.feedDAO().delete(id);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public void deleteByAbout(UUID entityId) {
     List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
     for (String threadId : threadIds) {
@@ -456,7 +456,7 @@ public class FeedRepository {
   }
 
   /** List threads based on the filters and limits in the order of the updated timestamp. */
-  @Transaction
+  @JdbiUnitOfWork
   public ResultList<Thread> list(FeedFilter filter, String link, int limitPosts, String userId, int limit) {
     int total;
     List<Thread> threads;
