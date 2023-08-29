@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
+import { uuid } from '../common/common';
+import { SERVICE_CATEGORIES } from './service.constants';
+
 export const OWNER = 'Amber Green';
 export const TIER = 'Tier1';
 
+const TABLE_NAME = `cypress_version_table-${uuid()}`;
+const TOPIC_NAME = `cypress_version_topic-${uuid()}`;
+const DASHBOARD_NAME = `cypress_version_dashboard-${uuid()}`;
+const PIPELINE_NAME = `cypress_version_pipeline-${uuid()}`;
+const ML_MODEL_NAME = `cypress_version_ml_model-${uuid()}`;
+const CONTAINER_NAME = `cypress_version_container-${uuid()}`;
+
 const TABLE_DETAILS_FOR_VERSION_TEST = {
-  name: 'cypress_version_test_table',
+  name: TABLE_NAME,
   columns: [
     {
       name: 'user_id',
@@ -107,12 +117,12 @@ export const TABLE_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: 'Description for cypress_version_test_table',
+    value: `Description for ${TABLE_NAME}`,
   },
 ];
 
 const TOPIC_DETAILS_FOR_VERSION_TEST = {
-  name: 'cypress_version_test_topic',
+  name: TOPIC_NAME,
   service: 'sample_kafka',
   messageSchema: {
     schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
@@ -213,12 +223,12 @@ export const TOPIC_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: 'Description for cypress_version_test_topic',
+    value: `Description for ${TOPIC_NAME}`,
   },
 ];
 
 const DASHBOARD_DETAILS_FOR_VERSION_TEST = {
-  name: 'cypress_version_test_dashboard',
+  name: DASHBOARD_NAME,
   service: 'sample_superset',
 };
 
@@ -236,12 +246,12 @@ const DASHBOARD_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: 'Description for cypress_version_test_dashboard',
+    value: `Description for ${DASHBOARD_NAME}`,
   },
 ];
 
 const PIPELINE_DETAILS_FOR_VERSION_TEST = {
-  name: 'cypress_version_test_pipeline',
+  name: PIPELINE_NAME,
   tasks: [
     {
       name: 'cypress_task_1',
@@ -324,12 +334,12 @@ const PIPELINE_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: 'Description for cypress_version_test_pipeline',
+    value: `Description for ${PIPELINE_NAME}`,
   },
 ];
 
 const ML_MODEL_DETAILS_FOR_VERSION_TEST = {
-  name: 'cypress_version_test_ml_model',
+  name: ML_MODEL_NAME,
   algorithm: 'Neural Network',
   mlFeatures: [
     {
@@ -400,12 +410,12 @@ const ML_MODEL_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: 'Description for cypress_version_test_ml_model',
+    value: `Description for ${ML_MODEL_NAME}`,
   },
 ];
 
 const CONTAINER_DETAILS_FOR_VERSION_TEST = {
-  name: 'cypress_version_test_container',
+  name: CONTAINER_NAME,
   service: 's3_storage_sample',
   dataModel: {
     isPartitioned: false,
@@ -495,96 +505,92 @@ const CONTAINER_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: 'Description for cypress_version_test_container',
+    value: `Description for ${CONTAINER_NAME}`,
   },
 ];
 
 export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   Table: {
-    name: 'cypress_version_test_table',
-    term: 'cypress_version_test_table',
+    name: TABLE_NAME,
     serviceName: 'sample_data',
     entity: 'tables',
     entityCreationDetails: TABLE_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: TABLE_PATCH_PAYLOAD,
     isChildrenExist: true,
     childSelector: 'data-row-key',
-    entityAddedDescription: 'Description for cypress_version_test_table',
+    entityAddedDescription: `Description for ${TABLE_NAME}`,
     updatedTagEntityChildName: 'user_id',
     entityChildRemovedDescription: 'First name of the staff member.',
     entityChildAddedDescription: 'Last name of the staff member.',
   },
   Topic: {
-    name: 'cypress_version_test_topic',
-    term: 'cypress_version_test_topic',
+    name: TOPIC_NAME,
     serviceName: 'sample_kafka',
     entity: 'topics',
     entityCreationDetails: TOPIC_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: TOPIC_PATCH_PAYLOAD,
     isChildrenExist: true,
     childSelector: 'data-row-key',
-    entityAddedDescription: 'Description for cypress_version_test_topic',
+    entityAddedDescription: `Description for ${TOPIC_NAME}`,
     updatedTagEntityChildName: 'default',
     entityChildRemovedDescription: 'Description for schema field first_name',
     entityChildAddedDescription: 'Description for schema field last_name',
   },
   // TODO - Remove the comment after this issue is resolved https://github.com/open-metadata/OpenMetadata/issues/12924
   // Dashboard: {
-  //   name: 'cypress_version_test_dashboard',
-  //   term: 'cypress_version_test_dashboard',
+  //   name: DASHBOARD_NAME,
   //   serviceName: 'sample_superset',
   //   entity: 'dashboards',
   //   entityCreationDetails: DASHBOARD_DETAILS_FOR_VERSION_TEST,
   //   entityPatchPayload: DASHBOARD_PATCH_PAYLOAD,
   //   isChildrenExist: false,
-  //   entityAddedDescription: 'Description for cypress_version_test_dashboard',
+  //   entityAddedDescription: `Description for ${DASHBOARD_NAME}`,
   // },
   Pipeline: {
-    name: 'cypress_version_test_pipeline',
-    term: 'cypress_version_test_pipeline',
+    name: PIPELINE_NAME,
     serviceName: 'sample_airflow',
     entity: 'pipelines',
     entityCreationDetails: PIPELINE_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: PIPELINE_PATCH_PAYLOAD,
     isChildrenExist: true,
     childSelector: 'data-row-key',
-    entityAddedDescription: 'Description for cypress_version_test_pipeline',
+    entityAddedDescription: `Description for ${PIPELINE_NAME}`,
     updatedTagEntityChildName: 'cypress_task_1',
     entityChildRemovedDescription: 'Description for task cypress_task_2',
     entityChildAddedDescription: 'Description for task cypress_task_3',
   },
   'ML Model': {
-    name: 'cypress_version_test_ml_model',
-    term: 'cypress_version_test_ml_model',
+    name: ML_MODEL_NAME,
     serviceName: 'mlflow_svc',
     entity: 'mlmodels',
     entityCreationDetails: ML_MODEL_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: ML_MODEL_PATCH_PAYLOAD,
     isChildrenExist: true,
     childSelector: 'data-testid',
-    entityAddedDescription: 'Description for cypress_version_test_ml_model',
+    entityAddedDescription: `Description for ${ML_MODEL_NAME}`,
     updatedTagEntityChildName: 'feature-card-feature_1',
     entityChildRemovedDescription: 'Description for mlFeature feature_2',
     entityChildAddedDescription: 'Description for mlFeature feature_3',
   },
   Container: {
-    name: 'cypress_version_test_container',
-    term: 'cypress_version_test_container',
+    name: CONTAINER_NAME,
     serviceName: 's3_storage_sample',
     entity: 'containers',
     entityCreationDetails: CONTAINER_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: CONTAINER_PATCH_PAYLOAD,
     isChildrenExist: true,
     childSelector: 'data-row-key',
-    entityAddedDescription: 'Description for cypress_version_test_container',
+    entityAddedDescription: `Description for ${CONTAINER_NAME}`,
     updatedTagEntityChildName: 'column_1',
     entityChildRemovedDescription: 'Description for column column_2',
     entityChildAddedDescription: 'Description for column column_3',
   },
 };
 
+export const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
+
 export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
-  name: 'cypress_version_test_data_model',
+  name: DATA_MODEL_NAME,
   service: 'sample_looker',
   dataModelType: 'LookMlExplore',
   columns: [
@@ -663,15 +669,192 @@ export const DATA_MODEL_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: 'Description for cypress_version_test_data_model',
+    value: `Description for ${DATA_MODEL_NAME}`,
   },
 ];
 
 export const DATA_MODEL_DETAILS = {
-  name: 'cypress_version_test_data_model',
+  name: DATA_MODEL_NAME,
   entity: 'containers',
-  entityAddedDescription: 'Description for cypress_version_test_data_model',
+  entityAddedDescription: `Description for ${DATA_MODEL_NAME}`,
   updatedTagEntityChildName: 'column_1',
   entityChildRemovedDescription: 'Description for column column_2',
   entityChildAddedDescription: 'Description for column column_3',
+};
+
+const DATABASE_SERVICE_NAME = `0-cy-database-service-${uuid()}`;
+const MESSAGING_SERVICE_NAME = `0-cy-messaging-service-${uuid()}`;
+const DASHBOARD_SERVICE_NAME = `0-cy-dashboard-service-${uuid()}`;
+const PIPELINE_SERVICE_NAME = `0-cy-pipeline-service-${uuid()}`;
+const ML_MODEL_SERVICE_NAME = `0-cy-ml-model-service-${uuid()}`;
+const STORAGE_SERVICE_NAME = `0-cy-storage-service-${uuid()}`;
+
+const DATABASE_SERVICE_DETAILS_FOR_VERSION_TEST = {
+  name: DATABASE_SERVICE_NAME,
+  serviceType: 'Mysql',
+  connection: {
+    config: {
+      type: 'Mysql',
+      scheme: 'mysql+pymysql',
+      username: 'username',
+      authType: {
+        password: 'password',
+      },
+      hostPort: 'mysql:3306',
+      supportsMetadataExtraction: true,
+      supportsDBTExtraction: true,
+      supportsProfiler: true,
+      supportsQueryComment: true,
+    },
+  },
+};
+
+const MESSAGING_SERVICE_DETAILS_FOR_VERSION_TEST = {
+  name: MESSAGING_SERVICE_NAME,
+  serviceType: 'Kafka',
+  connection: {
+    config: {
+      type: 'Kafka',
+      bootstrapServers: 'Bootstrap Servers',
+      saslUsername: 'admin',
+      saslPassword: 'admin',
+      saslMechanism: 'PLAIN',
+      supportsMetadataExtraction: true,
+    },
+  },
+};
+const DASHBOARD_SERVICE_DETAILS_FOR_VERSION_TEST = {
+  name: DASHBOARD_SERVICE_NAME,
+  serviceType: 'Superset',
+  connection: {
+    config: {
+      type: 'Superset',
+      hostPort: 'http://localhost:8088',
+      connection: {
+        provider: 'ldap',
+        username: 'admin',
+        password: 'admin',
+      },
+      supportsMetadataExtraction: true,
+    },
+  },
+};
+
+const PIPELINE_SERVICE_DETAILS_FOR_VERSION_TEST = {
+  name: PIPELINE_SERVICE_NAME,
+  serviceType: 'Dagster',
+  connection: {
+    config: {
+      type: 'Dagster',
+      host: 'admin',
+      token: 'admin',
+      timeout: '1000',
+      supportsMetadataExtraction: true,
+    },
+  },
+};
+
+const ML_MODEL_SERVICE_DETAILS_FOR_VERSION_TEST = {
+  name: ML_MODEL_SERVICE_NAME,
+  serviceType: 'Mlflow',
+  connection: {
+    config: {
+      type: 'Mlflow',
+      trackingUri: 'Tracking URI',
+      registryUri: 'Registry URI',
+      supportsMetadataExtraction: true,
+    },
+  },
+};
+
+const STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST = {
+  name: STORAGE_SERVICE_NAME,
+  serviceType: 'S3',
+  connection: {
+    config: {
+      type: 'S3',
+      awsConfig: {
+        awsAccessKeyId: 'admin',
+        awsSecretAccessKey: 'key',
+        awsRegion: 'us-east-2',
+        assumeRoleSessionName: 'OpenMetadataSession',
+      },
+      supportsMetadataExtraction: true,
+    },
+  },
+};
+
+export const NEW_SERVICE_DESCRIPTION = 'Description for newly added service';
+
+const SERVICE_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/tags/1',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PII.Sensitive',
+    },
+  },
+  {
+    op: 'add',
+    path: '/description',
+    value: NEW_SERVICE_DESCRIPTION,
+  },
+];
+
+export const SERVICE_DETAILS_FOR_VERSION_TEST = {
+  Database: {
+    serviceName: DATABASE_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
+    entityCreationDetails: DATABASE_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    settingsMenuId: 'services.databases',
+  },
+  Messaging: {
+    serviceName: MESSAGING_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
+    entityCreationDetails: MESSAGING_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    settingsMenuId: 'services.messaging',
+  },
+  Dashboard: {
+    serviceName: DASHBOARD_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
+    entityCreationDetails: DASHBOARD_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    settingsMenuId: 'services.dashboards',
+  },
+  Pipeline: {
+    serviceName: PIPELINE_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
+    entityCreationDetails: PIPELINE_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    settingsMenuId: 'services.pipelines',
+  },
+  'ML Model': {
+    serviceName: ML_MODEL_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
+    entityCreationDetails: ML_MODEL_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    settingsMenuId: 'services.mlModels',
+  },
+  Storage: {
+    serviceName: STORAGE_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
+    entityCreationDetails: STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    settingsMenuId: 'services.storages',
+  },
 };

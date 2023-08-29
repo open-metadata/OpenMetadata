@@ -32,13 +32,15 @@ describe('Services page should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}`,
+      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}*`,
       'ingestionPipelines'
     );
     cy.login();
     // redirecting to services page
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Database')

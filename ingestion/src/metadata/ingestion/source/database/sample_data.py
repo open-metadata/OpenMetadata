@@ -38,6 +38,9 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -61,6 +64,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
@@ -242,6 +246,13 @@ class SampleDataSource(
         self.tables = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/tables.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.stored_procedures = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/datasets/stored_procedures.json",
                 "r",
                 encoding=UTF_8,
             )
@@ -511,6 +522,7 @@ class SampleDataSource(
         yield from self.ingest_users()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
+        yield from self.ingest_stored_procedures()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
         yield from self.ingest_data_models()
@@ -687,6 +699,66 @@ class SampleDataSource(
     def ingest_topics(self) -> Iterable[Either[CreateTopicRequest]]:
         """Ingest Sample Topics"""
 
+    def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Stored Procedures"""
+
+        db = CreateDatabaseRequest(
+            name=self.database["name"],
+            description=self.database["description"],
+            service=self.database_service.fullyQualifiedName.__root__,
+        )
+        yield Either(right=db)
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+        )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+
+        schema = CreateDatabaseSchemaRequest(
+            name=self.database_schema["name"],
+            description=self.database_schema["description"],
+            database=database_object.fullyQualifiedName,
+        )
+        yield Either(right=schema)
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+            schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
+        resp = self.metadata.list_entities(entity=User, limit=5)
+        self.user_entity = resp.entities
+
+        for stored_procedure in self.stored_procedures["storedProcedures"]:
+            stored_procedure = CreateStoredProcedureRequest(
+                name=stored_procedure["name"],
+                description=stored_procedure["description"],
+                storedProcedureCode=StoredProcedureCode(
+                    **stored_procedure["storedProcedureCode"]
+                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
+                tags=stored_procedure["tags"],
+            )
+
+            yield Either(right=stored_procedure)
+
+    def ingest_topics(self) -> Iterable[CreateTopicRequest]:
+        """
+        Ingest Sample Topics
+        """
         for topic in self.topics["topics"]:
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
@@ -1167,15 +1239,22 @@ class SampleDataSource(
                             rowCount=profile["rowCount"],
                             createDateTime=profile.get("createDateTime"),
                             sizeInByte=profile.get("sizeInByte"),
-                            timestamp=(
-                                datetime.now(tz=timezone.utc) - timedelta(days=days)
-                            ).timestamp(),
+                            timestamp=int(
+                                (
+                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
+                                ).timestamp()
+                                * 1000
+                            ),
                         ),
                         columnProfile=[
                             ColumnProfile(
-                                timestamp=(
-                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
-                                ).timestamp(),
+                                timestamp=int(
+                                    (
+                                        datetime.now(tz=timezone.utc)
+                                        - timedelta(days=days)
+                                    ).timestamp()
+                                    * 1000
+                                ),
                                 **col_profile,
                             )
                             for col_profile in profile["columnProfile"]
@@ -1272,9 +1351,10 @@ class SampleDataSource(
                 for days, result in enumerate(test_case_results["results"]):
                     test_case_result_req = OMetaTestCaseResultsSample(
                         test_case_results=TestCaseResult(
-                            timestamp=(
-                                datetime.now() - timedelta(days=days)
-                            ).timestamp(),
+                            timestamp=int(
+                                (datetime.now() - timedelta(days=days)).timestamp()
+                                * 1000
+                            ),
                             testCaseStatus=result["testCaseStatus"],
                             result=result["result"],
                             testResultValue=[
