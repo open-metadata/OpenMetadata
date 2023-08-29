@@ -102,7 +102,7 @@ describe('Postgres Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
     verifyResponseStatusCode('@getSettingsPage', 200);

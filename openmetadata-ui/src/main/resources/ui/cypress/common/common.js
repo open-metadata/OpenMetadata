@@ -13,6 +13,7 @@
 
 // / <reference types="cypress" />
 
+import { isEmpty } from 'lodash';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -219,6 +220,7 @@ export const testServiceCreationAndIngestion = ({
   type = 'database',
   testIngestionButton = true,
   serviceCategory,
+  shouldAddIngestion = true,
 }) => {
   // Storing the created service name and the type of service
   // Select Service in step 1
@@ -323,41 +325,43 @@ export const testServiceCreationAndIngestion = ({
   cy.contains(`"${serviceName}"`).should('be.visible');
   cy.contains('has been created successfully').should('be.visible');
 
-  cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
+  if (shouldAddIngestion) {
+    cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
 
-  // Add ingestion page
-  cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
+    // Add ingestion page
+    cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
 
-  if (isDatabaseService(type)) {
-    // Set mark-deleted slider to off to disable it.
-    cy.get('#root\\/markDeletedTables').click();
+    if (isDatabaseService(type)) {
+      // Set mark-deleted slider to off to disable it.
+      cy.get('#root\\/markDeletedTables').click();
+    }
+
+    addIngestionInput && addIngestionInput();
+
+    cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+
+    scheduleIngestion();
+
+    cy.contains(`${replaceAllSpacialCharWith_(serviceName)}_metadata`).should(
+      'be.visible'
+    );
+
+    // wait for ingestion to run
+    cy.clock();
+    cy.wait(10000);
+
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines?*',
+      'ingestionPipelines'
+    );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+
+    cy.get('[data-testid="view-service-button"]').should('be.visible').click();
+    verifyResponseStatusCode('@serviceDetails', 200);
+    verifyResponseStatusCode('@ingestionPipelines', 200);
+    handleIngestionRetry(type, testIngestionButton);
   }
-
-  addIngestionInput && addIngestionInput();
-
-  cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
-
-  scheduleIngestion();
-
-  cy.contains(`${replaceAllSpacialCharWith_(serviceName)}_metadata`).should(
-    'be.visible'
-  );
-
-  // wait for ingestion to run
-  cy.clock();
-  cy.wait(10000);
-
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines?*',
-    'ingestionPipelines'
-  );
-  interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
-
-  cy.get('[data-testid="view-service-button"]').should('be.visible').click();
-  verifyResponseStatusCode('@serviceDetails', 200);
-  verifyResponseStatusCode('@ingestionPipelines', 200);
-  handleIngestionRetry(type, testIngestionButton);
 };
 
 export const deleteCreatedService = (
@@ -372,7 +376,7 @@ export const deleteCreatedService = (
     'api/v1/teams/name/Organization?fields=*',
     'getSettingsPage'
   );
-  cy.get('[data-testid="appbar-item-settings"]')
+  cy.get('[data-testid="app-bar-item-settings"]')
     .should('be.visible')
     .click({ force: true });
   verifyResponseStatusCode('@getSettingsPage', 200);
@@ -450,7 +454,7 @@ export const goToAddNewServicePage = (service_type) => {
     'getSettingsPage'
   );
   // Click on settings page
-  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
@@ -1051,7 +1055,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@updateEntity', 200);
 
   // re-run ingestion flow
-  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
 
   // Services page
   cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
@@ -1203,10 +1207,54 @@ export const deleteEntity = (
   toastNotification(`${successMessageEntityName} deleted successfully!`, false);
 };
 
-export const visitDataModelPage = (dataModelFQN, dataModelName) => {
+const navigateToService = (serviceName) => {
+  cy.get('[data-testid="services-container"]').then(($body) => {
+    // Find if the service name is present in the list
+    const serviceTitle = $body.find(
+      `[data-testid="service-name-${serviceName}"]`
+    );
+    // If the service is not present
+    if (isEmpty(serviceTitle)) {
+      cy.get('[data-testid="next"]').click();
+      navigateToService(serviceName);
+    } else {
+      serviceTitle.click();
+    }
+  });
+};
+
+export const visitServiceDetailsPage = (
+  settingsMenuId,
+  serviceCategory,
+  serviceName
+) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
   cy.get('[data-testid="appbar-item-settings"]').click();
+
+  verifyResponseStatusCode('@getOrganization', 200);
+
+  interceptURL('GET', `/api/v1/services/${serviceCategory}*`, 'getServices');
+
+  cy.get(`[data-menu-id*="${settingsMenuId}"]`).scrollIntoView().click();
+
+  verifyResponseStatusCode('@getServices', 200);
+
+  interceptURL(
+    'GET',
+    `api/v1/services/${serviceCategory}/name/${serviceName}?fields=*`,
+    'getServiceDetails'
+  );
+
+  navigateToService(serviceName);
+
+  verifyResponseStatusCode('@getServiceDetails', 200);
+};
+
+export const visitDataModelPage = (dataModelFQN, dataModelName) => {
+  interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
+
+  cy.get('[data-testid="app-bar-item-settings"]').click();
 
   verifyResponseStatusCode('@getOrganization', 200);
 

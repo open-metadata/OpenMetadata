@@ -1,0 +1,60 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/couchbaseConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Couchbase Connection",
+    "description": "Couchbase Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.CouchbaseConnection",
+    "definitions": {
+      "couchbaseType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Couchbase"],
+        "default": "Couchbase"
+      },
+      "couchbaseScheme": {
+        "description": "Couchbase driver scheme options.",
+        "type": "string",
+        "enum": ["couchbase"],
+        "default": "couchbase"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/couchbaseType",
+        "default": "Couchbase"
+      },
+      "scheme": {
+        "title": "Connection Scheme",
+        "description": "Couchbase driver scheme options.",
+        "$ref": "#/definitions/couchbaseScheme",
+        "default": "couchbase"
+      },
+    
+        "bucket": {
+            "title": "Connection Bucket",
+            "description": "Couchbase connection Bucket options.",
+            "type": "string"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to Couchbase. This user should have privileges to read all the metadata in Couchbase.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to Couchbase.",
+            "type": "string",
+            "format": "password"
+        },
+        "hostport": {
+            "title": "Hostport",
+            "description": "Hostname of the Couchbase service.",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false,
+    "required": ["hostport", "username", "password"]
+}

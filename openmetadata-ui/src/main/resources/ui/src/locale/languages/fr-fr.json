@@ -348,6 +348,7 @@
     "entity-proportion": "{{entity}} Proportion",
     "entity-service": "{{entity}} Service",
     "entity-type-plural": "{{entity}} Type",
+    "entity-version-detail-plural": "{{entity}} Version Details",
     "event-publisher-plural": "Publicateur d'Evènement",
     "event-type": "Type d'Evènement",
     "every": "Chaque",

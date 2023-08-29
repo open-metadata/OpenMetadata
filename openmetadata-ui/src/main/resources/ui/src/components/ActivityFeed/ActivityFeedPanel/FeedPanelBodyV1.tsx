@@ -14,7 +14,7 @@
 import { Divider } from 'antd';
 import classNames from 'classnames';
 import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
-import React, { FC, useCallback } from 'react';
+import React, { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReplyText } from '../../../utils/FeedUtils';
 import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
@@ -42,13 +42,19 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isForFeedTab = false,
 }) => {
   const { t } = useTranslation();
-  const mainFeed = {
-    message: feed.message,
-    postTs: feed.threadTs,
-    from: feed.createdBy,
-    id: feed.id,
-    reactions: feed.reactions,
-  } as Post;
+
+  const mainFeed = useMemo(
+    () =>
+      ({
+        message: feed.message,
+        postTs: feed.threadTs,
+        from: feed.createdBy,
+        id: feed.id,
+        reactions: feed.reactions,
+      } as Post),
+    [feed]
+  );
+
   const postLength = feed?.posts?.length ?? 0;
 
   const handleFeedClick = useCallback(() => {

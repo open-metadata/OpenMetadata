@@ -62,12 +62,12 @@ import {
   getPartialNameFromTableFQN,
   getRandomColor,
 } from './CommonUtils';
+import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
 import Fqn from './Fqn';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
-import { getRelativeDateByTimeStamp } from './TimeUtils';
 import { showErrorToast } from './ToastUtils';
 import { getUserProfilePic } from './UserDataUtils';
 
@@ -86,7 +86,7 @@ export const getEntityField = (entityLink: string) => {
 export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
   const updatedFeedList = feedList.map((feed) => ({
     ...feed,
-    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt || 0),
+    relativeDay: getRelativeCalendar(feed.updatedAt || 0),
   }));
   const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
 

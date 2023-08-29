@@ -67,20 +67,6 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 C = TypeVar("C", bound=BaseModel)
 
-# Helps us dynamically load the Entity class path in the
-# generated module.
-MODULE_PATH = {
-    "policy": "policies",
-    "service": "services",
-    "tag": "classification",
-    "classification": "classification",
-    "test": "tests",
-    "user": "teams",
-    "role": "teams",
-    "team": "teams",
-    "workflow": "automations",
-}
-
 
 class MissingEntityTypeException(Exception):
     """
@@ -195,12 +181,7 @@ class OpenMetadata(
         Based on the entity, return the module path
         it is found inside generated
         """
-
-        for key, value in MODULE_PATH.items():
-            if key in entity.__name__.lower():
-                return value
-
-        return self.data_path
+        return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
         """
@@ -247,8 +228,8 @@ class OpenMetadata(
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
             .replace("searchindex", "searchIndex")
+            .replace("storedprocedure", "storedProcedure")
         )
-
         class_path = ".".join(
             filter(
                 None,
@@ -260,7 +241,6 @@ class OpenMetadata(
                 ],
             )
         )
-
         entity_class = getattr(
             __import__(class_path, globals(), locals(), [class_name]), class_name
         )
