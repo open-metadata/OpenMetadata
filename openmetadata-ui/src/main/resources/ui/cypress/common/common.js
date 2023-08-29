@@ -1239,7 +1239,7 @@ export const visitServiceDetailsPage = (
 ) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
-  cy.get('[data-testid="appbar-item-settings"]').click();
+  cy.get('[data-testid="app-bar-item-settings"]').click();
 
   verifyResponseStatusCode('@getOrganization', 200);
 

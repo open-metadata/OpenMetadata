@@ -27,7 +27,7 @@ export const visitGlossaryPage = () => {
     waitForAnimations: true,
   });
 
-  cy.get('[data-testid="appbar-item-glossary"]').click();
+  cy.get('[data-testid="app-bar-item-glossary"]').click();
 
   verifyResponseStatusCode('@getGlossaries', 200);
 };
