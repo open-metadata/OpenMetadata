@@ -14,6 +14,7 @@ import { Menu, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
+import { ICON_DIMENSION } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
@@ -22,7 +23,6 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from 'generated/entity/feed/thread';
-import { Paging } from 'generated/type/paging';
 import { useElementInView } from 'hooks/useElementInView';
 import { noop } from 'lodash';
 import {
@@ -38,6 +38,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
@@ -50,12 +51,10 @@ import {
   ActivityFeedTabs,
   TaskFilter,
 } from './ActivityFeedTab.interface';
-import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
-import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
-
-import { ICON_DIMENSION } from 'constants/constants';
 import { ReactComponent as AllActivityIcon } from '/assets/svg/all-activity-v2.svg';
+import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '/assets/svg/ic-mentions.svg';
+import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
 import { ReactComponent as TaskListIcon } from '/assets/svg/task-ic.svg';
 
 export const ActivityFeedTab = ({
@@ -67,7 +66,11 @@ export const ActivityFeedTab = ({
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const [elementRef, isInView] = useElementInView(observerOptions);
+  const [elementRef, isInView] = useElementInView({
+    ...observerOptions,
+    root: document.querySelector('#center-container'),
+    rootMargin: '0px 0px 2px 0px',
+  });
   const { subTab: activeTab = ActivityFeedTabs.ALL } =
     useParams<{ subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
@@ -106,7 +109,12 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+      getEntityDetailLink(
+        entityType,
+        EntityType.TABLE === entityType ? getEncodedFqn(fqn) : fqn,
+        EntityTabs.ACTIVITY_FEED,
+        subTab
+      )
     );
     setActiveThread();
   };
@@ -204,7 +212,7 @@ export const ActivityFeedTab = ({
     (after?: string) => {
       getFeedData(feedFilter, after, threadType, entityType, fqn);
     },
-    [threadType, feedFilter, entityType, fqn]
+    [threadType, feedFilter, entityType, fqn, getFeedData]
   );
 
   useEffect(() => {
@@ -220,19 +228,9 @@ export const ActivityFeedTab = ({
     [setActiveThread]
   );
 
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      handleFeedFetchFromFeedList(pagingObj.after);
-    }
-  };
-
   useEffect(() => {
-    if (fqn) {
-      fetchMoreThread(isInView, entityPaging, loading);
+    if (fqn && isInView && entityPaging.after && !loading) {
+      handleFeedFetchFromFeedList(entityPaging.after);
     }
   }, [entityPaging, loading, isInView, fqn]);
 
@@ -340,7 +338,7 @@ export const ActivityFeedTab = ({
         onClick={(info) => handleTabChange(info.key)}
       />
 
-      <div className=" center-container">
+      <div className="center-container" id="center-container">
         {isTaskActiveTab && (
           <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
             <Typography.Text

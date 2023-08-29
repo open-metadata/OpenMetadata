@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -41,21 +40,17 @@ public class LineageRepository {
     this.dao = dao;
   }
 
-  @JdbiUnitOfWork
-  public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
+  public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) {
     EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @JdbiUnitOfWork
-  public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
-      throws IOException {
+  public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @JdbiUnitOfWork
-  public void addLineage(AddLineage addLineage) throws IOException {
+  public void addLineage(AddLineage addLineage) {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
     from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
@@ -83,8 +78,7 @@ public class LineageRepository {
         .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal(), detailsJson);
   }
 
-  private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details)
-      throws IOException {
+  private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
     if (details == null) {
       return null;
     }
@@ -113,7 +107,7 @@ public class LineageRepository {
     return JsonUtils.pojoToJson(details);
   }
 
-  private ColumnsEntityInterface getToEntity(EntityReference from) throws IOException {
+  private ColumnsEntityInterface getToEntity(EntityReference from) {
     return from.getType().equals(Entity.TABLE)
         ? dao.tableDAO().findEntityById(from.getId())
         : dao.dashboardDataModelDAO().findEntityById(from.getId());
@@ -125,7 +119,7 @@ public class LineageRepository {
   }
 
   @JdbiUnitOfWork
-  public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) throws IOException {
+  public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);
 
@@ -143,7 +137,7 @@ public class LineageRepository {
         > 0;
   }
 
-  private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) throws IOException {
+  private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) {
     List<EntityReference> entities = new ArrayList<>();
     EntityLineage lineage =
         new EntityLineage()
@@ -159,8 +153,7 @@ public class LineageRepository {
     return lineage;
   }
 
-  private void getUpstreamLineage(UUID id, String entityType, EntityLineage lineage, int upstreamDepth)
-      throws IOException {
+  private void getUpstreamLineage(UUID id, String entityType, EntityLineage lineage, int upstreamDepth) {
     if (upstreamDepth == 0) {
       return;
     }
@@ -192,8 +185,7 @@ public class LineageRepository {
     }
   }
 
-  private void getDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth)
-      throws IOException {
+  private void getDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth) {
     if (downstreamDepth == 0) {
       return;
     }

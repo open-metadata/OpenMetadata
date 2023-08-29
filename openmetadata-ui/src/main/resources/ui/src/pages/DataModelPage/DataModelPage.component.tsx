@@ -228,26 +228,28 @@ const DataModelsPage = () => {
 
   const handleUpdateTier = async (updatedTier?: string) => {
     try {
-      if (updatedTier) {
-        const { tags: newTags, version } = await handleUpdateDataModelData({
-          ...(dataModelData as DashboardDataModel),
-          tags: [
-            ...getTagsWithoutTier(dataModelData?.tags ?? []),
-            {
-              tagFQN: updatedTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: TagSource.Classification,
-            },
-          ],
-        });
+      const { tags: newTags, version } = await handleUpdateDataModelData({
+        ...(dataModelData as DashboardDataModel),
+        tags: [
+          ...getTagsWithoutTier(dataModelData?.tags ?? []),
+          ...(updatedTier
+            ? [
+                {
+                  tagFQN: updatedTier,
+                  labelType: LabelType.Manual,
+                  state: State.Confirmed,
+                  source: TagSource.Classification,
+                },
+              ]
+            : []),
+        ],
+      });
 
-        setDataModelData((prev) => ({
-          ...(prev as DashboardDataModel),
-          tags: newTags,
-          version,
-        }));
-      }
+      setDataModelData((prev) => ({
+        ...(prev as DashboardDataModel),
+        tags: newTags,
+        version,
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -289,6 +291,16 @@ const DataModelsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setDataModelData((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -324,6 +336,7 @@ const DataModelsPage = () => {
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
+      handleToggleDelete={handleToggleDelete}
       handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}

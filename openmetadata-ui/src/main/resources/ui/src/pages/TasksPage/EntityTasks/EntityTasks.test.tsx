@@ -50,7 +50,6 @@ const mockProps: EntityTasksProps = {
   entityFqn: '',
   entityType: EntityType.TABLE,
   entityTaskType: EntityField.TAGS,
-  entityFieldThreads: [],
   onThreadLinkSelect: jest.fn(),
 };
 

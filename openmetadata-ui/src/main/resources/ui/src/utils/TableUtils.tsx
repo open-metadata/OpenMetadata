@@ -14,6 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
@@ -24,7 +25,9 @@ import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
-import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
+import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
+import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
@@ -32,8 +35,11 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
-import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
+import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
+import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -70,8 +76,7 @@ import {
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
-import { ordinalize } from './StringsUtils';
-import SVGIcons, { Icons } from './SvgUtils';
+import { getDecodedFqn, ordinalize } from './StringsUtils';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -115,39 +120,50 @@ export const getTagsWithoutTier = (
   );
 };
 
-export const getConstraintIcon = (
+export const getConstraintIcon = ({
   constraint = '',
   className = '',
   width = '16px',
-  isConstraintUpdated?: boolean
-) => {
-  let title: string, icon: SvgComponent;
+  isConstraintAdded,
+  isConstraintDeleted,
+}: {
+  constraint?: string;
+  className?: string;
+  width?: string;
+  isConstraintAdded?: boolean;
+  isConstraintDeleted?: boolean;
+}) => {
+  let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = t('label.primary-key');
-        icon = IconKey;
+        icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
+        dataTestId = 'primary-key';
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = t('label.unique');
-        icon = IconUnique;
+        icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
+        dataTestId = 'unique';
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = t('label.not-null');
-        icon = IconNotNull;
+        icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
+        dataTestId = 'not-null';
       }
 
       break;
     case ConstraintTypes.FOREIGN_KEY:
       {
         title = t('label.foreign-key');
-        icon = IconForeignKey;
+        icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
+        dataTestId = 'foreign-key';
       }
 
       break;
@@ -163,8 +179,12 @@ export const getConstraintIcon = (
       trigger="hover">
       <Icon
         alt={title}
-        className={classNames({ 'diff-added': isConstraintUpdated })}
+        className={classNames({
+          'diff-added': isConstraintAdded,
+          'diff-removed': isConstraintDeleted,
+        })}
         component={icon}
+        data-testid={`constraint-icon-${dataTestId}`}
         style={{ fontSize: width }}
       />
     </Tooltip>
@@ -180,26 +200,26 @@ export const getEntityLink = (
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
-      return getTopicDetailsPath(fullyQualifiedName);
+      return getTopicDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
-      return getDashboardDetailsPath(fullyQualifiedName);
+      return getDashboardDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
-      return getPipelineDetailsPath(fullyQualifiedName);
+      return getPipelineDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE:
-      return getDatabaseDetailsPath(fullyQualifiedName);
+      return getDatabaseDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+      return getDatabaseSchemaDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
     case SearchIndex.GLOSSARY:
-      return getGlossaryPath(fullyQualifiedName);
+      return getGlossaryPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.DATABASE_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
@@ -222,12 +242,12 @@ export const getEntityLink = (
 
     case EntityType.CONTAINER:
     case SearchIndex.CONTAINER:
-      return getContainerDetailPath(fullyQualifiedName);
+      return getContainerDetailPath(getDecodedFqn(fullyQualifiedName));
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
 
     case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelDetailsPath(fullyQualifiedName);
+      return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(
@@ -238,7 +258,7 @@ export const getEntityLink = (
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      return getTableDetailsPath(fullyQualifiedName);
+      return getTableDetailsPath(getDecodedFqn(fullyQualifiedName));
   }
 };
 
@@ -284,6 +304,13 @@ export const getEntityIcon = (indexType: string) => {
 
     case EntityType.DASHBOARD_DATA_MODEL:
       return <IconDataModel />;
+
+    case EntityType.TAG:
+      return <ClassificationIcon />;
+    case EntityType.GLOSSARY:
+      return <GlossaryIcon />;
+    case EntityType.GLOSSARY_TERM:
+      return <IconTerm />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -382,15 +409,9 @@ export function getTableExpandableConfig<T>(
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <div className="d-inline-block items-center">
+        <div className="d-inline-flex items-center">
           {isDraggable && (
-            <SVGIcons
-              alt="icon"
-              className="m-r-xs drag-icon"
-              height={8}
-              icon={Icons.DRAG}
-              width={8}
-            />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
           )}
           <Icon
             className="m-r-xs"
@@ -403,13 +424,7 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <SVGIcons
-              alt="icon"
-              className="m-r-xs drag-icon"
-              height={8}
-              icon={Icons.DRAG}
-              width={8}
-            />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
             <div className="expand-cell-empty-icon-container" />
           </>
         )
@@ -419,35 +434,53 @@ export function getTableExpandableConfig<T>(
   return expandableConfig;
 }
 
-export const prepareConstraintIcon = (
-  columnName: string,
-  columnConstraint?: string,
-  tableConstraints?: TableConstraint[],
-  iconClassName?: string,
-  iconWidth?: string,
-  isConstraintUpdated?: boolean
-) => {
-  // get the table constraint for column
-  const tableConstraint = tableConstraints?.find((constraint) =>
+export const prepareConstraintIcon = ({
+  columnName,
+  columnConstraint,
+  tableConstraints,
+  iconClassName,
+  iconWidth,
+  isColumnConstraintAdded,
+  isColumnConstraintDeleted,
+  isTableConstraintAdded,
+  isTableConstraintDeleted,
+}: {
+  columnName: string;
+  columnConstraint?: string;
+  tableConstraints?: TableConstraint[];
+  iconClassName?: string;
+  iconWidth?: string;
+  isColumnConstraintAdded?: boolean;
+  isColumnConstraintDeleted?: boolean;
+  isTableConstraintAdded?: boolean;
+  isTableConstraintDeleted?: boolean;
+}) => {
+  // get the table constraints for column
+  const filteredTableConstraints = tableConstraints?.filter((constraint) =>
     constraint.columns?.includes(columnName)
   );
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(
-        columnConstraint,
-        iconClassName || 'm-r-xs',
-        iconWidth,
-        isConstraintUpdated
-      )
+    ? getConstraintIcon({
+        constraint: columnConstraint,
+        className: iconClassName || 'm-r-xs',
+        width: iconWidth,
+        isConstraintAdded: isColumnConstraintAdded,
+        isConstraintDeleted: isColumnConstraintDeleted,
+      })
     : null;
 
   // prepare table constraint element
-  const tableConstraintEl = tableConstraint
-    ? getConstraintIcon(
-        tableConstraint.constraintType,
-        iconClassName || 'm-r-xs',
-        iconWidth
+  const tableConstraintEl = filteredTableConstraints
+    ? filteredTableConstraints.map((tableConstraint) =>
+        getConstraintIcon({
+          constraint: tableConstraint.constraintType,
+          className: iconClassName || 'm-r-xs',
+          width: iconWidth,
+          isConstraintAdded: isTableConstraintAdded,
+          isConstraintDeleted: isTableConstraintDeleted,
+        })
       )
     : null;
 

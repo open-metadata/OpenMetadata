@@ -32,7 +32,7 @@ describe('Services page should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}`,
+      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}*`,
       'ingestionPipelines'
     );
     cy.login();
@@ -102,9 +102,7 @@ describe('Services page should work properly', () => {
       'searchApi'
     );
 
-    cy.get(
-      '[id*="panel-users"] [data-testid="selectable-list"] [data-testid="search-bar-container"] [data-testid="searchbar"]'
-    ).type(service.Owner);
+    cy.get('[data-testid="owner-select-users-search-bar"]').type(service.Owner);
     verifyResponseStatusCode('@searchApi', 200);
     cy.get('[data-testid="selectable-list"]')
       .contains(service.Owner)

@@ -21,6 +21,7 @@ export interface TeamHierarchyProps {
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;
+  isFetchingAllTeamAdvancedDetails: boolean;
 }
 
 export interface DraggableBodyRowProps

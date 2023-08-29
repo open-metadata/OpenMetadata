@@ -17,7 +17,6 @@ import {
   Col,
   Row,
   Space,
-  Spin,
   Switch,
   Table,
   Tooltip,
@@ -29,6 +28,7 @@ import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
 import { ReactComponent as IconDisableTag } from 'assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -81,17 +81,13 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Paging } from '../../generated/type/paging';
-import {
-  getActiveCatClass,
-  getCountBadge,
-  getEntityDeleteMessage,
-} from '../../utils/CommonUtils';
+import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getDecodedFqn, getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import TagsForm from './TagsForm';
 import { DeleteTagsType } from './TagsPage.interface';
@@ -196,7 +192,7 @@ const TagsPage = () => {
 
   const isClassificationDisabled = useMemo(
     () => currentClassification?.disabled ?? false,
-    [currentClassification]
+    [currentClassification?.disabled]
   );
 
   const fetchCurrentClassificationPermission = async () => {
@@ -248,9 +244,9 @@ const TagsPage = () => {
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
-        setCurrentClassificationName(response.data[0].name);
+        setCurrentClassificationName(response.data[0].fullyQualifiedName ?? '');
 
-        history.push(getTagPath(response.data[0].name));
+        history.push(getTagPath(response.data[0].fullyQualifiedName));
       }
     } catch (error) {
       const errMsg = getErrorText(
@@ -266,18 +262,18 @@ const TagsPage = () => {
     }
   };
 
-  const fetchCurrentClassification = async (name: string, update?: boolean) => {
-    if (currentClassification?.name !== name || update) {
+  const fetchCurrentClassification = async (fqn: string, update?: boolean) => {
+    if (currentClassification?.fullyQualifiedName !== fqn || update) {
       setIsLoading(true);
       try {
-        const currentClassification = await getClassificationByName(name, [
+        const currentClassification = await getClassificationByName(fqn, [
           'usageCount',
           'termCount',
         ]);
         if (currentClassification) {
           setClassifications((prevClassifications) =>
             prevClassifications.map((data) => {
-              if (data.name === name) {
+              if (data.fullyQualifiedName === fqn) {
                 return {
                   ...data,
                   termCount: currentClassification.termCount,
@@ -288,7 +284,9 @@ const TagsPage = () => {
             })
           );
           setCurrentClassification(currentClassification);
-          setCurrentClassificationName(currentClassification.name);
+          setCurrentClassificationName(
+            currentClassification.fullyQualifiedName ?? ''
+          );
           setIsLoading(false);
         } else {
           showErrorToast(t('server.unexpected-response'));
@@ -302,7 +300,7 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentClassification({ name, description: '' });
+        setCurrentClassification({ name: fqn, description: '' });
         setIsLoading(false);
       }
     }
@@ -313,7 +311,7 @@ const TagsPage = () => {
     try {
       const res = await createClassification(data);
       await fetchClassifications();
-      history.push(getTagPath(res.name));
+      history.push(getTagPath(res.fullyQualifiedName));
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -372,9 +370,24 @@ const TagsPage = () => {
         if (res) {
           if (currentClassification) {
             setDeleteStatus(LOADING_STATE.SUCCESS);
-            setCurrentClassification({
-              ...currentClassification,
-            });
+            setClassifications((prev) =>
+              prev.map((item) => {
+                if (
+                  item.fullyQualifiedName ===
+                  currentClassification.fullyQualifiedName
+                ) {
+                  return {
+                    ...item,
+                    termCount: (item.termCount ?? 0) - 1,
+                  };
+                }
+
+                return item;
+              })
+            );
+            fetchClassificationChildren(
+              currentClassification?.fullyQualifiedName ?? ''
+            );
           }
         } else {
           showErrorToast(
@@ -418,15 +431,28 @@ const TagsPage = () => {
           currentClassification?.id ?? '',
           patchData
         );
-        if (response) {
-          fetchClassifications();
-          if (currentClassification?.name !== updatedClassification.name) {
-            history.push(getTagPath(response.name));
-          } else {
-            await fetchCurrentClassification(currentClassification?.name, true);
-          }
-        } else {
-          throw t('server.unexpected-response');
+        setClassifications((prev) =>
+          prev.map((item) => {
+            if (
+              item.fullyQualifiedName ===
+              currentClassification.fullyQualifiedName
+            ) {
+              return {
+                ...item,
+                ...response,
+              };
+            }
+
+            return item;
+          })
+        );
+        setCurrentClassification((prev) => ({ ...prev, ...response }));
+        if (
+          currentClassification?.fullyQualifiedName !==
+            updatedClassification.fullyQualifiedName ||
+          currentClassification?.name !== updatedClassification.name
+        ) {
+          history.push(getTagPath(response.fullyQualifiedName));
         }
       } catch (error) {
         if (
@@ -503,10 +529,28 @@ const TagsPage = () => {
     try {
       await createTag({
         ...data,
-        classification: currentClassification?.name ?? '',
+        classification: currentClassification?.fullyQualifiedName,
       });
 
-      fetchCurrentClassification(currentClassification?.name as string, true);
+      setClassifications((prevClassifications) => {
+        return prevClassifications.map((data) => {
+          if (
+            data.fullyQualifiedName ===
+            currentClassification?.fullyQualifiedName
+          ) {
+            return {
+              ...data,
+              termCount: (data.termCount ?? 0) + 1,
+            };
+          }
+
+          return data;
+        });
+      });
+
+      fetchClassificationChildren(
+        currentClassification?.fullyQualifiedName ?? ''
+      );
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -537,14 +581,15 @@ const TagsPage = () => {
       const patchData = compare(editTag, updatedData);
       try {
         const response = await patchTag(editTag.id ?? '', patchData);
-        if (response) {
-          fetchCurrentClassification(
-            currentClassification?.name as string,
-            true
-          );
-        } else {
-          throw t('server.unexpected-response');
-        }
+        setTags((prev) =>
+          prev?.map((item) => {
+            if (item.id === editTag.id) {
+              return { ...item, ...response };
+            }
+
+            return item;
+          })
+        );
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -577,7 +622,7 @@ const TagsPage = () => {
         data: {
           id: record.id as string,
           name: record.name,
-          categoryName: currentClassification?.name,
+          categoryName: currentClassification?.fullyQualifiedName,
           isCategory: false,
           status: 'waiting',
         },
@@ -598,7 +643,9 @@ const TagsPage = () => {
      */
     if (tagCategoryName) {
       const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
-      fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
+      fetchCurrentClassification(
+        isTier ? TIER_CATEGORY : getDecodedFqn(tagCategoryName)
+      );
     }
   }, [tagCategoryName]);
 
@@ -612,13 +659,15 @@ const TagsPage = () => {
 
   useEffect(() => {
     currentClassification &&
-      fetchClassificationChildren(currentClassification?.name);
-  }, [currentClassification]);
+      fetchClassificationChildren(
+        currentClassification?.fullyQualifiedName ?? ''
+      );
+  }, [currentClassification?.fullyQualifiedName]);
 
   const onClickClassifications = (category: Classification) => {
     setCurrentClassification(category);
-    setCurrentClassificationName(category.name);
-    history.push(getTagPath(category.name));
+    setCurrentClassificationName(category.fullyQualifiedName ?? '');
+    history.push(getTagPath(category.fullyQualifiedName));
   };
 
   const handlePageChange = useCallback(
@@ -636,53 +685,55 @@ const TagsPage = () => {
     [fetchClassificationChildren, paging, currentClassificationName]
   );
 
-  // Use the component in the render method
-
-  const fetchLeftPanel = () => {
-    return (
+  const leftPanelLayout = useMemo(
+    () => (
       <LeftPanelCard id="tags">
         <TagsLeftPanelSkeleton loading={isLoading}>
-          <div className="tw-py-2" data-testid="data-summary-container">
-            <div className="tw-px-3">
-              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+          <div className="p-y-xs" data-testid="data-summary-container">
+            <Space
+              className="w-full p-x-sm m-b-sm"
+              direction="vertical"
+              size={12}>
+              <Typography.Text className="text-sm font-semibold">
                 {t('label.classification-plural')}
-              </h6>
-              <div className="tw-mb-3">
-                <Tooltip
-                  title={
-                    !createClassificationPermission &&
-                    t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    block
-                    className=" text-primary"
-                    data-testid="add-classification"
-                    disabled={!createClassificationPermission}
-                    icon={<PlusIcon className="anticon" />}
-                    onClick={() => {
-                      setIsAddingClassification((prevState) => !prevState);
-                    }}>
-                    <span>
-                      {t('label.add-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </span>
-                  </Button>
-                </Tooltip>
-              </div>
-            </div>
+              </Typography.Text>
+              <Tooltip
+                title={
+                  !createClassificationPermission &&
+                  t('message.no-permission-for-action')
+                }>
+                <Button
+                  block
+                  className=" text-primary"
+                  data-testid="add-classification"
+                  disabled={!createClassificationPermission}
+                  icon={<PlusIcon className="anticon" />}
+                  onClick={() => {
+                    setIsAddingClassification((prevState) => !prevState);
+                  }}>
+                  <span>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </span>
+                </Button>
+              </Tooltip>
+            </Space>
 
             {classifications.map((category: Classification) => (
               <div
-                className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
-                  category.name,
-                  currentClassification?.name
-                )}`}
+                className={classNames(
+                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  {
+                    activeCategory:
+                      currentClassification?.name === category.name,
+                  }
+                )}
                 data-testid="side-panel-classification"
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
                 <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom tag-category label-category self-center"
+                  className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
                   data-testid="tag-name"
                   ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category)}
@@ -699,15 +750,22 @@ const TagsPage = () => {
                 {getCountBadge(
                   category.termCount,
                   'self-center m-l-auto',
-                  currentClassification?.name === category.name
+                  currentClassification?.fullyQualifiedName ===
+                    category.fullyQualifiedName
                 )}
               </div>
             ))}
           </div>
         </TagsLeftPanelSkeleton>
       </LeftPanelCard>
-    );
-  };
+    ),
+    [
+      isLoading,
+      classifications,
+      currentClassification,
+      createClassificationPermission,
+    ]
+  );
 
   const disableEditButton = useMemo(
     () =>
@@ -796,13 +854,13 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div className="tw-mt-1" data-testid="usage">
-                <span className="text-grey-muted tw-mr-1">
+              <Space align="center" data-testid="usage" size={4}>
+                <span className="text-grey-muted">
                   {`${t('label.usage')}:`}
                 </span>
                 {record.usageCount ? (
                   <Link
-                    className="link-text tw-align-middle"
+                    className="link-text align-middle"
                     data-testid="usage-count"
                     to={getUsageCountLink(record.fullyQualifiedName ?? '')}>
                     {record.usageCount}
@@ -810,7 +868,7 @@ const TagsPage = () => {
                 ) : (
                   <span className="text-grey-muted">{t('label.not-used')}</span>
                 )}
-              </div>
+              </Space>
             </>
           ),
         },
@@ -1023,7 +1081,7 @@ const TagsPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <Typography.Paragraph className="tw-text-center tw-m-auto">
+        <Typography.Paragraph className="text-center m-auto">
           {error}
         </Typography.Paragraph>
       </ErrorPlaceHolder>
@@ -1031,9 +1089,7 @@ const TagsPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      leftPanel={fetchLeftPanel()}
-      pageTitle={t('label.tag-plural')}>
+    <PageLayoutV1 leftPanel={leftPanelLayout} pageTitle={t('label.tag-plural')}>
       {isUpdateLoading ? (
         <Loader />
       ) : (
@@ -1108,7 +1164,7 @@ const TagsPage = () => {
               description={currentClassification?.description ?? ''}
               entityName={
                 currentClassification?.displayName ??
-                currentClassification?.name
+                currentClassification?.fullyQualifiedName
               }
               hasEditAccess={
                 editDescriptionPermission && !isClassificationDisabled
@@ -1139,31 +1195,32 @@ const TagsPage = () => {
             </Space>
           </div>
 
-          <Table
-            bordered
-            className={isClassificationDisabled ? 'opacity-60' : ''}
-            columns={tableColumn}
-            data-testid="table"
-            dataSource={tags}
-            loading={{
-              indicator: (
-                <Spin indicator={<Loader size="small" />} size="small" />
-              ),
-              spinning: isTagsLoading,
-            }}
-            pagination={false}
-            rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-            rowKey="id"
-            size="small"
-          />
-          {paging.total > PAGE_SIZE && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={PAGE_SIZE}
-              paging={paging}
-              pagingHandler={handlePageChange}
-              totalCount={paging.total}
-            />
+          {isTagsLoading ? (
+            <Loader />
+          ) : (
+            <Space className="w-full m-b-md" direction="vertical" size="large">
+              <Table
+                bordered
+                className={isClassificationDisabled ? 'opacity-60' : ''}
+                columns={tableColumn}
+                data-testid="table"
+                dataSource={tags}
+                pagination={false}
+                rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
+                rowKey="id"
+                size="small"
+              />
+
+              {paging.total > PAGE_SIZE && (
+                <NextPrevious
+                  currentPage={currentPage}
+                  pageSize={PAGE_SIZE}
+                  paging={paging}
+                  pagingHandler={handlePageChange}
+                  totalCount={paging.total}
+                />
+              )}
+            </Space>
           )}
 
           {/* Classification Form */}

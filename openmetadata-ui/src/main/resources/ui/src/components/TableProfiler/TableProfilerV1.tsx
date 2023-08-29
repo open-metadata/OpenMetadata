@@ -31,6 +31,7 @@ import classNames from 'classnames';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import Loader from 'components/Loader/Loader';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
@@ -60,7 +61,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
-import { bytesToSize } from 'utils/StringsUtils';
+import { bytesToSize, getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
@@ -69,7 +70,6 @@ import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profi
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../constants/profiler.constant';
@@ -136,17 +136,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
-
-  const showOperationGraph = useMemo(() => {
-    if (table?.serviceType) {
-      return allowedServiceForOperationGraph.includes(table.serviceType);
-    }
-
-    return false;
-  }, [table]);
 
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
@@ -298,7 +290,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
     history.push(
-      getAddDataQualityTableTestPath(type, `${table?.fullyQualifiedName}`)
+      getAddDataQualityTableTestPath(
+        type,
+        `${getDecodedFqn(datasetFQN) ?? table?.fullyQualifiedName}`
+      )
     );
   };
 
@@ -379,12 +374,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   const fetchAllTests = async (params?: ListTestCaseParams) => {
-    setIsTestCaseLoading(true);
+    setIsLoading(true);
     try {
       const { data } = await getListTestCase({
         ...params,
-        fields: 'testCaseResult,entityLink,testDefinition,testSuite',
-        entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
+        fields: 'testCaseResult, testDefinition',
+        entityLink: generateEntityLink(getDecodedFqn(datasetFQN) || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });
@@ -393,7 +388,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsTestCaseLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -444,11 +439,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     // and the datasetFQN comes form url parameter which is already encoded,
     // we are decoding FQN below to avoid double encoding in the API function
     const decodedDatasetFQN = decodeURIComponent(datasetFQN);
+    setIsLoading(true);
     try {
       const response = await getLatestTableProfileByFqn(decodedDatasetFQN);
       setTable(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -477,25 +475,30 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   useEffect(() => {
     const fetchTest =
-      !isUndefined(table) &&
-      viewTest &&
-      !isTourOpen &&
-      !isTableProfile &&
-      isEmpty(allTests.current);
+      viewTest && !isTourOpen && !isTableProfile && isEmpty(allTests.current);
 
     if (fetchTest) {
       fetchAllTests();
     }
-  }, [table, viewTest, isTourOpen, isTableProfile, allTests]);
+  }, [viewTest, isTourOpen, isTableProfile, allTests]);
 
   useEffect(() => {
-    if (!isTableDeleted && datasetFQN && !isTourOpen) {
+    const fetchProfiler =
+      !isTableDeleted &&
+      datasetFQN &&
+      !isTourOpen &&
+      (isTableProfile || isColumnProfile) &&
+      isUndefined(table);
+
+    if (fetchProfiler) {
       fetchLatestProfilerData();
+    } else {
+      setIsLoading(false);
     }
     if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);
     }
-  }, [datasetFQN, isTourOpen]);
+  }, [datasetFQN, isTourOpen, isTableProfile, isColumnProfile]);
 
   return (
     <Row
@@ -575,14 +578,15 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   </Dropdown>
                 )}
 
-                {editDataProfile && (
+                {editDataProfile && !isDataQuality && (
                   <Tooltip
                     placement="topRight"
                     title={t('label.setting-plural')}>
                     <Button
+                      className="flex-center"
                       data-testid="profiler-setting-btn"
                       onClick={() => handleSettingModal(true)}>
-                      <SettingIcon className="self-center" />
+                      <SettingIcon />
                     </Button>
                   </Tooltip>
                 )}
@@ -592,13 +596,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isUndefined(profile) && !isDataQuality && (
             <div
-              className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+              className="border d-flex items-center border-warning rounded-4 p-xs m-b-md"
               data-testid="no-profiler-placeholder">
               <NoDataIcon />
-              <p className="tw-mb-0 tw-ml-2">
+              <p className="m-l-xs">
                 {t('message.no-profiler-message')}
                 <Link
-                  className="tw-ml-1"
                   target="_blank"
                   to={{
                     pathname:
@@ -628,6 +631,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     <Col key={summery.title}>
                       <SummaryCard
                         className={classNames(summery.className, 'h-full')}
+                        isLoading={isLoading}
                         showProgressBar={false}
                         title={summery.title}
                         total={0}
@@ -640,6 +644,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                       <Col key={key}>
                         <SummaryCard
                           showProgressBar
+                          isLoading={isLoading}
                           title={key}
                           total={selectedColumnTestsObj.totalTests}
                           type={toLower(key) as SummaryCardProps['type']}
@@ -652,44 +657,47 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             )}
           </Row>
 
-          {isColumnProfile && (
-            <ColumnProfileTable
-              columnTests={columnTests}
-              columns={columns.map((col) => ({
-                ...col,
-                key: col.name,
-              }))}
-              dateRangeObject={dateRangeObject}
-              hasEditAccess={editTest}
-            />
-          )}
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <>
+              {isColumnProfile && (
+                <ColumnProfileTable
+                  columnTests={columnTests}
+                  columns={columns.map((col) => ({
+                    ...col,
+                    key: col.name,
+                  }))}
+                  dateRangeObject={dateRangeObject}
+                  hasEditAccess={editTest}
+                />
+              )}
 
-          {isDataQuality && (
-            <QualityTab
-              afterDeleteAction={fetchAllTests}
-              isLoading={isTestCaseLoading}
-              showTableColumn={false}
-              testCases={getFilterTestCase()}
-              testSuite={testSuite}
-              onTestCaseResultUpdate={handleResultUpdate}
-              onTestUpdate={handleTestUpdate}
-            />
-          )}
+              {isDataQuality && (
+                <QualityTab
+                  afterDeleteAction={fetchAllTests}
+                  isLoading={isLoading}
+                  showTableColumn={false}
+                  testCases={getFilterTestCase()}
+                  testSuite={testSuite}
+                  onTestCaseResultUpdate={handleResultUpdate}
+                  onTestUpdate={handleTestUpdate}
+                />
+              )}
 
-          {isTableProfile && (
-            <TableProfilerChart
-              dateRangeObject={dateRangeObject}
-              showOperationGraph={showOperationGraph}
-            />
-          )}
+              {isTableProfile && (
+                <TableProfilerChart dateRangeObject={dateRangeObject} />
+              )}
 
-          {settingModalVisible && (
-            <ProfilerSettingsModal
-              columns={columns}
-              tableId={table?.id || ''}
-              visible={settingModalVisible}
-              onVisibilityChange={handleSettingModal}
-            />
+              {settingModalVisible && (
+                <ProfilerSettingsModal
+                  columns={columns}
+                  tableId={table?.id || ''}
+                  visible={settingModalVisible}
+                  onVisibilityChange={handleSettingModal}
+                />
+              )}
+            </>
           )}
         </Space>
       </Col>

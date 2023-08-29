@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
 import { ContainerSearchSource } from 'interface/search.interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,11 +46,11 @@ type SuggestionProp = {
 
 const Suggestions = ({
   searchText,
-  isOpen,
   setIsOpen,
   searchCriteria,
 }: SuggestionProp) => {
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -98,7 +100,7 @@ const Suggestions = ({
       <>
         {getGroupLabel(searchIndex)}
         {suggestions.map((suggestion: SearchSuggestions[number]) => {
-          return getSuggestionElement(suggestion, searchIndex, false, () =>
+          return getSuggestionElement(suggestion, searchIndex, () =>
             setIsOpen(false)
           );
         })}
@@ -108,7 +110,7 @@ const Suggestions = ({
 
   const getEntitiesSuggestions = () => {
     return (
-      <div className="py-1" role="none">
+      <div role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
@@ -139,6 +141,7 @@ const Suggestions = ({
 
   useEffect(() => {
     if (!isMounting.current && searchText) {
+      setIsLoading(true);
       getSuggestions(searchText, searchCriteria)
         .then((res) => {
           if (res.data) {
@@ -161,6 +164,9 @@ const Suggestions = ({
               entity: t('label.suggestion-lowercase-plural'),
             })
           );
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
     }
   }, [searchText, searchCriteria]);
@@ -170,28 +176,15 @@ const Suggestions = ({
     isMounting.current = false;
   }, []);
 
-  return (
-    <>
-      {options.length > 0 && isOpen ? (
-        <>
-          <button
-            className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "
-            data-testid="suggestion-overlay"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            aria-labelledby="menu-button"
-            aria-orientation="vertical"
-            className="suggestions-menu tw-origin-top-right tw-absolute z-400
-          tw-w-600 tw-mt-1 tw-rounded-md tw-shadow-lg
-        bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
-            role="menu">
-            {getEntitiesSuggestions()}
-          </div>
-        </>
-      ) : null}
-    </>
-  );
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (options.length === 0) {
+    return <Typography.Text>{t('message.no-match-found')}</Typography.Text>;
+  }
+
+  return getEntitiesSuggestions();
 };
 
 export default Suggestions;

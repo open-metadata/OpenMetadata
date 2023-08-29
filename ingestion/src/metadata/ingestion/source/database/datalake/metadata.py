@@ -55,18 +55,15 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.models import (
-    DatalakeTableSchemaWrapper,
-)
+from metadata.ingestion.source.database.datalake.columns import clean_dataframe
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils import fqn
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import (
-    SupportedTypes,
-    clean_dataframe,
-    fetch_dataframe,
-)
+from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_file_format_type
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.s3_utils import list_s3_objects
 
 logger = ingestion_logger()
 
@@ -239,18 +236,9 @@ class DatalakeSource(DatabaseServiceSource):
             database=self.context.database.fullyQualifiedName,
         )
 
-    def _list_s3_objects(self, **kwargs) -> Iterable:
-        try:
-            paginator = self.client.get_paginator("list_objects_v2")
-            for page in paginator.paginate(**kwargs):
-                yield from page.get("Contents", [])
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield s3 object: {exc}")
-
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Optional[Iterable[Tuple[str, str]]]:
+    ) -> Iterable[Tuple[str, TableType]]:
         """
         Handle table and views.
 
@@ -301,7 +289,7 @@ class DatalakeSource(DatabaseServiceSource):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
-                for key in self._list_s3_objects(**kwargs):
+                for key in list_s3_objects(self.client, **kwargs):
                     table_name = self.standardize_table_name(bucket_name, key["Key"])
                     table_fqn = fqn.build(
                         self.metadata,
@@ -373,10 +361,8 @@ class DatalakeSource(DatabaseServiceSource):
         """
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
-        columns = []
         try:
             table_constraints = None
-            connection_args = self.service_connection.configSource.securityConfig
             data_frame = fetch_dataframe(
                 config_source=self.service_connection.configSource,
                 client=self.client,
@@ -384,9 +370,10 @@ class DatalakeSource(DatabaseServiceSource):
                     key=table_name,
                     bucket_name=schema_name,
                 ),
-                connection_kwargs=connection_args,
             )
-            columns = self.get_columns(data_frame[0])
+
+            # If no data_frame (due to unsupported type), ignore
+            columns = self.get_columns(data_frame[0]) if data_frame else None
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
@@ -394,6 +381,7 @@ class DatalakeSource(DatabaseServiceSource):
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
+                    fileFormat=get_file_format_type(table_name),
                 )
                 yield table_request
                 self.register_record(table_request=table_request)
@@ -522,7 +510,7 @@ class DatalakeSource(DatabaseServiceSource):
         return data_type
 
     @staticmethod
-    def get_columns(data_frame: list):
+    def get_columns(data_frame: "DataFrame"):
         """
         method to process column details
         """
@@ -557,7 +545,6 @@ class DatalakeSource(DatabaseServiceSource):
                             "name": truncate_column_name(column),
                             "displayName": column,
                         }
-                        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                         cols.append(Column(**parsed_string))
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
@@ -567,7 +554,7 @@ class DatalakeSource(DatabaseServiceSource):
         complex_col_dict.clear()
         return cols
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[AddLineageRequest]:
         yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:

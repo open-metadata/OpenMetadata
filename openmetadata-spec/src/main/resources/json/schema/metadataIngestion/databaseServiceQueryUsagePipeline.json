@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceQueryUsagePipeline",
   "description": "DatabaseService Query Usage Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "databaseUsageConfigType": {
       "description": "Database Source Config Usage Pipeline type",
@@ -34,7 +35,7 @@
     "resultLimit": {
       "description": "Configuration to set the limit for query logs",
       "type": "integer",
-      "default": "1000"
+      "default": 1000
     },
     "queryLogFilePath": {
       "description": "Configuration to set the file path for query logs",

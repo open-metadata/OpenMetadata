@@ -31,7 +31,6 @@ import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import { Props, UserPageTabs } from './Users.interface';
 import './Users.style.less';
-import { userPageFilterList } from './Users.util';
 import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
 import UserProfileImage from './UsersProfile/UserProfileImage/UserProfileImage.component';
 import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component';
@@ -102,6 +101,19 @@ const Users = ({
     }
   }, [tab, ownedEntities, followingEntities]);
 
+  const activityFeed = useMemo(
+    () => (
+      <ActivityFeedProvider user={userData.id}>
+        <ActivityFeedTab
+          entityType={EntityType.USER_NAME}
+          fqn={username}
+          onFeedUpdate={noop}
+        />
+      </ActivityFeedProvider>
+    ),
+    [userData, username]
+  );
+
   const tabDetails = useMemo(() => {
     switch (tab) {
       case UserPageTabs.FOLLOWING:
@@ -152,15 +164,7 @@ const Users = ({
         );
       }
       case UserPageTabs.ACTIVITY:
-        return (
-          <ActivityFeedProvider user={userData.id}>
-            <ActivityFeedTab
-              entityType={EntityType.USER_NAME}
-              fqn={username}
-              onFeedUpdate={noop}
-            />
-          </ActivityFeedProvider>
-        );
+        return activityFeed;
 
       default:
         return <></>;
@@ -170,8 +174,8 @@ const Users = ({
     followingEntities,
     ownedEntities,
     isUserEntitiesLoading,
-    userPageFilterList,
     entityDetails,
+    activityFeed,
   ]);
 
   return (

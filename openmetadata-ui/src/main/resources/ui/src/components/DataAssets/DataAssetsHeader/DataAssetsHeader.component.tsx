@@ -32,7 +32,7 @@ import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderT
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { SERVICE_CATEGORIES } from 'constants/Services.constant';
+import { SERVICE_TYPES } from 'constants/Services.constant';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import {
@@ -104,6 +104,7 @@ export const ExtraInfoLink = ({
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
+  afterDeleteAction,
   dataAsset,
   onOwnerUpdate,
   onTierUpdate,
@@ -137,17 +138,11 @@ export const DataAssetsHeader = ({
       [
         EntityType.DATABASE,
         EntityType.DATABASE_SCHEMA,
-        EntityType.DATABASE_SERVICE,
-        EntityType.DASHBOARD_SERVICE,
-        EntityType.MESSAGING_SERVICE,
-        EntityType.PIPELINE_SERVICE,
-        EntityType.MLMODEL_SERVICE,
-        EntityType.METADATA_SERVICE,
-        EntityType.STORAGE_SERVICE,
-        ...SERVICE_CATEGORIES,
+        ...SERVICE_TYPES,
       ].includes(entityType),
     [entityType]
   );
+
   const hasFollowers = 'followers' in dataAsset;
 
   const { entityName, tier, isFollowing, version, followers } = useMemo(
@@ -246,7 +241,7 @@ export const DataAssetsHeader = ({
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
-  }, [dataAsset, excludeEntityService, isTourPage]);
+  }, [dataAsset.fullyQualifiedName, excludeEntityService, isTourPage]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -363,34 +358,34 @@ export const DataAssetsHeader = ({
             <Space>
               <ButtonGroup size="small">
                 {!excludeEntityService && (
-                  <>
-                    <Button
-                      className="w-16 p-0"
-                      icon={<Icon component={TaskOpenIcon} />}
-                      onClick={handleOpenTaskClick}>
-                      <Typography.Text>{taskCount}</Typography.Text>
-                    </Button>
+                  <Button
+                    className="w-16 p-0"
+                    icon={<Icon component={TaskOpenIcon} />}
+                    onClick={handleOpenTaskClick}>
+                    <Typography.Text>{taskCount}</Typography.Text>
+                  </Button>
+                )}
 
-                    <Button
-                      className="w-16 p-0"
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={onVersionClick}>
-                      <Typography.Text>{version}</Typography.Text>
-                    </Button>
+                <Button
+                  className="w-16 p-0"
+                  data-testid="version-button"
+                  icon={<Icon component={VersionIcon} />}
+                  onClick={onVersionClick}>
+                  <Typography.Text>{version}</Typography.Text>
+                </Button>
 
-                    <Button
-                      className="w-16 p-0"
-                      data-testid="entity-follow-button"
-                      icon={
-                        <Icon
-                          component={isFollowing ? StarFilledIcon : StarIcon}
-                        />
-                      }
-                      onClick={onFollowClick}>
-                      <Typography.Text>{followers}</Typography.Text>
-                    </Button>
-                  </>
+                {!excludeEntityService && (
+                  <Button
+                    className="w-16 p-0"
+                    data-testid="entity-follow-button"
+                    icon={
+                      <Icon
+                        component={isFollowing ? StarFilledIcon : StarIcon}
+                      />
+                    }
+                    onClick={onFollowClick}>
+                    <Typography.Text>{followers}</Typography.Text>
+                  </Button>
                 )}
 
                 <Tooltip
@@ -403,6 +398,7 @@ export const DataAssetsHeader = ({
                   />
                 </Tooltip>
                 <ManageButton
+                  afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                   canDelete={permissions.Delete}
                   deleted={dataAsset.deleted}
@@ -412,7 +408,7 @@ export const DataAssetsHeader = ({
                   }
                   entityFQN={dataAsset.fullyQualifiedName}
                   entityId={dataAsset.id}
-                  entityName={entityName}
+                  entityName={dataAsset.name}
                   entityType={entityType}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={

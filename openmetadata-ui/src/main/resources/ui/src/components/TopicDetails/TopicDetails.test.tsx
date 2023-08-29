@@ -58,6 +58,7 @@ const topicDetailsProps: TopicDetailsProps = {
   versionHandler: jest.fn(),
   createThread: jest.fn(),
   topicPermissions: DEFAULT_ENTITY_PERMISSION,
+  handleToggleDelete: jest.fn(),
 };
 
 const mockParams = {
@@ -71,7 +72,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 

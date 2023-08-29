@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { getEntityDetailLink } from 'utils/CommonUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -139,7 +140,9 @@ const UpdateDescription = () => {
         history.push(
           getEntityDetailLink(
             entityType as EntityType,
-            entityFQN,
+            entityType === EntityType.TABLE
+              ? entityFQN
+              : getDecodedFqn(entityFQN),
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
@@ -263,7 +266,7 @@ const UpdateDescription = () => {
 
                 <Form.Item>
                   <Space
-                    className="tw-w-full tw-justify-end"
+                    className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
                     <Button type="link" onClick={back}>

@@ -31,7 +31,7 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from 'utils/EntityUtils';
-import { getEncodedFqn, stringToHTML } from 'utils/StringsUtils';
+import { stringToHTML } from 'utils/StringsUtils';
 import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -118,12 +118,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               <div className="d-flex gap-2 items-center">
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
-                  <TitleBreadcrumb titleLinks={breadcrumbs} />
+                  <TitleBreadcrumb
+                    titleLinks={breadcrumbs}
+                    widthDeductions={780}
+                  />
                 </div>
               </div>
             </Col>
           )}
-          <Col span={24}>
+          <Col data-testid={`${source.service?.name}-${source.name}`} span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text
@@ -140,7 +143,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 to={
                   source.fullyQualifiedName && source.entityType
                     ? getEntityLinkFromType(
-                        getEncodedFqn(source.fullyQualifiedName),
+                        source.fullyQualifiedName,
                         source.entityType as EntityType
                       )
                     : ''

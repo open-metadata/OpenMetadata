@@ -13,13 +13,11 @@
 
 import { t } from 'i18next';
 import { Team } from '../../../generated/entity/teams/team';
-import { Paging } from '../../../generated/type/paging';
 import { filterEntityAssets } from '../../../utils/EntityUtils';
 import { TeamsPageTab } from './team.interface';
 
 export const getTabs = (
   currentTeam: Team,
-  teamUserPagin: Paging,
   isGroupType: boolean,
   isOrganization: boolean,
   teamsCount: number
@@ -32,7 +30,7 @@ export const getTabs = (
     },
     users: {
       name: t('label.user-plural'),
-      count: teamUserPagin?.total,
+      count: currentTeam.users?.length ?? 0,
       key: TeamsPageTab.USERS,
     },
     assets: {

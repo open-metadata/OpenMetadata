@@ -67,6 +67,7 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   versionHandler: jest.fn(),
   createThread: jest.fn(),
   fetchDashboard: jest.fn(),
+  handleToggleDelete: jest.fn(),
 };
 
 const mockEntityPermissions = {
@@ -119,15 +120,11 @@ jest.mock('components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage</p>);
-});
-
 jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
 jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({

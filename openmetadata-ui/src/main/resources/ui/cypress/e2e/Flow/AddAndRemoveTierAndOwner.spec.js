@@ -13,8 +13,12 @@
 // / <reference types="Cypress" />
 
 import {
+  addOwner,
+  addTier,
   descriptionBox,
   interceptURL,
+  removeOwner,
+  removeTier,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
@@ -29,7 +33,7 @@ import {
 
 const ENTITIES = {
   table: {
-    ...SEARCH_ENTITY_TABLE.table_4,
+    ...SEARCH_ENTITY_TABLE.table_5,
     schema: 'shopify',
     database: 'ecommerce_db',
   },
@@ -41,40 +45,21 @@ const ENTITIES = {
 const glossary = 'GlossaryOwnerTest';
 const glossaryTerm = 'GlossaryTermOwnerTest';
 
-const OWNER = 'Aaron Singh';
+const OWNER = 'Amber Green';
 const TIER = 'Tier1';
 
-const addRemoveOwner = () => {
-  cy.get('[data-testid="edit-owner"]').click();
-
-  cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-  cy.get(`.ant-popover [title="${OWNER}"]`).click();
-  verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="owner-link"]').should('contain', OWNER);
-  cy.get('[data-testid="edit-owner"]').click();
-
-  cy.get('[data-testid="remove-owner"]').click();
-  verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
+const addRemoveOwner = (ownerName, entity, isGlossaryPage) => {
+  addOwner(ownerName, entity, isGlossaryPage);
+  removeOwner(entity, isGlossaryPage);
 };
 
-const addRemoveTier = () => {
-  cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
-  cy.get('@tier1').find('[data-testid="radio-btn"]').click();
-  verifyResponseStatusCode('@patchOwner', 200);
-  cy.clickOutside();
-  cy.get('[data-testid="Tier"]').should('contain', TIER);
+const addRemoveTier = (tier, entity) => {
+  addTier(tier, entity);
 
-  cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="clear-tier"]').should('be.visible').click();
-
-  verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
+  removeTier(entity);
 };
 
-describe('Add and Remove Owner and Tier', () => {
+describe('Add and Remove Owner', () => {
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
@@ -89,13 +74,17 @@ describe('Add and Remove Owner and Tier', () => {
 
   Object.entries(ENTITIES).map(([key, value]) => {
     it(`${key} details page`, () => {
-      interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
-
-      visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+      visitEntityDetailsPage(
+        value.term,
+        value.serviceName,
+        value.entity,
+        undefined,
+        value.entityType
+      );
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
-      addRemoveOwner();
+      addRemoveOwner(OWNER, value.entity);
     });
   });
 
@@ -114,7 +103,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@schemaDetails', 200);
     verifyResponseStatusCode('@activityFeed', 200);
-    addRemoveOwner();
+    addRemoveOwner(OWNER, 'databaseSchemas');
   });
 
   it('database details page', () => {
@@ -132,7 +121,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@databaseDetails', 200);
     verifyResponseStatusCode('@activityFeed', 200);
-    addRemoveOwner();
+    addRemoveOwner(OWNER, 'databases');
   });
 
   it('service details page', () => {
@@ -162,7 +151,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@databases', 200);
 
-    addRemoveOwner();
+    addRemoveOwner(OWNER, 'databaseServices');
   });
 
   it('Test suite details page', () => {
@@ -170,7 +159,7 @@ describe('Add and Remove Owner and Tier', () => {
     interceptURL('GET', '/api/v1/dataQuality/testSuites?*', 'testSuites');
     interceptURL(
       'GET',
-      '/api/v1/dataQuality/testSuites/name/myLogicalTestSuite?fields=*',
+      `/api/v1/dataQuality/testSuites/name/*`,
       'testSuiteDetails'
     );
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCases');
@@ -182,18 +171,19 @@ describe('Add and Remove Owner and Tier', () => {
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuites', 200);
 
-    cy.get('[data-testid="test-suite-container"]')
-      .contains('myLogicalTestSuite')
-      .click();
+    // Get the first test suite from the table.
+    cy.get(
+      '[data-testid="test-suite-table"] .ant-table-tbody > :nth-child(1) > :nth-child(1) > a'
+    ).click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@testSuiteDetails', 200);
     verifyResponseStatusCode('@testCases', 200);
-    addRemoveOwner();
+    addRemoveOwner(OWNER, 'testSuites');
   });
 
   it('Teams details page', () => {
     interceptURL('PATCH', '/api/v1/teams/*', 'patchOwner');
-    interceptURL('GET', '/api/v1/permissions/team/*', 'teamPermission');
+    interceptURL('GET', '/api/v1/permissions/team/name/*', 'teamPermission');
     interceptURL(
       'GET',
       '/api/v1/teams/name/Organization?fields=*',
@@ -204,34 +194,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getOrganization', 200);
     verifyResponseStatusCode('@teamPermission', 200);
 
-    interceptURL(
-      'GET',
-      'api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index',
-      'waitForUsers'
-    );
-
-    // Click on edit owner button
-    cy.get('[data-testid="edit-owner"]').click();
-    verifyResponseStatusCode('@waitForUsers', 200);
-
-    cy.get('.user-team-select-popover').contains('Users').click();
-
-    cy.get('[data-testid="selectable-list"]')
-      .eq(1)
-      .find(`[title="${OWNER}"]`)
-      .click();
-
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="owner-link"]')
-      .should('be.visible')
-      .should('contain', OWNER);
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@getUsers', 200);
-    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="owner-link"]')
-      .should('be.visible')
-      .should('contain', 'No Owner');
+    addRemoveOwner(OWNER, 'teams');
   });
 
   it('Glossary details page', () => {
@@ -243,6 +206,7 @@ describe('Add and Remove Owner and Tier', () => {
     cy.get('[data-testid="appbar-item-glossary"]').click({
       waitForAnimations: true,
     });
+    verifyResponseStatusCode('@getGlossaries', 200);
     cy.get('[data-testid="add-glossary"]').click();
     cy.get('[data-testid="name"]').should('be.visible').type(glossary);
     cy.get(descriptionBox).scrollIntoView().should('be.visible').type(glossary);
@@ -254,31 +218,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
 
-    cy.get('[data-testid="edit-owner"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.wait('@getUsers').then(() => {
-      cy.get(`[title="${OWNER}"]`).should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-
-    cy.get('[data-testid="glossary-owner-name"]')
-      .should('be.visible')
-      .should('contain', OWNER);
-
-    cy.reload();
-    verifyResponseStatusCode('@glossaryPermission', 200);
-    verifyResponseStatusCode('@getGlossaries', 200);
-
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.wait('@getUsers').then(() => {
-      cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
-      'be.visible'
-    );
+    addRemoveOwner(OWNER, 'glossaries', true);
   });
 
   it('GlossaryTerm details page', () => {
@@ -326,31 +266,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@glossaryTermPermission', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-    cy.get('[data-testid="edit-owner"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.wait('@userProfile');
-    cy.wait('@getUsers').then(() => {
-      cy.get(`[title="${OWNER}"]`).should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-    cy.get('[data-testid="glossary-owner-name"]')
-      .should('be.visible')
-      .should('contain', OWNER);
-
-    cy.reload();
-    verifyResponseStatusCode('@glossaryTermPermission', 200);
-    verifyResponseStatusCode('@getGlossaries', 200);
-
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.wait('@getUsers').then(() => {
-      cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
-      'be.visible'
-    );
+    addRemoveOwner(OWNER, 'glossaryTerms', true);
   });
 
   it('Delete glossary and glossaryTerm', () => {
@@ -408,18 +324,21 @@ describe('Add and Remove Tier', () => {
 
   Object.entries(ENTITIES).map(([key, value]) => {
     it(`${key} details page`, () => {
-      interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
-
-      visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+      visitEntityDetailsPage(
+        value.term,
+        value.serviceName,
+        value.entity,
+        undefined,
+        value.entityType
+      );
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
-      addRemoveTier();
+      addRemoveTier(TIER, value.entity);
     });
   });
 
   it('database details page', () => {
-    interceptURL('PATCH', '/api/v1/databases/*', 'patchOwner');
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
@@ -434,6 +353,6 @@ describe('Add and Remove Tier', () => {
     verifyResponseStatusCode('@databaseDetails', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
-    addRemoveTier();
+    addRemoveTier(TIER, 'databases');
   });
 });

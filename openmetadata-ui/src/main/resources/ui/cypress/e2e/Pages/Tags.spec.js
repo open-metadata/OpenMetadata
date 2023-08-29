@@ -62,6 +62,7 @@ const validateForm = () => {
   // error messages
   cy.get('#tags_name_help').should('be.visible').contains('Name is required');
   cy.get('#tags_description_help')
+    .scrollIntoView()
     .should('be.visible')
     .contains('Description is required');
 
@@ -69,6 +70,7 @@ const validateForm = () => {
 
   // min length validation
   cy.get('[data-testid="name"]')
+    .scrollIntoView()
     .should('be.visible')
     .clear()
     .type(TAG_INVALID_NAMES.MIN_LENGTH);
@@ -78,6 +80,7 @@ const validateForm = () => {
 
   // max length validation
   cy.get('[data-testid="name"]')
+
     .should('be.visible')
     .clear()
     .type(TAG_INVALID_NAMES.MAX_LENGTH);
@@ -381,12 +384,21 @@ describe('Tags page should work', () => {
       .contains(NEW_CLASSIFICATION.displayName)
       .should('be.visible')
       .as('newCategory');
+
     cy.get('@newCategory')
       .click()
       .parent()
       .should('have.class', 'activeCategory');
 
     verifyResponseStatusCode('@permissions', 200);
+    cy.get('[data-testid="entity-header-display-name"]')
+      .invoke('text')
+      .then((text) => {
+        // Get the text of the first menu item
+        if (text !== NEW_CLASSIFICATION.displayName) {
+          verifyResponseStatusCode('@getTags', 200);
+        }
+      });
 
     cy.get('[data-testid="usage-count"]').should('be.visible').as('count');
     cy.get('@count')
@@ -402,39 +414,6 @@ describe('Tags page should work', () => {
     );
     cy.get('@count').click();
     verifyResponseStatusCode('@getEntityDetailsPage', 200);
-  });
-
-  it('Rename tag flow should work properly', () => {
-    cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_CLASSIFICATION.displayName)
-      .should('be.visible')
-      .as('newCategory');
-
-    cy.get('@newCategory')
-      .click()
-      .parent()
-      .should('have.class', 'activeCategory');
-    cy.get('[data-testid="edit-button"]').should('be.visible').click();
-    cy.get('[data-testid="modal-container"]')
-      .should('exist')
-      .then(() => {
-        cy.get('[role="dialog"]').should('be.visible');
-      });
-    cy.get('[data-testid="header"] > strong')
-      .should('be.visible')
-      .contains('Edit Tag');
-
-    interceptURL('PATCH', '/api/v1/tags/*', 'renamedName');
-    cy.get('[data-testid="name"]')
-      .should('be.visible')
-      .clear()
-      .type(NEW_TAG.renamedName);
-
-    submitForm();
-
-    verifyResponseStatusCode('@renamedName', 200);
-
-    cy.get('[data-testid="table"]').should('contain', NEW_TAG.renamedName);
   });
 
   it('Delete Tag flow should work properly', () => {
@@ -457,7 +436,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="table"]')
       .should('be.visible')
-      .should('contain', NEW_TAG.renamedName);
+      .should('contain', NEW_TAG.name);
 
     cy.get('[data-testid="table"]')
       .find('[data-testid="delete-tag"]')
@@ -466,12 +445,12 @@ describe('Tags page should work', () => {
       .click();
 
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    permanentDeleteModal(NEW_TAG.renamedName);
+    permanentDeleteModal(NEW_TAG.name);
 
     verifyResponseStatusCode('@deleteTag', 200);
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
     cy.get('[data-testid="table"]')
-      .contains(NEW_TAG.renamedName)
+      .contains(NEW_TAG.name)
       .should('not.be.exist');
   });
 

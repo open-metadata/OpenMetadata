@@ -17,10 +17,53 @@ import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import React from 'react';
+import { isEmpty } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getDataAssetsVersionHeaderInfo } from 'utils/DataAssetsVersionHeaderUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { stringToHTML } from 'utils/StringsUtils';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
+
+export const VersionExtraInfoLabel = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <Space align="center">
+      <Typography.Text className="self-center text-xs whitespace-nowrap">
+        {!isEmpty(label) && (
+          <span className="text-grey-muted">{`${label}: `}</span>
+        )}
+      </Typography.Text>
+
+      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+        {stringToHTML(value)}
+      </Typography.Text>
+    </Space>
+  </>
+);
+
+export const VersionExtraInfoLink = ({
+  value,
+  href,
+}: {
+  value: string;
+  href?: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <div className="d-flex items-center text-xs">
+      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+        {stringToHTML(value)}
+      </Typography.Link>
+    </div>
+  </>
+);
 
 function DataAssetsVersionHeader({
   breadcrumbLinks,
@@ -32,12 +75,19 @@ function DataAssetsVersionHeader({
   tierDisplayName,
   ownerRef,
   onVersionClick,
+  entityType,
+  serviceName,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
 
+  const extraInfo = useMemo(
+    () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
+    [entityType, currentVersionData]
+  );
+
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
-      <Col className="self-center">
+      <Col className="self-center" span={21}>
         <Row gutter={[16, 12]}>
           <Col span={24}>
             <TitleBreadcrumb titleLinks={breadcrumbLinks} />
@@ -55,7 +105,7 @@ function DataAssetsVersionHeader({
                 )
               }
               name={currentVersionData?.name}
-              serviceName={currentVersionData.service?.name ?? ''}
+              serviceName={serviceName ?? ''}
             />
           </Col>
           <Col span={24}>
@@ -79,18 +129,23 @@ function DataAssetsVersionHeader({
                   </span>
                 )}
               </Space>
+              {extraInfo}
             </div>
           </Col>
         </Row>
       </Col>
-      <Col>
-        <Button
-          className="w-16 p-0"
-          data-testid="version-button"
-          icon={<Icon component={VersionIcon} />}
-          onClick={onVersionClick}>
-          <Typography.Text>{version}</Typography.Text>
-        </Button>
+      <Col span={3}>
+        <Row justify="end">
+          <Col>
+            <Button
+              className="w-16 p-0"
+              data-testid="version-button"
+              icon={<Icon component={VersionIcon} />}
+              onClick={onVersionClick}>
+              <Typography.Text>{version}</Typography.Text>
+            </Button>
+          </Col>
+        </Row>
       </Col>
     </Row>
   );

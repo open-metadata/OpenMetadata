@@ -84,7 +84,8 @@ const UserPage = withSuspenseFallback(
 
 const GlossaryVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../components/GlossaryVersion/GlossaryVersion.component')
+    () =>
+      import('components/Glossary/GlossaryVersion/GlossaryVersion.component')
   )
 );
 
@@ -138,6 +139,9 @@ const EntityVersionPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/EntityVersionPage/EntityVersionPage.component')
   )
+);
+const ServiceVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/ServiceVersionPage/ServiceVersionPage'))
 );
 const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/explore/ExplorePageV1.component'))
@@ -235,7 +239,7 @@ const AddQueryPage = withSuspenseFallback(
 );
 
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('pages/page-not-found'))
+  React.lazy(() => import('pages/page-not-found/PageNotFound'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -340,6 +344,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
       <Route
         exact
         component={EntityVersionPage}

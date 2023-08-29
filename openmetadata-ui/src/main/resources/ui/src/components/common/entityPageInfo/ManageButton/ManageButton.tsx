@@ -33,7 +33,7 @@ import './ManageButton.less';
 
 interface Props {
   allowSoftDelete?: boolean;
-  afterDeleteAction?: () => void;
+  afterDeleteAction?: (isSoftDelete?: boolean) => void;
   buttonClassName?: string;
   entityName: string;
   entityId?: string;

@@ -39,7 +39,7 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 {%/note%}
 
-## Postgres (version between 12.0 and 14.6)
+## Postgres (version between 12.0 or greater)
 
 To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
 {%note%}
@@ -53,27 +53,21 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 ## Elasticsearch (version 7.X)
 
-OpenMetadata supports ElasticSearch version upto 7.13. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
+OpenMetadata supports ElasticSearch version up to 7.13. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
 [Installing ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
 
 We do not support ElasticSearch 8.x yet.
 
 Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.13/setup.html).
 
-If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version upto 1.3. For more information on AWS OpenSearch Service, please visit the offical docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
+If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 1.3. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
 ## Airflow (version 2.0.0 or greater) or other workflow schedulers
 
 OpenMetadata performs metadata ingestion using the Ingestion Framework. Learn more about how to deploy and manage
 the ingestion workflows [here](/deployment/ingestion).
 
-## Minimum Sizing Requirements
-
-- Our minimum specs recommendation for the OpenMetadata Deployment (one replica) is 2 vCPUs and 4 Gigs with 20 Gigs of volume size if using persistent volumes for logs.
-- For Elasticsearch, 2 vCPUs and 2 Gigs RAM (per instance) with 30 Gigs of Storage volume attached.
-- For the database, 2 vCPUs and 2 Gigs RAM (per instance) with 30 Gigs of Storage Volume Attached (dynamic expansion up to 100 Gigs).
-
-These settings apply as well when using managed instances, such as RDS or AWS OpenSearch.
+{% partial file="/v1.1.0/deployment/minimum-sizing-requirements.md" /%}
 
 # Procedure
 
@@ -129,25 +123,6 @@ We recommend configuring `serviced` to monitor the OpenMetadata command to resta
 You may put one or more OpenMetadata instances behind a load balancer for reverse proxying.
 To do this you will need to add one or more entries to the configuration file for your reverse proxy.
 
-### Apache mod_proxy
-
-To use the Apache mod_proxy module as a reverse proxy for load balancing, update the VirtualHost tag in your
-Apache config file to resemble the following.
-
-```xml
-<VirtualHost *:80>
-    <Proxy balancer://mycluster>
-        BalancerMember http://127.0.0.1:8585 <!-- First OpenMetadata server -->
-        BalancerMember http://127.0.0.2:8686 <!-- Second OpenMetadata server -->
-    </Proxy>
-
-    ProxyPreserveHost On
-
-    ProxyPass / balancer://mycluster/
-    ProxyPassReverse / balancer://mycluster/
-</VirtualHost>
-```
-
 ### Nginx
 
 To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the http context of your Nginx
@@ -171,7 +146,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or greater
-- Amazon OpenSearch (ElasticSearch) engine version upto 7.1 or Amazon OpenSearch engine version upto 1.3
+- Amazon OpenSearch (ElasticSearch) engine version up to 7.1 or Amazon OpenSearch engine version up to 1.3
 - Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
 Note:-
@@ -250,6 +225,10 @@ export OPENMETADATA_HEAP_OPTS="-Xmx2G -Xms2G"
 The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual machine (JVM), while `Xms` specifies the initial memory allocation pool.
 
 Restart the OpenMetadata Application using `./bin/openmetadata.sh start` which will start the service using a linux process.
+
+# PostgreSQL Issue permission denied to create extension "pgcrypto"
+
+{% partial file="/v1.1.0/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
 
 ## Enable Security
 

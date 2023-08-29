@@ -14,12 +14,6 @@
 import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-
 import { ReactComponent as IconCheckMark } from 'assets/svg/ic-check-mark.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -36,9 +30,16 @@ import { TestCaseStatus } from 'generated/configuration/testResultNotificationCo
 import { Operation } from 'generated/entity/policies/policy';
 import { isUndefined, sortBy } from 'lodash';
 import QueryString from 'qs';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
+import { formatDate, formatDateTime } from 'utils/date-time/DateTimeUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
+import { getEncodedFqn, replacePlus } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
@@ -47,15 +48,10 @@ import {
   TestCaseResult,
 } from '../../../generated/tests/testCase';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
 } from '../../../utils/TableUtils';
-import {
-  getFormattedDateFromMilliSeconds,
-  getFormattedDateFromSeconds,
-} from '../../../utils/TimeUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
 import {
@@ -198,7 +194,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     data-testid="table-link"
                     to={{
-                      pathname: getTableTabPath(tableFqn, 'profiler'),
+                      pathname: getTableTabPath(
+                        getEncodedFqn(tableFqn),
+                        'profiler'
+                      ),
                       search: QueryString.stringify({
                         activeTab: TableProfilerTab.DATA_QUALITY,
                       }),
@@ -218,13 +217,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 150,
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
-
           if (isColumn) {
             const name = getNameFromFQN(
-              getDecodedFqn(
-                getEntityFqnFromEntityLink(entityLink, isColumn),
-                true
-              )
+              replacePlus(getEntityFqnFromEntityLink(entityLink, isColumn))
             );
 
             return name;
@@ -239,12 +234,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'lastRun',
         width: 150,
         render: (result: TestCaseResult) =>
-          result?.timestamp
-            ? getFormattedDateFromSeconds(
-                result.timestamp,
-                'MMM dd, yyyy HH:mm'
-              )
-            : '--',
+          result?.timestamp ? formatDateTime(result.timestamp) : '--',
       },
       {
         title: t('label.resolution'),
@@ -260,10 +250,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               placement="bottom"
               title={
                 failureStatus?.updatedAt &&
-                `${getFormattedDateFromMilliSeconds(
-                  failureStatus.updatedAt,
-                  'MMM dd, yyyy HH:mm'
-                )}
+                `${formatDate(failureStatus.updatedAt)}
                     ${
                       failureStatus.updatedBy
                         ? 'by ' + failureStatus.updatedBy
@@ -401,29 +388,29 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <Row gutter={16}>
       <Col span={24}>
-        <Table
-          bordered
-          className="test-case-table-container"
-          columns={columns}
-          data-testid="test-case-table"
-          dataSource={sortedData}
-          expandable={{
-            ...getTableExpandableConfig<TestCase>(),
-            expandRowByClick: true,
-            rowExpandable: () => true,
-            expandedRowRender: (recode) => <TestSummary data={recode} />,
-          }}
-          loading={{
-            indicator: <Loader size="small" />,
-            spinning: isLoading,
-          }}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Table
+            bordered
+            className="test-case-table-container"
+            columns={columns}
+            data-testid="test-case-table"
+            dataSource={sortedData}
+            expandable={{
+              ...getTableExpandableConfig<TestCase>(),
+              expandRowByClick: true,
+              rowExpandable: () => true,
+              expandedRowRender: (recode) => <TestSummary data={recode} />,
+            }}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        )}
       </Col>
       <Col span={24}>
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (

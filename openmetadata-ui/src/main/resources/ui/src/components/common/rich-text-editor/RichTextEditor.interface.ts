@@ -44,7 +44,7 @@ export type EditorType = 'markdown' | 'wysiwyg';
 
 export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   autofocus?: boolean;
-  initialValue: string;
+  initialValue?: string;
   placeHolder?: string;
   previewStyle?: PreviewStyle;
   editorType?: EditorType;

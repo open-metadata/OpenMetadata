@@ -105,6 +105,9 @@
       "href": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "text"
+      },
       "columns": {
         "properties": {
           "name": {

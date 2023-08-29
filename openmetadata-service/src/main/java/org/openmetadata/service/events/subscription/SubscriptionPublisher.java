@@ -17,7 +17,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -28,8 +27,6 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.EventResource;
 
 /**
@@ -52,11 +49,9 @@ import org.openmetadata.service.resources.events.EventResource;
 public class SubscriptionPublisher extends AbstractAlertPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
   @Getter private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
-  private final EventSubscriptionRepository eventSubscriptionRepository;
 
-  public SubscriptionPublisher(EventSubscription eventSub, CollectionDAO dao) {
+  public SubscriptionPublisher(EventSubscription eventSub) {
     super(eventSub);
-    this.eventSubscriptionRepository = new EventSubscriptionRepository(dao);
   }
 
   @SneakyThrows
@@ -111,7 +106,7 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  protected void sendAlert(EventResource.EventList list) throws InterruptedException, JsonProcessingException {
+  protected void sendAlert(EventResource.EventList list) throws InterruptedException {
     /* This method needs to be over-ridden by specific Publisher for sending Alert */
   }
 

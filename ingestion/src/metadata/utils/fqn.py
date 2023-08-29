@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
@@ -262,6 +263,20 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``"
         )
     return _build(service_name, topic_name)
+
+
+@fqn_build_registry.add(SearchIndex)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for Search Index FQN building
+    *,
+    service_name: str,
+    search_index_name: str,
+) -> str:
+    if not service_name or not search_index_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, search_index=`{search_index_name}``"
+        )
+    return _build(service_name, search_index_name)
 
 
 @fqn_build_registry.add(Tag)

@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceMetadataPipeline",
   "description": "DatabaseService Metadata Pipeline Configuration.",
+  "type": "object",
   "javaType": "org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline",
   "definitions": {
     "databaseMetadataConfigType": {
@@ -51,7 +52,7 @@
     "viewParsingTimeoutLimit": {
       "description": "Configuration to set the timeout for parsing view query in seconds.",
       "type": "integer",
-      "default": "300"
+      "default": 300
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",

@@ -17,6 +17,7 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Space, Tooltip } from 'antd';
+import Input from 'antd/lib/input/Input';
 import { StorageServiceType } from 'generated/entity/services/storageService';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -171,7 +172,7 @@ const ServiceConnectionDetails = ({
         return (
           <Col key={key} span={12}>
             <Row>
-              <Col span={8}>
+              <Col className="d-flex items-center" span={8}>
                 <Space size={0}>
                   <p className="text-grey-muted m-0">{key || title}:</p>
                   <Tooltip
@@ -179,16 +180,16 @@ const ServiceConnectionDetails = ({
                     title={description}
                     trigger="hover">
                     <InfoCircleOutlined
-                      className="tw-mx-1"
+                      className="m-x-xss"
                       style={{ color: '#C4C4C4' }}
                     />
                   </Tooltip>
                 </Space>
               </Col>
               <Col span={16}>
-                <input
+                <Input
                   readOnly
-                  className="w-full tw-outline-none"
+                  className="w-full border-none"
                   type={format !== 'password' ? 'text' : 'password'}
                   value={value}
                 />

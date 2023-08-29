@@ -21,6 +21,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from unittest import TestCase
 
+import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
@@ -287,8 +288,8 @@ class ProfilerWorkflowTest(TestCase):
         assert profile.rowCount == 4.0
         assert profile.profileSampleType == ProfileSampleType.ROWS
 
-    def test_worflow_sample_profile(self):
-        """Test the worflow sample profile gets propagated down to the table profileSample"""
+    def test_workflow_sample_profile(self):
+        """Test the workflow sample profile gets propagated down to the table profileSample"""
         workflow_config = deepcopy(ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {

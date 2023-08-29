@@ -41,7 +41,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.table_metadata import OMetaTableConstraints
+from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
@@ -98,7 +98,6 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
         self.write_record.register(DataModelLink, self.write_datamodel)
         self.write_record.register(DashboardUsage, self.write_dashboard_usage)
-        self.write_record.register(OMetaTableConstraints, self.write_table_constraints)
         self.write_record.register(
             OMetaTableProfileSampleData, self.write_profile_sample_data
         )
@@ -111,6 +110,9 @@ class MetadataRestSink(Sink[Entity]):
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
         self.write_record.register(OMetaTopicSampleData, self.write_topic_sample_data)
+        self.write_record.register(
+            OMetaIndexSampleData, self.write_search_index_sample_data
+        )
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -469,22 +471,26 @@ class MetadataRestSink(Sink[Entity]):
                 f"Unexpected error while ingesting sample data for topic [{record.topic.name.__root__}]: {exc}"
             )
 
-    def write_table_constraints(self, record: OMetaTableConstraints):
+    def write_search_index_sample_data(self, record: OMetaIndexSampleData):
         """
-        Patch table constraints
+        Ingest Search Index Sample Data
         """
         try:
-            self.metadata.patch_table_constraints(
-                table=record.table,
-                constraints=record.constraints,
-            )
-            logger.debug(
-                f"Successfully ingested table constraints for table id {record.table.id}"
-            )
+            if record.data.messages:
+                self.metadata.ingest_search_index_sample_data(
+                    record.entity,
+                    record.data,
+                )
+                logger.debug(
+                    f"Successfully ingested sample data for {record.entity.name.__root__}"
+                )
+                self.status.records_written(
+                    f"SearchIndexSampleData: {record.entity.name.__root__}"
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected error while ingesting table constraints for table id [{record.table.id}]: {exc}"
+                f"Unexpected error while ingesting sample data for search index [{record.entity.name.__root__}]: {exc}"
             )
 
     def close(self):

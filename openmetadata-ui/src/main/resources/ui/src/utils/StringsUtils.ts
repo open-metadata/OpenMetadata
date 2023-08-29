@@ -179,3 +179,10 @@ export const customServiceComparator = (a: string, b: string): number => {
     return a.localeCompare(b);
   }
 };
+
+/**
+ *
+ * @param fqn - Value to be encoded
+ * @returns - String text replacing + to valid component of a Uniform Resource Identifier (URI).
+ */
+export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');

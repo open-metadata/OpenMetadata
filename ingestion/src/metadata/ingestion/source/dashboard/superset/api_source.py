@@ -81,23 +81,29 @@ class SupersetAPISource(SupersetSourceMixin):
         """
         Method to Get Dashboard Entity
         """
-        dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.id,
-            displayName=dashboard_details.dashboard_title,
-            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}",
-            charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
-                )
-                for chart in self.context.charts
-            ],
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
-        )
-        yield dashboard_request
-        self.register_record(dashboard_request=dashboard_request)
+        try:
+            dashboard_request = CreateDashboardRequest(
+                name=dashboard_details.id,
+                displayName=dashboard_details.dashboard_title,
+                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}",
+                charts=[
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        chart_name=chart.name.__root__,
+                    )
+                    for chart in self.context.charts
+                ],
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+            )
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error creating dashboard [{dashboard_details.dashboard_title}]: {exc}"
+            )
 
     def _get_datasource_fqn_for_lineage(
         self, chart_json: ChartResult, db_service_entity: DatabaseService
@@ -172,22 +178,24 @@ class SupersetAPISource(SupersetSourceMixin):
 
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
-                chart_json = self.all_charts.get(chart_id)
-                if not chart_json:
-                    logger.warning(
-                        f"chart details for id: {chart_id} not found, skipped"
-                    )
-                    continue
-                datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
-                if filter_by_datamodel(
-                    self.source_config.dataModelFilterPattern,
-                    datasource_json.result.table_name,
-                ):
-                    self.status.filter(
-                        datasource_json.result.table_name, "Data model filtered out."
-                    )
-
                 try:
+                    chart_json = self.all_charts.get(chart_id)
+                    if not chart_json:
+                        logger.warning(
+                            f"chart details for id: {chart_id} not found, skipped"
+                        )
+                        continue
+                    datasource_json = self.client.fetch_datasource(
+                        chart_json.datasource_id
+                    )
+                    if filter_by_datamodel(
+                        self.source_config.dataModelFilterPattern,
+                        datasource_json.result.table_name,
+                    ):
+                        self.status.filter(
+                            datasource_json.result.table_name,
+                            "Data model filtered out.",
+                        )
                     data_model_request = CreateDashboardDataModelRequest(
                         name=datasource_json.id,
                         displayName=datasource_json.result.table_name,

@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Row, Select, Space, Typography } from 'antd';
+import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { capitalize } from 'lodash';
 import React from 'react';
-import { getSeparator } from '../../../utils/CommonUtils';
-import { Field } from '../../Field/Field';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
@@ -52,8 +50,8 @@ const FilterPattern = ({
         </Col>
       </Row>
       {checked && (
-        <div data-testid="field-container">
-          <Field>
+        <Row className="m-t-xs" data-testid="field-container" gutter={[0, 16]}>
+          <Col span={24}>
             <Space size={2}>
               <label className="d-flex flex-col">{t('label.include')}:</label>
             </Space>
@@ -76,8 +74,8 @@ const FilterPattern = ({
                 {includePatternExtraInfo}
               </Typography.Text>
             )}
-          </Field>
-          <Field>
+          </Col>
+          <Col span={24}>
             <Space size={2}>
               <label className="d-flex flex-col">{t('label.exclude')}:</label>
             </Space>
@@ -91,9 +89,10 @@ const FilterPattern = ({
               value={excludePattern ?? []}
               onChange={(value) => getExcludeValue(value, type)}
             />
-          </Field>
-          {showSeparator && getSeparator('')}
-        </div>
+
+            {showSeparator && <Divider />}
+          </Col>
+        </Row>
       )}
     </div>
   );

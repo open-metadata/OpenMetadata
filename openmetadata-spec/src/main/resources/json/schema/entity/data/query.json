@@ -12,7 +12,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a entity to which the query belong",
+      "description": "Name of an entity to which the query belongs to",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
@@ -94,11 +94,6 @@
     "queryUsedIn": {
       "description": "Entities that are using this query",
       "$ref": "../../type/entityReferenceList.json"
-    },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
     }
   },
   "required": ["name","query"],

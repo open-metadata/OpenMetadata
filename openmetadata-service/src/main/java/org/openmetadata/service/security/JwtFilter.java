@@ -120,7 +120,7 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.toString().equals(providerType)) {
+    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.equals(providerType)) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 
@@ -237,14 +237,14 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private void validateBotToken(String tokenFromHeader, String userName) {
-    if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
+    if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
     throw AuthenticationException.getInvalidTokenException();
   }
 
   private void validatePersonalAccessToken(String tokenFromHeader, String userName) {
-    if (UserTokenCache.getInstance().getToken(userName).contains(tokenFromHeader)) {
+    if (UserTokenCache.getToken(userName).contains(tokenFromHeader)) {
       return;
     }
     throw AuthenticationException.getInvalidTokenException();
