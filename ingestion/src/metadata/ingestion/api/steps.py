@@ -53,8 +53,8 @@ class Sink(ReturnStep, ABC):
 
     @abstractmethod
     def _run(
-        self, record: Entity, *_, **__
-    ) -> Either:  # pylint: disable=arguments-differ
+        self, record: Entity, *_, **__  # pylint: disable=arguments-differ
+    ) -> Either:
         """
         Send the data somewhere, e.g., the OM API
         """
