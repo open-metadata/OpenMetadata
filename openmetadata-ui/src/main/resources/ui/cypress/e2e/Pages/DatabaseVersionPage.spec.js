@@ -24,7 +24,7 @@ import {
 import { DELETE_TERM } from '../../constants/constants';
 import {
   COMMON_PATCH_PAYLOAD,
-  DATABASE_DESCRIPTION,
+  COMMON_UPDATED_DESCRIPTION,
   DATABASE_DETAILS_FOR_VERSION_TEST,
   OWNER,
   SERVICE_DETAILS_FOR_VERSION_TEST,
@@ -113,7 +113,7 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${DATABASE_DESCRIPTION}"]`)
+    cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
       .scrollIntoView()
       .should('be.visible');
 
