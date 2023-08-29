@@ -57,7 +57,7 @@ class FileSink(Sink):
         config = FileSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def _run(self, record: Entity) -> Either[str]:
+    def _run(self, record: Entity, *_, **__) -> Either[str]:
         if self.wrote_something:
             self.file.write(",\n")
 

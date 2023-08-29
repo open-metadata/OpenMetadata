@@ -289,7 +289,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             self.source_status.failed(
                 StackTraceError(
                     name=entity.fullyQualifiedName.__root__,
-                    error=f"Unexpected exception processing entity [{name}]: {exc}",
+                    error=f"Unexpected exception processing entity {entity.fullyQualifiedName.__root__}: {exc}",
                     stack_trace=traceback.format_exc(),
                 )
             )

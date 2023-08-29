@@ -36,7 +36,7 @@ class ProcessorStatus(Status):
         self.records.append(record)
 
     # disabling pylint until we remove this
-    def warning(self, info: Any) -> None:  # pylint: disable=W0221W0221
+    def warning(self, info: Any) -> None:  # pylint: disable=W0221
         self.warnings.append(info)
 
 
@@ -45,8 +45,6 @@ class ProfilerProcessorStatus(Status):
 
     def scanned(self, record: Any) -> None:
         self.records.append(record)
-
-    table_usage
 
     def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:
         self.failed(

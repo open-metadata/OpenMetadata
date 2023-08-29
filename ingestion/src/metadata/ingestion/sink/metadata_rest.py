@@ -113,7 +113,7 @@ class MetadataRestSink(Sink):
         return self.write_create_request(record)
 
     @calculate_execution_time
-    def _run(self, record: Entity) -> Either[Any]:
+    def _run(self, record: Entity, *_, **__) -> Either[Any]:
         """
         Default implementation for the single dispatch
         """
@@ -134,8 +134,6 @@ class MetadataRestSink(Sink):
                     name=log, error=error, stack_trace=traceback.format_exc()
                 )
             )
-
-    170
 
     def write_create_request(self, entity_request) -> Either[Entity]:
         """
