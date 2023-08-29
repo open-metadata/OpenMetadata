@@ -246,12 +246,10 @@ generate-schema-docs:  ## Generates markdown files for documenting the JSON Sche
 	@echo "Generating Schema docs"
 	python -m pip install "jsonschema2md"
 	python scripts/generate_docs_schemas.py
-	
 
+#Upgrade release automation scripts below	
 .PHONY: update_all
-
-.PHONY: update_all
-update_all: ## To update all the release related files
+update_all: ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
 	@echo "The release version is: $(RELEASE_VERSION)" ; \
 	echo "The python metadata release version: $(PY_RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
@@ -264,7 +262,7 @@ update_all: ## To update all the release related files
 #make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
 
 .PHONY: update_maven
-update_maven: #Update the common and pom.xml maven version
+update_maven: ## To update the common and pom.xml maven version
 	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."; \
 	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
 #remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
@@ -292,7 +290,7 @@ update_github_action_paths: ## To update the github action ci docker files
 #make update_github_action_paths RELEASE_VERSION=2.2.2
 
 .PHONY: update_python_release_paths
-update_python_release_paths:
+update_python_release_paths: ## To update the setup.py files
 	file_paths="ingestion/setup.py \
 				openmetadata-airflow-apis/setup.py"; \
 	echo "Updating Python setup file versions to $(PY_RELEASE_VERSION)... "; \
@@ -326,3 +324,5 @@ update_ingestion_dockerfile_version: ## To update the ingestion dockerfiles vers
 	done
 #remove comment and use the below section when want to use this sub module "update_ingestion_dockerfile_version" independently to update github actions
 #make update_ingestion_dockerfile_version PY_RELEASE_VERSION=2.2.2.2
+
+#Upgrade release automation scripts above

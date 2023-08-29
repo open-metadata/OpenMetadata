@@ -3,9 +3,15 @@ import argparse
 import fileinput
 import os
 import re
+import logging
 
+# Configure the logger
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger()
+
+# Function to update the Github workflow with search pattern as "input=" or "DOCKER_RELEASE_TAG="
 def update_github_action(file_path, release_version):
-    print(f"Updating Github workflow's Docker version in {file_path} to version {release_version}\n")
+    logger.info(f"Updating Github workflow's Docker version in {file_path} to version {release_version}\n")
     try:
         with open(file_path, 'r') as file:
             content = file.read()
@@ -23,13 +29,14 @@ def update_github_action(file_path, release_version):
         with open(file_path, 'w') as file:
             file.write(updated_content)
 
-        print(f"Patterns updated to {release_version} in {file_path}")
+        logger.info(f"Patterns updated to {release_version} in {file_path}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
 
+# Function to update the Python files in ingestion with search pattern as "version="
 def update_python_files(file_path, release_version):
     # Logic for updating Python files
-    print(f"Updating version numbers in {file_path} to {release_version}\n")
+    logger.info(f"Updating version numbers in {file_path} to {release_version}\n")
     try:
         with open(file_path, 'r') as file:
             content = file.read()
@@ -40,11 +47,11 @@ def update_python_files(file_path, release_version):
         with open(file_path, 'w') as file:
             file.write(updated_content)
 
-        print(f"Version numbers updated to {release_version} in {file_path}")
+        logger.info(f"Version numbers updated to {release_version} in {file_path}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
 
-
+# Function to update the image version in Docker compose files with search pattern where image, docker, getcollate, and openmetadata are used.
 def update_dockerfile_version(file_path, release_version):
     # Logic for updating Docker compose version
     try:
@@ -61,13 +68,13 @@ def update_dockerfile_version(file_path, release_version):
         with open(file_path, 'w') as file:
             file.write(updated_content)
 
-        print(f"Updated image versions in {file_path}")
+        logger.info(f"Updated image versions in {file_path}")
     except Exception as e:
-        print(f"An error occurred while updating {file_path}: {e}")
+        logger.error(f"An error occurred while updating {file_path}: {e}")
 
+# Function to update the DOCKERFILE used to create the images, search pattern used as "RI_VERSION"
 def update_ingestion_version(file_path, release_version):
-    # Logic for updating ingestion version
-    print(f"Updating ingestion version in {file_path} to version {release_version}\n")
+    logger.info(f"Updating ingestion version in {file_path} to version {release_version}\n")
     try:
         with open(file_path, 'r') as file:
             content = file.read()
@@ -79,37 +86,19 @@ def update_ingestion_version(file_path, release_version):
         with open(file_path, 'w') as file:
             file.write(updated_content)
 
-        print(f"RI_VERSION updated to {release_version} in {file_path}")
+        logger.info(f"RI_VERSION updated to {release_version} in {file_path}")
     except Exception as e:
-        print(f"An error occurred: {e}")
-
-def update_image_version(file_path, release_version):
-    # Logic for updating image versions
-    print(f"Updating image versions in {file_path} to version {release_version}\n")
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
-
-        pattern = r'docker\.getcollate\.io/openmetadata/[\w\-]+:[\d\.]+'
-        replacement = f'docker.getcollate.io/openmetadata/{release_version}'
-        updated_content = re.sub(pattern, replacement, content)
-
-        with open(file_path, 'w') as file:
-            file.write(updated_content)
-
-        print(f"Image versions updated to {release_version} in {file_path}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
 
 def main():
     if len(sys.argv) != 5:
-        print("Usage: python3 update_version.py <action_type> <file_path> -s <release_version>")
+        logger.error("Usage: python3 update_version.py <action_type> <file_path> -s <release_version>")
         sys.exit(1)
 
     action_type = int(sys.argv[1])
     file_path = sys.argv[2]
     release_version = sys.argv[4]
-
+    #hardcoding the function selection based on the search pattern required by files
     if action_type == 1:
         update_github_action(file_path, release_version)
     elif action_type == 2:
@@ -118,10 +107,8 @@ def main():
         update_dockerfile_version(file_path, release_version)
     elif action_type == 4:
         update_ingestion_version(file_path, release_version)
-    elif action_type == 5:
-        update_ingestion_version(file_path, release_version)
     else:
-        print("Invalid action type")
+        logger.error("Invalid action type")
         sys.exit(1)
 
 if __name__ == "__main__":
