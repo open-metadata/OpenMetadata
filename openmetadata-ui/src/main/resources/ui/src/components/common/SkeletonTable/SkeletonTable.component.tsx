@@ -14,7 +14,7 @@
 
 import { Skeleton, SkeletonProps, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React from 'react';
+import React, { useMemo } from 'react';
 
 export type SkeletonTableColumnsType = {
   key: string;
@@ -28,34 +28,44 @@ type SkeletonTableProps<T> = SkeletonProps & {
 export default function SkeletonTable<T>({
   loading = false,
   active = false,
-  rowCount = 5,
+  rowCount = 3,
   columns,
   children,
   className,
 }: SkeletonTableProps<T>): JSX.Element {
+  const column = useMemo(
+    () =>
+      columns.map((column) => {
+        return {
+          ...column,
+          render: function renderPlaceholder() {
+            return (
+              <Skeleton
+                title
+                active={active}
+                className={className}
+                key={column.key}
+                paragraph={false}
+              />
+            );
+          },
+        };
+      }) as SkeletonTableColumnsType[],
+    [columns, active]
+  );
+
+  const dataSource = useMemo(
+    () =>
+      [...Array(rowCount)].map((_, index) => ({
+        key: `key${index}`,
+      })),
+    [rowCount]
+  );
+
   return loading ? (
     <Table
-      columns={
-        columns.map((column) => {
-          return {
-            ...column,
-            render: function renderPlaceholder() {
-              return (
-                <Skeleton
-                  title
-                  active={active}
-                  className={className}
-                  key={column.key}
-                  paragraph={false}
-                />
-              );
-            },
-          };
-        }) as SkeletonTableColumnsType[]
-      }
-      dataSource={[...Array(rowCount)].map((_, index) => ({
-        key: `key${index}`,
-      }))}
+      columns={column}
+      dataSource={dataSource}
       pagination={false}
       rowKey="key"
       size="small"
