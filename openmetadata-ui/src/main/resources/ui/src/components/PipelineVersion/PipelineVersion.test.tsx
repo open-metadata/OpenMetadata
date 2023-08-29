@@ -16,7 +16,6 @@ import userEvent from '@testing-library/user-event';
 import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import {
   mockColumnDiffPipelineVersionMockProps,
   pipelineVersionMockProps,
@@ -151,37 +150,5 @@ describe('PipelineVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/pipeline/sample_airflow.snowflake_etl/versions/0.3/custom_properties'
     );
-  });
-
-  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
-    await act(async () => {
-      render(
-        <PipelineVersion
-          {...pipelineVersionMockProps}
-          entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
-    );
-    const schemaTable = screen.getByTestId('schema-table');
-    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
-
-    expect(customPropertyTabLabel).toBeInTheDocument();
-    expect(schemaTable).toBeInTheDocument();
-    expect(errorPlaceHolder).toBeNull();
-
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
-
-    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });
