@@ -15,7 +15,7 @@ Query parser utils tests
 import json
 from unittest import TestCase
 
-from metadata.workflow.workflow import Workflow
+from metadata.workflow.usage import UsageWorkflow
 
 config = """
 {
@@ -35,7 +35,7 @@ config = """
       "config":{
         "type": "DatabaseUsage"
       }
-    }
+    }test_couchbase
   },
   "processor": {
     "type": "query-parser",
@@ -78,7 +78,7 @@ class QueryParserTest(TestCase):
             "shopify.fact_sale": 3,
             "shopify.raw_customer": 10,
         }
-        workflow = Workflow.create(json.loads(config))
+        workflow = UsageWorkflow.create(json.loads(config))
         workflow.execute()
         table_usage_map = {}
 

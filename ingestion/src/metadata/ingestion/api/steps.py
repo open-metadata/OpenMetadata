@@ -52,8 +52,8 @@ class Sink(ReturnStep, ABC):
     """All Sinks must inherit this base class."""
 
     @abstractmethod
-    def _run(
-        self, record: Entity, *_, **__  # pylint: disable=arguments-differ
+    def _run(  # pylint: disable=arguments-differ
+        self, record: Entity, *_, **__
     ) -> Either:
         """
         Send the data somewhere, e.g., the OM API
