@@ -33,3 +33,7 @@ like this:
       schemaRegistryConfig:
         "basic.auth.user.info": "username:password"
 ```
+
+## Connecting to Confluent Cloud Kafka
+
+If you are using Confluent kafka and SSL encryption is enabled you need to add `security.protocol` as key and `SASL_SSL` as value under Consumer Config
