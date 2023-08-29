@@ -98,7 +98,9 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.clickOnLogo();
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
     cy.get('[data-menu-id*="databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
@@ -443,7 +445,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/search/query?q=*&index=test_case_search_index*',
       'getTestCase'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="add-test-suite-btn"]').click();
@@ -483,7 +485,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testCases/logicalTestCases',
       'putTestCase'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="test-suite-container"]')
@@ -520,7 +522,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testCases/logicalTestCases/*/*',
       'removeTestCase'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="test-suite-container"]')
@@ -544,7 +546,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
       'testSuite'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="test-suite-container"]')

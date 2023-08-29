@@ -33,7 +33,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 
   it(`should show the quick filters for respective assets`, () => {
     // Navigate to explore page
-    cy.get('[data-testid="appbar-item-explore"]').click();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
     QUICK_FILTERS_BY_ASSETS.map((asset) => {
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
@@ -50,7 +50,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
     const asset = QUICK_FILTERS_BY_ASSETS[0];
 
     // Navigate to explore page
-    cy.get('[data-testid="appbar-item-explore"]').click();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
     cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
     asset.filters
