@@ -22,7 +22,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.api.models import StackTraceError
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import test_suite_logger
@@ -80,4 +81,10 @@ class MetadataRestSink(Sink[Entity]):
             error = f"Failed to sink test case results for {name}: {err}"
             logger.error(error)
             logger.debug(traceback.format_exc())
-            self.status.failed(name, error, traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=name,
+                    error=error,
+                    stack_trace=traceback.format_exc(),
+                )
+            )

@@ -35,7 +35,7 @@ from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnect
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
@@ -89,7 +89,13 @@ class MlflowSource(MlModelServiceSource):
                 None,
             )
             if not latest_version:
-                self.status.failed(model.name, "Invalid version")
+                self.status.failed(
+                    StackTraceError(
+                        name=model.name,
+                        error="Invalid Version",
+                        stack_trace=f"Cannot find latest version from version list {model.latest_versions}",
+                    )
+                )
                 continue
 
             yield model, latest_version

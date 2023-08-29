@@ -15,7 +15,7 @@ Query parser utils tests
 import json
 from unittest import TestCase
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.workflow import Workflow
 
 config = """
 {

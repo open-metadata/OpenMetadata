@@ -18,7 +18,9 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, Field
 
 from metadata.ingestion.api.models import StackTraceError
-from metadata.utils.logger import get_log_name
+from metadata.utils.logger import get_log_name, ingestion_logger
+
+logger = ingestion_logger()
 
 
 class Status(BaseModel):
@@ -52,6 +54,8 @@ class Status(BaseModel):
         """
         Add a failure to the list of failures
         """
+        logger.warning(error.error)
+        logger.debug(error.stack_trace)
         self.failures.append(error)
 
     def fail_all(self, failures: List[StackTraceError]) -> None:

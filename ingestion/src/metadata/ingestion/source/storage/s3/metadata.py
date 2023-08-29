@@ -41,7 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
@@ -122,17 +122,21 @@ class S3Source(StorageServiceSource):
                             yield structured_container
 
             except ValidationError as err:
-                error = f"Validation error while creating Container from bucket details - {err}"
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
-                self.status.failed(bucket_response.name, error, traceback.format_exc())
-            except Exception as err:
-                error = (
-                    f"Wild error while creating Container from bucket details - {err}"
+                self.status.failed(
+                    StackTraceError(
+                        name=bucket_response.name,
+                        error=f"Validation error while creating Container from bucket details - {err}",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
-                self.status.failed(bucket_response.name, error, traceback.format_exc())
+            except Exception as err:
+                self.status.failed(
+                    StackTraceError(
+                        name=bucket_response.name,
+                        error=f"Wild error while creating Container from bucket details - {err}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails

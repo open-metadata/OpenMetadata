@@ -39,7 +39,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -174,10 +174,13 @@ class SalesforceSource(DatabaseServiceSource):
 
                     yield table_name, TableType.Regular
         except Exception as exc:
-            error = f"Unexpected exception for schema name [{schema_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(schema_name, error, traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=schema_name,
+                    error=f"Unexpected exception for schema name [{schema_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]

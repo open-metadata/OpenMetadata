@@ -22,7 +22,7 @@ from metadata.utils.logger import cli_logger
 from metadata.workflow.workflow_output_handler import (
     WorkflowType,
     print_init_error,
-    print_status,
+    print_profiler_status,
 )
 
 logger = cli_logger()
@@ -48,5 +48,5 @@ def run_profiler(config_path: str) -> None:
 
     workflow.execute()
     workflow.stop()
-    print_status(workflow)
+    print_profiler_status(workflow)
     workflow.raise_from_status()

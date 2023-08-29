@@ -49,6 +49,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
 )
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
@@ -72,7 +73,7 @@ RETENTION_DAYS = 7
 
 class DataInsightWorkflow(WorkflowStatusMixin):
     """
-    Configure and run the Data Insigt workflow
+    Configure and run the Data Insight workflow
 
     Attributes:
     """
@@ -179,7 +180,7 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                     if hasattr(self, "sink"):
                         self.sink.write_record(record)
                     if hasattr(self, "es_sink"):
-                        self.es_sink._run(record)
+                        self.es_sink.write_record(record)
                     else:
                         logger.warning(
                             "No sink attribute found, skipping ingestion of KPI result"
@@ -192,10 +193,16 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                 error = f"Error while executing data insight workflow for report type {report_data_type}: {exc}"
                 logger.error(error)
                 logger.debug(traceback.format_exc())
-                self.status.failed(str(report_data_type), error, traceback.format_exc())
+                self.status.failed(
+                    StackTraceError(
+                        name=str(report_data_type),
+                        error=error,
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def _execute_kpi_runner(self):
-        """KPI runner method to run KPI definiton against platform latest metric"""
+        """KPI runner method to run KPI definition against platform latest metric"""
         kpis = self._get_kpis()
         self.kpi_runner = KpiRunner(kpis, self.metadata)
 

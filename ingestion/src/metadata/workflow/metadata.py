@@ -9,9 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Workflow definition for metadata related ingestions: metadata, lineage and usage.
+Workflow definition for metadata related ingestions: metadata and lineage.
 """
-from typing import TypeVar
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.api.steps import Sink, Source
@@ -25,14 +24,6 @@ from metadata.utils.logger import ingestion_logger
 from metadata.workflow.base import BaseWorkflow
 
 logger = ingestion_logger()
-
-T = TypeVar("T")
-
-
-class InvalidWorkflowJSONException(Exception):
-    """
-    Raised when we cannot properly parse the workflow
-    """
 
 
 class MetadataWorkflow(BaseWorkflow):
@@ -52,17 +43,14 @@ class MetadataWorkflow(BaseWorkflow):
         # Source that we are ingesting, e.g., mysql, looker or kafka
         source_type = self.config.source.type.lower()
 
-        # Type of the source: Database, Dashboard, Messaging, Pipeline, Metadata or Mlmodel
-        service_type: ServiceType = get_service_type_from_source_type(
-            self.config.source.type
-        )
-
         source_class = (
             import_from_module(
                 self.config.source.serviceConnection.__root__.config.sourcePythonClass
             )
             if source_type.startswith("custom")
-            else import_source_class(service_type=service_type, source_type=source_type)
+            else import_source_class(
+                service_type=self.service_type, source_type=source_type
+            )
         )
 
         source: Source = source_class.create(

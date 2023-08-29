@@ -15,6 +15,7 @@ Sample Data source ingestion
 import json
 import random
 import string
+import time
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -954,6 +955,7 @@ class SampleDataSource(
         for status_data in self.pipeline_status:
             pipeline_fqn = status_data["pipeline"]
             for status in status_data["pipelineStatus"]:
+                status["timestamp"] = time.time_ns() // 1_000_000
                 yield Either(
                     right=OMetaPipelineStatus(
                         pipeline_fqn=pipeline_fqn,

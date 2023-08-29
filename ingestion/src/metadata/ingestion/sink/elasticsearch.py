@@ -49,7 +49,7 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
     ContainerESDocument,
     DashboardESDocument,
@@ -149,7 +149,7 @@ class ElasticSearchConfig(ConfigModel):
     region_name: Optional[str] = None
 
 
-class ElasticsearchSink(Sink):
+class ElasticsearchSink(Sink[Entity]):
     """
     Class containing the logic to transform OM Entities
     into ES indexes and data. To be used as a Workflow Sink
@@ -338,7 +338,7 @@ class ElasticsearchSink(Sink):
                 index=index_name, body=es_mapping, request_timeout=self.config.timeout
             )
 
-    def _run(self, record: Entity) -> None:
+    def write_record(self, record: Entity) -> None:
         """
         Default implementation for the single dispatch
         """

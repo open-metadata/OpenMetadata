@@ -10,43 +10,43 @@
 #  limitations under the License.
 
 """
-Data quality utility for the metadata CLI
+Usage utility for the metadata CLI
 """
 import pathlib
 import sys
 import traceback
 
 from metadata.config.common import load_config_file
-from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger
+from metadata.workflow.usage import UsageWorkflow
 from metadata.workflow.workflow_output_handler import (
     WorkflowType,
     print_init_error,
-    print_test_suite_status,
+    print_status,
 )
 
 logger = cli_logger()
 
 
-def run_test(config_path: str) -> None:
+def run_usage(config_path: str) -> None:
     """
-    Run the Data Quality Test Suites workflow from a config path
+    Run the usage workflow from a config path
     to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
     config_file = pathlib.Path(config_path)
-    workflow_config_dict = None
+    config_dict = None
     try:
-        workflow_config_dict = load_config_file(config_file)
-        logger.debug(f"Using config: {workflow_config_dict}")
-        workflow = TestSuiteWorkflow.create(workflow_config_dict)
+        config_dict = load_config_file(config_file)
+        workflow = UsageWorkflow.create(config_dict)
+        logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, workflow_config_dict, WorkflowType.TEST)
+        print_init_error(exc, config_dict, WorkflowType.INGEST)
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    print_test_suite_status(workflow)
+    print_status(workflow)
     workflow.raise_from_status()

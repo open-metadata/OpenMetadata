@@ -59,13 +59,13 @@ from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
+from metadata.workflow.workflow import Workflow
 
 TESTS_ROOT_DIR = pathlib.Path(__file__).parent.parent.parent.parent
 SNOWFLAKE_CONFIG_FILE = "cli_e2e/database/snowflake/snowflake.yaml"

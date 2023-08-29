@@ -138,12 +138,14 @@ class GlueSource(DatabaseServiceSource):
                             continue
                         database_names.add(schema.CatalogId)
                     except Exception as exc:
-                        error = f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}"
-                        logger.debug(traceback.format_exc())
-                        logger.warning(error)
                         self.status.failed(
-                            schema.CatalogId, error, traceback.format_exc()
+                            StackTraceError(
+                                name=schema.CatalogId,
+                                error=f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}",
+                                stack_trace=traceback.format_exc(),
+                            )
                         )
+
             yield from database_names
 
     def yield_database(
@@ -184,10 +186,13 @@ class GlueSource(DatabaseServiceSource):
                         continue
                     yield schema.Name
                 except Exception as exc:
-                    error = f"Unexpected exception to get database schema [{schema.Name}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(schema.Name, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=schema.Name,
+                            error=f"Unexpected exception to get database schema [{schema.Name}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
     def yield_database_schema(
         self, schema_name: str
@@ -258,10 +263,13 @@ class GlueSource(DatabaseServiceSource):
                     self.context.table_data = table
                     yield table_name, table_type
                 except Exception as exc:
-                    error = f"Unexpected exception to get table [{table.Name}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(table.Name, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=table.Name,
+                            error=f"Unexpected exception to get table [{table.Name}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]

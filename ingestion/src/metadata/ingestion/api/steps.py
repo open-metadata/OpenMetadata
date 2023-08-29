@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from metadata.ingestion.api.models import Either, Entity
-from metadata.ingestion.api.step import IterStep, ReturnStep
+from metadata.ingestion.api.step import BulkStep, IterStep, ReturnStep, StageStep
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
@@ -58,27 +58,6 @@ class Sink(ReturnStep, ABC):
         """
 
 
-class Stage(ReturnStep, ABC):
-    """All Stages must inherit this base class."""
-
-    @abstractmethod
-    def _run(self, record: Entity) -> Either:
-        """
-        Store the data in a file to be processed in bulk
-        """
-
-
-class BulkSink(ReturnStep, ABC):
-    """All Stages must inherit this base class."""
-
-    @abstractmethod
-    def _run(self) -> Either:
-        """
-        Read the configured file and send the data somewhere,
-        e.g., the OM API
-        """
-
-
 class Processor(ReturnStep, ABC):
     """All Processor must inherit this base class"""
 
@@ -88,3 +67,11 @@ class Processor(ReturnStep, ABC):
         Post process a given entity and return it
         or a new one
         """
+
+
+class Stage(StageStep, ABC):
+    """All Stages must inherit this base class."""
+
+
+class BulkSink(BulkStep, ABC):
+    """All Stages must inherit this base class."""

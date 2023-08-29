@@ -18,7 +18,7 @@ import traceback
 from enum import Enum
 from logging import Logger
 from pathlib import Path
-from typing import Dict, List, Type, Union
+from typing import Dict, List, Type, Union, Optional
 
 from pydantic import BaseModel
 from tabulate import tabulate
@@ -234,7 +234,7 @@ def print_profiler_status(workflow) -> None:
     """
     Print the profiler workflow results
     """
-    print_workflow_summary(
+    print_workflow_summary_legacy(
         workflow,
         source=True,
         processor=True,
@@ -269,7 +269,9 @@ def print_test_suite_status(workflow) -> None:
     """
     Print the test suite workflow results
     """
-    print_workflow_summary(workflow, processor=True, processor_status=workflow.status)
+    print_workflow_summary_legacy(
+        workflow, processor=True, processor_status=workflow.status
+    )
 
     if workflow.result_status() == 1:
         log_ansi_encoded_string(
@@ -288,7 +290,7 @@ def print_data_insight_status(workflow) -> None:
         workflow (DataInsightWorkflow): workflow object
     """
     # TODO: fixme
-    print_workflow_summary(
+    print_workflow_summary_legacy(
         workflow,
         processor=True,
         processor_status=workflow.status,
@@ -330,9 +332,9 @@ def get_generic_step_name(step: Step) -> str:
     much internal info (e.g., MetadataRestSink), we'll
     just check here for the simplification.
     """
-    for step_types in (Source, Processor, Stage, Sink, BulkSink):
-        if isinstance(step, step_types):
-            return step_types.__name__
+    for step_type in (Source, Processor, Stage, Sink, BulkSink):
+        if isinstance(step, step_type):
+            return step_type.__name__
 
 
 def print_workflow_summary(workflow: "BaseWorkflow") -> None:
@@ -383,6 +385,82 @@ def print_workflow_summary(workflow: "BaseWorkflow") -> None:
         bold=True,
         message=f"Success %: "
         f"{round(total_success * 100 / (total_success + total_errors), 2)}",
+    )
+
+
+def get_source_status(workflow, source_status: Status) -> Optional[Status]:
+    if hasattr(workflow, "source"):
+        return source_status if source_status else workflow.source.get_status()
+    return source_status
+
+
+def get_processor_status(workflow, processor_status: Status) -> Optional[Status]:
+    if hasattr(workflow, "processor"):
+        return processor_status if processor_status else workflow.processor.get_status()
+    return processor_status
+
+
+def print_workflow_summary_legacy(
+    workflow,
+    source: bool = False,
+    stage: bool = False,
+    bulk_sink: bool = False,
+    processor: bool = False,
+    source_status: Status = None,
+    processor_status: Status = None,
+):
+    """
+    To be removed. All workflows should use the new `print_workflow_summary`
+    after making the transition to the BaseWorkflow steps with common Status.
+    """
+    source_status = get_source_status(workflow, source_status)
+    processor_status = get_processor_status(workflow, processor_status)
+    if is_debug_enabled(workflow):
+        print_workflow_status_debug(
+            workflow,
+            bulk_sink,
+            stage,
+            source_status,
+            processor_status,
+        )
+    summary = Summary()
+    failures = []
+    if source_status and source:
+        summary += get_summary(source_status)
+        failures.append(Failure(name="Source", failures=source_status.failures))
+    if hasattr(workflow, "stage") and stage:
+        summary += get_summary(workflow.stage.get_status())
+        failures.append(
+            Failure(name="Stage", failures=workflow.stage.get_status().failures)
+        )
+    if hasattr(workflow, "sink"):
+        summary += get_summary(workflow.sink.get_status())
+        failures.append(
+            Failure(name="Sink", failures=workflow.sink.get_status().failures)
+        )
+    if hasattr(workflow, "bulk_sink") and bulk_sink:
+        summary += get_summary(workflow.bulk_sink.get_status())
+        failures.append(
+            Failure(name="Bulk Sink", failures=workflow.bulk_sink.get_status().failures)
+        )
+    if processor_status and processor:
+        summary += get_summary(processor_status)
+        failures.append(Failure(name="Processor", failures=processor_status.failures))
+
+    print_failures_if_apply(failures)
+
+    log_ansi_encoded_string(bold=True, message="Workflow Summary:")
+    log_ansi_encoded_string(message=f"Total processed records: {summary.records}")
+    log_ansi_encoded_string(message=f"Total warnings: {summary.warnings}")
+    log_ansi_encoded_string(message=f"Total filtered: {summary.filtered}")
+    log_ansi_encoded_string(message=f"Total errors: {summary.errors}")
+
+    total_success = max(summary.records, 1)
+    log_ansi_encoded_string(
+        color=ANSI.BRIGHT_CYAN,
+        bold=True,
+        message=f"Success %: "
+        f"{round(total_success * 100 / (total_success + summary.errors), 2)}",
     )
 
 

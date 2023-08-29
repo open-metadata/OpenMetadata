@@ -117,7 +117,6 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         schema_name = self.context.database_schema.name.__root__
-        table_id = ""
         try:
             tables = list(self.domo_client.datasets.list())
             for table in tables:
@@ -145,10 +144,13 @@ class DomodatabaseSource(DatabaseServiceSource):
                     continue
                 yield table_id, TableType.Regular
         except Exception as exc:
-            error = f"Unexpected exception for schema name [{schema_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(schema_name, error, traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=schema_name,
+                    error=f"Fetching tables names failed for schema {schema_name} due to - {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_owners(self, owner: Owner) -> Optional[EntityReference]:
         try:

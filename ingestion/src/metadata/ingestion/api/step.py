@@ -94,6 +94,48 @@ class ReturnStep(Step, ABC):
         return None
 
 
+class StageStep(Step, ABC):
+    """Steps that run by returning a single unit"""
+
+    @abstractmethod
+    def _run(self, *args, **kwargs) -> Iterable[Either[str]]:
+        """
+        Main entrypoint to execute the step.
+
+        Note that the goal of this step is to store the
+        processed data somewhere (e.g., a file). We will
+        return an iterable to keep track of the processed
+        entities / exceptions, but the next step (Bulk Sink)
+        won't read these results. It will directly
+        pick up the file components.
+        """
+
+    def run(self, *args, **kwargs) -> None:
+        """
+        Run the step and handle the status and exceptions.
+        """
+        try:
+            for result in self._run(*args, **kwargs):
+                if result.left is not None:
+                    self.status.failed(result.left)
+
+                if result.right is not None:
+                    self.status.scanned(result.right)
+        except WorkflowFatalError as err:
+            logger.error(f"Fatal error running step [{self}]: [{err}]")
+            raise err
+        except Exception as exc:
+            error = f"Unhandled exception during workflow processing: [{exc}]"
+            logger.warning(error)
+            self.status.failed(
+                StackTraceError(
+                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
+                )
+            )
+
+        return None
+
+
 class IterStep(Step, ABC):
     """Steps that are run as Iterables"""
 
@@ -128,3 +170,14 @@ class IterStep(Step, ABC):
                     name="Unhandled", error=error, stack_trace=traceback.format_exc()
                 )
             )
+
+
+class BulkStep(Step, ABC):
+    """
+    Step that executes a single method, doing all
+    the processing in bulk
+    """
+
+    @abstractmethod
+    def run(self) -> None:
+        pass

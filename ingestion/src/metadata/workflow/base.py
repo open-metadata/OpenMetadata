@@ -19,12 +19,16 @@ To be extended by any other workflow:
 - test suite
 - data insights
 """
+import traceback
 import uuid
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, TypeVar
+from typing import Optional, Tuple, TypeVar, cast
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
@@ -32,11 +36,17 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.utils.class_helper import (
+    get_service_class_from_service_type,
+    get_service_type_from_source_type,
+)
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.workflow.workflow_output_handler import get_ingestion_status_timer
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
@@ -48,6 +58,12 @@ T = TypeVar("T")
 REPORTS_INTERVAL_SECONDS = 60
 
 
+class InvalidWorkflowJSONException(Exception):
+    """
+    Raised when we cannot properly parse the workflow
+    """
+
+
 class BaseWorkflow(ABC, WorkflowStatusMixin):
     """
     Base workflow implementation
@@ -55,6 +71,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
     config: OpenMetadataWorkflowConfig
     _run_id: Optional[str] = None
+    service_type: ServiceType
     metadata_config: OpenMetadataConnection
     metadata: OpenMetadata
 
@@ -74,12 +91,19 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 
+        self.service_type: ServiceType = get_service_type_from_source_type(
+            self.config.source.type
+        )
+
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
         self.metadata = OpenMetadata(config=self.metadata_config)
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
+
+        # Pick up the service connection from the API if needed
+        self._retrieve_service_connection_if_needed(self.service_type)
 
         # Informs the `source` and the rest of `steps` to execute
         self.set_steps()
@@ -108,7 +132,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             for step in self.steps:
                 # We only process the records for these Step types
                 if processed_record is not None and isinstance(
-                    step, (Stage, Processor, Sink)
+                    step, (Processor, Stage, Sink)
                 ):
                     processed_record = step.run(processed_record)
 
@@ -179,3 +203,45 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 self._run_id = str(uuid.uuid4())
 
         return self._run_id
+
+    def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
+        """
+        We override the current `serviceConnection` source config object if source workflow service already exists
+        in OM. When secrets' manager is configured, we retrieve the service connection from the secrets' manager.
+        Otherwise, we get the service connection from the service object itself through the default `SecretsManager`.
+
+        :param service_type: source workflow service type
+        :return:
+        """
+        if (
+            not self.config.source.serviceConnection
+            and not self.metadata.config.forceEntityOverwriting
+        ):
+            service_name = self.config.source.serviceName
+            try:
+                service: ServiceWithConnectionType = cast(
+                    ServiceWithConnectionType,
+                    self.metadata.get_by_name(
+                        get_service_class_from_service_type(service_type),
+                        service_name,
+                    ),
+                )
+                if service:
+                    self.config.source.serviceConnection = ServiceConnection(
+                        __root__=service.connection
+                    )
+                else:
+                    raise InvalidWorkflowJSONException(
+                        f"Error getting the service [{service_name}] from the API. If it exists in OpenMetadata,"
+                        " make sure the ingestion-bot JWT token is valid and that the Workflow is deployed"
+                        " with the latest one. If this error persists, recreate the JWT token and"
+                        " redeploy the Workflow."
+                    )
+            except InvalidWorkflowJSONException as exc:
+                raise exc
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Unknown error getting service connection for service name [{service_name}]"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
+                )
