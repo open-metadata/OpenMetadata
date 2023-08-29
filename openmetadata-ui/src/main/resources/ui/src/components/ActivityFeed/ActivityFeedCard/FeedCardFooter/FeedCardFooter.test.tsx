@@ -25,10 +25,6 @@ jest.mock('../../../../utils/FeedUtils', () => ({
   getReplyText: jest.fn(),
 }));
 
-jest.mock('../../../../utils/TimeUtils', () => ({
-  getDayTimeByTimeStamp: jest.fn(),
-}));
-
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest
     .fn()

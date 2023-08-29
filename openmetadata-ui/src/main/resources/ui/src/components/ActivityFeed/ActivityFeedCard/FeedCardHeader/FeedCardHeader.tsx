@@ -17,6 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
+import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
 import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
 import {
@@ -25,10 +26,6 @@ import {
   prepareFeedLink,
 } from '../../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
-import {
-  getDateTimeFromMilliSeconds,
-  getDayTimeByTimeStamp,
-} from '../../../../utils/TimeUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
@@ -140,11 +137,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       {feedType === ThreadType.Announcement && getAnnouncementLinkElement}
 
       {timeStamp && (
-        <Tooltip
-          className="text-grey-muted"
-          title={getDateTimeFromMilliSeconds(timeStamp)}>
+        <Tooltip className="text-grey-muted" title={formatDateTime(timeStamp)}>
           <span className="feed-header-timestamp" data-testid="timestamp">
-            {' - ' + getDayTimeByTimeStamp(timeStamp)}
+            {' - ' + getRelativeTime(timeStamp)}
           </span>
         </Tooltip>
       )}

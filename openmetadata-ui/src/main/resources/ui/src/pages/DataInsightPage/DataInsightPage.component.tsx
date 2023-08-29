@@ -44,6 +44,7 @@ import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
 import { searchQuery } from 'rest/searchAPI';
+import { formatDate } from 'utils/date-time/DateTimeUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
@@ -63,7 +64,6 @@ import {
   getDataInsightPathWithFqn,
   getTeamFilter,
 } from '../../utils/DataInsightUtils';
-import { getFormattedDateFromMilliSeconds } from '../../utils/TimeUtils';
 import { TeamStateType, TierStateType } from './DataInsight.interface';
 import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
@@ -371,12 +371,8 @@ const DataInsightPage = () => {
               </Space>
               <Space>
                 <Typography className="data-insight-label-text text-xs">
-                  {`${getFormattedDateFromMilliSeconds(
-                    chartFilter.startTs,
-                    'dd MMM yyyy'
-                  )} - ${getFormattedDateFromMilliSeconds(
-                    chartFilter.endTs,
-                    'dd MMM yyyy'
+                  {`${formatDate(chartFilter.startTs)} - ${formatDate(
+                    chartFilter.endTs
                   )}`}
                 </Typography>
                 <DatePickerMenu
