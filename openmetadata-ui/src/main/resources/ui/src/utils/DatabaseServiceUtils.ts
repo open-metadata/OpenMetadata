@@ -18,6 +18,7 @@ import athenaConnection from '../jsons/connectionSchemas/connections/database/at
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
+import couchbaseConnection from '../jsons/connectionSchemas/connections/database/couchbaseConnection.json';
 import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
 import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
 import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
@@ -197,6 +198,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.MongoDB: {
       schema = mongoDBConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Couchbase: {
+      schema = couchbaseConnection;
 
       break;
     }

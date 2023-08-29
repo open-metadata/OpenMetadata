@@ -1,0 +1,22 @@
+{
+    "name": "Couchbase",
+    "fullyQualifiedName": "Couchbase",
+    "displayName": "Couchbase Test Connection",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of collections.",
+    "steps": [
+      {
+        "name": "GetDatabases",
+        "description": "List all the databases available to the user.",
+        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
+        "mandatory": true
+      },
+      {
+        "name": "GetCollections",
+        "description": "List all the collection available within a randomly chosen database available to the user.",
+        "errorMessage": "Failed to fetch collection, please validate if the user has `listCollection` privilege on available databases",
+        "mandatory": true
+      }
+    ]
+  }
+  
+  
