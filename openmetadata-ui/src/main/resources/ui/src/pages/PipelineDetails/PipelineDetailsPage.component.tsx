@@ -244,6 +244,16 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setPipelineDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
       fetchPipelineDetail(pipelineFQN);
@@ -275,6 +285,7 @@ const PipelineDetailsPage = () => {
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
       followPipelineHandler={followPipeline}
+      handleToggleDelete={handleToggleDelete}
       paging={paging}
       pipelineDetails={pipelineDetails}
       pipelineFQN={pipelineFQN}

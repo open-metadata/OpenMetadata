@@ -70,14 +70,12 @@ import {
   removeFollower,
   restoreTable,
 } from 'rest/tableAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
-  refreshPage,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { defaultFields } from 'utils/DatasetDetailsUtils';
@@ -676,9 +674,7 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !tablePermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}
@@ -686,6 +682,7 @@ const TableDetailsPageV1 = () => {
             hasEditAccess={
               tablePermissions.EditAll || tablePermissions.EditCustomFields
             }
+            hasPermission={tablePermissions.ViewAll}
           />
         ),
       },
@@ -729,6 +726,16 @@ const TableDetailsPageV1 = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
+  const handleToggleDelete = () => {
+    setTableDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreTable = async () => {
     try {
       await restoreTable(tableDetails?.id ?? '');
@@ -738,7 +745,7 @@ const TableDetailsPageV1 = () => {
         }),
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -814,6 +821,12 @@ const TableDetailsPageV1 = () => {
       history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version]);
 
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    []
+  );
+
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
@@ -829,7 +842,7 @@ const TableDetailsPageV1 = () => {
     if (tableDetails) {
       fetchQueryCount();
     }
-  }, [tableDetails]);
+  }, [tableDetails?.fullyQualifiedName]);
 
   const onThreadPanelClose = () => {
     setThreadLink('');
@@ -873,7 +886,7 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}

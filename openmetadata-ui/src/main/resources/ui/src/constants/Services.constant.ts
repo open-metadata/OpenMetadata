@@ -15,6 +15,7 @@ import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
 import lightDash from 'assets/img/service-icon-lightdash.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { EntityType } from 'enums/entity.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { StorageServiceType } from 'generated/entity/data/container';
@@ -32,6 +33,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
@@ -175,6 +177,7 @@ export const SPLINE = spline;
 export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
 export const LIGHT_DASH = lightDash;
+export const COUCHBASE = couchbase;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -383,6 +386,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
+  DatabaseServiceType.Couchbase,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -417,12 +421,12 @@ export const ADVANCED_PROPERTIES = [
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
 
-export const SERVICE_CATEGORIES = [
-  ServiceCategory.DATABASE_SERVICES,
-  ServiceCategory.MESSAGING_SERVICES,
-  ServiceCategory.DASHBOARD_SERVICES,
-  ServiceCategory.PIPELINE_SERVICES,
-  ServiceCategory.ML_MODEL_SERVICES,
-  ServiceCategory.METADATA_SERVICES,
-  ServiceCategory.STORAGE_SERVICES,
+export const SERVICE_TYPES = [
+  EntityType.DATABASE_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.STORAGE_SERVICE,
 ];

@@ -27,4 +27,5 @@ export interface PipeLineDetailsProp {
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
+  handleToggleDelete: () => void;
 }
