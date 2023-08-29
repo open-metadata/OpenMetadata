@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.clickhouse.utils import (
     _get_column_info,
     _get_column_type,
@@ -39,7 +40,6 @@ from metadata.ingestion.source.database.clickhouse.utils import (
     get_view_definition,
     get_view_names,
 )
-from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,

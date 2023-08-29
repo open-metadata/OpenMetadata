@@ -18,7 +18,7 @@ import traceback
 from enum import Enum
 from logging import Logger
 from pathlib import Path
-from typing import Dict, List, Type, Union, Optional
+from typing import Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel
 from tabulate import tabulate
