@@ -272,7 +272,6 @@ update_maven: #Update the common and pom.xml maven version
 update_github_action_paths: ## To update the github action ci docker files
 	@echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
 	file_paths="docker/docker-compose-quickstart/Dockerfile \
-				docker/docker-compose-quickstart/.env \
 	            .github/workflows/docker-openmetadata-db.yml \
 	            .github/workflows/docker-openmetadata-ingestion-base.yml \
 	            .github/workflows/docker-openmetadata-ingestion.yml \
@@ -304,7 +303,6 @@ update_python_release_paths:
 update_dockerfile_version: ## To update the dockerfiles version
 	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion-postgres.yml \
 		     docker/docker-compose-ingestion/docker-compose-ingestion.yml \
-		     docker/docker-compose-openmetadata/docker-compose-openmetadata-postgres.yml \
 		     docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
 		     docker/docker-compose-quickstart/docker-compose-postgres.yml \
 		     docker/docker-compose-quickstart/docker-compose.yml"; \
