@@ -13,7 +13,7 @@ Spline connector API response models
 """
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ExecutionEvent(BaseModel):
@@ -37,12 +37,44 @@ class Output(BaseModel):
     source: Optional[str]
 
 
+class AttributesNames(BaseModel):
+    id: Optional[str]
+    name: Optional[str]
+    dataTypeId: Optional[str]
+
+
+class Extra(BaseModel):
+    appName: Optional[str]
+    attributes: Optional[List[AttributesNames]] = []
+
+
 class ExecutionPlan(BaseModel):
-    _id: Optional[str]
+    id: Optional[str] = Field(..., alias="_id")
     name: Optional[str]
     inputs: Optional[List[Inputs]] = []
     output: Optional[Output]
+    extra: Optional[Extra]
 
 
 class ExecutionDetail(BaseModel):
     executionPlan: Optional[ExecutionPlan]
+
+
+class ColNodes(BaseModel):
+    id: Optional[str] = Field(..., alias="_id")
+    name: Optional[str]
+    originOpId: Optional[str]
+
+
+class ColLineage(BaseModel):
+    source: Optional[str]
+    target: Optional[str]
+
+
+class Lineage(BaseModel):
+    edges: Optional[List[ColLineage]] = []
+    nodes: Optional[List[ColNodes]] = []
+
+
+class AttributeDetail(BaseModel):
+    lineage: Optional[Lineage]

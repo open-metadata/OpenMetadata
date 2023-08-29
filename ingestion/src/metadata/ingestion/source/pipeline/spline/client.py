@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.splineConnec
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.pipeline.spline.models import (
+    AttributeDetail,
     ExecutionDetail,
     ExecutionEvents,
 )
@@ -86,6 +87,24 @@ class SplineClient:
             response = self.client.get(f"/lineage-detailed?execId={pipeline_id}")
             if response:
                 return ExecutionDetail(**response)
+        except Exception as exe:
+            logger.debug(traceback.format_exc())
+            logger.error(f"failed to fetch pipeline list due to: {exe}")
+
+        return None
+
+    def get_column_lineage_details(
+        self, pipeline_id: str, attribute_id: str
+    ) -> List[dict]:
+        """
+        Method returns the column lineage details
+        """
+        try:
+            response = self.client.get(
+                f"/attribute-lineage-and-impact?execId={pipeline_id}&attributeId={attribute_id}"
+            )
+            if response:
+                return AttributeDetail(**response)
         except Exception as exe:
             logger.debug(traceback.format_exc())
             logger.error(f"failed to fetch pipeline list due to: {exe}")
