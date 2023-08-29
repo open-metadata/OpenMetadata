@@ -223,10 +223,12 @@ describe('Data Insight feature', () => {
     cy.get('[data-testid="kpi-card"]').should('be.visible');
     cy.get(
       '[data-row-key="cypress-description-with-percentage-completed-description-fraction"]'
-    ).should('be.visible');
-    cy.get(
-      '[data-row-key="cypress-owner-with-percentage-has-owner-fraction"]'
-    ).should('be.visible');
+    )
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('[data-row-key="cypress-owner-with-percentage-has-owner-fraction"]')
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('Update KPI', () => {
