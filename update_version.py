@@ -91,14 +91,17 @@ def update_ingestion_version(file_path, release_version):
         logger.error(f"An error occurred: {e}")
 
 def main():
-    if len(sys.argv) != 5:
-        logger.error("Usage: python3 update_version.py <action_type> <file_path> -s <release_version>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Update version information in files.")
+    parser.add_argument("action_type", type=int, choices=range(1, 5), help="Type of action to perform")
+    parser.add_argument("file_path", type=str, help="Path to the file to update")
+    parser.add_argument("-s", dest="release_version", required=True, help="Release version to set")
 
-    action_type = int(sys.argv[1])
-    file_path = sys.argv[2]
-    release_version = sys.argv[4]
-    #hardcoding the function selection based on the search pattern required by files
+    args = parser.parse_args()
+
+    action_type = args.action_type
+    file_path = args.file_path
+    release_version = args.release_version
+
     if action_type == 1:
         update_github_action(file_path, release_version)
     elif action_type == 2:
