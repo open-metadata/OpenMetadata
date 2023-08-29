@@ -55,7 +55,7 @@ export const getContainers = async (args: {
 export const getContainerByName = async (
   name: string,
   fields: string | string[],
-  include: Include = Include.NonDeleted
+  include: Include = Include.All
 ) => {
   const response = await APIClient.get<Container>(
     `containers/name/${name}?fields=${fields}`,

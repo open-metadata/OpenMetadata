@@ -20,7 +20,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/domains/domain
 - **`updatedBy`** *(string)*: User who made the update.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`parent`**: Parent domains. When 'null' or not set, indicates that this is the top level domain. Refer to *../../type/entityReference.json*.
-- **`children`**: Children domains or sub-domains. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`children`**: Children domains or subdomains  . Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`owner`**: Owner of this Domain. Refer to *../../type/entityReference.json*.
 - **`experts`**: List of of users who are experts in this Domain. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*. Default: `None`.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.

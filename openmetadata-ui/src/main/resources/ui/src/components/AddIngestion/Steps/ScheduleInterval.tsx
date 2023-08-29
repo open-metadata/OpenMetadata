@@ -17,7 +17,7 @@ import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CronEditor from '../../common/CronEditor/CronEditor';
-import { ScheduleIntervalProps } from '../addIngestion.interface';
+import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 
 const ScheduleInterval = ({
   disabledCronChange,
@@ -25,24 +25,26 @@ const ScheduleInterval = ({
   onBack,
   onChange,
   onDeploy,
-  repeatFrequency,
+  scheduleInterval,
   status,
   submitButtonLabel,
+  children,
 }: ScheduleIntervalProps) => {
-  const handleRepeatFrequencyChange = (repeatFrequency: string) =>
-    onChange({
-      repeatFrequency: repeatFrequency,
-    });
   const { t } = useTranslation();
 
   return (
-    <Form data-testid="schedule-intervel-container" onFinish={onDeploy}>
+    <Form
+      data-testid="schedule-intervel-container"
+      layout="vertical"
+      onFinish={onDeploy}>
       <CronEditor
         disabledCronChange={disabledCronChange}
         includePeriodOptions={includePeriodOptions}
-        value={repeatFrequency}
-        onChange={handleRepeatFrequencyChange}
+        value={scheduleInterval}
+        onChange={onChange}
       />
+
+      {children}
 
       <Col className="d-flex justify-end mt-4" span={24}>
         <Button

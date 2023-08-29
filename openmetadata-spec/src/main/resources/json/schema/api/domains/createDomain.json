@@ -39,8 +39,8 @@
       "default": null
     },
     "experts": {
-      "description": "List of of user/login names of users who are experts in this Domain.",
-      "type": "array",
+      "description": "List of user/login names of users who are experts in this Domain.",
+      "type" : "array",
       "items": {
         "type": "string"
       },

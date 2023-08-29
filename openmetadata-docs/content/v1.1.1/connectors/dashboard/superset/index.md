@@ -57,7 +57,7 @@ The ingestion also works with Superset 2.0.0 🎉
 Superset API connection is the default mode of authentication where we fetch the metadata using [Superset APIs](https://superset.apache.org/docs/api/). 
 
 {% note %}
-Superset only supports basic or ldap authentication through APIs so if you have SSO enabled on your Superset instance then this mode of authentication will not work for you and you can opt for MySQL or Postgres Connection to fetch metadata directly from the database in the backend of Superset.
+Superset only supports basic or ldap authentication through APIs so if you have SSO enabled on your Superset instance then this mode of authentication will not work for you, and you can opt for MySQL or Postgres Connection to fetch metadata directly from the database in the backend of Superset.
 {% /note %}
 
 - **Username**: Username to connect to Superset, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Superset to fetch the metadata.
@@ -71,7 +71,7 @@ You can use Mysql Connection when you have SSO enabled and your Superset is back
 - **Username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata. Make sure the user has select privileges on `dashboards`, `tables` & `slices` tables of superset schema.
 - **Password**: Password to connect to MySQL.
 - **Host and Port**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
-- **databaseSchema**: Enter the database schema which is associated with the Superset instance..
+- **databaseSchema**: Enter the database schema which is associated with the Superset instance.
 
 {% partial file="/v1.1.1/connectors/database/advanced-configuration.md" /%}
 

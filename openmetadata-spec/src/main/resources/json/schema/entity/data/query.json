@@ -12,7 +12,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a entity to which the query belong",
+      "description": "Name of an entity to which the query belongs to",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {

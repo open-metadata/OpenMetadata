@@ -26,7 +26,7 @@ The source of truth is stored in the underlying database (MySQL and Postgres sup
 is a database migration process that needs to run. It will directly attack your database and update the shape of the
 data to the newest OpenMetadata release.
 
-It is important that we backup the data because if we face any unexpected issues during the upgrade process, 
+It is important that we back up the data because if we face any unexpected issues during the upgrade process, 
 you will be able to get back to the previous version without any loss.
 
 {% note %}
@@ -274,11 +274,10 @@ You can learn more about how the migration process works [here](/deployment/upgr
 
 ## Step 5: Re-index all your metadata
 
-Go to Settings -> OpenMetadata -> Elasticsearch
+Go to `Settings` -> `OpenMetadata` -> `ElasticSearch`
 {% image src="/images/v1.1.1/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
 
-Click on reindex all
-in the dialog box choose Recreate Indexes to All
+Click on `Reindex-all` in the dialog box choose `Entities` to `All`
 {% image src="/images/v1.1.1/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
 # Troubleshooting
@@ -377,7 +376,7 @@ kubectl patch pv <mysql-pv> -p '{"spec":{"storage":"50Gi"}}'
 
 {% note %}
 
-This issue will only occur if you are using openmetadata-dependencies helm chart version `0.0.49` and `0.0.50` and upgrading to latest helm chart release.
+This issue will only occur if you are using openmetadata-dependencies helm chart version `0.0.49` and `0.0.50` and upgrading to the latest helm chart release.
 
 {% /note %}
 
@@ -389,7 +388,7 @@ connect to server at 'localhost' failed error: 'Can't connect to local MySQL ser
 Check that mysqld is running and that the socket: '/opt/bitnami/mysql/tmp/mysql.sock' exists!
 ```
 
-This issue is related to a minor change that affected the MySQL Database Engine version upgrade from `8.0.28` to `8.0.29` for the Helm Chart Release `0.0.49` and `0.0.50`. Then the registry url was updated as we found a work around to fetch previous versions of [bitnami/mysql](https://github.com/bitnami/charts/issues/10833) Helm Releases.
+This issue is related to a minor change that affected the MySQL Database Engine version upgrade from `8.0.28` to `8.0.29` for the Helm Chart Release `0.0.49` and `0.0.50`. Then the registry url was updated as we found a workaround to fetch previous versions of [bitnami/mysql](https://github.com/bitnami/charts/issues/10833) Helm Releases.
 
 As a result of the above fixes, anyone who is on OpenMetadata Dependencies Helm Chart Version `0.0.49` and `0.0.50` is affected with the above issue when upgrading for mysql. In order to fix this issue, make sure to follow the below steps -
 

@@ -33,4 +33,5 @@ export interface CustomPropertyProps {
   handleExtensionUpdate?: (updatedTable: EntityDetails) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;
+  hasPermission: boolean;
 }

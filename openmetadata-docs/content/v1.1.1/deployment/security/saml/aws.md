@@ -35,7 +35,7 @@ Security requirements for your **production** environment:
 
 {% image src="/images/v1.1.1/deployment/security/saml/aws/saml-aws-4.png" alt="saml-application" /%}
 
-- Set Display Name to `OpenMetadata` , and download the metadata xml file and save it someplace safe, it is needed to setup OM Server
+- Set Display Name to `OpenMetadata` , and download the metadata xml file and save it someplace safe, it is needed to set up OM Server
 
 {% image src="/images/v1.1.1/deployment/security/saml/aws/saml-aws-5.png" alt="metadata-xml" /%}
 

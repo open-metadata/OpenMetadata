@@ -6,7 +6,7 @@
   "type": "object",
   "properties": {
     "message": {
-      "description": "Message in markdown format. See markdown support for more details.",
+      "description": "Message in Markdown format. See markdown support for more details.",
       "type": "string"
     },
     "from": {

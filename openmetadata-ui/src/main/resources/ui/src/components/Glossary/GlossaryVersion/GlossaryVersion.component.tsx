@@ -105,7 +105,6 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
         />
       </div>
       <EntityVersionTimeLine
-        show
         currentVersion={toString(version)}
         versionHandler={onVersionChange}
         versionList={versionList}

@@ -55,6 +55,11 @@ class DbtServiceTopology(ServiceTopology):
 
     root = TopologyNode(
         producer="get_dbt_files",
+        stages=[],
+        children=["process_dbt_files"],
+    )
+    process_dbt_files = TopologyNode(
+        producer="process_dbt_files",
         stages=[
             NodeStage(
                 type_=DbtFiles,
@@ -160,22 +165,29 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             }
         )
 
-    def get_dbt_files(self) -> DbtFiles:
-        dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
-        self.context.dbt_files = dbt_files
-        yield dbt_files
+    def process_dbt_files(self) -> Iterable[DbtFiles]:
+        """
+        Method return the dbt file from topology
+        """
+        yield self.context.dbt_file
 
-    def get_dbt_objects(self) -> DbtObjects:
+    def get_dbt_files(self) -> Iterable[DbtFiles]:
+        dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
+        for dbt_file in dbt_files:
+            self.context.dbt_file = dbt_file
+            yield dbt_file
+
+    def get_dbt_objects(self) -> Iterable[DbtObjects]:
         self.remove_manifest_non_required_keys(
-            manifest_dict=self.context.dbt_files.dbt_manifest
+            manifest_dict=self.context.dbt_file.dbt_manifest
         )
         dbt_objects = DbtObjects(
-            dbt_catalog=parse_catalog(self.context.dbt_files.dbt_catalog)
-            if self.context.dbt_files.dbt_catalog
+            dbt_catalog=parse_catalog(self.context.dbt_file.dbt_catalog)
+            if self.context.dbt_file.dbt_catalog
             else None,
-            dbt_manifest=parse_manifest(self.context.dbt_files.dbt_manifest),
-            dbt_run_results=parse_run_results(self.context.dbt_files.dbt_run_results)
-            if self.context.dbt_files.dbt_run_results
+            dbt_manifest=parse_manifest(self.context.dbt_file.dbt_manifest),
+            dbt_run_results=parse_run_results(self.context.dbt_file.dbt_run_results)
+            if self.context.dbt_file.dbt_run_results
             else None,
         )
         yield dbt_objects
@@ -200,7 +212,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Yield the data models
         """
 
-    def get_data_model(self) -> DataModelLink:
+    def get_data_model(self) -> Iterable[DataModelLink]:
         """
         Prepare the data models
         """

@@ -128,15 +128,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    String storedPipelineStatus =
-        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
     storeTimeSeries(
         pipeline.getFullyQualifiedName(),
         PIPELINE_STATUS_EXTENSION,
         "pipelineStatus",
         JsonUtils.pojoToJson(pipelineStatus),
-        pipelineStatus.getTimestamp(),
-        storedPipelineStatus != null);
+        pipelineStatus.getTimestamp());
 
     return pipeline.withPipelineStatus(pipelineStatus);
   }

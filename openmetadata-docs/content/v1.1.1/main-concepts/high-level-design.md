@@ -101,7 +101,7 @@ The goal of the Entity Repository is to perform Read & Write operations to the *
 Update and Delete Entities.
 
 While the Entity Resource handles external communication, the Repository is in charge of managing how the whole 
-process interacts with the Storage Layer, making sure that incoming and outcoming Entities are valid and hold proper 
+process interacts with the Storage Layer, making sure that incoming and outgoing  Entities are valid and hold proper 
 and complete information.
 
 This means that here is where we define our **DAO** (Data Access Object), with all the validation and data storage logic.

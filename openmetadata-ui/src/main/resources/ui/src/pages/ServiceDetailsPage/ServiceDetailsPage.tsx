@@ -47,6 +47,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { compare, Operation } from 'fast-json-patch';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -63,7 +64,7 @@ import { LabelType, State } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from 'interface/service.interface';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import {
   PagingWithoutTotal,
   ServicesUpdateRequest,
@@ -97,11 +98,13 @@ import { getPipelines } from 'rest/pipelineAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getEditConnectionPath } from 'utils/RouterUtils';
+import {
+  getEditConnectionPath,
+  getServiceVersionPath,
+} from 'utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -184,6 +187,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
+  const { version: currentVersion } = useMemo(
+    () => serviceDetails,
+    [serviceDetails]
+  );
+
   const fetchServicePermission = async () => {
     setIsLoading(true);
     try {
@@ -239,11 +247,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: string) => {
       try {
         setIsIngestionPipelineLoading(true);
-        const response = await getIngestionPipelines(
-          ['owner', 'pipelineStatuses'],
-          getDecodedFqn(serviceFQN),
-          paging
-        );
+        const response = await getIngestionPipelines({
+          arrQueryFields: ['owner', 'pipelineStatuses'],
+          serviceFilter: getDecodedFqn(serviceFQN),
+          paging,
+          pipelineType: [
+            PipelineType.Metadata,
+            PipelineType.Usage,
+            PipelineType.Lineage,
+            PipelineType.Profiler,
+            PipelineType.Dbt,
+          ],
+        });
 
         if (response.data) {
           setIngestionPipelines(response.data);
@@ -729,6 +744,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [getOtherDetails, dataModelPaging]
   );
 
+  const afterDeleteAction = useCallback(() => history.push('/'), []);
+
   const dataModalTab = useMemo(
     () => (
       <Row gutter={[0, 16]}>
@@ -914,8 +931,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
-    const isOwner = AppState.userDetails.id === serviceDetails?.owner?.id;
-    const showIngestionTab = Boolean(isOwner || isAdminUser);
+    const userOwnsService =
+      AppState.userDetails.id === serviceDetails?.owner?.id;
+
+    const userInOwnerTeam = Boolean(
+      AppState.userDetails.teams?.some(
+        (team) => team.id === serviceDetails?.owner?.id
+      )
+    );
+
+    const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
     if (serviceCategory !== ServiceCategory.METADATA_SERVICES) {
       tabs.push({
@@ -1002,6 +1027,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
     activeTab,
   ]);
 
+  const versionHandler = () => {
+    currentVersion &&
+      history.push(
+        getServiceVersionPath(
+          serviceCategory,
+          serviceFQN,
+          toString(currentVersion)
+        )
+      );
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1025,7 +1061,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <Col className="p-x-lg" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              afterDeleteAction={afterDeleteAction}
               allowSoftDelete={false}
               dataAsset={serviceDetails}
               entityType={entityType}
@@ -1034,6 +1070,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={() => Promise.resolve()}
               onTierUpdate={handleUpdateTier}
+              onVersionClick={versionHandler}
             />
           </Col>
 

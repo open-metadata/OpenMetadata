@@ -95,6 +95,7 @@ public final class Entity {
   // Data asset entities
   //
   public static final String TABLE = "table";
+  public static final String STORED_PROCEDURE = "storedProcedure";
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRICS = "metrics";
@@ -283,20 +284,29 @@ public final class Entity {
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include, boolean fromCache) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, true);
+    T entity = (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, fromCache);
     return entity;
+  }
+
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
+    return getEntity(entityType, id, fields, include, true);
   }
 
   // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
+  public static <T> T getEntityByName(
+      String entityType, String fqn, String fields, Include include, boolean fromCache) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, true);
+    T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, fromCache);
     return entity;
+  }
+
+  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
+    return getEntityByName(entityType, fqn, fields, include, true);
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */

@@ -17,7 +17,6 @@ import { Mlmodel } from '../../generated/entity/data/mlmodel';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
-  version?: string;
   fetchMlModel: () => void;
   followMlModelHandler: () => Promise<void>;
   unFollowMlModelHandler: () => Promise<void>;
@@ -28,4 +27,5 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   versionHandler: () => void;
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
   createThread: (data: CreateThread) => void;
+  handleToggleDelete: () => void;
 }

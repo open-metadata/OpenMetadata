@@ -220,7 +220,7 @@ a data issue. Data owners and admins can review changes and revert if necessary.
 
 
 Versioning also helps in broader collaboration among consumers and producers of data. Admins can provide access to more 
-users in the organization to change certain fields. Crowdsourcing makes metadata the collective responsibility of the 
+users in the organization to change certain fields. Crow sourcing makes metadata the collective responsibility of the 
 entire organization.
 
 ### Events API

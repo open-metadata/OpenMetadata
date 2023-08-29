@@ -1067,40 +1067,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExperts(experts);
   }
 
-  protected void storeTimeSeries(
-      String fqn, String extension, String jsonSchema, String entityJson, Long timestamp, boolean update) {
-    if (update) {
-      daoCollection.entityExtensionTimeSeriesDao().update(fqn, extension, entityJson, timestamp);
-    } else {
-      daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
-    }
-  }
-
-  protected void storeTimeSeriesWithOperation(
-      String fqn,
-      String extension,
-      String jsonSchema,
-      String entityJson,
-      Long timestamp,
-      String operation,
-      boolean update) {
-    if (update) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .updateExtensionByOperation(fqn, extension, entityJson, timestamp, operation);
-    } else {
-      daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
-    }
+  protected void storeTimeSeries(String fqn, String extension, String jsonSchema, String entityJson, Long timestamp) {
+    daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
   }
 
   public String getExtensionAtTimestamp(String fqn, String extension, Long timestamp) {
     return daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqn, extension, timestamp);
-  }
-
-  public String getExtensionAtTimestampWithOperation(String fqn, String extension, Long timestamp, String operation) {
-    return daoCollection
-        .entityExtensionTimeSeriesDao()
-        .getExtensionAtTimestampWithOperation(fqn, extension, timestamp, operation);
   }
 
   public String getLatestExtensionFromTimeseries(String fqn, String extension) {

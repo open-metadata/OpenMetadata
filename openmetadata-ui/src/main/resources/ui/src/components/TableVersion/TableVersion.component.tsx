@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
@@ -25,9 +24,8 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import VersionTable from 'components/VersionTable/VersionTable.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagSource } from 'generated/type/tagLabel';
-import { cloneDeep, isUndefined, toString } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -41,9 +39,9 @@ import {
 } from '../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
-  getChangeColumnNameFromDiffValue,
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
+  getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
@@ -118,21 +116,22 @@ const TableVersion: React.FC<TableVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
-  const constraintUpdatedColumns = useMemo(() => {
-    const constraintDiff = changeDescription?.fieldsUpdated;
-    const changedColumnsList: string[] = [];
+  const {
+    addedConstraintDiffs: addedColumnConstraintDiffs,
+    deletedConstraintDiffs: deletedColumnConstraintDiffs,
+  } = useMemo(
+    () => getConstraintChanges(changeDescription, EntityField.CONSTRAINT),
+    [changeDescription]
+  );
 
-    if (!isUndefined(constraintDiff)) {
-      constraintDiff.forEach((diff) => {
-        const columnName = getChangeColumnNameFromDiffValue(diff.name);
-        if (columnName) {
-          changedColumnsList.push(columnName);
-        }
-      });
-    }
-
-    return changedColumnsList;
-  }, [changeDescription]);
+  const {
+    addedConstraintDiffs: addedTableConstraintDiffs,
+    deletedConstraintDiffs: deletedTableConstraintDiffs,
+  } = useMemo(
+    () =>
+      getConstraintChanges(changeDescription, EntityField.TABLE_CONSTRAINTS),
+    [changeDescription]
+  );
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -152,13 +151,16 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <VersionTable
+                    addedColumnConstraintDiffs={addedColumnConstraintDiffs}
+                    addedTableConstraintDiffs={addedTableConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
                       datasetFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
-                    constraintUpdatedColumns={constraintUpdatedColumns}
+                    deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
+                    deletedTableConstraintDiffs={deletedTableConstraintDiffs}
                     joins={(currentVersionData as Table).joins as ColumnJoins[]}
                     tableConstraints={
                       (currentVersionData as Table).tableConstraints
@@ -195,9 +197,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: !entityPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -205,6 +205,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
             }
             entityType={EntityType.TABLE}
             hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
@@ -213,15 +214,14 @@ const TableVersion: React.FC<TableVersionProp> = ({
       description,
       datasetFQN,
       columns,
-      constraintUpdatedColumns,
+      deletedColumnConstraintDiffs,
+      deletedTableConstraintDiffs,
+      addedColumnConstraintDiffs,
+      addedTableConstraintDiffs,
       currentVersionData,
       entityPermissions,
     ]
   );
-
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
 
   return (
     <>
@@ -236,8 +236,10 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                entityType={EntityType.TABLE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
                 tierDisplayName={tierDisplayName}
                 version={version}
                 onVersionClick={backHandler}
@@ -255,7 +257,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={toString(version)}
         versionHandler={versionHandler}
         versionList={versionList}

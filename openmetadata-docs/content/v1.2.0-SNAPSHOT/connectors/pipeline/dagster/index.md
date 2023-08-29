@@ -25,7 +25,7 @@ Configure and schedule Dagster metadata and profiler workflows from the OpenMeta
 
 ### Dagster Versions
 
-OpenMetadata is integrated with dagster upto version [1.0.13](https://docs.dagster.io/getting-started) and will continue to work for future dagster versions.
+OpenMetadata is integrated with dagster up to version [1.0.13](https://docs.dagster.io/getting-started) and will continue to work for future dagster versions.
 
 The ingestion framework uses [dagster graphql python client](https://docs.dagster.io/_apidocs/libraries/dagster-graphql#dagster_graphql.DagsterGraphQLClient) to connect to the dagster instance and perform the API calls
 

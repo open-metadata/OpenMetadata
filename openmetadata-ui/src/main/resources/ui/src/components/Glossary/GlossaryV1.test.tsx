@@ -111,9 +111,6 @@ jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () =>
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<span>U</span>)
 );
-jest.mock('../../utils/TimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('Jan 15, 1970, 12:26 PM'),
-}));
 
 jest.mock('./ImportGlossary/ImportGlossary', () =>
   jest

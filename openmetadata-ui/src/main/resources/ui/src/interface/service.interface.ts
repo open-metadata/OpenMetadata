@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import { FormSubmitType } from 'enums/form.enum';
+import { ServiceCategory } from 'enums/service.enum';
+import {
+  Pipeline,
+  PipelineType,
+} from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   StorageConnection,
   StorageService,
@@ -99,3 +105,23 @@ export type ConfigData =
   | MlModelConnection
   | MetadataConnection
   | StorageConnection;
+
+export type IngestionWorkflowData = Pipeline & {
+  name: string;
+  enableDebugLog?: boolean;
+};
+
+export interface IngestionWorkflowFormProps {
+  pipeLineType: PipelineType;
+  workflowName: string;
+  serviceCategory: ServiceCategory;
+  workflowData: Pipeline;
+  enableDebugLog: boolean;
+  operationType: FormSubmitType;
+  cancelText?: string;
+  okText?: string;
+  className?: string;
+  onCancel: () => void;
+  onFocus: (fieldId: string) => void;
+  onSubmit: (data: IngestionWorkflowData) => void;
+}

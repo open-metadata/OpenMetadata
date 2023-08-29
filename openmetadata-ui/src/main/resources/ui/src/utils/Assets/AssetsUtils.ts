@@ -25,7 +25,6 @@ import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
-import { history } from 'utils/HistoryUtils';
 
 export const getAPIfromSource = (
   source: AssetsUnion

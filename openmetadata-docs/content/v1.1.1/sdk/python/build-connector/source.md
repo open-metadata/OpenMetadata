@@ -150,7 +150,7 @@ As a consumer of Openmetadata-ingestion package, You can to add your custom conn
 
 If you want my_awesome_connector.py to build as a source and run as a part of workflows defined in openmetadata_ingestion below are the steps.
 
-**First add your coustom project in PyCharm.**
+**First add your custom project in PyCharm.**
 {% image
 src="/images/v1.1.1/sdk/python/build-connector/add-project-in-pycharm.png"
 alt="Add project in pycharm"

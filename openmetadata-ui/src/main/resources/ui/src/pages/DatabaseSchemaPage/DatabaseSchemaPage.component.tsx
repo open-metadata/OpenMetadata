@@ -57,7 +57,6 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
@@ -89,7 +88,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
   );
@@ -132,7 +131,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const fetchDatabaseSchemaPermission = useCallback(async () => {
-    setIsLoading(true);
+    setIsPermissionsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE_SCHEMA,
@@ -142,7 +141,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsPermissionsLoading(false);
     }
   }, [databaseSchemaFQN]);
 
@@ -193,7 +192,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (err) {
       // Error
     } finally {
-      setIsLoading(false);
       setIsSchemaDetailsLoading(false);
     }
   }, [databaseSchemaFQN]);
@@ -405,6 +403,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [getEntityFeedCount]
   );
 
+  const handleToggleDelete = () => {
+    setDatabaseSchema((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
       await restoreDatabaseSchema(databaseSchemaId);
@@ -414,7 +422,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }),
         2000
       );
-      fetchDatabaseSchemaDetails();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -435,6 +443,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [tableData, getSchemaTables]
   );
 
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    []
+  );
+
+  useEffect(() => {
+    fetchDatabaseSchemaPermission();
+  }, [databaseSchemaFQN]);
+
   useEffect(() => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
@@ -443,14 +461,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission, databaseSchemaFQN]);
 
   useEffect(() => {
-    if (databaseSchemaFQN) {
+    if (viewDatabaseSchemaPermission && databaseSchemaFQN) {
       getSchemaTables();
     }
-  }, [showDeletedTables, databaseSchemaFQN]);
-
-  useEffect(() => {
-    fetchDatabaseSchemaPermission();
-  }, [databaseSchemaFQN]);
+  }, [showDeletedTables, databaseSchemaFQN, viewDatabaseSchemaPermission]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {
@@ -558,7 +572,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
   ];
 
-  if (isLoading) {
+  if (isPermissionsLoading) {
     return <Loader />;
   }
 
@@ -572,7 +586,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
       })}>
-      {isEmpty(databaseSchema) ? (
+      {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)}
         </ErrorPlaceHolder>
@@ -590,7 +604,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             ) : (
               <DataAssetsHeader
                 isRecursiveDelete
-                afterDeleteAction={handleDataAssetAfterDeleteAction}
+                afterDeleteAction={afterDeleteAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permissions={databaseSchemaPermission}
