@@ -23,7 +23,7 @@ import './block-editor.less';
 import LinkModal, { LinkData } from './Components/LinkModal';
 import LinkPopup from './Components/LinkPopup';
 import { Mention } from './Extensions/mention';
-import mentionSuggestion from './Extensions/mention/suggestions';
+import mentionSuggestion from './Extensions/mention/mentionSuggestions';
 import SlashCommand from './Extensions/slash-command';
 import { getSuggestionItems } from './Extensions/slash-command/items';
 import renderItems from './Extensions/slash-command/renderItems';
