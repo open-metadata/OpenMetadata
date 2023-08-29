@@ -1230,6 +1230,17 @@ export const getEntityBreadcrumbs = (
         },
       ];
 
+    case EntityType.SEARCH_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.SEARCH_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.SEARCH_SERVICES)
+          ),
+        },
+      ];
+
     case EntityType.CONTAINER: {
       const data = entity as Container;
 

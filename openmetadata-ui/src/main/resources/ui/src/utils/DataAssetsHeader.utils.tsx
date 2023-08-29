@@ -37,6 +37,7 @@ import { MessagingService } from 'generated/entity/services/messagingService';
 import { MetadataService } from 'generated/entity/services/metadataService';
 import { MlmodelService } from 'generated/entity/services/mlmodelService';
 import { PipelineService } from 'generated/entity/services/pipelineService';
+import { SearchService } from 'generated/entity/services/searchService';
 import { StorageService } from 'generated/entity/services/storageService';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
@@ -320,6 +321,16 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getEntityBreadcrumbs(
         storageServiceDetails,
         EntityType.STORAGE_SERVICE
+      );
+
+      break;
+
+    case EntityType.SEARCH_SERVICE:
+      const searchServiceDetails = dataAsset as SearchService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        searchServiceDetails,
+        EntityType.SEARCH_SERVICE
       );
 
       break;
