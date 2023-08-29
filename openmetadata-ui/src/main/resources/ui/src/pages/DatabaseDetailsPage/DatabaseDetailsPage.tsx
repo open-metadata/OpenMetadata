@@ -58,7 +58,6 @@ import {
   restoreDatabase,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabseSchemaTable } from 'utils/Database/DatabaseDetails.utils';
 import { getDatabaseVersionPath } from 'utils/RouterUtils';
@@ -465,6 +464,16 @@ const DatabaseDetails: FunctionComponent = () => {
     ]
   );
 
+  const handleToggleDelete = () => {
+    setDatabase((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreDatabase = useCallback(async () => {
     try {
       await restoreDatabase(databaseId);
@@ -474,7 +483,7 @@ const DatabaseDetails: FunctionComponent = () => {
         }),
         2000
       );
-      getDetailsByFQN();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -509,6 +518,12 @@ const DatabaseDetails: FunctionComponent = () => {
       (databasePermission.EditDescription || databasePermission.EditAll) &&
       !database.deleted,
     [databasePermission, database]
+  );
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
   );
 
   const tabs = useMemo(
@@ -658,7 +673,7 @@ const DatabaseDetails: FunctionComponent = () => {
           <Col className="p-x-lg" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              afterDeleteAction={afterDeleteAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
               permissions={databasePermission}

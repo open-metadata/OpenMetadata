@@ -241,7 +241,7 @@ export const DataAssetsHeader = ({
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
-  }, [dataAsset, excludeEntityService, isTourPage]);
+  }, [dataAsset.fullyQualifiedName, excludeEntityService, isTourPage]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>

@@ -57,7 +57,6 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
@@ -410,6 +409,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [getEntityFeedCount]
   );
 
+  const handleToggleDelete = () => {
+    setDatabaseSchema((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
       await restoreDatabaseSchema(databaseSchemaId);
@@ -419,7 +428,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }),
         2000
       );
-      fetchDatabaseSchemaDetails();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -449,6 +458,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         )
       );
   }, [currentVersion, databaseSchemaFQN]);
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    []
+  );
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
@@ -605,7 +620,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             ) : (
               <DataAssetsHeader
                 isRecursiveDelete
-                afterDeleteAction={handleDataAssetAfterDeleteAction}
+                afterDeleteAction={afterDeleteAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permissions={databaseSchemaPermission}

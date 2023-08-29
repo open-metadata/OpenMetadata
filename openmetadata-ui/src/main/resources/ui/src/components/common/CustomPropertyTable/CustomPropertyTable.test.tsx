@@ -85,9 +85,21 @@ const mockProp = {
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
   hasEditAccess: true,
+  hasPermission: true,
 };
 
 describe('Test CustomProperty Table Component', () => {
+  it("Should render permission placeholder if doesn't have permission", async () => {
+    await act(async () => {
+      render(<CustomPropertyTable {...mockProp} hasPermission={false} />);
+    });
+    const permissionPlaceholder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
+
+    expect(permissionPlaceholder).toBeInTheDocument();
+  });
+
   it('Should render table component', async () => {
     await act(async () => {
       render(<CustomPropertyTable {...mockProp} />);

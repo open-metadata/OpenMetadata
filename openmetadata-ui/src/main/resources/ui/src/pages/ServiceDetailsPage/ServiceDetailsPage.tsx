@@ -98,7 +98,6 @@ import { getPipelines } from 'rest/pipelineAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
@@ -745,6 +744,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [getOtherDetails, dataModelPaging]
   );
 
+  const afterDeleteAction = useCallback(() => history.push('/'), []);
+
   const dataModalTab = useMemo(
     () => (
       <Row gutter={[0, 16]}>
@@ -1060,7 +1061,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <Col className="p-x-lg" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              afterDeleteAction={afterDeleteAction}
               allowSoftDelete={false}
               dataAsset={serviceDetails}
               entityType={entityType}

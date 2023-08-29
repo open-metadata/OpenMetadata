@@ -291,6 +291,16 @@ const DataModelsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setDataModelData((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -326,6 +336,7 @@ const DataModelsPage = () => {
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
+      handleToggleDelete={handleToggleDelete}
       handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}
