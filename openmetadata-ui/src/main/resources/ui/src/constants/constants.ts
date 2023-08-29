@@ -137,6 +137,7 @@ export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dashboardDataModelFQN';
+export const PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN = ':storedProceduresFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -259,6 +260,10 @@ export const ROUTES = {
   CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   CONTAINER_DETAILS_WITH_SUB_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
+  STORED_PROCEDURE_DETAILS: `/storedProcedures/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}`,
+  STORED_PROCEDURE_DETAILS_WITH_TAB: `/storedProcedures/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  STORED_PROCEDURE_DETAILS_WITH_SUB_TAB: `/storedProcedures/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
@@ -343,6 +348,19 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN));
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getStoredProceduresDetailsPath = (
+  storedProceduresFQN: string,
+  columnName?: string
+) => {
+  let path = ROUTES.STORED_PROCEDURE_DETAILS;
+  path = path.replace(
+    PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN,
+    getEncodedFqn(storedProceduresFQN)
+  );
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };

@@ -17,6 +17,7 @@ import {
   Pipeline,
   PipelineType,
 } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import {
   StorageConnection,
   StorageService,
@@ -90,8 +91,8 @@ export type ServicesType =
   | PipelineService
   | MlmodelService
   | MetadataService
-  | StorageService;
-
+  | StorageService
+  | StoredProcedure;
 export interface ServiceResponse {
   data: Array<ServicesType>;
   paging: Paging;

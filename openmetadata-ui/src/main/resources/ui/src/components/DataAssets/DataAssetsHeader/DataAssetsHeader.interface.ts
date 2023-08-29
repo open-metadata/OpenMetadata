@@ -99,6 +99,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetMlModelService
   | DataAssetMetadataService
   | DataAssetStorageService
+  | DataAssetStoredProceduresService
 );
 
 export interface DataAssetTable {
@@ -170,6 +171,11 @@ export interface DataAssetMetadataService {
 export interface DataAssetStorageService {
   dataAsset: ServicesType;
   entityType: EntityType.STORAGE_SERVICE;
+}
+
+export interface DataAssetStoredProceduresService {
+  dataAsset: ServicesType;
+  entityType: EntityType.STORED_PROCEDURE;
 }
 
 export interface DataAssetHeaderInfo {
