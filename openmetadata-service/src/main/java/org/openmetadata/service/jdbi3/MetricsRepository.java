@@ -54,7 +54,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void prepare(Metrics metrics) {
+  public void prepare(Metrics metrics, boolean update) {
     metrics.setService(getService(metrics.getService()));
   }
 
