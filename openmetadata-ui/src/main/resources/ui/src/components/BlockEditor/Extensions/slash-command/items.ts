@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Editor, Range } from '@tiptap/core';
-import CodeBlockImage from 'assets/svg/markdown/ic-format-code-block.svg';
-import BulletListImage from 'assets/svg/markdown/ic-slash-bullet-list.png';
-import DividerImage from 'assets/svg/markdown/ic-slash-divider.png';
-import H1Image from 'assets/svg/markdown/ic-slash-h1.png';
-import H2Image from 'assets/svg/markdown/ic-slash-h2.png';
-import H3Image from 'assets/svg/markdown/ic-slash-h3.png';
-import NumberedListImage from 'assets/svg/markdown/ic-slash-numbered-list.png';
-import QuoteImage from 'assets/svg/markdown/ic-slash-quote.png';
-import TextImage from 'assets/svg/markdown/ic-slash-text.png';
-import TaskListImage from 'assets/svg/markdown/ic-task-list.png';
+import CodeBlockImage from 'assets/markdown/ic-format-code-block.svg';
+import BulletListImage from 'assets/markdown/ic-slash-bullet-list.png';
+import DividerImage from 'assets/markdown/ic-slash-divider.png';
+import H1Image from 'assets/markdown/ic-slash-h1.png';
+import H2Image from 'assets/markdown/ic-slash-h2.png';
+import H3Image from 'assets/markdown/ic-slash-h3.png';
+import NumberedListImage from 'assets/markdown/ic-slash-numbered-list.png';
+import QuoteImage from 'assets/markdown/ic-slash-quote.png';
+import TextImage from 'assets/markdown/ic-slash-text.png';
+import TaskListImage from 'assets/markdown/ic-task-list.png';
 
 export enum SuggestionItemType {
   BASIC_BLOCKS = 'Basic blocks',
