@@ -44,6 +44,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -153,17 +154,21 @@ class CommonDbSourceService(
         by default there will be no schema description
         """
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
 
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName,
-            description=self.get_database_description(database_name),
-            sourceUrl=self.get_source_url(database_name=database_name),
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName,
+                description=self.get_database_description(database_name),
+                sourceUrl=self.get_source_url(database_name=database_name),
+            )
         )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -181,20 +186,22 @@ class CommonDbSourceService(
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
 
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName,
-            description=self.get_schema_description(schema_name),
-            sourceUrl=self.get_source_url(
-                database_name=self.context.database.name.__root__,
-                schema_name=schema_name,
-            ),
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName,
+                description=self.get_schema_description(schema_name),
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                ),
+            )
         )
 
     @staticmethod
@@ -340,13 +347,19 @@ class CommonDbSourceService(
         """
         return False, None  # By default the table will be a Regular Table
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        We don't have a generic source implementation for handling tags.
+
+        Each source should implement its own when needed
+        """
 
     @calculate_execution_time_generator
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -404,9 +417,12 @@ class CommonDbSourceService(
                 table_request.tableType = TableType.Partitioned.value
                 table_request.tablePartition = partition_details
 
-            yield table_request
+            yield Either(right=table_request)
+
+            # Register the request that we'll handle during the deletion checks
             self.register_record(table_request=table_request)
 
+            # Flag view as visited
             if table_type == TableType.View or view_definition:
                 table_view = TableView.parse_obj(
                     {
@@ -420,11 +436,13 @@ class CommonDbSourceService(
 
         except Exception as exc:
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table_name, error=error, stack_trace=traceback.format_exc()
+                )
+            )
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
             v for v in self.context.table_views if v.view_definition is not None
@@ -523,8 +541,12 @@ class CommonDbSourceService(
         """
         return table
 
-    def yield_table_tag(self) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_table_tag(self) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        We don't provide a common implementation for table tags.
+
+        Each source will have to implement its own on a need basis.
+        """
 
     def get_source_url(
         self,
