@@ -39,6 +39,7 @@ import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getUserSuggestions } from 'rest/miscAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
 import { getContainerByFQN } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
@@ -338,6 +339,10 @@ export const getBreadCrumbList = (
       return [service(ServiceCategory.ML_MODEL_SERVICES), activeEntity];
     }
 
+    case EntityType.SEARCH_INDEX: {
+      return [service(ServiceCategory.SEARCH_SERVICES), activeEntity];
+    }
+
     case EntityType.DATABASE_SCHEMA: {
       return [
         service(ServiceCategory.DATABASE_SERVICES),
@@ -440,6 +445,15 @@ export const fetchEntityDetail = (
 
     case EntityType.CONTAINER:
       getContainerByFQN(entityFQN, ContainerFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.SEARCH_INDEX:
+      getSearchIndexDetailsByFQN(entityFQN, '')
         .then((res) => {
           setEntityData(res);
         })

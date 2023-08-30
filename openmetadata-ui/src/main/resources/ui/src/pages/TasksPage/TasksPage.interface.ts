@@ -15,6 +15,7 @@ import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -30,7 +31,8 @@ export type EntityData =
   | Container
   | Database
   | DatabaseSchema
-  | DashboardDataModel;
+  | DashboardDataModel
+  | SearchIndex;
 
 export interface Option {
   label: string;

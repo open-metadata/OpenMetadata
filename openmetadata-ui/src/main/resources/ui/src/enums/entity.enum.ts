@@ -29,6 +29,7 @@ export enum EntityType {
   MLMODEL_SERVICE = 'mlmodelService',
   STORAGE_SERVICE = 'storageService',
   SEARCH_SERVICE = 'searchService',
+  SEARCH_INDEX = 'searchIndex',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -103,6 +104,7 @@ export enum TabSpecificField {
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
+  FIELDS = 'fields',
 }
 
 export enum FqnPart {
@@ -113,6 +115,7 @@ export enum FqnPart {
   Column,
   NestedColumn,
   Topic,
+  SearchIndexField,
 }
 
 export enum EntityInfo {
@@ -162,6 +165,7 @@ export enum EntityTabs {
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
   SQL = 'sql',
+  FIELDS = 'fields',
 }
 
 export enum EntityAction {

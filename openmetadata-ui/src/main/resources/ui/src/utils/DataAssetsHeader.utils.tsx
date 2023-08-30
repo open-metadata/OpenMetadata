@@ -29,6 +29,7 @@ import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardService } from 'generated/entity/services/dashboardService';
@@ -332,6 +333,13 @@ export const getDataAssetsHeaderInfo = (
         searchServiceDetails,
         EntityType.SEARCH_SERVICE
       );
+
+      break;
+
+    case EntityType.SEARCH_INDEX:
+      const searchIndexDetails = dataAsset as SearchIndex;
+      returnData.breadcrumbs =
+        getBreadcrumbForEntitiesWithServiceOnly(searchIndexDetails);
 
       break;
 

@@ -707,6 +707,9 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
     case ServiceCategory.STORAGE_SERVICES:
       return getEntityLink(EntityType.CONTAINER, fqn);
 
+    case ServiceCategory.SEARCH_SERVICES:
+      return getEntityLink(EntityType.SEARCH_INDEX, fqn);
+
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return `/database/${getEncodedFqn(fqn)}`;
