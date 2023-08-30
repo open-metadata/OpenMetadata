@@ -35,7 +35,7 @@ config = """
       "config":{
         "type": "DatabaseUsage"
       }
-    }test_couchbase
+    }
   },
   "processor": {
     "type": "query-parser",
@@ -82,12 +82,13 @@ class QueryParserTest(TestCase):
         workflow.execute()
         table_usage_map = {}
 
-        for key, value in workflow.stage.table_usage.items():
+        # UsageWorkflow has the steps (processor, stage, bulk_sink)
+        for key, value in workflow.steps[1].table_usage.items():
             table_usage_map[key[0]] = value.count
 
         for table_name, expected_count in expected_result.items():
             try:
                 self.assertEqual(table_usage_map[table_name], expected_count)
-            except KeyError as err:
+            except KeyError:
                 self.assertTrue(False)
         workflow.stop()

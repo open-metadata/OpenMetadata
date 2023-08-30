@@ -23,6 +23,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     generate_entity_link,
@@ -454,6 +455,9 @@ class DbtUnitTest(TestCase):
 
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
     def test_dbt_owner(self, es_search_from_fqn):
+        """
+        This test requires having the sample data properly indexed
+        """
         es_search_from_fqn.return_value = MOCK_USER
         _, dbt_objects = self.get_dbt_object_files(
             mock_manifest=MOCK_SAMPLE_MANIFEST_V8
@@ -503,12 +507,12 @@ class DbtUnitTest(TestCase):
             dbt_objects=dbt_objects
         )
         for data_model_link in yield_data_models:
-            if isinstance(data_model_link, DataModelLink):
+            if isinstance(data_model_link, Either) and data_model_link.right:
                 self.assertIn(
-                    data_model_link.table_entity.fullyQualifiedName.__root__,
+                    data_model_link.right.table_entity.fullyQualifiedName.__root__,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
-                data_model_list.append(data_model_link.datamodel)
+                data_model_list.append(data_model_link.right.datamodel)
 
         for _, (exptected, original) in enumerate(
             zip(expected_data_models, data_model_list)

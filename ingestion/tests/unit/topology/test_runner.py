@@ -14,6 +14,7 @@ Check that we are properly running nodes and stages
 """
 from unittest import TestCase
 
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -66,18 +67,23 @@ class MockSource(TopologyRunnerMixin):
 
     @staticmethod
     def yield_numbers(number: int):
-        yield number + 1
+        yield Either(right=number + 1)
 
     def yield_strings(self, my_str: str):
-        yield my_str + str(self.context.numbers)
+        yield Either(right=my_str + str(self.context.numbers))
 
 
 class TopologyRunnerTest(TestCase):
-    """
-    Validate filter patterns
-    """
+    """Validate filter patterns"""
 
     def test_node_and_stage(self):
         source = MockSource()
-        processed = list(source.next_record())
-        assert processed == [2, "abc2", "def2", 3, "abc3", "def3"]
+        processed = list(source._iter())
+        assert [either.right for either in processed] == [
+            2,
+            "abc2",
+            "def2",
+            3,
+            "abc3",
+            "def3",
+        ]

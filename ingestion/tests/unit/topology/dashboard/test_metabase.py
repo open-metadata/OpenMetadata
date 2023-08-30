@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.metabase import metadata as MetabaseMetadata
 from metadata.ingestion.source.dashboard.metabase.metadata import MetabaseSource
@@ -246,18 +247,18 @@ class MetabaseUnitTest(TestCase):
         chart_list = []
         results = self.metabase.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
         for result in results:
-            if isinstance(result, CreateChartRequest):
-                chart_list.append(result)
+            if isinstance(result, Either) and result.right:
+                chart_list.append(result.right)
 
-        for exptected, original in zip(EXPECTED_CHARTS, chart_list):
-            self.assertEqual(exptected, original)
+        for expected, original in zip(EXPECTED_CHARTS, chart_list):
+            self.assertEqual(expected, original)
 
     def test_yield_dashboard(self):
         """
         Function for testing charts
         """
         results = list(self.metabase.yield_dashboard(MOCK_DASHBOARD_DETAILS))
-        self.assertEqual(EXPECTED_DASHBOARD, list(results))
+        self.assertEqual(EXPECTED_DASHBOARD, [res.right for res in results])
 
     @patch.object(fqn, "build", return_value=None)
     @patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD)
@@ -283,14 +284,14 @@ class MetabaseUnitTest(TestCase):
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )
-        self.assertEqual(next(result), EXPECTED_LINEAGE)
+        self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_query
         mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[1]]
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )
-        self.assertEqual(next(result), EXPECTED_LINEAGE)
+        self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out if no query type
         mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[2]]

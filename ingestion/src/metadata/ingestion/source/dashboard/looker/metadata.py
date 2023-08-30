@@ -674,7 +674,7 @@ class LookerSource(DashboardServiceSource):
         source: str,
         db_service_name: str,
         to_entity: Union[MetadataDashboard, DashboardDataModel],
-    ) -> Optional[AddLineageRequest]:
+    ) -> Optional[Either[AddLineageRequest]]:
         """
         Once we have a list of origin data sources, check their components
         and build the lineage request.
