@@ -54,32 +54,6 @@ export const formatDate = (date?: number) => {
 };
 
 /**
- * @param date EPOCH seconds
- * @returns Formatted date for valid input. Format: MMM DD
- */
-export const formatDateFromSeconds = (date?: number) => {
-  if (isNil(date)) {
-    return '';
-  }
-
-  return formatDate(date * 1000);
-};
-
-/**
- * @param date EPOCH millis
- * @returns Formatted date for valid input. Format: MMM DD, YYYY
- */
-export const formatDateShort = (date?: number) => {
-  if (isNil(date)) {
-    return '';
-  }
-
-  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
-
-  return dateTime.toLocaleString(DateTime.DATE_SHORT);
-};
-
-/**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
@@ -140,7 +114,7 @@ export const customFormatDateTime = (
   milliseconds?: number,
   format?: string
 ) => {
-  if (!milliseconds) {
+  if (isNil(milliseconds)) {
     return '';
   }
   if (!format) {
@@ -158,7 +132,7 @@ export const customFormatDateTime = (
  * @returns
  */
 export const getRelativeTime = (timeStamp?: number): string => {
-  return timeStamp
+  return !isNil(timeStamp)
     ? DateTime.fromMillis(timeStamp, { locale: 'en-US' }).toRelative() ?? ''
     : '';
 };
@@ -187,12 +161,6 @@ export const getRelativeCalendar = (
  */
 export const getCurrentISODate = () =>
   DateTime.now().toISO({ includeOffset: false });
-
-/**
- *
- * @returns
- */
-export const getCurrentSeconds = () => DateTime.now().toUnixInteger();
 
 /**
  *

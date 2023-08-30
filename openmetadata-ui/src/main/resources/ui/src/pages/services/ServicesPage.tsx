@@ -14,6 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { IngestionPipelineList } from 'components/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import Services from 'components/Services/Services';
@@ -125,15 +126,7 @@ const ServicesPage = () => {
         },
         {
           key: 'pipelines',
-          children: (
-            <Services
-              currentPage={currentPage}
-              paging={paging}
-              serviceData={serviceDetails}
-              serviceName={serviceName}
-              onPageChange={handlePageChange}
-            />
-          ),
+          children: <IngestionPipelineList />,
           label: 'Pipelines',
         },
       ]}
