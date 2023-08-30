@@ -105,7 +105,7 @@ class CliBase(ABC):
             regex = r"Sink Status:%(log)s(.*?)%(log)sProcessor Status: .*" % REGEX_AUX
             output_clean = re.findall(regex, output_clean.strip())[0].strip()
         else:
-            regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow Summary.*" % REGEX_AUX
+            regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX
             output_clean = re.findall(regex, output_clean.strip())[0].strip()
         return Status.parse_obj(literal_eval(output_clean))
 

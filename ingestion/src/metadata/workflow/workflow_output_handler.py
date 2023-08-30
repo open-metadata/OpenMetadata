@@ -348,14 +348,8 @@ def print_workflow_summary(workflow: "BaseWorkflow") -> None:
         Print Workflow status when the workflow logger level is DEBUG
     """
 
-    # if is_debug_enabled(workflow):
-    #    print_workflow_status_debug(
-    #        workflow,
-    #        bulk_sink,
-    #        stage,
-    #        source_status,
-    #        processor_status,
-    #    )
+    if is_debug_enabled(workflow):
+        print_workflow_status_debug(workflow)
 
     failures = []
     total_records = 0
@@ -390,6 +384,16 @@ def print_workflow_summary(workflow: "BaseWorkflow") -> None:
     )
 
 
+def print_workflow_status_debug(workflow: "BaseWorkflow") -> None:
+    """Print the statuses from each workflow step"""
+    log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
+    for step in [workflow.source] + list(workflow.steps):
+        log_ansi_encoded_string(
+            bold=True, message=f"{get_generic_step_name(step)} Status:"
+        )
+        log_ansi_encoded_string(message=step.get_status().as_string())
+
+
 def get_source_status(workflow, source_status: Status) -> Optional[Status]:
     if hasattr(workflow, "source"):
         return source_status if source_status else workflow.source.get_status()
@@ -418,7 +422,7 @@ def print_workflow_summary_legacy(
     source_status = get_source_status(workflow, source_status)
     processor_status = get_processor_status(workflow, processor_status)
     if is_debug_enabled(workflow):
-        print_workflow_status_debug(
+        print_workflow_status_debug_legacy(
             workflow,
             bulk_sink,
             stage,
@@ -466,7 +470,7 @@ def print_workflow_summary_legacy(
     )
 
 
-def print_workflow_status_debug(
+def print_workflow_status_debug_legacy(
     workflow,
     bulk_sink: bool = False,
     stage: bool = False,
