@@ -24,7 +24,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     generate_entity_link,
     get_corrected_name,
@@ -34,7 +33,10 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 )
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
+from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.tag_utils import get_tag_labels
+
+logger = ingestion_logger()
 
 mock_dbt_config = {
     "source": {
@@ -279,6 +281,7 @@ class DbtUnitTest(TestCase):
             mock_dbt_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
+        set_loggers_level("DEBUG")
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
@@ -494,7 +497,7 @@ class DbtUnitTest(TestCase):
         return dbt_files, dbt_objects
 
     def check_dbt_validate(self, dbt_files, expected_records):
-        with self.assertLogs(level="DEBUG") as captured:
+        with self.assertLogs(level="DEBUG", logger=logger) as captured:
             self.dbt_source_obj.validate_dbt_files(dbt_files=dbt_files)
         self.assertEqual(len(captured.records), expected_records)
         for record in captured.records:
@@ -514,7 +517,7 @@ class DbtUnitTest(TestCase):
                 )
                 data_model_list.append(data_model_link.right.datamodel)
 
-        for _, (exptected, original) in enumerate(
+        for _, (expected, original) in enumerate(
             zip(expected_data_models, data_model_list)
         ):
-            self.assertEqual(exptected, original)
+            self.assertEqual(expected, original)

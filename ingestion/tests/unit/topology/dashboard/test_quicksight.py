@@ -19,7 +19,6 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import pytest
-from metadata.ingestion.api.models import Either
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -34,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
 
 mock_file_path = (
