@@ -60,7 +60,8 @@ from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
-from metadata.workflow.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 TESTS_ROOT_DIR = pathlib.Path(__file__).parent.parent.parent.parent
 BIGQUERY_CONFIG_FILE = "cli_e2e/database/bigquery/bigquery.yaml"
@@ -137,10 +138,10 @@ class TestBigquerySystem(TestCase):
         cls.metadata = OpenMetadata(cls.metadata_config)
 
         # run the ingestion workflow
-        ingestion_workflow = Workflow.create(cls.config)
+        ingestion_workflow = MetadataWorkflow.create(cls.config)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
+        print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
         # get table fqn
