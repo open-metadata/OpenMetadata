@@ -30,9 +30,10 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 Base = declarative_base()
 
@@ -141,10 +142,10 @@ class TestGreatExpectationIntegration(TestCase):
         cls.session.add_all(data)
         cls.session.commit()
 
-        ingestion_workflow = Workflow.create(INGESTION_CONFIG)
+        ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
+        print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
     @classmethod

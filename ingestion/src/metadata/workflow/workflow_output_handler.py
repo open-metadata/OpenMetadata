@@ -14,7 +14,9 @@ Module handles the output messages from different workflows
 """
 
 import time
+import traceback
 from enum import Enum
+from logging import Logger
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Union
 
@@ -23,11 +25,15 @@ from tabulate import tabulate
 
 from metadata.config.common import ConfigurationError
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
-from metadata.ingestion.api.status import StackTraceError, Status
+from metadata.ingestion.api.status import Status
+from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
@@ -191,12 +197,12 @@ def print_init_error(
         print_more_info(workflow_type)
 
 
-def print_status(workflow) -> None:
+def print_status(workflow: "BaseWorkflow") -> None:
     """
     Print the workflow results
     """
 
-    print_workflow_summary(workflow, source=True, stage=True, bulk_sink=True)
+    print_workflow_summary(workflow)
 
     if workflow.source.get_status().source_start_time:
         log_ansi_encoded_string(
@@ -228,7 +234,7 @@ def print_profiler_status(workflow) -> None:
     """
     Print the profiler workflow results
     """
-    print_workflow_summary(
+    print_workflow_summary_legacy(
         workflow,
         source=True,
         processor=True,
@@ -263,7 +269,9 @@ def print_test_suite_status(workflow) -> None:
     """
     Print the test suite workflow results
     """
-    print_workflow_summary(workflow, processor=True, processor_status=workflow.status)
+    print_workflow_summary_legacy(
+        workflow, processor=True, processor_status=workflow.status
+    )
 
     if workflow.result_status() == 1:
         log_ansi_encoded_string(
@@ -281,7 +289,8 @@ def print_data_insight_status(workflow) -> None:
     Args:
         workflow (DataInsightWorkflow): workflow object
     """
-    print_workflow_summary(
+    # TODO: fixme
+    print_workflow_summary_legacy(
         workflow,
         processor=True,
         processor_status=workflow.status,
@@ -316,6 +325,75 @@ def is_debug_enabled(workflow) -> bool:
     )
 
 
+def get_generic_step_name(step: Step) -> str:
+    """
+    Since we cannot directly log the step name
+    as step.__class__.__name__ since it brings too
+    much internal info (e.g., MetadataRestSink), we'll
+    just check here for the simplification.
+    """
+    for step_type in (Source, Processor, Stage, Sink, BulkSink):
+        if isinstance(step, step_type):
+            return step_type.__name__
+
+    return type(step).__name__
+
+
+def print_workflow_summary(workflow: "BaseWorkflow") -> None:
+    """
+    Args:
+        workflow: the workflow status to be printed
+
+    Returns:
+        Print Workflow status when the workflow logger level is DEBUG
+    """
+
+    if is_debug_enabled(workflow):
+        print_workflow_status_debug(workflow)
+
+    failures = []
+    total_records = 0
+    total_errors = 0
+    for step in [workflow.source] + list(workflow.steps):
+        step_summary = get_summary(step.get_status())
+        total_records += step_summary.records
+        total_errors += step_summary.errors
+        failures.append(
+            Failure(
+                name=get_generic_step_name(step), failures=step.get_status().failures
+            )
+        )
+
+        log_ansi_encoded_string(
+            bold=True, message=f"Workflow {get_generic_step_name(step)} Summary:"
+        )
+        log_ansi_encoded_string(message=f"Processed records: {step_summary.records}")
+        log_ansi_encoded_string(message=f"Warnings: {step_summary.warnings}")
+        if isinstance(step, Source):
+            log_ansi_encoded_string(message=f"Filtered: {step_summary.filtered}")
+        log_ansi_encoded_string(message=f"Errors: {step_summary.errors}")
+
+    print_failures_if_apply(failures)
+
+    total_success = max(total_records, 1)
+    log_ansi_encoded_string(
+        color=ANSI.BRIGHT_CYAN,
+        bold=True,
+        message=f"Success %: "
+        f"{round(total_success * 100 / (total_success + total_errors), 2)}",
+    )
+
+
+def print_workflow_status_debug(workflow: "BaseWorkflow") -> None:
+    """Print the statuses from each workflow step"""
+    log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
+    for step in [workflow.source] + list(workflow.steps):
+        log_ansi_encoded_string(
+            bold=True, message=f"{get_generic_step_name(step)} Status:"
+        )
+        log_ansi_encoded_string(message=step.get_status().as_string())
+
+
 def get_source_status(workflow, source_status: Status) -> Optional[Status]:
     if hasattr(workflow, "source"):
         return source_status if source_status else workflow.source.get_status()
@@ -328,7 +406,7 @@ def get_processor_status(workflow, processor_status: Status) -> Optional[Status]
     return processor_status
 
 
-def print_workflow_summary(
+def print_workflow_summary_legacy(
     workflow,
     source: bool = False,
     stage: bool = False,
@@ -338,22 +416,13 @@ def print_workflow_summary(
     processor_status: Status = None,
 ):
     """
-    Args:
-        workflow: the workflow status to be printed
-        source: if source status must be printed
-        bulk_sink: if bull_sink status must be printed
-        processor: if processor status must be printed
-        stage: if stage status must be printed
-        source_status: alternative source status to be printed in case is different to the default of the workflow
-        processor_status: alternative processor status to be printed in case is different to the default of the workflow
-
-    Returns:
-        Print Workflow status when the workflow logger level is DEBUG
+    To be removed. All workflows should use the new `print_workflow_summary`
+    after making the transition to the BaseWorkflow steps with common Status.
     """
     source_status = get_source_status(workflow, source_status)
     processor_status = get_processor_status(workflow, processor_status)
     if is_debug_enabled(workflow):
-        print_workflow_status_debug(
+        print_workflow_status_debug_legacy(
             workflow,
             bulk_sink,
             stage,
@@ -401,7 +470,7 @@ def print_workflow_summary(
     )
 
 
-def print_workflow_status_debug(
+def print_workflow_status_debug_legacy(
     workflow,
     bulk_sink: bool = False,
     stage: bool = False,
@@ -441,9 +510,7 @@ def get_summary(status: Status) -> Summary:
     records = len(status.records)
     warnings = len(status.warnings)
     errors = len(status.failures)
-    filtered = 0
-    if hasattr(status, "filtered"):
-        filtered = len(status.filtered)
+    filtered = len(status.filtered)
     return Summary(records=records, warnings=warnings, errors=errors, filtered=filtered)
 
 
@@ -467,7 +534,7 @@ def print_failures_if_apply(failures: List[Failure]) -> None:
         all_data = [get_failures(failure) for failure in failures]
         # create a single of dictionaries
         data = [f for fs in all_data for f in fs]
-        # creat a dictionary with a key and a list of values from the list
+        # create a dictionary with a key and a list of values from the list
         error_table = {k: [dic[k] for dic in data] for k in data[0]}
         if len(list(error_table.items())[0][1]) > 100:
             log_ansi_encoded_string(
@@ -481,3 +548,29 @@ def print_failures_if_apply(failures: List[Failure]) -> None:
         log_ansi_encoded_string(
             message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}"
         )
+
+
+def report_ingestion_status(logger: Logger, workflow: "BaseWorkflow") -> None:
+    """
+    Given a logger, use it to INFO the workflow status
+    """
+    try:
+        for step in [workflow.source] + list(workflow.steps):
+            logger.info(
+                f"{get_generic_step_name(step)}: Processed {len(step.status.records)} records,"
+                f" filtered {len(step.status.filtered)} records,"
+                f" found {len(step.status.failures)} errors"
+            )
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Wild exception reporting status - {exc}")
+
+
+def get_ingestion_status_timer(
+    interval: int, logger: Logger, workflow: "BaseWorkflow"
+) -> RepeatedTimer:
+    """
+    Prepare the threading Timer to execute the report_ingestion_status
+    """
+    return RepeatedTimer(interval, report_ingestion_status, logger, workflow)

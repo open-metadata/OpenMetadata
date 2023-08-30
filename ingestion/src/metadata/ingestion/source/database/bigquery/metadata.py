@@ -48,7 +48,8 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     SingleProjectId,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,
@@ -227,7 +228,9 @@ class BigquerySource(CommonDbSourceService):
             or []
         ]
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Build tag context
         :param _:
@@ -242,7 +245,7 @@ class BigquerySource(CommonDbSourceService):
                         tags=[value],
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
-                        classification_desciption="",
+                        classification_description="",
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.database.name.__root__]
@@ -261,11 +264,16 @@ class BigquerySource(CommonDbSourceService):
                         tags=[tag.display_name for tag in policy_tags],
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
-                        classification_desciption="",
+                        classification_description="",
                     )
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Skipping Policy Tag ingestion due to: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         try:
@@ -317,7 +325,7 @@ class BigquerySource(CommonDbSourceService):
                         classification_name=label_classification,
                     )
                 )
-        yield database_schema_request_obj
+        yield Either(right=database_schema_request_obj)
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """

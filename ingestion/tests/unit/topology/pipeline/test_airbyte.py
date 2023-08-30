@@ -186,11 +186,13 @@ class AirbyteUnitTest(TestCase):
         ) == mock_data.get("connection")[0].get("connectionId")
 
     def test_pipelines(self):
-        pipline = list(self.airbyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0]
+        pipline = list(self.airbyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
-        assert (
-            list(self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS))
-            == EXPECTED_PIPELINE_STATUS
-        )
+
+        status = [
+            either.right
+            for either in self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS)
+        ]
+        assert status == EXPECTED_PIPELINE_STATUS
