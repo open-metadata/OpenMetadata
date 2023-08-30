@@ -13,6 +13,7 @@
 
 import {
   deleteCreatedService,
+  editIngestionService,
   goToAddNewServicePage,
   mySqlConnectionInput,
   testServiceCreationAndIngestion,
@@ -61,6 +62,10 @@ describe('MySQL Ingestion', () => {
       SERVICE_TYPE.Database,
       'tables'
     );
+  });
+
+  it('edit and deploy metadata ingestion', () => {
+    editIngestionService(serviceName, SERVICE_TYPE.Database, 'database');
   });
 
   it('delete created service', () => {
