@@ -394,10 +394,10 @@ describe('Glossary page should work properly', () => {
       .and('be.visible')
       .then(($el) => {
         cy.wrap($el)
-          .find('[data-testid="appbar-item-glossary"]')
+          .find('[data-testid="app-bar-item-glossary"]')
           .should('exist')
           .and('be.visible')
-          .click();
+          .click({ force: true });
       });
   });
 
@@ -786,7 +786,7 @@ describe('Glossary page should work properly', () => {
       .should('contain', term3);
 
     cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="appbar-item-glossary"]').click();
+    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
     cy.get('.ant-menu-item').contains(NEW_GLOSSARY_1.name).click();
 
@@ -859,7 +859,7 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
 
     cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="appbar-item-glossary"]').click();
+    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 
