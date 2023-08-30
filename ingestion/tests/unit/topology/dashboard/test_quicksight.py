@@ -19,6 +19,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import pytest
+from metadata.ingestion.api.models import Either
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -168,8 +169,8 @@ class QuickSightUnitTest(TestCase):
         dashboard_list = []
         results = self.quicksight.yield_dashboard(MOCK_DASHBOARD_DETAILS)
         for result in results:
-            if isinstance(result, CreateDashboardRequest):
-                dashboard_list.append(result)
+            if isinstance(result, Either) and result.right:
+                dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     @pytest.mark.order(2)
