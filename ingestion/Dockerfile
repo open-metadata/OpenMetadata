@@ -82,8 +82,8 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis~=1.1.3.0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.5.3/constraints-3.9.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.1.3.0"
+RUN pip install "openmetadata-managed-apis~=1.1.4.0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.5.3/constraints-3.9.txt"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.1.4.0"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
