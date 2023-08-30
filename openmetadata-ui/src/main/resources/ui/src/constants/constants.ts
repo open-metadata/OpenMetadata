@@ -784,6 +784,7 @@ export const ENTITY_PATH: Record<string, string> = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
+  searchindex: 'searchIndex',
 };
 
 export const VALIDATION_MESSAGES = {
