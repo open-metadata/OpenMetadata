@@ -466,9 +466,7 @@ public class MigrationUtil {
       TestSuite stored;
       try {
         // If entity is found by Hash it is already migrated
-        testSuiteRepository
-            .getDao()
-            .findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), "nameHash", Include.ALL);
+        testSuiteRepository.getDao().findEntityByName(testSuiteFqn, "nameHash", Include.ALL);
       } catch (EntityNotFoundException entityNotFoundException) {
         try {
           // Check if the test Suite Exists, this brings the data on nameHash basis
@@ -515,13 +513,7 @@ public class MigrationUtil {
                 newExecutableTestSuite.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
 
             // Not a good approach but executable cannot be set true before
-            TestSuite temp =
-                testSuiteRepository
-                    .getDao()
-                    .findEntityByName(
-                        EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)),
-                        "nameHash",
-                        Include.ALL);
+            TestSuite temp = testSuiteRepository.getDao().findEntityByName(testSuiteFqn, "nameHash", Include.ALL);
             temp.setExecutable(true);
             testSuiteRepository.getDao().update("nameHash", temp);
           } catch (Exception exIgnore) {
