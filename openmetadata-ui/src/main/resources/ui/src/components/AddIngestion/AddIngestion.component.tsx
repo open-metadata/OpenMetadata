@@ -179,7 +179,6 @@ const AddIngestion = ({
           scheduleInterval: isEmpty(scheduleInterval)
             ? undefined
             : scheduleInterval,
-          retries: extraData.retries,
         },
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
