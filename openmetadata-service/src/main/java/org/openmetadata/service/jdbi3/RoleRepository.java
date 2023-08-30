@@ -75,7 +75,7 @@ public class RoleRepository extends EntityRepository<Role> {
    * storeEntity method call.
    */
   @Override
-  public void prepare(Role role) {
+  public void prepare(Role role, boolean update) {
     if (listOrEmpty(role.getPolicies()).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
     }
@@ -83,8 +83,8 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   /**
-   * For regular incoming POST, PUT, PATCH operation calls, {@link RoleRepository#prepare(Role)} would create a policy
-   * entity reference if it does not exist.
+   * For regular incoming POST, PUT, PATCH operation calls, {@link RoleRepository#prepare(Role, boolean)} would create a
+   * policy entity reference if it does not exist.
    *
    * <p>This method ensures that the role and its policy are stored correctly.
    */
@@ -111,7 +111,7 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  protected void preDelete(Role entity) {
+  protected void preDelete(Role entity, String deletedBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));

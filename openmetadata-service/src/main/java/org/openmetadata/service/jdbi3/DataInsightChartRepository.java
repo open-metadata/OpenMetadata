@@ -74,7 +74,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
-  public void prepare(DataInsightChart entity) {
+  public void prepare(DataInsightChart entity, boolean update) {
     /* Nothing to do */
   }
 

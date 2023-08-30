@@ -122,7 +122,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void prepare(Team team) {
+  public void prepare(Team team, boolean update) {
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());
@@ -189,7 +189,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  protected void preDelete(Team entity) {
+  protected void preDelete(Team entity, String deletedBy) {
     if (entity.getId().equals(organization.getId())) {
       throw new IllegalArgumentException(DELETE_ORGANIZATION);
     }

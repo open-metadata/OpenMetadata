@@ -84,7 +84,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void prepare(IngestionPipeline ingestionPipeline) {
+  public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
   }
