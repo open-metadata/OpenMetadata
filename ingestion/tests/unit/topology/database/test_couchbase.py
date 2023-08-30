@@ -221,6 +221,7 @@ class CouchbaseUnitTest(TestCase):
         with patch.object(
             CouchbaseSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA
         ):
-            assert MOCK_CREATE_TABLE == list(
-                self.couch_source.yield_table(EXPECTED_TABLE_NAMES[0])
-            )
+            assert MOCK_CREATE_TABLE == [
+                either.right
+                for either in self.couch_source.yield_table(EXPECTED_TABLE_NAMES[0])
+            ]

@@ -18,6 +18,7 @@ import os
 import shutil
 import traceback
 from pathlib import Path
+from typing import Iterable
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -27,7 +28,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
-from metadata.ingestion.api.stage import Stage
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import init_staging_dir
@@ -40,7 +42,7 @@ class TableStageConfig(ConfigModel):
     filename: str
 
 
-class TableUsageStage(Stage[QueryParserData]):
+class TableUsageStage(Stage):
     """
     Stage implementation for Table Usage data.
 
@@ -107,7 +109,9 @@ class TableUsageStage(Stage[QueryParserData]):
                 )
             ]
 
-    def stage_record(self, record: QueryParserData) -> None:
+    def _run(  # pylint: disable=arguments-differ
+        self, record: QueryParserData, *_, **__
+    ) -> Iterable[Either[str]]:
         """
         Process the parsed data and store it in a file
         """
@@ -143,10 +147,16 @@ class TableUsageStage(Stage[QueryParserData]):
                         )
 
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error in staging record: {exc}")
+                    yield Either(
+                        left=StackTraceError(
+                            name=table,
+                            error=f"Error in staging record [{exc}]",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
                 self.table_usage[(table, parsed_data.date)] = table_usage_count
-                logger.info(f"Successfully record staged for {table}")
+                yield Either(right=table)
+
         self.dump_data_to_file()
 
     def dump_data_to_file(self):
