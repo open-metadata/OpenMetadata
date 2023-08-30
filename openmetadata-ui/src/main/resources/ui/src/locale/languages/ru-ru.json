@@ -805,6 +805,7 @@
     "search-by-type": "Поиск {{type}}",
     "search-entity": "Поиск {{entity}}",
     "search-for-type": "Поиск для {{type}}",
+    "search-index": "Search Index",
     "search-index-ingestion": "Получение поискового индекса",
     "search-index-plural": "Search Indexes",
     "second-plural": "Секунды",

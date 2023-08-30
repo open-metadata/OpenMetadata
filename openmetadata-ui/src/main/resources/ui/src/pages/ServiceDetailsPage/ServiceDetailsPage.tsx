@@ -96,7 +96,7 @@ import {
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
-import { getSearchIndexes } from 'rest/SearchServiceAPI';
+import { getSearchIndexes } from 'rest/SearchIndexAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';

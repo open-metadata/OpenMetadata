@@ -805,6 +805,7 @@
     "search-by-type": "Buscar por {{type}}",
     "search-entity": "Buscar {{entity}}",
     "search-for-type": "Buscar {{type}}",
+    "search-index": "Search Index",
     "search-index-ingestion": "Search Index Ingestion",
     "search-index-plural": "Search Indexes",
     "second-plural": "Segundos",

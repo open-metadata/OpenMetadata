@@ -805,6 +805,7 @@
     "search-by-type": "通过{{type}}搜索",
     "search-entity": "搜索{{entity}}",
     "search-for-type": "搜索{{type}}",
+    "search-index": "Search Index",
     "search-index-ingestion": "搜索索引提取",
     "search-index-plural": "Search Indexes",
     "second-plural": "秒",
