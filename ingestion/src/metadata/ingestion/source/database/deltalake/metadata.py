@@ -270,7 +270,7 @@ class DeltalakeSource(DatabaseServiceSource):
             )
 
             yield Either(right=table_request)
-
+            self.register_record(table_request=table_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

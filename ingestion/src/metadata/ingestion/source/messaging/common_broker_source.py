@@ -138,6 +138,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     schemaText="", schemaType=SchemaType.Other, schemaFields=[]
                 )
             yield Either(right=topic)
+            self.register_record(topic_request=topic)
 
         except Exception as exc:
             yield Either(

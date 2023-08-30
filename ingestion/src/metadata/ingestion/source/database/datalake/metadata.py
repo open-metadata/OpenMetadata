@@ -391,6 +391,7 @@ class DatalakeSource(DatabaseServiceSource):
                     fileFormat=get_file_format_type(table_name),
                 )
                 yield Either(right=table_request)
+                self.register_record(table_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

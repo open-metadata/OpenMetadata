@@ -98,7 +98,7 @@ class DatalakeProfilerTestE2E(TestCase):
             region_name="us-weat-1",
         )
 
-        # check that we are not running our test againsta real bucket
+        # check that we are not running our test against a real bucket
         try:
             s3 = boto3.resource(
                 "s3",

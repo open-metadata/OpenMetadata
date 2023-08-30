@@ -98,6 +98,7 @@ class ElasticsearchSource(SearchServiceSource):
                 ),
             )
             yield Either(right=search_index_request)
+            self.register_record(search_index_request=search_index_request)
 
     def yield_search_index_sample_data(
         self, search_index_details: Any

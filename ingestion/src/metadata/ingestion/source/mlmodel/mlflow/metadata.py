@@ -129,6 +129,7 @@ class MlflowSource(MlModelServiceSource):
             sourceUrl=source_url,
         )
         yield Either(right=mlmodel_request)
+        self.register_record(mlmodel_request=mlmodel_request)
 
     def _get_hyper_params(  # pylint: disable=arguments-differ
         self,
