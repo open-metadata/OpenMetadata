@@ -17,7 +17,7 @@ import TaskList from '@tiptap/extension-task-list';
 import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { isEmpty, isNil } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import './block-editor.less';
 import LinkModal, { LinkData } from './Components/LinkModal';
@@ -31,10 +31,16 @@ import { getSuggestionItems } from './Extensions/slash-command/items';
 import renderItems from './Extensions/slash-command/renderItems';
 import BubbleMenu from './Menu/BubbleMenu';
 
-const BlockEditor = () => {
+export interface BlockEditorProps {
+  content?: string;
+  editable?: boolean;
+}
+
+const BlockEditor: FC<BlockEditorProps> = ({
+  content = '',
+  editable = true,
+}) => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_, setHtmlState] = useState<string>('');
 
   const editor = useEditor({
     extensions: [
@@ -124,10 +130,6 @@ const BlockEditor = () => {
       'orderedList',
       'strike',
     ],
-
-    onUpdate({ editor }) {
-      setHtmlState(editor.getHTML());
-    },
   });
 
   const handleLinkToggle = () => {
@@ -232,10 +234,28 @@ const BlockEditor = () => {
   );
 
   useEffect(() => {
-    return () => {
-      !editor?.isDestroyed && editor?.destroy();
-    };
-  }, [editor]);
+    if (isNil(editor) || editor.isDestroyed || content === undefined) {
+      return;
+    }
+
+    // We use setTimeout to avoid any flushSync console errors as
+    // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
+    setTimeout(() => {
+      if (content !== undefined) {
+        editor.commands.setContent(content);
+      }
+    });
+  }, [content, editor]);
+
+  useEffect(() => {
+    if (isNil(editor) || editor.isDestroyed || editor.isEditable === editable) {
+      return;
+    }
+
+    // We use setTimeout to avoid any flushSync console errors as
+    // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
+    setTimeout(() => editor.setEditable(editable));
+  }, [editable, editor]);
 
   return (
     <>

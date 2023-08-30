@@ -151,9 +151,19 @@
 
     ol {
       list-style: decimal !important;
+      li {
+        &::before {
+          content: none;
+        }
+      }
     }
     ul {
       list-style: disc !important;
+      li {
+        &::before {
+          content: none;
+        }
+      }
       li.om-task-item {
         display: flex;
         gap: 4px;

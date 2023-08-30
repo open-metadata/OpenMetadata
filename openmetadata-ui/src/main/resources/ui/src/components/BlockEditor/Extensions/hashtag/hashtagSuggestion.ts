@@ -123,7 +123,6 @@ export default {
         if (!popup[0].state.isDestroyed) {
           popup[0].destroy();
         }
-        component.destroy();
       },
     };
   },
