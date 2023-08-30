@@ -1090,6 +1090,105 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
+export const editIngestionService = (serviceName, serviceType) => {
+  interceptURL(
+    'GET',
+    `/api/v1/services/ingestionPipelines?fields=*&service=*`,
+    'ingestionPipelines'
+  );
+  interceptURL('GET', `/api/v1/*?service=*&fields=*`, 'serviceDetails');
+  interceptURL(
+    'GET',
+    `/api/v1/system/config/pipeline-service-client`,
+    'pipelineServiceClient'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/services/ingestionPipelines/*/pipelineStatus?*`,
+    'pipelineStatus'
+  );
+
+  // edit ingestion flow
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
+  // Services page
+  cy.get('.ant-menu-title-content')
+    .contains(serviceType)
+    .should('be.visible')
+    .click();
+
+  // click on created service
+  cy.get(`[data-testid="service-name-${serviceName}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  verifyResponseStatusCode('@serviceDetails', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+  verifyResponseStatusCode('@pipelineServiceClient', 200);
+  cy.get('[data-testid="ingestions"]').should('be.visible').click();
+  verifyResponseStatusCode('@pipelineStatus', 200);
+
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/status',
+    'getIngestionPipelineStatus'
+  );
+
+  // click on edit ingestion
+  cy.get(
+    `[data-row-key*="${replaceAllSpacialCharWith_(
+      serviceName
+    )}_metadata"] [data-testid="edit"]`
+  )
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="submit-btn"]').should('exist').click();
+  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+
+  interceptURL(
+    'PUT',
+    '/api/v1/services/ingestionPipelines',
+    'updateIngestionPipelines'
+  );
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/deploy/*',
+    'deployPipeline'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/status',
+    'getIngestionPipelineStatus'
+  );
+  // Schedule & Deploy
+  cy.get('[data-testid="cron-type"]').should('be.visible').click();
+  cy.get('.ant-select-item-option-content').contains('Day').click();
+  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+
+  verifyResponseStatusCode('@updateIngestionPipelines', 200);
+  verifyResponseStatusCode('@deployPipeline', 200, {
+    responseTimeout: 50000,
+  });
+  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  // check success
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
+    'be.visible'
+  );
+
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines?*',
+    'ingestionPipelines'
+  );
+  interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+
+  cy.get('[data-testid="view-service-button"]').should('be.visible').click();
+  verifyResponseStatusCode('@serviceDetails', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+};
+
 export const addOwner = (ownerName, entity, isGlossaryPage) => {
   cy.get('[data-testid="edit-owner"]').click();
 
