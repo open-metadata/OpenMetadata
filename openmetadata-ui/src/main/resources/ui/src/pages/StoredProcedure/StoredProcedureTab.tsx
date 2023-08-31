@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Table } from 'antd';
+import { Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -18,15 +18,17 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import Loader from 'components/Loader/Loader';
 import { PAGE_SIZE } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
+import { isEmpty } from 'lodash';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { getEntityLink } from 'utils/TableUtils';
-import { StoredProcedureTabProps } from './storedProcedures.interface';
+import { StoredProcedureTabProps } from './storedProcedure.interface';
 
-const StoredProceduresTab = ({
+const StoredProcedureTab = ({
   data,
   isLoading,
   paging,
@@ -41,28 +43,28 @@ const StoredProceduresTab = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (_, record) => {
-          return (
-            <Link
-              to={getEntityLink(
-                EntityType.STORED_PROCEDURE,
-                record.fullyQualifiedName as string
-              )}>
-              {getEntityName(record)}
-            </Link>
-          );
-        },
-        className: 'truncate w-max-500',
+        width: 350,
+        render: (_, record) => (
+          <Link
+            to={getEntityLink(
+              EntityType.STORED_PROCEDURE,
+              getEncodedFqn(record.fullyQualifiedName ?? '')
+            )}>
+            {getEntityName(record)}
+          </Link>
+        ),
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
+          isEmpty(text) ? (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-description')}
+            </Typography.Text>
           ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+            <RichTextEditorPreviewer markdown={text} />
           ),
       },
     ],
@@ -70,37 +72,39 @@ const StoredProceduresTab = ({
   );
 
   return (
-    <Row>
-      <Col className="p-x-lg" data-testid="table-container" span={24}>
-        <Table
-          bordered
-          className="mt-4 table-shadow"
-          columns={tableColumn}
-          data-testid="data-models-table"
-          dataSource={data}
-          loading={{
-            spinning: isLoading,
-            indicator: <Loader size="small" />,
-          }}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
+    <Space
+      className="w-full p-x-lg"
+      data-testid="stored-procedure-table"
+      direction="vertical"
+      size="middle">
+      <Table
+        bordered
+        className="mt-4 table-shadow"
+        columns={tableColumn}
+        data-testid="data-models-table"
+        dataSource={data}
+        loading={{
+          spinning: isLoading,
+          indicator: <Loader size="small" />,
+        }}
+        locale={{
+          emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        }}
+        pagination={false}
+        rowKey="id"
+        size="small"
+      />
+      {paging && paging.total > PAGE_SIZE && (
+        <NextPrevious
+          currentPage={currentPage}
+          pageSize={PAGE_SIZE}
+          paging={paging}
+          pagingHandler={pagingHandler}
+          totalCount={paging.total}
         />
-        {paging && paging.total > PAGE_SIZE && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={PAGE_SIZE}
-            paging={paging}
-            pagingHandler={pagingHandler}
-            totalCount={paging.total}
-          />
-        )}
-      </Col>
-    </Row>
+      )}
+    </Space>
   );
 };
 
-export default StoredProceduresTab;
+export default StoredProcedureTab;

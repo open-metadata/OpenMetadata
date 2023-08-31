@@ -14,7 +14,7 @@ import { Paging } from 'generated/type/paging';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 
 export interface StoredProcedureTabProps {
-  data: Array<ServicePageData>;
+  data: ServicePageData[];
   isLoading: boolean;
   paging: Paging;
   currentPage: number;

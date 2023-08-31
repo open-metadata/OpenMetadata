@@ -127,8 +127,8 @@ const DataModelDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
 );
 
-const StoredProceduresDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/StoredProcedures/StoredProceduresPage'))
+const StoredProcedureDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/StoredProcedure/StoredProcedurePage'))
 );
 
 const TableDetailsPageV1 = withSuspenseFallback(
@@ -439,17 +439,17 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route
         exact
-        component={StoredProceduresDetailsPage}
+        component={StoredProcedureDetailsPage}
         path={ROUTES.STORED_PROCEDURE_DETAILS}
       />
       <Route
         exact
-        component={StoredProceduresDetailsPage}
+        component={StoredProcedureDetailsPage}
         path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB}
       />
       <Route
         exact
-        component={StoredProceduresDetailsPage}
+        component={StoredProcedureDetailsPage}
         path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB}
       />
 

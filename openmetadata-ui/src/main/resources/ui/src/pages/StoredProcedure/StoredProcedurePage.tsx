@@ -47,24 +47,44 @@ import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const USERId = getCurrentUserId();
+  const USER_ID = getCurrentUserId();
   const history = useHistory();
-  const { storedProceduresFQN } = useParams<{ storedProceduresFQN: string }>();
+  const { storedProcedureFQN } = useParams<{ storedProcedureFQN: string }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [storedProcedures, setStoredProcedures] = useState<StoredProcedure>();
-  const [storedProceduresPermissions, setStoredProceduresPermissions] =
+  const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
+  const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const {
+    id: storedProcedureId = '',
+    followers,
+    owner,
+    tags,
+    version,
+  } = useMemo(() => {
+    return {
+      ...storedProcedure,
+      tier: getTierTags(storedProcedure?.tags ?? []),
+      tags: getTagsWithoutTier(storedProcedure?.tags || []),
+    };
+  }, [storedProcedure]);
+
+  const { isFollowing } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === USER_ID),
+    };
+  }, [followers, USER_ID]);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
       const permission = await getEntityPermissionByFqn(
         ResourceEntity.STORED_PROCEDURE,
-        storedProceduresFQN
+        storedProcedureFQN
       );
 
-      setStoredProceduresPermissions(permission);
+      setStoredProcedurePermissions(permission);
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -80,11 +100,11 @@ const StoredProcedurePage = () => {
     setIsLoading(true);
     try {
       const response = await getStoredProceduresDetailsByFQN(
-        storedProceduresFQN,
+        storedProcedureFQN,
         STORED_PROCEDURE_DEFAULT_FIELDS
       );
 
-      setStoredProcedures(response);
+      setStoredProcedure(response);
     } catch (error) {
       // Error here
     } finally {
@@ -92,36 +112,12 @@ const StoredProcedurePage = () => {
     }
   };
 
-  const {
-    id: storedProceduresId = '',
-    followers,
-    owner,
-    tags,
-    version,
-  } = useMemo(() => {
-    if (storedProcedures) {
-      return {
-        ...storedProcedures,
-        tier: getTierTags(storedProcedures.tags ?? []),
-        tags: getTagsWithoutTier(storedProcedures.tags || []),
-      };
-    }
-
-    return {} as StoredProcedure;
-  }, [storedProcedures]);
-
-  const { isFollowing } = useMemo(() => {
-    return {
-      isFollowing: followers?.some(({ id }) => id === USERId),
-    };
-  }, [followers, USERId]);
-
   const versionHandler = useCallback(() => {
     version &&
       history.push(
         getVersionPath(
           EntityType.STORED_PROCEDURE,
-          storedProceduresFQN,
+          storedProcedureFQN,
           version + ''
         )
       );
@@ -129,24 +125,24 @@ const StoredProcedurePage = () => {
 
   const saveUpdatedStoredProceduresData = useCallback(
     (updatedData: StoredProcedure) => {
-      if (!storedProcedures) {
+      if (!storedProcedure) {
         return updatedData;
       }
-      const jsonPatch = compare(storedProcedures ?? '', updatedData);
+      const jsonPatch = compare(storedProcedure ?? '', updatedData);
 
-      return patchStoredProceduresDetails(storedProceduresId ?? '', jsonPatch);
+      return patchStoredProceduresDetails(storedProcedureId ?? '', jsonPatch);
     },
-    [storedProcedures]
+    [storedProcedure]
   );
 
-  const handleStoreProceduresUpdate = async (
+  const handleStoreProcedureUpdate = async (
     updatedData: StoredProcedure,
     key: keyof StoredProcedure
   ) => {
     try {
       const res = await saveUpdatedStoredProceduresData(updatedData);
 
-      setStoredProcedures((previous) => {
+      setStoredProcedure((previous) => {
         if (!previous) {
           return;
         }
@@ -164,43 +160,41 @@ const StoredProcedurePage = () => {
           [key]: res[key],
         };
       });
-      //   getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const followStoredProcedure = useCallback(async () => {
+  const followEntity = useCallback(async () => {
     try {
-      const res = await addStoredProceduresFollower(storedProceduresId, USERId);
+      const res = await addStoredProceduresFollower(storedProcedureId, USER_ID);
       const { newValue } = res.changeDescription.fieldsAdded[0];
       const newFollowers = [...(followers ?? []), ...newValue];
-      setStoredProcedures((prev) => {
+      setStoredProcedure((prev) => {
         if (!prev) {
           return prev;
         }
 
         return { ...prev, followers: newFollowers };
       });
-      //   getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-follow-error', {
-          entity: getEntityName(storedProcedures),
+          entity: getEntityName(storedProcedure),
         })
       );
     }
-  }, [USERId, storedProceduresId]);
+  }, [USER_ID, storedProcedureId]);
 
-  const unFollowStoredProcedure = useCallback(async () => {
+  const unFollowEntity = useCallback(async () => {
     try {
       const res = await removeStoredProceduresFollower(
-        storedProceduresId,
-        USERId
+        storedProcedureId,
+        USER_ID
       );
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setStoredProcedures((pre) => {
+      setStoredProcedure((pre) => {
         if (!pre) {
           return pre;
         }
@@ -212,38 +206,35 @@ const StoredProcedurePage = () => {
           ),
         };
       });
-      //   getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-unfollow-error', {
-          entity: getEntityName(storedProcedures),
+          entity: getEntityName(storedProcedure),
         })
       );
     }
-  }, [USERId, storedProceduresId]);
+  }, [USER_ID, storedProcedureId]);
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
-    if (!storedProcedures) {
+    if (!storedProcedure) {
       return;
     }
-    const updatedData = { ...storedProcedures, displayName: data.displayName };
-    await handleStoreProceduresUpdate(updatedData, 'displayName');
+    const updatedData = { ...storedProcedure, displayName: data.displayName };
+    await handleStoreProcedureUpdate(updatedData, 'displayName');
   };
 
   const handleFollow = useCallback(async () => {
-    isFollowing
-      ? await unFollowStoredProcedure()
-      : await followStoredProcedure();
-  }, [isFollowing, followStoredProcedure, unFollowStoredProcedure]);
+    isFollowing ? await unFollowEntity() : await followEntity();
+  }, [isFollowing, followEntity, unFollowEntity]);
 
   const handleUpdateOwner = useCallback(
     async (newOwner?: StoredProcedure['owner']) => {
-      if (!storedProcedures) {
+      if (!storedProcedure) {
         return;
       }
-      const updatedTableDetails = {
-        ...storedProcedures,
+      const updatedEntityDetails = {
+        ...storedProcedure,
         owner: newOwner
           ? {
               ...owner,
@@ -251,13 +242,13 @@ const StoredProcedurePage = () => {
             }
           : undefined,
       };
-      await handleStoreProceduresUpdate(updatedTableDetails, 'owner');
+      await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
     },
-    [owner, storedProcedures]
+    [owner, storedProcedure]
   );
 
   const handleToggleDelete = () => {
-    setStoredProcedures((prev) => {
+    setStoredProcedure((prev) => {
       if (!prev) {
         return prev;
       }
@@ -268,10 +259,10 @@ const StoredProcedurePage = () => {
 
   const handleRestoreStoredProcedures = async () => {
     try {
-      await restoreStoredProcedures(storedProceduresId);
+      await restoreStoredProcedures(storedProcedureId);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.table'),
+          entity: t('label.stored-procedure'),
         }),
         2000
       );
@@ -280,7 +271,7 @@ const StoredProcedurePage = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.table'),
+          entity: t('label.stored-procedure'),
         })
       );
     }
@@ -288,7 +279,7 @@ const StoredProcedurePage = () => {
 
   const onTierUpdate = useCallback(
     async (newTier?: string) => {
-      if (storedProcedures) {
+      if (storedProcedure) {
         const tierTag: StoredProcedure['tags'] = newTier
           ? [
               ...getTagsWithoutTier(tags ?? []),
@@ -300,14 +291,14 @@ const StoredProcedurePage = () => {
             ]
           : getTagsWithoutTier(tags ?? []);
         const updatedDetails = {
-          ...storedProcedures,
+          ...storedProcedure,
           tags: tierTag,
         };
 
-        await handleStoreProceduresUpdate(updatedDetails, 'tags');
+        await handleStoreProcedureUpdate(updatedDetails, 'tags');
       }
     },
-    [storedProcedures, tags]
+    [storedProcedure, tags]
   );
 
   const afterDeleteAction = useCallback(
@@ -317,20 +308,19 @@ const StoredProcedurePage = () => {
   );
 
   useEffect(() => {
-    if (storedProceduresFQN) {
+    if (storedProcedureFQN) {
       fetchResourcePermission();
     }
-  }, [storedProceduresFQN]);
+  }, [storedProcedureFQN]);
 
   useEffect(() => {
     if (
-      storedProceduresPermissions.ViewAll ||
-      storedProceduresPermissions.ViewBasic
+      storedProcedurePermissions.ViewAll ||
+      storedProcedurePermissions.ViewBasic
     ) {
       fetchStoredProceduresDetails();
-      // getEntityFeedCount();
     }
-  }, [storedProceduresFQN, storedProceduresPermissions]);
+  }, [storedProcedureFQN, storedProcedurePermissions]);
 
   if (isLoading) {
     return <Loader />;
@@ -338,30 +328,25 @@ const StoredProcedurePage = () => {
 
   if (
     !(
-      storedProceduresPermissions.ViewAll ||
-      storedProceduresPermissions.ViewBasic
+      storedProcedurePermissions.ViewAll || storedProcedurePermissions.ViewBasic
     )
   ) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
-  if (!storedProcedures) {
-    return <ErrorPlaceHolder className="m-0" />;
+  if (!storedProcedure) {
+    return <ErrorPlaceHolder />;
   }
 
   return (
-    <PageLayoutV1
-      className="bg-white"
-      pageTitle="storedProcedures details"
-      title="storedProcedures details">
+    <PageLayoutV1 className="bg-white" pageTitle={t('label.stored-procedure')}>
       <Row gutter={[0, 12]}>
-        {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
-            dataAsset={storedProcedures}
+            dataAsset={storedProcedure}
             entityType={EntityType.STORED_PROCEDURE}
-            permissions={storedProceduresPermissions}
+            permissions={storedProcedurePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollow}
             onOwnerUpdate={handleUpdateOwner}

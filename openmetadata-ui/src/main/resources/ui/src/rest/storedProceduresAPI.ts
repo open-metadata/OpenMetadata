@@ -19,6 +19,7 @@ import { Include } from 'generated/type/include';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from 'utils/APIUtils';
+import { ListDataModelParams } from './dashboardAPI';
 import APIClient from './index';
 
 const URL = '/storedProcedures';
@@ -29,15 +30,6 @@ const configOptionsForPatch = {
 
 const configOptions = {
   headers: { 'Content-type': 'application/json' },
-};
-
-export type ListDataModelParams = {
-  service?: string;
-  fields?: string;
-  after?: string;
-  before?: string;
-  include?: Include;
-  limit?: number;
 };
 
 export const getStoredProceduresList = async (params?: ListDataModelParams) => {

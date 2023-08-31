@@ -53,7 +53,7 @@ import {
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
-  getStoredProceduresDetailsPath,
+  getStoredProcedureDetailsPath,
   getTableDetailsPath,
   getTableTabPath,
   getTagsDetailsPath,
@@ -251,7 +251,7 @@ export const getEntityLink = (
       return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.STORED_PROCEDURE:
-      return getStoredProceduresDetailsPath(getDecodedFqn(fullyQualifiedName));
+      return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(

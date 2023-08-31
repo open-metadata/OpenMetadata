@@ -137,7 +137,7 @@ export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dashboardDataModelFQN';
-export const PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN = ':storedProceduresFQN';
+export const PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN = ':storedProcedureFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -260,9 +260,9 @@ export const ROUTES = {
   CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   CONTAINER_DETAILS_WITH_SUB_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  STORED_PROCEDURE_DETAILS: `/storedProcedures/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}`,
-  STORED_PROCEDURE_DETAILS_WITH_TAB: `/storedProcedures/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  STORED_PROCEDURE_DETAILS_WITH_SUB_TAB: `/storedProcedures/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  STORED_PROCEDURE_DETAILS: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}`,
+  STORED_PROCEDURE_DETAILS_WITH_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  STORED_PROCEDURE_DETAILS_WITH_SUB_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
@@ -352,14 +352,14 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
 
-export const getStoredProceduresDetailsPath = (
-  storedProceduresFQN: string,
+export const getStoredProcedureDetailsPath = (
+  storedProcedureFQN: string,
   columnName?: string
 ) => {
   let path = ROUTES.STORED_PROCEDURE_DETAILS;
   path = path.replace(
     PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN,
-    getEncodedFqn(storedProceduresFQN)
+    getEncodedFqn(storedProcedureFQN)
   );
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
