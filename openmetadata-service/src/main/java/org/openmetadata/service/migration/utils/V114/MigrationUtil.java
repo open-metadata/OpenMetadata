@@ -23,6 +23,18 @@ public class MigrationUtil {
     /* Cannot create object  util class*/
   }
 
+  /**
+   * Step 1: re-run the fix for FQN to catch any issues from previous release where we were quoting the FQN Step 2:
+   * Group all the testCases with the table. We will create a Map with Table FQN as the key and all the test cases
+   * belonging to that Table Step 3: Iterate through the Map keySet, which is table names. For each table name we create
+   * a executable test suite FQN Step 4: Fetch executable testSuite using step 3 FQN Step 5: Iterate through the test
+   * case list associated with the current table FQN in the loop Step 6: for each test case fetch TestSuite
+   * relationships Step 7: Iterate through the testSuite relation to check if the executableTestSuite FQN matches. If it
+   * matches there exists a relation from testCase to a executable Test suite Step 8: If we can't find a match, create a
+   * relationship.
+   *
+   * @param collectionDAO
+   */
   public static void fixTestSuites(CollectionDAO collectionDAO) {
     // Fix any FQN issues for executable TestSuite
     TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
@@ -62,7 +74,7 @@ public class MigrationUtil {
               }
             } catch (EntityNotFoundException ex) {
               // if testsuite cannot be retrieved but the relation exists, then this is orphaned realtion, we will
-              // delete the realtion
+              // delete the relation
               testSuiteRepository.deleteRelationship(
                   existingTestSuiteRel.getId(), TEST_SUITE, testCase.getId(), TEST_CASE, Relationship.CONTAINS);
             }

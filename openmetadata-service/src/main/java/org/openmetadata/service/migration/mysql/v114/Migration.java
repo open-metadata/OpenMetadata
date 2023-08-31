@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.mysql.v114;
 
+import static org.openmetadata.service.migration.utils.V112.MigrationUtil.lowerCaseUserNameAndEmail;
 import static org.openmetadata.service.migration.utils.V114.MigrationUtil.fixTestSuites;
 
 import lombok.SneakyThrows;
@@ -25,5 +26,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     fixTestSuites(collectionDAO);
+    lowerCaseUserNameAndEmail(collectionDAO);
   }
 }

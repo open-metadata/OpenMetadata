@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.util.*;
 import lombok.SneakyThrows;
@@ -68,7 +69,6 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -153,55 +153,60 @@ public class MigrationUtil {
     }
     while (true) {
       // Read from Database
-      List<String> jsons = dao.migrationListAfterWithOffset(limitParam, nameHashColumn);
-      LOG.debug("[{}]Read a Batch of Size: {}", dao.getTableName(), jsons.size());
-      if (jsons.isEmpty()) {
+      try {
+        List<String> jsons = dao.migrationListAfterWithOffset(limitParam, nameHashColumn);
+        LOG.debug("[{}]Read a Batch of Size: {}", dao.getTableName(), jsons.size());
+        if (jsons.isEmpty()) {
+          break;
+        }
+        // Process Update
+        for (String json : jsons) {
+          // Update the Statements to Database
+          T entity = JsonUtils.readValue(json, clazz);
+          try {
+            String hash;
+            if (entity.getFullyQualifiedName() != null) {
+              hash =
+                  withName
+                      ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
+                      : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+            } else {
+              LOG.info(
+                  "Failed in creating FQN Hash for Entity Name : {}, since the FQN is null. Auto Correcting.",
+                  entity.getName());
+              hash =
+                  withName
+                      ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getName()))
+                      : FullyQualifiedName.buildHash(entity.getName());
+              entity.setFullyQualifiedName(entity.getName());
+              dao.update(entity.getId(), entity.getName(), JsonUtils.pojoToJson(entity));
+            }
+            int result =
+                handle
+                    .createUpdate(updateSql)
+                    .bind("nameHashColumnValue", hash)
+                    .bind("id", entity.getId().toString())
+                    .execute();
+            if (result <= 0) {
+              LOG.error("No Rows Affected for Updating Hash with Entity Name : {}", entity.getFullyQualifiedName());
+            }
+          } catch (Exception ex) {
+            LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
+          }
+        }
+      } catch (Exception ex) {
+        LOG.warn("Failed to list the entities, they might already migrated ", ex);
         break;
       }
-      // Process Update
-      for (String json : jsons) {
-        // Update the Statements to Database
-        T entity = JsonUtils.readValue(json, clazz);
-        try {
-          String hash;
-          if (entity.getFullyQualifiedName() != null) {
-            hash =
-                withName
-                    ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
-                    : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-          } else {
-            LOG.info(
-                "Failed in creating FQN Hash for Entity Name : {}, since the FQN is null. Auto Correcting.",
-                entity.getName());
-            hash =
-                withName
-                    ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getName()))
-                    : FullyQualifiedName.buildHash(entity.getName());
-            entity.setFullyQualifiedName(entity.getName());
-            dao.update(entity.getId(), entity.getName(), JsonUtils.pojoToJson(entity));
-          }
-          int result =
-              handle
-                  .createUpdate(updateSql)
-                  .bind("nameHashColumnValue", hash)
-                  .bind("id", entity.getId().toString())
-                  .execute();
-          if (result <= 0) {
-            LOG.error("No Rows Affected for Updating Hash with Entity Name : {}", entity.getFullyQualifiedName());
-          }
-        } catch (Exception ex) {
-          LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
-        }
-      }
+      LOG.debug("End Migration for table : {}", dao.getTableName());
     }
-    LOG.debug("End Migration for table : {}", dao.getTableName());
   }
 
   public static MigrationDAO.ServerMigrationSQLTable buildServerMigrationTable(String version, String statement) {
     MigrationDAO.ServerMigrationSQLTable result = new MigrationDAO.ServerMigrationSQLTable();
     result.setVersion(String.valueOf(version));
     result.setSqlStatement(statement);
-    result.setCheckSum(EntityUtil.hash(statement));
+    result.setCheckSum(hash(statement));
     return result;
   }
 
@@ -402,11 +407,13 @@ public class MigrationUtil {
     if (!nullOrEmpty(queryList)) {
       for (String sql : queryList) {
         try {
-          handle.execute(sql);
-          migrationDAO.upsertServerMigrationSQL(version, sql, EntityUtil.hash(sql));
+          String previouslyRanSql = migrationDAO.getSqlQuery(hash(sql), version);
+          if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
+            handle.execute(sql);
+            migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
+          }
         } catch (Exception e) {
           LOG.error(String.format("Failed to run sql %s due to %s", sql, e));
-          throw e;
         }
       }
     }
@@ -480,9 +487,13 @@ public class MigrationUtil {
                 .withExecutable(true)
                 .withFullyQualifiedName(nativeTestSuiteFqn);
         testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
-        testSuiteRepository
-            .getDao()
-            .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
+        try {
+          testSuiteRepository
+              .getDao()
+              .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
+        } catch (Exception ex) {
+          LOG.warn("TestSuite %s exists".format(nativeTestSuiteFqn));
+        }
         // add relationship between executable TestSuite with Table
         testSuiteRepository.addRelationship(
             newExecutableTestSuite.getExecutableEntityReference().getId(),
