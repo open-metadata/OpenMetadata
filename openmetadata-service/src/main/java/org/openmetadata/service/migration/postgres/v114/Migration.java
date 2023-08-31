@@ -1,7 +1,7 @@
-package org.openmetadata.service.migration.postgres.v112;
+package org.openmetadata.service.migration.postgres.v114;
 
-import static org.openmetadata.service.migration.utils.V112.MigrationUtil.fixExecutableTestSuiteFQN;
 import static org.openmetadata.service.migration.utils.V112.MigrationUtil.lowerCaseUserNameAndEmail;
+import static org.openmetadata.service.migration.utils.V114.MigrationUtil.fixTestSuites;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +29,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    // Run Data Migration to Remove the quoted Fqn`
-    fixExecutableTestSuiteFQN(collectionDAO);
-    // Run UserName Migration to make lowercase
+    fixTestSuites(collectionDAO);
     lowerCaseUserNameAndEmail(collectionDAO);
   }
 }
