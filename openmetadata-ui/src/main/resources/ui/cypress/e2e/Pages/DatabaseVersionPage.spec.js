@@ -87,7 +87,7 @@ describe(`Database version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -137,7 +137,7 @@ describe(`Database version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -171,7 +171,7 @@ describe(`Database version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -235,7 +235,7 @@ describe(`Database version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -299,7 +299,7 @@ describe(`Database version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 

@@ -104,7 +104,7 @@ export const getDatabseSchemaTable = (
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
           }}
           pagination={false}
-          rowKey="name"
+          rowKey="id"
           size="small"
         />
         {Boolean(

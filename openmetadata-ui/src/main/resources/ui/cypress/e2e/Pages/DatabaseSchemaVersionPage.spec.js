@@ -35,6 +35,7 @@ import {
 const serviceDetails = SERVICE_DETAILS_FOR_VERSION_TEST.Database;
 
 describe(`Database schema version page should work properly`, () => {
+  let databaseId;
   let databaseSchemaId;
   let databaseSchemaFQN;
 
@@ -63,6 +64,8 @@ describe(`Database schema version page should work properly`, () => {
       body: DATABASE_DETAILS_FOR_VERSION_TEST,
     }).then((response) => {
       expect(response.status).to.eq(201);
+
+      databaseId = response.body.id;
     });
 
     // Create Database Schema
@@ -98,11 +101,11 @@ describe(`Database schema version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
-    cy.get(`[data-row-key="${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseSchemaId}"]`)
       .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -152,11 +155,11 @@ describe(`Database schema version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
-    cy.get(`[data-row-key="${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseSchemaId}"]`)
       .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -194,11 +197,11 @@ describe(`Database schema version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
-    cy.get(`[data-row-key="${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseSchemaId}"]`)
       .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -262,11 +265,11 @@ describe(`Database schema version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
-    cy.get(`[data-row-key="${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseSchemaId}"]`)
       .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
@@ -330,11 +333,11 @@ describe(`Database schema version page should work properly`, () => {
       serviceDetails.serviceName
     );
 
-    cy.get(`[data-row-key="${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseId}"]`)
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
-    cy.get(`[data-row-key="${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`)
+    cy.get(`[data-row-key="${databaseSchemaId}"]`)
       .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
       .click();
 
