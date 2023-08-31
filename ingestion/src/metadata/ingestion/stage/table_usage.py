@@ -93,6 +93,7 @@ class TableUsageStage(Stage[QueryParserData]):
                 CreateQueryRequest(
                     query=record.sql,
                     query_type=record.query_type,
+                    is_life_cycle_query=record.is_life_cycle_query,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,
@@ -103,6 +104,7 @@ class TableUsageStage(Stage[QueryParserData]):
                 CreateQueryRequest(
                     query=record.sql,
                     query_type=record.query_type,
+                    is_life_cycle_query=record.is_life_cycle_query,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,

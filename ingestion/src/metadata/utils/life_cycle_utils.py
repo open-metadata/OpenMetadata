@@ -13,11 +13,10 @@
 Life Cycle utils module
 """
 
-import traceback
-from typing import Iterable, Optional
-
-from metadata.utils.logger import utils_logger
 import re
+import traceback
+from typing import Any, Optional
+
 from metadata.generated.schema.entity.utils.lifeCycle import (
     Accessed,
     Created,
@@ -25,12 +24,13 @@ from metadata.generated.schema.entity.utils.lifeCycle import (
     LifeCycleProperties,
     Updated,
 )
+from metadata.utils.logger import utils_logger
 
 QUERY_TYPES_DICT = {
     Created: ["CREATE"],
-    Updated: ['DELETE', 'TRUNCATE_TABLE', 'UPDATE', 'ALTER', 'INSERT', 'MERGE'],
-    Accessed: ['SHOW', 'DESCRIBE', 'SELECT'],
-    Deleted: ["DROP"]
+    Updated: ["DELETE", "TRUNCATE_TABLE", "UPDATE", "ALTER", "INSERT", "MERGE"],
+    Accessed: ["SHOW", "DESCRIBE", "SELECT"],
+    Deleted: ["DROP"],
 }
 
 
@@ -43,35 +43,36 @@ drop_pattern = re.compile(r"^\s*DROP", re.IGNORECASE)
 
 logger = utils_logger()
 
+
 def init_empty_life_cycle_properties() -> LifeCycleProperties:
     """
     Method which returns empty LifeCycleProperties object
     """
-    return LifeCycleProperties(
-        created=None, updated=None, deleted=None, accessed=None
-    )
+    return LifeCycleProperties(created=None, updated=None, deleted=None, accessed=None)
 
-def _get_query_type_from_name(create_query) -> Optional[str]:
+
+def _get_query_type_from_name(create_query) -> Optional[Any]:
     """
     Method to get the query type from query_type field
     """
     for key, value in QUERY_TYPES_DICT.items():
-        if create_query.query_type in value:
-            return type(key)
+        if create_query.query_type.upper() in value:
+            return key
     return None
 
-def _get_query_type_from_regex(create_query) -> Optional[str]:
+
+def _get_query_type_from_regex(create_query) -> Optional[Any]:
     """
     Method to get the query type from regex
     """
     if re.match(create_pattern, create_query.query.__root__):
-        return type(Created)
-    elif re.match(update_pattern, create_query.query.__root__):
-        return type(Updated)
-    elif re.match(drop_pattern, create_query.query.__root__):
-        return type(Deleted)
-    elif re.match(select_pattern, create_query.query.__root__):
-        return type(Accessed)
+        return Created
+    if re.match(update_pattern, create_query.query.__root__):
+        return Updated
+    if re.match(drop_pattern, create_query.query.__root__):
+        return Deleted
+    if re.match(select_pattern, create_query.query.__root__):
+        return Accessed
     return None
 
 
@@ -83,7 +84,7 @@ def get_query_type(create_query) -> Optional[str]:
         if create_query.query_type:
             return _get_query_type_from_name(create_query=create_query)
         return _get_query_type_from_regex(create_query=create_query)
-        
+
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Unexpected exception get the query type: {exc}")

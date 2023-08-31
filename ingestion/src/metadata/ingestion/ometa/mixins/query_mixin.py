@@ -42,15 +42,18 @@ class OMetaQueryMixin:
         :param queries: CreateQueryRequest to add
         """
         for create_query in queries:
-            query = self.client.put(self.get_suffix(Query), data=create_query.json())
-            if query and query.get("id"):
-                table_ref = EntityReference(id=entity.id.__root__, type="table")
-                # convert object to json array string
-                table_ref_json = "[" + table_ref.json() + "]"
-                self.client.put(
-                    f"{self.get_suffix(Query)}/{query.get('id')}/usage",
-                    data=table_ref_json,
+            if not create_query.is_life_cycle_query:
+                query = self.client.put(
+                    self.get_suffix(Query), data=create_query.json()
                 )
+                if query and query.get("id"):
+                    table_ref = EntityReference(id=entity.id.__root__, type="table")
+                    # convert object to json array string
+                    table_ref_json = "[" + table_ref.json() + "]"
+                    self.client.put(
+                        f"{self.get_suffix(Query)}/{query.get('id')}/usage",
+                        data=table_ref_json,
+                    )
 
     def get_entity_queries(
         self, entity_id: Union[Uuid, str], fields: Optional[List[str]] = None

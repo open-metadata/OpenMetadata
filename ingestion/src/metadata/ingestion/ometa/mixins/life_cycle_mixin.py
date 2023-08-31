@@ -17,6 +17,7 @@ import traceback
 from typing import Optional, Type, TypeVar
 
 from pydantic import BaseModel
+
 from metadata.generated.schema.entity.utils.lifeCycle import LifeCycleProperties
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
@@ -61,11 +62,6 @@ class LifeCycleMixin:
         if resp:
             try:
                 return LifeCycleProperties(**resp["lifeCycle"])
-            except UnicodeError as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unicode Error parsing the life cycle data response from {entity.fullyQualifiedName.__root__}: {err}"
-                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(

@@ -32,7 +32,6 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
     TableProfilerConfig,
 )
-from metadata.generated.schema.entity.utils.lifeCycle import LifeCycleProperties
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST

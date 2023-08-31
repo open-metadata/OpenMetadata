@@ -34,13 +34,7 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.utils.lifeCycle import (
-    Accessed,
-    Created,
-    Deleted,
-    LifeCycleProperties,
-    Updated,
-)
+from metadata.generated.schema.entity.utils.lifeCycle import Created, Deleted
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -81,10 +75,10 @@ from metadata.ingestion.source.database.snowflake.utils import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
-from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")

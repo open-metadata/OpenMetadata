@@ -15,6 +15,10 @@
           "description": "SQL query type",
           "type": "string"
         },
+        "is_life_cycle_query": {
+          "description": "Flag to check if query is to used for life cycle properties",
+          "type": "boolean"
+        },
         "userName": {
           "description": "Name of the user that executed the SQL query",
           "type": "string"

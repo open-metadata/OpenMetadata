@@ -43,7 +43,6 @@ from metadata.generated.schema.entity.utils.lifeCycle import (
     Accessed,
     Created,
     Deleted,
-    LifeCycleProperties,
     Updated,
 )
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
@@ -57,8 +56,11 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
+from metadata.utils.life_cycle_utils import (
+    get_query_type,
+    init_empty_life_cycle_properties,
+)
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties, get_query_type
 
 logger = ingestion_logger()
 
@@ -333,7 +335,7 @@ class MetadataUsageBulkSink(BulkSink):
         """
         try:
             life_cycle = init_empty_life_cycle_properties()
-            
+
             for create_query in table_usage.sqlQueries:
                 user = None
                 if create_query.users:
@@ -341,40 +343,36 @@ class MetadataUsageBulkSink(BulkSink):
                         entity=User, fqn=create_query.users[0]
                     )
                 query_type = get_query_type(create_query=create_query)
-                if (
-                    query_type == type(Created) and
-                    (not life_cycle.created
-                    or life_cycle.created.created_at < create_query.queryDate)
+                if query_type == Created and (
+                    not life_cycle.created
+                    or life_cycle.created.created_at < create_query.queryDate
                 ):
                     life_cycle.created = Created(
                         created_at=create_query.queryDate, created_by=user
                     )
-                elif (
-                    query_type == type(Updated) and
-                    (not life_cycle.updated
-                    or life_cycle.updated.updated_at < create_query.queryDate)
+                elif query_type == Updated and (
+                    not life_cycle.updated
+                    or life_cycle.updated.updated_at < create_query.queryDate
                 ):
                     life_cycle.updated = Updated(
                         updated_at=create_query.queryDate, updated_by=user
                     )
-                elif re.match(drop_pattern, create_query.query.__root__):
-                    if (
-                        not life_cycle.deleted
-                        or life_cycle.deleted.deleted_at < create_query.queryDate
-                    ):
-                        life_cycle.deleted = Deleted(
-                            deleted_at=create_query.queryDate, deleted_by=user
-                        )
-                elif re.match(select_pattern, create_query.query.__root__):
-                    if (
-                        not life_cycle.accessed
-                        or life_cycle.accessed.accessed_at < create_query.queryDate
-                    ):
-                        life_cycle.accessed = Accessed(
-                            accessed_at=create_query.queryDate, accessed_by=user
-                        )
+                elif query_type == Deleted and (
+                    not life_cycle.deleted
+                    or life_cycle.deleted.deleted_at < create_query.queryDate
+                ):
+                    life_cycle.deleted = Deleted(
+                        deleted_at=create_query.queryDate, deleted_by=user
+                    )
+                elif query_type == Accessed and (
+                    not life_cycle.accessed
+                    or life_cycle.accessed.accessed_at < create_query.queryDate
+                ):
+                    life_cycle.accessed = Accessed(
+                        accessed_at=create_query.queryDate, accessed_by=user
+                    )
             self.metadata.ingest_life_cycle_data(
-                table=table_entity, life_cycle_data=life_cycle
+                entity=table_entity, life_cycle_data=life_cycle
             )
         except Exception as err:
             logger.debug(traceback.format_exc())

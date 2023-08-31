@@ -29,5 +29,15 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
         AND QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY',
         'ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER',
         'DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','ALTER_SESSION',
-        'COPY','COMMIT','CREATE_TABLE','PUT_FILES','GET_FILES', 'CREATE_TABLE_AS_SELECT')
+        'COPY','COMMIT','CREATE_TABLE','PUT_FILES','GET_FILES', 'CREATE_TABLE_AS_SELECT','SHOW', 'DESCRIBE')
     """
+
+    life_cycle_filters = [
+        "DROP",
+        "DELETE",
+        "TRUNCATE_TABLE",
+        "UPDATE",
+        "ALTER",
+        "INSERT",
+        "MERGE",
+    ]
