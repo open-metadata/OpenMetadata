@@ -298,7 +298,7 @@ class DagsterUnitTest(TestCase):
         )
         pipelines_list = []
         for result in results:
-            pipelines_list.append(result)
+            pipelines_list.append(result.right)
 
         for _, (expected, original) in enumerate(
             zip(EXPECTED_CREATED_PIPELINES, pipelines_list)

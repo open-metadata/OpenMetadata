@@ -68,7 +68,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void prepare(Classification entity) {
+  public void prepare(Classification entity, boolean update) {
     /* Nothing to do */
   }
 

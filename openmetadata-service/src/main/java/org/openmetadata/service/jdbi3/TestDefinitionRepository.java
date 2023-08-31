@@ -30,7 +30,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public void prepare(TestDefinition entity) {
+  public void prepare(TestDefinition entity, boolean update) {
     // validate test platforms
     if (CommonUtil.nullOrEmpty(entity.getTestPlatforms())) {
       throw new IllegalArgumentException("testPlatforms must not be empty");

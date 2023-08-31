@@ -142,7 +142,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void prepare(MlModel mlModel) {
+  public void prepare(MlModel mlModel, boolean update) {
     populateService(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());

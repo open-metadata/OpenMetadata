@@ -32,8 +32,7 @@ from metadata.generated.schema.system.eventPublisherJob import (
     RunMode,
     Status,
 )
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ingestion_logger
@@ -41,10 +40,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class MetadataElasticsearchSource(Source[Entity]):
+class MetadataElasticsearchSource(Source):
     """
     Metadata Elasticsearch Source
     Used for metadata to ES pipeline
+
+    This job should eventually become an automation workflow
+    triggered externally rather than a connector.
     """
 
     config: WorkflowSource
@@ -65,7 +67,7 @@ class MetadataElasticsearchSource(Source[Entity]):
         self.reindex_job: Optional[EventPublisherResult] = None
 
     def prepare(self):
-        pass
+        """Nothing to prepare"""
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -78,9 +80,7 @@ class MetadataElasticsearchSource(Source[Entity]):
         return cls(config, metadata_config)
 
     def create_reindex_job(self, job_config: CreateEventPublisherJob):
-        """
-        Patch table constraints
-        """
+        """Patch table constraints"""
         try:
             self.reindex_job = self.metadata.reindex_es(config=job_config)
             logger.debug("Successfully created the elasticsearch reindex job")
@@ -90,7 +90,7 @@ class MetadataElasticsearchSource(Source[Entity]):
                 f"Unexpected error while triggering elasticsearch reindex job: {exc}"
             )
 
-    def next_record(self) -> None:
+    def _iter(self, *_, **__):
         job_config = CreateEventPublisherJob(
             name=self.config.serviceName,
             publisherType=PublisherType.elasticSearch,
