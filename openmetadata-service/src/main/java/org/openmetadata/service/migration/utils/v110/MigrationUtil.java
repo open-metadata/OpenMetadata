@@ -479,7 +479,7 @@ public class MigrationUtil {
                     "ingestion-bot")
                 .withExecutable(true)
                 .withFullyQualifiedName(nativeTestSuiteFqn);
-        testSuiteRepository.prepareInternal(newExecutableTestSuite);
+        testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
         testSuiteRepository
             .getDao()
             .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
