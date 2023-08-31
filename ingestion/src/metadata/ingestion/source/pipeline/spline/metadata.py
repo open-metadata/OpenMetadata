@@ -33,9 +33,9 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.spline.models import ExecutionEvent
@@ -175,6 +175,7 @@ class SplineSource(PipelineServiceSource):
             and lineage_details.executionPlan
             and lineage_details.executionPlan.inputs
             and lineage_details.executionPlan.output
+            and lineage_details.executionPlan.extra.attributes
         ):
             target_to_sources_map = {}
             for attr_id in lineage_details.executionPlan.extra.attributes:
@@ -227,26 +228,25 @@ class SplineSource(PipelineServiceSource):
                                     pipeline=EntityReference(
                                         id=self.context.pipeline.id.__root__,
                                         type="pipeline",
-                                    )
+                                    ),
+                                    columnsLineage=[
+                                        ColumnLineage(
+                                            fromColumns=[
+                                                get_column_fqn(from_table, src_col)
+                                                for src_col in source_columns
+                                            ],
+                                            toColumn=get_column_fqn(
+                                                to_table, target_column
+                                            ),
+                                        )
+                                        for target_column, source_columns in target_to_sources_map.items()
+                                    ],
                                 ),
-                              columnsLineage=[
-                                    ColumnLineage(
-                                        fromColumns=[
-                                            get_column_fqn(from_table, src_col)
-                                            for src_col in source_columns
-                                        ],
-                                        toColumn=get_column_fqn(
-                                            to_table, target_column
-                                        ),
-                                    )
-                                    for target_column, source_columns in target_to_sources_map.items()
-                                ],
-                            ),
                                 fromEntity=EntityReference(
                                     id=from_table.id, type="table"
                                 ),
                                 toEntity=EntityReference(id=to_table.id, type="table"),
-                            )
+                            ),
                         )
                     )
 

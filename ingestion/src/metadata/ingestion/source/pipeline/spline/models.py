@@ -52,12 +52,12 @@ class ExecutionPlan(BaseModel):
     id: Optional[str] = Field(..., alias="_id")
     name: Optional[str]
     inputs: Optional[List[Inputs]] = []
-    output: Optional[Output]
-    extra: Optional[Extra]
+    output: Optional[Output] = None
+    extra: Optional[Extra] = None
 
 
 class ExecutionDetail(BaseModel):
-    executionPlan: Optional[ExecutionPlan]
+    executionPlan: Optional[ExecutionPlan] = None
 
 
 class ColNodes(BaseModel):
@@ -77,4 +77,4 @@ class Lineage(BaseModel):
 
 
 class AttributeDetail(BaseModel):
-    lineage: Optional[Lineage]
+    lineage: Optional[Lineage] = None
