@@ -1,6 +1,6 @@
 source:
   type: redshift
-  serviceName: local_redshift
+  serviceName: local_redshift_metabase
   serviceConnection:
     config:
       hostPort: $E2E_REDSHIFT_HOST_PORT
