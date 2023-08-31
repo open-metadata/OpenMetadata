@@ -35,6 +35,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.spline.models import ExecutionEvent
@@ -81,7 +82,7 @@ class SplineSource(PipelineServiceSource):
 
     def yield_pipeline(
         self, pipeline_details: ExecutionEvent
-    ) -> Iterable[CreatePipelineRequest]:
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from airbyte
@@ -100,15 +101,13 @@ class SplineSource(PipelineServiceSource):
             tasks=self.get_connections_jobs(pipeline_details, connection_url),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
-        yield pipeline_request
+        yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: ExecutionEvent
-    ) -> Optional[OMetaPipelineStatus]:
-        """
-        pipeline status not supported for spline connector
-        """
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """pipeline status not supported for spline connector"""
 
     def _get_table_entity(
         self, database_name: str, schema_name: str, table_name: str
@@ -162,7 +161,7 @@ class SplineSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(  # pylint: disable=too-many-locals
         self, pipeline_details: ExecutionEvent
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse all the executions available and create lineage
         """
@@ -221,14 +220,16 @@ class SplineSource(PipelineServiceSource):
                     else None
                 )
                 if from_table and to_table:
-                    yield AddLineageRequest(
-                        edge=EntitiesEdge(
-                            lineageDetails=LineageDetails(
-                                pipeline=EntityReference(
-                                    id=self.context.pipeline.id.__root__,
-                                    type="pipeline",
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                lineageDetails=LineageDetails(
+                                    pipeline=EntityReference(
+                                        id=self.context.pipeline.id.__root__,
+                                        type="pipeline",
+                                    )
                                 ),
-                                columnsLineage=[
+                              columnsLineage=[
                                     ColumnLineage(
                                         fromColumns=[
                                             get_column_fqn(from_table, src_col)
@@ -241,21 +242,18 @@ class SplineSource(PipelineServiceSource):
                                     for target_column, source_columns in target_to_sources_map.items()
                                 ],
                             ),
-                            fromEntity=EntityReference(id=from_table.id, type="table"),
-                            toEntity=EntityReference(id=to_table.id, type="table"),
+                                fromEntity=EntityReference(
+                                    id=from_table.id, type="table"
+                                ),
+                                toEntity=EntityReference(id=to_table.id, type="table"),
+                            )
                         )
                     )
 
     def get_pipelines_list(self) -> Iterable[ExecutionEvent]:
-        """
-        Get List of all pipelines
-        """
         for pipelines in self.client.get_pipelines() or []:
             for pipeline in pipelines.items or []:
                 yield pipeline
 
     def get_pipeline_name(self, pipeline_details: ExecutionEvent) -> str:
-        """
-        Get Pipeline Name for filtering
-        """
         return pipeline_details.applicationName

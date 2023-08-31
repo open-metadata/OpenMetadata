@@ -14,7 +14,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { containerVersionMockProps } from '../../mocks/ContainerVersion.mock';
 import ContainerVersion from './ContainerVersion.component';
 
@@ -41,10 +40,6 @@ jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('components/common/description/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
-);
-
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('components/Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
@@ -137,34 +132,5 @@ describe('ContainerVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/container/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
-  });
-
-  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
-    await act(async () => {
-      render(
-        <ContainerVersion
-          {...containerVersionMockProps}
-          entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
-        />
-      );
-    });
-
-    const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
-    );
-    const versionTable = screen.getByText('VersionTable');
-    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
-
-    expect(customPropertyTabLabel).toBeInTheDocument();
-    expect(versionTable).toBeInTheDocument();
-    expect(errorPlaceHolder).toBeNull();
-
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
-
-    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });

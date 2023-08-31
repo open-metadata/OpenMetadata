@@ -29,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.dashboard.domodashboard.metadata import (
     DomoDashboardDetails,
@@ -163,8 +164,8 @@ class DomoDashboardUnitTest(TestCase):
         dashboard_list = []
         results = self.domodashboard.yield_dashboard(MOCK_DASHBOARD)
         for result in results:
-            if isinstance(result, CreateDashboardRequest):
-                dashboard_list.append(result)
+            if isinstance(result, Either) and result.right:
+                dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     def test_dashboard_name(self):
@@ -181,8 +182,8 @@ class DomoDashboardUnitTest(TestCase):
             results = self.domodashboard.yield_dashboard_chart(MOCK_DASHBOARD)
             chart_list = []
             for result in results:
-                if isinstance(result, CreateChartRequest):
-                    chart_list.append(result)
+                if isinstance(result, Either) and result.right:
+                    chart_list.append(result.right)
             for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
                 self.assertEqual(expected, original)
 

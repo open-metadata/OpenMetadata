@@ -140,6 +140,9 @@ const EntityVersionPage = withSuspenseFallback(
     () => import('pages/EntityVersionPage/EntityVersionPage.component')
   )
 );
+const ServiceVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/ServiceVersionPage/ServiceVersionPage'))
+);
 const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/explore/ExplorePageV1.component'))
 );
@@ -341,6 +344,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
       <Route
         exact
         component={EntityVersionPage}

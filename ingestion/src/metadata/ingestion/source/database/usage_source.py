@@ -15,9 +15,10 @@ import csv
 import traceback
 from abc import ABC
 from datetime import datetime, timedelta
-from typing import Iterable, Optional
+from typing import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -31,7 +32,7 @@ class UsageSource(QueryParserSource, ABC):
     Parse a query log to extract a `TableQuery` object
     """
 
-    def yield_table_queries_from_logs(self) -> Optional[Iterable[TableQuery]]:
+    def yield_table_queries_from_logs(self) -> Iterable[TableQuery]:
         """
         Method to handle the usage from query logs
         """
@@ -68,7 +69,7 @@ class UsageSource(QueryParserSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to read queries form log file due to: {err}")
 
-    def get_table_query(self) -> Optional[Iterable[TableQuery]]:
+    def get_table_query(self) -> Iterable[TableQuery]:
         """
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data
@@ -81,7 +82,7 @@ class UsageSource(QueryParserSource, ABC):
     def format_query(self, query: str) -> str:
         return query.replace("\\n", "\n")
 
-    def yield_table_queries(self):
+    def yield_table_queries(self) -> Iterable[TableQuery]:
         """
         Given an Engine, iterate over the day range and
         query the results
@@ -128,7 +129,7 @@ class UsageSource(QueryParserSource, ABC):
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")
 
-    def next_record(self) -> Iterable[TableQuery]:
+    def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
         for table_queries in self.get_table_query():
             if table_queries:
-                yield table_queries
+                yield Either(right=table_queries)

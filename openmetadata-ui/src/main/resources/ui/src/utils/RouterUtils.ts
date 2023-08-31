@@ -471,3 +471,18 @@ export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
 
   return path;
 };
+
+export const getServiceVersionPath = (
+  serviceCategory: string,
+  serviceFQN: string,
+  version: string
+) => {
+  let path = ROUTES.SERVICE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};

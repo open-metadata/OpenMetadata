@@ -116,47 +116,46 @@ MOCK_JSON_TABLE_DATA = [
     {"name": "onkar", "age": 26, "is_married": True},
 ]
 
-MOCK_CREATE_TABLE = [
-    CreateTableRequest(
-        name="random_table",
-        tableType=TableType.Regular,
-        columns=[
-            Column(
-                name="name",
-                displayName="name",
-                dataType=DataType.STRING,
-                dataTypeDisplay=DataType.STRING.value,
-            ),
-            Column(
-                name="age",
-                displayName="age",
-                dataType=DataType.INT,
-                dataTypeDisplay=DataType.INT.value,
-            ),
-            Column(
-                name="is_married",
-                displayName="is_married",
-                dataType=DataType.BOOLEAN,
-                dataTypeDisplay=DataType.BOOLEAN.value,
-            ),
-            Column(
-                name="address",
-                displayName="address",
-                dataType=DataType.RECORD,
-                dataTypeDisplay=DataType.RECORD.value,
-                children=[
-                    Column(
-                        name="line",
-                        dataType=DataType.STRING,
-                        dataTypeDisplay=DataType.STRING.value,
-                    )
-                ],
-            ),
-        ],
-        tableConstraints=None,
-        databaseSchema="local_mongodb.default.default",
-    )
-]
+MOCK_CREATE_TABLE = CreateTableRequest(
+    name="random_table",
+    tableType=TableType.Regular,
+    columns=[
+        Column(
+            name="name",
+            displayName="name",
+            dataType=DataType.STRING,
+            dataTypeDisplay=DataType.STRING.value,
+        ),
+        Column(
+            name="age",
+            displayName="age",
+            dataType=DataType.INT,
+            dataTypeDisplay=DataType.INT.value,
+        ),
+        Column(
+            name="is_married",
+            displayName="is_married",
+            dataType=DataType.BOOLEAN,
+            dataTypeDisplay=DataType.BOOLEAN.value,
+        ),
+        Column(
+            name="address",
+            displayName="address",
+            dataType=DataType.RECORD,
+            dataTypeDisplay=DataType.RECORD.value,
+            children=[
+                Column(
+                    name="line",
+                    dataType=DataType.STRING,
+                    dataTypeDisplay=DataType.STRING.value,
+                )
+            ],
+        ),
+    ],
+    tableConstraints=None,
+    databaseSchema="local_mongodb.default.default",
+)
+
 
 EXPECTED_DATABASE_NAMES = ["default"]
 
@@ -229,6 +228,7 @@ class MongoDBUnitTest(TestCase):
         with patch.object(
             MongodbSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA
         ):
-            assert MOCK_CREATE_TABLE == list(
-                self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])
+            assert (
+                MOCK_CREATE_TABLE
+                == next(self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])).right
             )

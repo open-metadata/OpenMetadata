@@ -88,7 +88,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void prepare(DashboardDataModel dashboardDataModel) {
+  public void prepare(DashboardDataModel dashboardDataModel, boolean update) {
     DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());

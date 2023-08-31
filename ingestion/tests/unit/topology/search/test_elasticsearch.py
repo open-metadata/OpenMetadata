@@ -214,5 +214,5 @@ class ElasticSearchUnitTest(TestCase):
         self.es_source.context.__dict__["search_service"] = MOCK_SEARCH_SERVICE
 
     def test_partition_parse_columns(self):
-        actual_index = self.es_source.yield_search_index(MOCK_DETAILS)
-        self.assertEqual(list(actual_index), [EXPECTED_RESULT])
+        actual_index = next(self.es_source.yield_search_index(MOCK_DETAILS)).right
+        self.assertEqual(actual_index, EXPECTED_RESULT)

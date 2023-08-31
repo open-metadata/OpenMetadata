@@ -289,6 +289,10 @@ site_menu:
     url: /connectors/database/mongodb
   - category: Connectors / Database / MongoDB / Run Externally
     url: /connectors/database/mongodb/yaml
+  - category: Connectors / Database / Couchbase
+    url: /connectors/database/couchbase
+  - category: Connectors / Database / Couchbase / Run Externally
+    url: /connectors/database/couchbase/yaml  
   - category: Connectors / Database / MSSQL
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
@@ -1058,7 +1062,13 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodb/mongodbvalues
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MongoDBConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodbconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MssqlConnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / 
+  Couchbase
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/couchbase
+  CouchbaseConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/couchbaseconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database /   
+  MssqlConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mssqlconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MysqlConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mysqlconnection

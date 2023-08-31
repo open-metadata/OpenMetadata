@@ -22,7 +22,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.processor import Processor
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
@@ -65,14 +66,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
 
 
 class QueryParserProcessor(Processor):
-    """
-    Extension of the `Processor` class
-
-    Args:
-        config (QueryParserProcessorConfig):
-        metadata_config (MetadataServerConfig):
-        connection_type (str):
-    """
+    """Extension of the `Processor` class"""
 
     config: ConfigModel
 
@@ -95,9 +89,9 @@ class QueryParserProcessor(Processor):
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata_config, connection_type)
 
-    def process(  # pylint: disable=arguments-differ
+    def _run(  # pylint: disable=arguments-differ
         self, queries: TableQueries
-    ) -> Optional[QueryParserData]:
+    ) -> Optional[Either[QueryParserData]]:
         if queries and queries.queries:
             data = []
             for record in queries.queries:
@@ -109,11 +103,17 @@ class QueryParserProcessor(Processor):
                     if parsed_sql:
                         data.append(parsed_sql)
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error processing query [{record.query}]: {exc}")
-            return QueryParserData(parsedData=data)
+                    return Either(
+                        left=StackTraceError(
+                            name="Query",
+                            error=f"Error processing query [{record.query}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
+
+            return Either(right=QueryParserData(parsedData=data))
 
         return None
 
     def close(self):
-        pass
+        """Nothing to close"""

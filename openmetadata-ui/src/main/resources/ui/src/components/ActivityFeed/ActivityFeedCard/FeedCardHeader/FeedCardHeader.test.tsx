@@ -46,13 +46,6 @@ jest.mock('../../../../utils/TableUtils', () => ({
   getTagsWithoutTier: jest.fn(),
 }));
 
-jest.mock('../../../../utils/TimeUtils', () => ({
-  getDayTimeByTimeStamp: jest
-    .fn()
-    .mockImplementation(() => 'Jan 1, 1970 00:00 AM'),
-  getDateTimeFromMilliSeconds: jest.fn(),
-}));
-
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
@@ -91,7 +84,7 @@ describe('Test FeedHeader Component', () => {
     expect(entityTypeElement).not.toBeInTheDocument();
     expect(entityLinkElement).not.toBeInTheDocument();
     expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('Jan 1, 1970 00:00 AM');
+    expect(timeStampElement).toHaveTextContent('1 year ago');
   });
 
   it('Checks if the FeedHeader component has isEntityFeed as false', async () => {
@@ -119,7 +112,7 @@ describe('Test FeedHeader Component', () => {
     expect(entityTypeElement).toBeInTheDocument();
     expect(entityLinkElement).toBeInTheDocument();
     expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('Jan 1, 1970 00:00 AM');
+    expect(timeStampElement).toHaveTextContent('1 year ago');
   });
 
   it('Should show link text as `database.schema.table` if entity type is table', async () => {

@@ -14,7 +14,7 @@ Databricks pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List
 
 from pydantic import ValidationError
 
@@ -35,7 +35,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.databricksPi
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
@@ -76,22 +77,16 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return cls(config, metadata_config)
 
     def get_pipelines_list(self) -> Iterable[dict]:
-        """
-        Get List of all pipelines
-        """
         for workflow in self.client.list_jobs():
             yield workflow
 
     def get_pipeline_name(self, pipeline_details: dict) -> str:
-        """
-        Get Pipeline Name
-        """
         return pipeline_details["settings"].get("name")
 
-    def yield_pipeline(self, pipeline_details: Any) -> Iterable[CreatePipelineRequest]:
-        """
-        Method to Get Pipeline Entity
-        """
+    def yield_pipeline(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[CreatePipelineRequest]]:
+        """Method to Get Pipeline Entity"""
         self.context.job_id_list = []
         try:
             pipeline_request = CreatePipelineRequest(
@@ -101,23 +96,36 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 tasks=self.get_tasks(pipeline_details),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
-            yield pipeline_request
+            yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
 
         except TypeError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error building Databricks Pipeline information from {pipeline_details}."
-                f" There might be Databricks Jobs API version incompatibilities - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name="Pipeline",
+                    error=(
+                        f"Error building Databricks Pipeline information from {pipeline_details}."
+                        f" There might be Databricks Jobs API version incompatibilities - {err}"
+                    ),
+                    stack_trace=traceback.format_exc(),
+                )
             )
         except ValidationError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error building pydantic model for {pipeline_details} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name="Pipeline",
+                    error=f"Error building pydantic model for {pipeline_details} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
         except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Wild error ingesting pipeline {pipeline_details} - {err}")
+            yield Either(
+                left=StackTraceError(
+                    name="Pipeline",
+                    error=f"Wild error ingesting pipeline {pipeline_details} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_tasks(self, pipeline_details: dict) -> List[Task]:
         task_list = []
@@ -206,18 +214,22 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                 StatusType.Failed,
                             ),
                         )
-                        yield OMetaPipelineStatus(
-                            pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                            pipeline_status=pipeline_status,
+                        yield Either(
+                            right=OMetaPipelineStatus(
+                                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                                pipeline_status=pipeline_status,
+                            )
                         )
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Failed to yield pipeline status: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name=self.context.pipeline.fullyQualifiedName.__root__,
+                        error=f"Failed to yield pipeline status: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        """
-        Get lineage between pipeline and data sources
-        """
-        logger.info("Lineage is not yet supported on Databicks Pipelines")
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Get lineage between pipeline and data sources. Not Implemented."""

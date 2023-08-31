@@ -30,7 +30,7 @@ import {
   YAxis,
 } from 'recharts';
 import { axisTickFormatter, tooltipFormatter } from 'utils/ChartUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
+import { customFormatDateTime } from 'utils/date-time/DateTimeUtils';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
 const DataDistributionHistogram = ({
@@ -70,9 +70,9 @@ const DataDistributionHistogram = ({
           frequency,
         }));
 
-        const graphDate = getFormattedDateFromSeconds(
+        const graphDate = customFormatDateTime(
           columnProfile?.timestamp || 0,
-          'dd/MMM'
+          'MMM dd'
         );
 
         return (
