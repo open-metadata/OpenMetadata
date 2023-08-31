@@ -20,16 +20,16 @@ import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import './block-editor.less';
-import LinkModal, { LinkData } from './Components/LinkModal';
-import LinkPopup from './Components/LinkPopup';
+import BubbleMenu from './BubbleMenu/BubbleMenu';
 import { Hashtag } from './Extensions/hashtag';
-import hashtagSuggestion from './Extensions/hashtag/hashtagSuggestion';
+import { hashtagSuggestion } from './Extensions/hashtag/hashtagSuggestion';
 import { Mention } from './Extensions/mention';
-import mentionSuggestion from './Extensions/mention/mentionSuggestions';
-import SlashCommand from './Extensions/slash-command';
-import { getSuggestionItems } from './Extensions/slash-command/items';
-import renderItems from './Extensions/slash-command/renderItems';
-import BubbleMenu from './Menu/BubbleMenu';
+import { mentionSuggestion } from './Extensions/mention/mentionSuggestions';
+import SlashCommand from './Extensions/slashCommand';
+import { getSuggestionItems } from './Extensions/slashCommand/items';
+import renderItems from './Extensions/slashCommand/renderItems';
+import LinkModal, { LinkData } from './LinkModal/LinkModal';
+import LinkPopup from './LinkPopup/LinkPopup';
 
 export interface BlockEditorProps {
   content?: string;
@@ -111,10 +111,10 @@ const BlockEditor: FC<BlockEditorProps> = ({
         },
       }),
       Mention.configure({
-        suggestion: mentionSuggestion,
+        suggestion: mentionSuggestion(),
       }),
       Hashtag.configure({
-        suggestion: hashtagSuggestion,
+        suggestion: hashtagSuggestion(),
       }),
     ],
 

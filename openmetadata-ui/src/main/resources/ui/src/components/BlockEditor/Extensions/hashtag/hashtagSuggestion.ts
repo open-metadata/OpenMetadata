@@ -21,10 +21,10 @@ import { getSuggestions, searchData } from 'rest/miscAPI';
 import { getEntityBreadcrumbs } from 'utils/EntityUtils';
 import { buildMentionLink } from 'utils/FeedUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
-import { ExtensionRef } from '../types';
+import { ExtensionRef } from '../BlockEditor.interface';
 import HashList from './HashList';
 
-export default {
+export const hashtagSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
     if (!query) {
       const data = await searchData('*', 1, 5, '', '', '', SearchIndex.TABLE);
@@ -126,4 +126,4 @@ export default {
       },
     };
   },
-};
+});

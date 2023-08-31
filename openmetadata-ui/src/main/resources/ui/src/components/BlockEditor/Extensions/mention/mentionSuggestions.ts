@@ -17,10 +17,10 @@ import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
 import { getSearchedUsers, getUserSuggestions } from 'rest/miscAPI';
-import { ExtensionRef } from '../types';
+import { ExtensionRef } from '../BlockEditor.interface';
 import MentionList from './MentionList';
 
-export default {
+export const mentionSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
     if (!query) {
       const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
@@ -112,4 +112,4 @@ export default {
       },
     };
   },
-};
+});

@@ -13,9 +13,9 @@
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { Image, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { isInViewport } from 'components/BlockEditor/helpers';
 import { isEmpty } from 'lodash';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { isInViewport } from 'utils/BlockEditorUtils';
 
 export interface SlashCommandRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
