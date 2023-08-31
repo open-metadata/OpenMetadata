@@ -51,8 +51,9 @@ import {
 } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import {
+  getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
 } from 'utils/EntityVersionUtils';
@@ -64,7 +65,6 @@ import {
   getResourceEntityFromServiceCategory,
 } from 'utils/ServiceUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
-import { getTierTags } from 'utils/TableUtils';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
@@ -93,27 +93,6 @@ function ServiceVersionPage() {
     {} as EntityHistory
   );
 
-  const tier = useMemo(
-    () => getTierTags(currentVersionData.tags ?? []),
-    [currentVersionData]
-  );
-  const owner = useMemo(() => currentVersionData.owner, [currentVersionData]);
-
-  const changeDescription = useMemo(
-    () => currentVersionData.changeDescription ?? ({} as ChangeDescription),
-    [currentVersionData]
-  );
-  const { deleted } = useMemo(() => {
-    return {
-      deleted: Boolean(currentVersionData.deleted),
-    };
-  }, [currentVersionData]);
-
-  const viewVersionPermission = useMemo(
-    () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
-    [servicePermissions]
-  );
-
   const [entityType, resourceEntity] = useMemo(
     () => [
       getEntityTypeFromServiceCategory(serviceCategory),
@@ -122,9 +101,14 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
-  const breadcrumbLinks = useMemo(
-    () => getEntityBreadcrumbs(currentVersionData, entityType),
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
+    () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
     [currentVersionData, entityType]
+  );
+
+  const viewVersionPermission = useMemo(
+    () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
+    [servicePermissions]
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(

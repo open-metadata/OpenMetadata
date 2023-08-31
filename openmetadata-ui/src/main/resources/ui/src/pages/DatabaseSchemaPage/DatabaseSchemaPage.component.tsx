@@ -69,7 +69,6 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -103,9 +102,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
   const [threadLink, setThreadLink] = useState<string>('');
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -177,7 +173,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
       );
       setFeedCount(response.totalCount);
-      setEntityFieldThreadCount(response.counts);
     } catch (err) {
       // Error
     }
@@ -522,7 +517,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               databaseSchemaDetails={databaseSchema}
               description={description}
               editDescriptionPermission={editDescriptionPermission}
-              entityFieldThreadCount={entityFieldThreadCount}
               isEdit={isEdit}
               showDeletedTables={showDeletedTables}
               tableData={tableData}

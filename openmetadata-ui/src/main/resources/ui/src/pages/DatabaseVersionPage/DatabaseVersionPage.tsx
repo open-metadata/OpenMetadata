@@ -32,7 +32,6 @@ import {
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Database } from 'generated/entity/data/database';
@@ -51,16 +50,15 @@ import {
   getDatabaseVersionData,
   getDatabaseVersions,
 } from 'rest/databaseAPI';
-import { getDatabseSchemaTable } from 'utils/Database/DatabaseDetails.utils';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { getDatabseSchemaTable } from 'utils/DatabaseDetails.utils';
+import { getEntityName } from 'utils/EntityUtils';
 import {
+  getBasicEntityInfoFromVersionData,
+  getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
 } from 'utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getDatabaseVersionPath } from 'utils/RouterUtils';
-import { getTierTags } from 'utils/TableUtils';
 
 function DatabaseVersionPage() {
   const { t } = useTranslation();
@@ -87,26 +85,14 @@ function DatabaseVersionPage() {
     {} as EntityHistory
   );
 
-  const tier = useMemo(
-    () => getTierTags(currentVersionData.tags ?? []),
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
+    () =>
+      getBasicEntityInfoFromVersionData(
+        currentVersionData,
+        EntityType.DATABASE
+      ),
     [currentVersionData]
   );
-  const owner = useMemo(() => currentVersionData.owner, [currentVersionData]);
-
-  const breadcrumbLinks = useMemo(
-    () => getEntityBreadcrumbs(currentVersionData, EntityType.DATABASE),
-    [currentVersionData]
-  );
-
-  const changeDescription = useMemo(
-    () => currentVersionData.changeDescription ?? ({} as ChangeDescription),
-    [currentVersionData]
-  );
-  const { deleted } = useMemo(() => {
-    return {
-      deleted: Boolean(currentVersionData.deleted),
-    };
-  }, [currentVersionData]);
 
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
@@ -202,36 +188,22 @@ function DatabaseVersionPage() {
     [paging, fetchDatabaseSchemas]
   );
 
-  const versionHandler = useCallback(
-    (newVersion = version) => {
-      history.push(getDatabaseVersionPath(databaseFQN, toString(newVersion)));
-    },
+  const { versionHandler, backHandler } = useMemo(
+    () => ({
+      versionHandler: (newVersion = version) => {
+        history.push(getDatabaseVersionPath(databaseFQN, toString(newVersion)));
+      },
+      backHandler: () => {
+        history.push(getDatabaseDetailsPath(databaseFQN));
+      },
+    }),
     [databaseFQN]
   );
 
-  const backHandler = useCallback(() => {
-    history.push(getDatabaseDetailsPath(databaseFQN));
-  }, [databaseFQN]);
-
-  const displayName = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DISPLAYNAME,
-      currentVersionData.displayName
-    );
-  }, [currentVersionData, changeDescription]);
-
-  const tags = useMemo(() => {
-    return getEntityVersionTags(currentVersionData, changeDescription);
-  }, [currentVersionData, changeDescription]);
-
-  const description = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DESCRIPTION,
-      currentVersionData.description
-    );
-  }, [currentVersionData, changeDescription]);
+  const { displayName, tags, description } = useMemo(
+    () => getCommonDiffsFromVersionData(currentVersionData, changeDescription),
+    [currentVersionData, changeDescription]
+  );
 
   const databaseTable = useMemo(
     () =>
@@ -299,7 +271,7 @@ function DatabaseVersionPage() {
     [tags, description, databaseFQN, databaseTable]
   );
 
-  const versionComponent = () => {
+  const versionComponent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
     }
@@ -348,7 +320,23 @@ function DatabaseVersionPage() {
         />
       </>
     );
-  };
+  }, [
+    isLoading,
+    viewVersionPermission,
+    isVersionDataLoading,
+    breadcrumbLinks,
+    currentVersionData,
+    deleted,
+    displayName,
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    version,
+    backHandler,
+    tabs,
+    versionHandler,
+    versionList,
+  ]);
 
   useEffect(() => {
     if (!isEmpty(databaseFQN)) {
@@ -380,7 +368,7 @@ function DatabaseVersionPage() {
       pageTitle={t('label.entity-version-detail-plural', {
         entity: getEntityName(currentVersionData),
       })}>
-      {versionComponent()}
+      {versionComponent}
     </PageLayoutV1>
   );
 }

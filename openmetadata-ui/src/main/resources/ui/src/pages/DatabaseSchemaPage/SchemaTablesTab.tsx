@@ -20,7 +20,6 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import Loader from 'components/Loader/Loader';
 import { PAGE_SIZE } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
-import { EntityLinkThreadCount } from 'generated/api/feed/threadCount';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Table } from 'generated/entity/data/table';
 import { PagingResponse } from 'Models';
@@ -34,7 +33,6 @@ interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
   tableDataLoading: boolean;
   description: string;
-  entityFieldThreadCount?: EntityLinkThreadCount[];
   editDescriptionPermission?: boolean;
   isEdit?: boolean;
   showDeletedTables?: boolean;
@@ -56,8 +54,8 @@ function SchemaTablesTab({
   databaseSchemaDetails,
   tableDataLoading,
   description,
-  editDescriptionPermission,
-  isEdit,
+  editDescriptionPermission = false,
+  isEdit = false,
   tableData,
   currentTablesPage,
   tablePaginationHandler,
@@ -65,7 +63,7 @@ function SchemaTablesTab({
   onDescriptionEdit,
   onDescriptionUpdate,
   onThreadLinkSelect,
-  showDeletedTables,
+  showDeletedTables = false,
   onShowDeletedTablesChange,
   isVersionView = false,
 }: SchemaTablesTabProps) {

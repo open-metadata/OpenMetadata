@@ -161,7 +161,7 @@ function ClassificationDetails({
     [currentClassification?.disabled]
   );
 
-  const handleUpdateDisplayName = (data: {
+  const handleUpdateDisplayName = async (data: {
     name: string;
     displayName: string;
   }) => {
@@ -174,8 +174,6 @@ function ClassificationDetails({
         ...data,
       });
     }
-
-    return new Promise<void>((resolve) => resolve());
   };
 
   const handleUpdateDescription = async (updatedHTML: string) => {
