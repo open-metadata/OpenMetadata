@@ -251,7 +251,7 @@ class DatabricksPipelineTests(TestCase):
         self.assertEqual(mock_data, results)
 
     def test_yield_pipeline(self):
-        pipelines = list(self.databricks.yield_pipeline(mock_data[0]))[0]
+        pipelines = list(self.databricks.yield_pipeline(mock_data[0]))[0].right
         self.assertEqual(pipelines, EXPECTED_CREATED_PIPELINES)
 
     @patch(
@@ -259,7 +259,10 @@ class DatabricksPipelineTests(TestCase):
     )
     def test_yield_pipeline_status(self, get_job_runs):
         get_job_runs.return_value = mock_history_data
-        pipeline_status = list(
-            self.databricks.yield_pipeline_status(mock_history_data[0]["job_id"])
-        )
+        pipeline_status = [
+            either.right
+            for either in self.databricks.yield_pipeline_status(
+                mock_history_data[0]["job_id"]
+            )
+        ]
         self.assertEqual(pipeline_status, EXPECTED_PIPELINE_STATUS)
