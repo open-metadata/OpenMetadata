@@ -53,7 +53,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
     def get_excludes_datamodels(self) -> List[str]:
         return ["Random.*"]
 
-    def expected_entities(self) -> int:
+    def expected_dashboards_and_charts(self) -> int:
         return 30
 
     def expected_lineage(self) -> int:

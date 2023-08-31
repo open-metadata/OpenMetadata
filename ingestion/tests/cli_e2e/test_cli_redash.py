@@ -42,7 +42,7 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
     def get_excludes_datamodels(self) -> List[str]:
         return []
 
-    def expected_entities(self) -> int:
+    def expected_dashboards_and_charts(self) -> int:
         return 12
 
     def expected_lineage(self) -> int:

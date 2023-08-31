@@ -1,6 +1,6 @@
 source:
   type: tableau
-  serviceName: local_tableau
+  serviceName: local_redshift_tableau
   serviceConnection:
     config:
       type: Tableau
