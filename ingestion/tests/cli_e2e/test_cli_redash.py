@@ -51,11 +51,11 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
     def expected_tags(self) -> int:
         return 4
 
-    def expected_not_included_entities(self) -> int:
-        return 12
+    def expected_datamodels(self) -> int:
+        return 0
 
-    def expected_not_included_sink_entities(self) -> int:
-        return 13
+    def expected_datamodel_lineage(self) -> int:
+        return 0
 
     def expected_filtered_mix(self) -> int:
         return 6

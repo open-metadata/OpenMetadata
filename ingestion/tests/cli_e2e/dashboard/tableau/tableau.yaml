@@ -1,6 +1,6 @@
 source:
   type: tableau
-  serviceName: local_redshift_tableau
+  serviceName: local_tableau
   serviceConnection:
     config:
       type: Tableau
@@ -16,7 +16,7 @@ source:
     config:
       type: DashboardMetadata
       dbServiceNames:
-      - local_redshift
+      - local_redshift_tableau
 sink:
   type: metadata-rest
   config: {}
