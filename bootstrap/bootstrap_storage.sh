@@ -12,14 +12,8 @@
 
 # Resolve links - $0 may be a softlink
 PRG="${0}"
-debug="$2"
+debug=false
 force=false
-
-if [ -z "$3" ]; then
-  force=false
-else
-  force=true
-fi
 
 while [ -h "${PRG}" ]; do
   ls=`ls -ld "${PRG}"`
@@ -81,12 +75,16 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-
                       This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target database
    check-connection : Checks if a connection can be successfully obtained for the target database
    rotate           : Rotate the Fernet Key defined in $FERNET_KEY
+   Additionally you can use:
+   -d for 
    debug            : Enable Debugging Mode to get more info
+   -f for 
    force            : Forces the server Migration to be ran, even if already ran
+
 EOF
 }
 
-if [ $# -gt 3 ]
+if [ $# -gt 4 ]
 then
     echo "More than one argument specified, please use only one of the below options"
     printUsage
@@ -94,6 +92,7 @@ then
 fi
 
 opt="$1"
+shift
 
 case "${opt}" in
 create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate)
