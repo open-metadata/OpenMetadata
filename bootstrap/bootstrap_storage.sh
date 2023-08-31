@@ -115,3 +115,24 @@ rotate )
     exit 1
     ;;
 esac
+
+# Parse options following the command
+while getopts "df" opt; do
+  case $opt in
+    d)
+      debug=true
+      ;;
+    f)
+      force=true
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      printUsage
+      exit 1
+      ;;
+  esac
+done
+
+# Print the parsed options
+echo "Debug: $debug"
+echo "Force: $force"
