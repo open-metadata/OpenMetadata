@@ -31,7 +31,7 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_col_types, fetch_dataframe
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
@@ -373,7 +373,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             return [
                 SQALikeColumn(
                     column_name,
-                    Type(DatalakeSource.fetch_col_types(df, column_name)),
+                    Type(fetch_col_types(df, column_name)),
                 )
                 for column_name in df.columns
             ]

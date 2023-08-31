@@ -31,7 +31,7 @@ class S3Reader(Reader):
         except Exception as err:
             logger.debug(traceback.format_exc())
             raise ReadException(f"Error fetching file [{path}] from repo: {err}")
-    
+
     def _get_tree(self) -> List[str]:
         """
         We are not implementing this yet. This should

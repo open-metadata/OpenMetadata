@@ -9,12 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 object store extraction metadata"""
+import json
 import secrets
 import traceback
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, Iterable, List, Optional
-from metadata.readers.file.base import ReadException
 
 from pydantic import ValidationError
 
@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.storage.s3Connection 
 )
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
+    StorageContainerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -51,6 +52,7 @@ from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
     StorageServiceSource,
 )
+from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
@@ -100,12 +102,14 @@ class S3Source(StorageServiceSource):
                 )
                 self._bucket_cache[bucket_response.name] = self.context.container
                 try:
-                    metadata_config = self.s3_reader.read(
-                    path=OPENMETADATA_TEMPLATE_FILE_NAME,
-                    bucket_name=bucket_response.name,
+                    metadata_config_response = self.s3_reader.read(
+                        path=OPENMETADATA_TEMPLATE_FILE_NAME,
+                        bucket_name=bucket_response.name,
                     )
+                    content = json.loads(metadata_config_response)
+                    metadata_config = StorageContainerConfig.parse_obj(content)
                 except ReadException:
-                    metadata_config = None
+                    continue
                 if metadata_config:
                     for metadata_entry in metadata_config.entries:
                         logger.info(
@@ -291,30 +295,28 @@ class S3Source(StorageServiceSource):
         or None in the case of a non-structured metadata entry, or if no such keys can be found
         """
         prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
-        # no objects found in the data path
-        try:
-            response = self.s3_reader.read(path=prefix, bucket_name=bucket_name)
-        except ReadException:
-            logger.warning(f"Ignoring metadata entry {prefix} - no files found")
-            return None
         # this will look only in the first 1000 files under that path (default for list_objects_v2).
         # We'd rather not do pagination here as it would incur unwanted costs
         try:
-            candidate_keys = [
-                entry["Key"]
-                for entry in response[S3_CLIENT_ROOT_RESPONSE]
-                if entry and entry.get("Key")
-            ]
-            # pick a random key out of the candidates if any were returned
-            if candidate_keys:
-                result_key = secrets.choice(candidate_keys)
-                logger.info(
-                    f"File {result_key} was picked to infer data structure from."
+            if prefix:
+                response = self.s3_client.list_objects_v2(
+                    Bucket=bucket_name, Prefix=prefix
                 )
-                return result_key
-            logger.warning(
-                f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension"
-            )
+                candidate_keys = [
+                    entry["Key"]
+                    for entry in response[S3_CLIENT_ROOT_RESPONSE]
+                    if entry and entry.get("Key")
+                ]
+                # pick a random key out of the candidates if any were returned
+                if candidate_keys:
+                    result_key = secrets.choice(candidate_keys)
+                    logger.info(
+                        f"File {result_key} was picked to infer data structure from."
+                    )
+                    return result_key
+                logger.warning(
+                    f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension"
+                )
             return None
         except Exception:
             logger.debug(traceback.format_exc())

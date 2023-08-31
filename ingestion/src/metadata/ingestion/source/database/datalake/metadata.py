@@ -12,8 +12,9 @@
 """
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
+import json
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -22,12 +23,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    DataType,
-    Table,
-    TableType,
-)
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -46,6 +42,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
+    StorageContainerConfig,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -54,14 +53,20 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.columns import clean_dataframe
+from metadata.ingestion.source.storage.storage_service import (
+    OPENMETADATA_TEMPLATE_FILE_NAME,
+)
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.readers.dataframe.reader_factory import SupportedTypes
+from metadata.readers.file.base import ReadException
+from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_file_format_type
+from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.datalake.datalake_utils import (
+    fetch_dataframe,
+    get_columns,
+    get_file_format_type,
+)
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.s3_utils import list_s3_objects
@@ -69,16 +74,6 @@ from metadata.utils.s3_utils import list_s3_objects
 logger = ingestion_logger()
 
 OBJECT_FILTERED_OUT_MESSAGE = "Object Filtered Out"
-
-DATALAKE_DATA_TYPES = {
-    **dict.fromkeys(["int64", "INT", "int32"], DataType.INT.value),
-    "object": DataType.STRING.value,
-    **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT.value),
-    "bool": DataType.BOOLEAN.value,
-    **dict.fromkeys(
-        ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME.value
-    ),
-}
 
 
 class DatalakeSource(DatabaseServiceSource):
@@ -103,9 +98,10 @@ class DatalakeSource(DatabaseServiceSource):
         self.data_models = {}
         self.dbt_tests = {}
         self.database_source_state = set()
-
+        self.config_source = self.service_connection.configSource
         self.connection_obj = self.connection
         self.test_connection()
+        self.reader = get_reader(config_source=self.config_source, client=self.client)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -187,19 +183,19 @@ class DatalakeSource(DatabaseServiceSource):
         return schema names
         """
         bucket_name = self.service_connection.bucketName
-        if isinstance(self.service_connection.configSource, GCSConfig):
+        if isinstance(self.config_source, GCSConfig):
             if bucket_name:
                 yield bucket_name
             else:
                 yield from self.fetch_gcs_bucket_names()
 
-        if isinstance(self.service_connection.configSource, S3Config):
+        if isinstance(self.config_source, S3Config):
             if bucket_name:
                 yield bucket_name
             else:
                 yield from self.fetch_s3_bucket_names()
 
-        if isinstance(self.service_connection.configSource, AzureConfig):
+        if isinstance(self.config_source, AzureConfig):
             yield from self.get_container_names()
 
     def get_container_names(self) -> Iterable[str]:
@@ -258,13 +254,17 @@ class DatalakeSource(DatabaseServiceSource):
         """
         bucket_name = self.context.database_schema.name.__root__
         prefix = self.service_connection.prefix
-        metadata_entry = _load_metadata_file(
-            self.service_connection.configSource,
-            client=self.client,
-            bucket_name=bucket_name,
-        )
+        try:
+            metadata_config_response = self.reader.read(
+                path=OPENMETADATA_TEMPLATE_FILE_NAME,
+                bucket_name=bucket_name,
+            )
+            content = json.loads(metadata_config_response)
+            metadata_entry = StorageContainerConfig.parse_obj(content)
+        except ReadException:
+            metadata_entry = None
         if self.source_config.includeTables:
-            if isinstance(self.service_connection.configSource, GCSConfig):
+            if isinstance(self.config_source, GCSConfig):
                 bucket = self.client.get_bucket(bucket_name)
                 for key in bucket.list_blobs(prefix=prefix):
                     table_name = self.standardize_table_name(bucket_name, key.name)
@@ -281,7 +281,7 @@ class DatalakeSource(DatabaseServiceSource):
                         continue
 
                     yield table_name, TableType.Regular, file_extension
-            if isinstance(self.service_connection.configSource, S3Config):
+            if isinstance(self.config_source, S3Config):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
@@ -299,7 +299,7 @@ class DatalakeSource(DatabaseServiceSource):
                         continue
 
                     yield table_name, TableType.Regular, file_extension
-            if isinstance(self.service_connection.configSource, AzureConfig):
+            if isinstance(self.config_source, AzureConfig):
                 container_client = self.client.get_container_client(bucket_name)
 
                 for file in container_client.list_blobs(
@@ -329,7 +329,7 @@ class DatalakeSource(DatabaseServiceSource):
         try:
             table_constraints = None
             data_frame = fetch_dataframe(
-                config_source=self.service_connection.configSource,
+                config_source=self.config_source,
                 client=self.client,
                 file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
@@ -339,7 +339,7 @@ class DatalakeSource(DatabaseServiceSource):
             )
 
             # If no data_frame (due to unsupported type), ignore
-            columns = self.get_columns(data_frame[0]) if data_frame else None
+            columns = get_columns(data_frame[0]) if data_frame else None
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
@@ -359,169 +359,6 @@ class DatalakeSource(DatabaseServiceSource):
                     stack_trace=traceback.format_exc(),
                 )
             )
-
-    @staticmethod
-    def _parse_complex_column(
-        data_frame,
-        column,
-        final_column_list: List[Column],
-        complex_col_dict: dict,
-        processed_complex_columns: set,
-    ) -> None:
-        """
-        This class parses the complex columns
-
-        for example consider this data:
-            {
-                "level1": {
-                    "level2":{
-                        "level3": 1
-                    }
-                }
-            }
-
-        pandas would name this column as: _##level1_##level2_##level3
-        (_## being the custom separator)
-
-        this function would parse this column name and prepare a Column object like
-        Column(
-            name="level1",
-            dataType="RECORD",
-            children=[
-                Column(
-                    name="level2",
-                    dataType="RECORD",
-                    children=[
-                        Column(
-                            name="level3",
-                            dataType="INT",
-                        )
-                    ]
-                )
-            ]
-        )
-        """
-        try:
-            # pylint: disable=bad-str-strip-call
-            column_name = str(column).strip(COMPLEX_COLUMN_SEPARATOR)
-            col_hierarchy = tuple(column_name.split(COMPLEX_COLUMN_SEPARATOR))
-            parent_col: Optional[Column] = None
-            root_col: Optional[Column] = None
-
-            # here we are only processing col_hierarchy till [:-1]
-            # because all the column/node before -1 would be treated
-            # as a record and the column at -1 would be the column
-            # having a primitive datatype
-            # for example if col_hierarchy is ("image", "properties", "size")
-            # then image would be the record having child properties which is
-            # also a record  but the "size" will not be handled in this loop
-            # as it will be of primitive type for ex. int
-            for index, col_name in enumerate(col_hierarchy[:-1]):
-
-                if complex_col_dict.get(col_hierarchy[: index + 1]):
-                    # if we have already seen this column fetch that column
-                    parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
-                else:
-                    # if we have not seen this column than create the column and
-                    # append to the parent if available
-                    intermediate_column = Column(
-                        name=truncate_column_name(col_name),
-                        displayName=col_name,
-                        dataType=DataType.RECORD.value,
-                        children=[],
-                        dataTypeDisplay=DataType.RECORD.value,
-                    )
-                    if parent_col:
-                        parent_col.children.append(intermediate_column)
-                        root_col = parent_col
-                    parent_col = intermediate_column
-                    complex_col_dict[col_hierarchy[: index + 1]] = parent_col
-
-            # prepare the leaf node
-            # use String as default type
-            data_type = DataType.STRING.value
-            if hasattr(data_frame[column], "dtypes"):
-                data_type = DATALAKE_DATA_TYPES.get(
-                    data_frame[column].dtypes.name, DataType.STRING.value
-                )
-            leaf_column = Column(
-                name=col_hierarchy[-1],
-                dataType=data_type,
-                dataTypeDisplay=data_type,
-            )
-            parent_col.children.append(leaf_column)
-
-            # finally add the top level node in the column list
-            if col_hierarchy[0] not in processed_complex_columns:
-                processed_complex_columns.add(col_hierarchy[0])
-                final_column_list.append(root_col or parent_col)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
-
-    @staticmethod
-    def fetch_col_types(data_frame, column_name):
-        data_type = DATALAKE_DATA_TYPES.get(
-            data_frame[column_name].dtypes.name, DataType.STRING.value
-        )
-        if data_type == DataType.FLOAT.value:
-            try:
-                if data_frame[column_name].dropna().any():
-                    if isinstance(data_frame[column_name].iloc[0], dict):
-                        return DataType.JSON.value
-                    if isinstance(data_frame[column_name].iloc[0], str):
-                        return DataType.STRING.value
-            except Exception as err:
-                logger.warning(
-                    f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
-                )
-                logger.debug(traceback.format_exc())
-        return data_type
-
-    @staticmethod
-    def get_columns(data_frame: "DataFrame"):
-        """
-        method to process column details
-        """
-        data_frame = clean_dataframe(data_frame)
-        cols = []
-        complex_col_dict = {}
-
-        processed_complex_columns = set()
-        if hasattr(data_frame, "columns"):
-            df_columns = list(data_frame.columns)
-            for column in df_columns:
-                if COMPLEX_COLUMN_SEPARATOR in column:
-                    DatalakeSource._parse_complex_column(
-                        data_frame,
-                        column,
-                        cols,
-                        complex_col_dict,
-                        processed_complex_columns,
-                    )
-                else:
-                    # use String by default
-                    data_type = DataType.STRING.value
-                    try:
-                        if hasattr(data_frame[column], "dtypes"):
-                            data_type = DatalakeSource.fetch_col_types(
-                                data_frame, column_name=column
-                            )
-
-                        parsed_string = {
-                            "dataTypeDisplay": data_type,
-                            "dataType": data_type,
-                            "name": truncate_column_name(column),
-                            "displayName": column,
-                        }
-                        cols.append(Column(**parsed_string))
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Unexpected exception parsing column [{column}]: {exc}"
-                        )
-        complex_col_dict.clear()
-        return cols
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         yield from []
@@ -562,5 +399,5 @@ class DatalakeSource(DatabaseServiceSource):
         return False
 
     def close(self):
-        if isinstance(self.service_connection.configSource, AzureConfig):
+        if isinstance(self.config_source, AzureConfig):
             self.client.close()
