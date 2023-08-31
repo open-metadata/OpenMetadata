@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.data import (
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.models import StackTraceError
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
 
@@ -179,9 +180,12 @@ class EntityReportDataProcessor(DataProcessor):
                     else self._get_team(entity.teams)
                 )
             except Exception:
-                logger.debug(traceback.format_exc())
                 self.processor_status.failed(
-                    entity.name.__root__, "Error retrieving team"
+                    StackTraceError(
+                        name=entity.name.__root__,
+                        error="Error retrieving team",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
                 continue
 

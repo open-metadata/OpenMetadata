@@ -19,9 +19,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Sink
 from metadata.utils.constants import UTF_8
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
 
@@ -30,7 +31,7 @@ class FileSinkConfig(ConfigModel):
     filename: str
 
 
-class FileSink(Sink[Entity]):
+class FileSink(Sink):
     """
     Sink implementation to store metadata in a file
     """
@@ -56,13 +57,13 @@ class FileSink(Sink[Entity]):
         config = FileSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def write_record(self, record: Entity) -> None:
+    def _run(self, record: Entity, *_, **__) -> Either[str]:
         if self.wrote_something:
             self.file.write(",\n")
 
         self.file.write(record.json())
         self.wrote_something = True
-        self.status.records_written(record)
+        return Either(right=get_log_name(record))
 
     def close(self):
         self.file.write("\n]")

@@ -37,7 +37,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -114,7 +115,7 @@ class DomodashboardSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: DomoDashboardDetails
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         try:
             dashboard_url = (
                 f"{self.service_connection.sandboxDomain}/page/{dashboard_details.id}"
@@ -136,23 +137,32 @@ class DomodashboardSource(DashboardServiceSource):
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except KeyError as err:
-            logger.warning(
-                f"Error extracting data from {dashboard_details.name} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=f"Error extracting data from {dashboard_details.name} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
         except ValidationError as err:
-            logger.warning(
-                f"Error building pydantic model for {dashboard_details.name} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=f"Error building pydantic model for {dashboard_details.name} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
         except Exception as err:
-            logger.warning(
-                f"Wild error ingesting dashboard {dashboard_details.name} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=f"Wild error ingesting dashboard {dashboard_details.name} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
 
     def get_owners(self, owners: List[dict]) -> List[DomoOwner]:
         domo_owner = []
@@ -191,7 +201,7 @@ class DomodashboardSource(DashboardServiceSource):
 
     def yield_dashboard_chart(
         self, dashboard_details: DomoDashboardDetails
-    ) -> Iterable[Optional[CreateChartRequest]]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         chart_ids = dashboard_details.cardIds
         chart_id_from_collection = self.get_chart_ids(dashboard_details.collectionIds)
         chart_ids.extend(chart_id_from_collection)
@@ -208,24 +218,27 @@ class DomodashboardSource(DashboardServiceSource):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 if chart.name:
-                    yield CreateChartRequest(
-                        name=chart_id,
-                        description=chart.description,
-                        displayName=chart.name,
-                        sourceUrl=chart_url,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chartType=get_standard_chart_type(chart.metadata.chartType),
+                    yield Either(
+                        right=CreateChartRequest(
+                            name=chart_id,
+                            description=chart.description,
+                            displayName=chart.name,
+                            sourceUrl=chart_url,
+                            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                            chartType=get_standard_chart_type(chart.metadata.chartType),
+                        )
                     )
-                    self.status.scanned(chart.name)
             except Exception as exc:
                 name = chart.name if chart else ""
-                error = f"Error creating chart [{name}]: {exc}"
-                logger.warning(error)
-                logger.debug(traceback.format_exc())
-                self.status.failed(name, error, traceback.format_exc())
-                continue
+                yield Either(
+                    left=StackTraceError(
+                        name=name,
+                        error=f"Error creating chart [{name}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        return
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """No lineage implemented"""

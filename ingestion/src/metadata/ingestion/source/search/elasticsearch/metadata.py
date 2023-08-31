@@ -28,7 +28,8 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearchC
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.source.search.elasticsearch.parser import parse_es_index_mapping
 from metadata.ingestion.source.search.search_service import SearchServiceSource
@@ -79,13 +80,13 @@ class ElasticsearchSource(SearchServiceSource):
 
     def yield_search_index(
         self, search_index_details: Any
-    ) -> Iterable[CreateSearchIndexRequest]:
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
         """
         Method to Get Search Index Entity
         """
         index_name = self.get_search_index_name(search_index_details)
         if index_name:
-            yield CreateSearchIndexRequest(
+            search_index_request = CreateSearchIndexRequest(
                 name=index_name,
                 displayName=index_name,
                 searchIndexSettings=search_index_details.get(index_name, {}).get(
@@ -96,10 +97,12 @@ class ElasticsearchSource(SearchServiceSource):
                     search_index_details.get(index_name, {}).get("mappings")
                 ),
             )
+            yield Either(right=search_index_request)
+            self.register_record(search_index_request=search_index_request)
 
     def yield_search_index_sample_data(
         self, search_index_details: Any
-    ) -> Iterable[OMetaIndexSampleData]:
+    ) -> Iterable[Either[OMetaIndexSampleData]]:
         """
         Method to Get Sample Data of Search Index Entity
         """
@@ -112,12 +115,14 @@ class ElasticsearchSource(SearchServiceSource):
                 request_timeout=self.service_connection.connectionTimeoutSecs,
             )
 
-            yield OMetaIndexSampleData(
-                entity=self.context.search_index,
-                data=SearchIndexSampleData(
-                    messages=[
-                        str(message)
-                        for message in sample_data.get("hits", {}).get("hits", [])
-                    ]
-                ),
+            yield Either(
+                right=OMetaIndexSampleData(
+                    entity=self.context.search_index,
+                    data=SearchIndexSampleData(
+                        messages=[
+                            str(message)
+                            for message in sample_data.get("hits", {}).get("hits", [])
+                        ]
+                    ),
+                )
             )

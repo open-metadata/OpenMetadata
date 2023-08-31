@@ -543,7 +543,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
     User user = getUser(securityContext, create);
-    repository.prepareInternal(user);
+    repository.prepareInternal(user, true);
 
     ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {

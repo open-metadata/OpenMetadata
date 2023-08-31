@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.utils.supersetApiConnection import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 

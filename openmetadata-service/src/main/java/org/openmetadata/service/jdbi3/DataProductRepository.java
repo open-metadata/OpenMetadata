@@ -60,7 +60,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public void prepare(DataProduct entity) {
+  public void prepare(DataProduct entity, boolean update) {
     // Parent, Experts, Owner, Assets are already validated
   }
 
