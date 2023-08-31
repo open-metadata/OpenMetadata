@@ -55,6 +55,7 @@ import {
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
+  getStoredProcedureDetailPath,
   getTableTabPath,
   getTeamAndUserDetailsPath,
   getTopicDetailsPath,
@@ -836,6 +837,11 @@ export const getEntityDetailLink = (
 
     case EntityType.USER_NAME:
       path = getUserPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.STORED_PROCEDURE:
+      path = getStoredProcedureDetailPath(fqn, tab, subTab);
 
       break;
   }

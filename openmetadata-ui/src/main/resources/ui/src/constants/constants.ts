@@ -673,6 +673,32 @@ export const getContainerDetailPath = (
   return path;
 };
 
+export const getStoredProcedureDetailPath = (
+  storedProcedureFQN: string,
+  tab?: string,
+  subTab = 'all'
+) => {
+  let path = tab
+    ? ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB
+    : ROUTES.STORED_PROCEDURE_DETAILS;
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  path = path.replace(
+    PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN,
+    getEncodedFqn(storedProcedureFQN)
+  );
+
+  return path;
+};
+
 export const getGlossaryTermDetailsPath = (
   glossaryFQN: string,
   tab?: string

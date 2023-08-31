@@ -269,6 +269,7 @@ export const TASK_ENTITIES = [
   EntityType.CONTAINER,
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.STORED_PROCEDURE,
 ];
 
 export const getBreadCrumbList = (
