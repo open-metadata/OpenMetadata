@@ -122,25 +122,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
   }
 
-  private EntityReference getTestSuite(TestCase test) {
+  private EntityReference getTestSuite(TestCase test) throws EntityNotFoundException {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
-    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
       if (Boolean.TRUE.equals(testSuite.getExecutable())) {
         return testSuite.getEntityReference();
       }
     }
-    return null;
+    throw new EntityNotFoundException(
+        String.format("Error occurred when retrieving executable test suite for testCase %s. ", test.getName())
+            + "No executable test suite was found.");
   }
 
   private List<TestSuite> getTestSuites(TestCase test) {
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
-    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
     return records.stream()
         .map(testSuiteId -> Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL))
         .collect(Collectors.toList());
