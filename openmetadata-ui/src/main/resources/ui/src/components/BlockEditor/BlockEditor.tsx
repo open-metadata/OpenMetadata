@@ -10,24 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import LinkExtension from '@tiptap/extension-link';
-import Placeholder from '@tiptap/extension-placeholder';
-import TaskItem from '@tiptap/extension-task-item';
-import TaskList from '@tiptap/extension-task-list';
 import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { EDITOR_OPTIONS } from 'constants/BlockEditor.constants';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
-import { Hashtag } from './Extensions/hashtag';
-import { hashtagSuggestion } from './Extensions/hashtag/hashtagSuggestion';
-import { Mention } from './Extensions/mention';
-import { mentionSuggestion } from './Extensions/mention/mentionSuggestions';
-import SlashCommand from './Extensions/slashCommand';
-import { getSuggestionItems } from './Extensions/slashCommand/items';
-import renderItems from './Extensions/slashCommand/renderItems';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 
@@ -43,93 +32,7 @@ const BlockEditor: FC<BlockEditorProps> = ({
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-      }),
-      Placeholder.configure({
-        showOnlyWhenEditable: true,
-        includeChildren: true,
-        showOnlyCurrent: false,
-        emptyEditorClass: 'is-editor-empty',
-        emptyNodeClass: 'is-node-empty',
-        placeholder: ({ node, editor: coreEditor }) => {
-          if (coreEditor.isDestroyed) {
-            return '';
-          }
-
-          const headingPlaceholders: {
-            [key: number]: string;
-          } = {
-            1: 'Heading 1',
-            2: 'Heading 2',
-            3: 'Heading 3',
-          };
-
-          if (node.type.name === 'heading') {
-            const level = node.attrs.level as number;
-
-            return headingPlaceholders[level];
-          }
-
-          if (
-            node.type.name === 'paragraph' &&
-            coreEditor.getJSON().content?.length === 1
-          ) {
-            return 'Type / to get started';
-          }
-
-          return 'Type / for commands';
-        },
-      }),
-      LinkExtension.configure({
-        autolink: false,
-        openOnClick: false,
-        linkOnPaste: true,
-        HTMLAttributes: {
-          rel: 'noopener noreferrer nofollow',
-          target: '_blank',
-        },
-        validate: (href) => /^https?:\/\//.test(href),
-      }),
-      SlashCommand.configure({
-        slashSuggestion: {
-          items: getSuggestionItems,
-          render: renderItems,
-        },
-      }),
-      TaskList.configure({
-        HTMLAttributes: {
-          class: 'om-task-list',
-        },
-      }),
-      TaskItem.configure({
-        HTMLAttributes: {
-          class: 'om-task-item',
-        },
-      }),
-      Mention.configure({
-        suggestion: mentionSuggestion(),
-      }),
-      Hashtag.configure({
-        suggestion: hashtagSuggestion(),
-      }),
-    ],
-
-    enableInputRules: [
-      'blockquote',
-      'bold',
-      'bulletList',
-      'code',
-      'codeBlock',
-      'horizontalRule',
-      'italic',
-      'listItem',
-      'orderedList',
-      'strike',
-    ],
+    ...EDITOR_OPTIONS,
   });
 
   const handleLinkToggle = () => {
