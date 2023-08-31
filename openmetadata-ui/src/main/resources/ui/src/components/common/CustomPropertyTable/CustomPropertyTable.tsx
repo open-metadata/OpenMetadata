@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from 'antd';
+import { Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -37,6 +36,7 @@ import {
 import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
+import Table from '../Table/Table';
 import {
   CustomPropertyProps,
   EntityDetails,
@@ -181,7 +181,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Loader />;
+    return <Skeleton active />;
   }
 
   if (!hasPermission) {
@@ -192,29 +192,10 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
     );
   }
 
-  if (!isEmpty(entityTypeDetail.customProperties)) {
-    return (
-      <Table
-        bordered
-        className="m-md"
-        columns={tableColumn}
-        data-testid="custom-properties-table"
-        dataSource={entityTypeDetail.customProperties || []}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
-    );
-  }
-
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails.extension)
+    isUndefined(entityDetails.extension)
   ) {
-    return <ExtensionTable extension={entityDetails.extension} />;
-  }
-
-  return (
     <div className="flex-center tab-content-height">
       <ErrorPlaceHolder className={className}>
         <Typography.Paragraph>
@@ -223,6 +204,23 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
           })}
         </Typography.Paragraph>
       </ErrorPlaceHolder>
-    </div>
+    </div>;
+  }
+
+  return isEmpty(entityTypeDetail.customProperties) &&
+    !isUndefined(entityDetails.extension) ? (
+    <ExtensionTable extension={entityDetails.extension} />
+  ) : (
+    <Table
+      bordered
+      className="m-md"
+      columns={tableColumn}
+      data-testid="custom-properties-table"
+      dataSource={entityTypeDetail.customProperties || []}
+      loading={entityTypeDetailLoading}
+      pagination={false}
+      rowKey="name"
+      size="small"
+    />
   );
 };

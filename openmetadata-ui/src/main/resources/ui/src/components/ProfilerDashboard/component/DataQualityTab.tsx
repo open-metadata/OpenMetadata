@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconCheckMark } from 'assets/svg/ic-check-mark.svg';
@@ -22,7 +22,7 @@ import AppBadge from 'components/common/Badge/Badge.component';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import SkeletonTable from 'components/common/SkeletonTable/SkeletonTable.component';
+import Table from 'components/common/Table/Table';
 import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -388,27 +388,26 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <Row gutter={16}>
       <Col span={24}>
-        <SkeletonTable columns={columns} loading={isLoading}>
-          <Table
-            bordered
-            className="test-case-table-container"
-            columns={columns}
-            data-testid="test-case-table"
-            dataSource={sortedData}
-            expandable={{
-              ...getTableExpandableConfig<TestCase>(),
-              expandRowByClick: true,
-              rowExpandable: () => true,
-              expandedRowRender: (recode) => <TestSummary data={recode} />,
-            }}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        </SkeletonTable>
+        <Table
+          bordered
+          className="test-case-table-container"
+          columns={columns}
+          data-testid="test-case-table"
+          dataSource={sortedData}
+          expandable={{
+            ...getTableExpandableConfig<TestCase>(),
+            expandRowByClick: true,
+            rowExpandable: () => true,
+            expandedRowRender: (recode) => <TestSummary data={recode} />,
+          }}
+          loading={isLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
       </Col>
       <Col span={24}>
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
