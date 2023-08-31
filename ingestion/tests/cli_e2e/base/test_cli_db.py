@@ -37,7 +37,7 @@ class CliDBBase(TestCase):
         """
 
         @pytest.mark.order(1)
-        def test_a_vanilla_ingestion(self) -> None:
+        def test_vanilla_ingestion(self) -> None:
             """1. Deploy vanilla ingestion"""
             # build config file for ingest
             self.build_config_file(E2EType.INGEST)
@@ -47,7 +47,7 @@ class CliDBBase(TestCase):
             self.assert_for_vanilla_ingestion(source_status, sink_status)
 
         @pytest.mark.order(2)
-        def test_b_create_table_with_profiler(self) -> None:
+        def test_create_table_with_profiler(self) -> None:
             """2. create a new table + deploy ingestion with views, sample data, and profiler.
 
             We will perform the following steps:
@@ -70,7 +70,7 @@ class CliDBBase(TestCase):
             self.assert_for_table_with_profiler(source_status, sink_status)
 
         @pytest.mark.order(3)
-        def test_c_delete_table_is_marked_as_deleted(self) -> None:
+        def test_delete_table_is_marked_as_deleted(self) -> None:
             """3. delete the new table + deploy marking tables as deleted
 
             We will perform the following steps:
@@ -88,7 +88,7 @@ class CliDBBase(TestCase):
             )
 
         @pytest.mark.order(4)
-        def test_d_schema_filter_includes(self) -> None:
+        def test_schema_filter_includes(self) -> None:
             """4. vanilla ingestion + include schema filter pattern
 
             We will perform the following steps:
@@ -105,7 +105,7 @@ class CliDBBase(TestCase):
             self.assert_filtered_schemas_includes(source_status, sink_status)
 
         @pytest.mark.order(5)
-        def test_e_schema_filter_excludes(self) -> None:
+        def test_schema_filter_excludes(self) -> None:
             """5. vanilla ingestion + exclude schema filter pattern
 
             We will perform the following steps:
@@ -121,7 +121,7 @@ class CliDBBase(TestCase):
             self.assert_filtered_schemas_excludes(source_status, sink_status)
 
         @pytest.mark.order(6)
-        def test_f_table_filter_includes(self) -> None:
+        def test_table_filter_includes(self) -> None:
             """6. Vanilla ingestion + include table filter pattern
 
             We will perform the following steps:
@@ -137,7 +137,7 @@ class CliDBBase(TestCase):
             self.assert_filtered_tables_includes(source_status, sink_status)
 
         @pytest.mark.order(7)
-        def test_g_table_filter_excludes(self) -> None:
+        def test_table_filter_excludes(self) -> None:
             """7. Vanilla ingestion + exclude table filter pattern
 
             We will perform the following steps:
@@ -152,7 +152,7 @@ class CliDBBase(TestCase):
             self.assert_filtered_tables_excludes(source_status, sink_status)
 
         @pytest.mark.order(8)
-        def test_h_table_filter_mix(self) -> None:
+        def test_table_filter_mix(self) -> None:
             """8. Vanilla ingestion + include schema filter pattern + exclude table filter pattern
 
             We will perform the following steps:
@@ -174,21 +174,21 @@ class CliDBBase(TestCase):
             self.assert_filtered_mix(source_status, sink_status)
 
         @pytest.mark.order(9)
-        def test_i_usage(self) -> None:
+        def test_usage(self) -> None:
             """9. Run queries in the source (creates, inserts, views) and ingest metadata & Lineage
 
             This test will need to be implemented on the database specific test classes
             """
 
         @pytest.mark.order(10)
-        def test_j_lineage(self) -> None:
+        def test_lineage(self) -> None:
             """10. Run queries in the source (creates, inserts, views) and ingest metadata & Lineage
 
             This test will need to be implemented on the database specific test classes
             """
 
         @pytest.mark.order(11)
-        def test_k_profiler_with_time_partition(self) -> None:
+        def test_profiler_with_time_partition(self) -> None:
             """11. Test time partitioning for the profiler"""
             time_partition = self.get_profiler_time_partition()
             if not time_partition:
