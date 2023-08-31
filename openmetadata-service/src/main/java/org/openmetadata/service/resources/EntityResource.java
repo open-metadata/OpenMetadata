@@ -221,7 +221,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
-    repository.prepareInternal(entity);
+    repository.prepareInternal(entity, true);
 
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());

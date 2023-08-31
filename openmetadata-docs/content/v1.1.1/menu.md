@@ -566,26 +566,26 @@ site_menu:
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
 
-  - category: How to guides
+  - category: How to Guides
     url: /how-to-guides
     color: violet-70
     icon: openmetadata
 
-  - category: How to guides / CLI Ingestion with basic auth
+  - category: How to Guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
-  - category: How to guides / Feature configurations
+  - category: How to Guides / Feature configurations
     url: /how-to-guides/feature-configurations
-  - category: How to guides / Feature configurations / Bots
+  - category: How to Guides / Feature configurations / Bots
     url: /how-to-guides/feature-configurations/bots
-  - category: How to guides / Teams and Users
+  - category: How to Guides / Teams and Users
     url: /how-to-guides/teams-and-users
-  - category: How to guides / Teams and Users / How to Organise Teams and Users
+  - category: How to Guides / Teams and Users / How to Organise Teams and Users
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
-  - category: How to guides / How to add a custom property to an entity
+  - category: How to Guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
-  - category: How to guides / How to add Custom Logo
+  - category: How to Guides / How to add Custom Logo
     url: /how-to-guides/how-to-add-custom-logo
-  - category: How to guides / How to Add Language Support
+  - category: How to Guides / How to Add Language Support
     url: /how-to-guides/how-to-add-language-support
 
   - category: Features

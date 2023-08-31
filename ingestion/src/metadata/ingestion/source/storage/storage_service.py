@@ -34,7 +34,8 @@ from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -130,32 +131,27 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     @abstractmethod
     def yield_create_container_requests(
         self, container_details: Any
-    ) -> Iterable[CreateContainerRequest]:
+    ) -> Iterable[Either[CreateContainerRequest]]:
         """Generate the create container requests based on the received details"""
 
-    def get_status(self) -> SourceStatus:
-        return self.status
-
     def close(self):
-        """
-        By default, nothing needs to be closed
-        """
+        """By default, nothing needs to be closed"""
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
     def prepare(self):
-        """
-        By default, nothing needs to be taken care of when loading the source
-        """
+        """By default, nothing needs to be taken care of when loading the source"""
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=StorageService, config=config
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=StorageService, config=config
+            )
         )
 
     @staticmethod
@@ -176,9 +172,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         config_source: ConfigSource,
         client: Any,
     ) -> List[Column]:
-        """
-        Extract Column related metadata from s3
-        """
+        """Extract Column related metadata from s3"""
         data_structure_details = fetch_dataframe(
             config_source=config_source,
             client=client,
@@ -201,9 +195,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         config_source: ConfigSource,
         client: Any,
     ) -> Optional[List[Column]]:
-        """
-        Get the columns from the file and partition information
-        """
+        """Get the columns from the file and partition information"""
         extracted_cols = self.extract_column_definitions(
             container_name, sample_key, config_source, client
         )

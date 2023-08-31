@@ -44,9 +44,10 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
+from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -56,7 +57,6 @@ from metadata.profiler.processor.core import Profiler
 from metadata.profiler.source.base.profiler_source import ProfilerSource
 from metadata.profiler.source.profiler_source_factory import profiler_source_factory
 from metadata.timer.repeated_timer import RepeatedTimer
-from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
@@ -65,7 +65,10 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
-from metadata.utils.workflow_output_handler import print_profiler_status
+from metadata.workflow.workflow_output_handler import (
+    get_ingestion_status_timer,
+    print_profiler_status,
+)
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = profiler_logger()
@@ -107,7 +110,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
-        self.source_status = SourceStatus()
+        self.source_status = Status()
         self._profiler_interface_args = None
         if self.config.sink:
             self.sink = get_sink(
@@ -205,13 +208,12 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     continue
                 yield table
             except Exception as exc:
-                error = (
-                    f"Unexpected error filtering entities for table [{table}]: {exc}"
-                )
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
                 self.source_status.failed(
-                    table.fullyQualifiedName.__root__, error, traceback.format_exc()
+                    StackTraceError(
+                        name=table.fullyQualifiedName.__root__,
+                        error=f"Unexpected error filtering entities for table [{table}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def get_database_entities(self):
@@ -284,11 +286,13 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 self.source_config.processPiiSensitive,
             )
         except Exception as exc:
-            name = entity.fullyQualifiedName.__root__
-            error = f"Unexpected exception processing entity [{name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.error(error)
-            self.source_status.failed(name, error, traceback.format_exc())
+            self.source_status.failed(
+                StackTraceError(
+                    name=entity.fullyQualifiedName.__root__,
+                    error=f"Unexpected exception processing entity {entity.fullyQualifiedName.__root__}: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
             self.source_status.fail_all(
                 profiler_source.interface.processor_status.failures
             )

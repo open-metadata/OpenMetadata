@@ -15,9 +15,9 @@ import re
 from unittest import TestCase
 
 from metadata.config.common import ConfigurationError, load_config_file
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import Loggers
+from metadata.workflow.metadata import MetadataWorkflow
 
 
 class WorkflowTest(TestCase):
@@ -63,7 +63,7 @@ class WorkflowTest(TestCase):
         current_dir = pathlib.Path(__file__).resolve().parent
         config_file = current_dir.joinpath("mysql_test.yaml")
         workflow_config = load_config_file(config_file)
-        workflow = Workflow.create(workflow_config)
+        workflow = MetadataWorkflow.create(workflow_config)
         workflow.execute()
         workflow.stop()
         config = workflow.config.workflowConfig.openMetadataServerConfig
@@ -97,13 +97,13 @@ class WorkflowTest(TestCase):
         ] = True
 
         with self.assertRaises(AttributeError):
-            Workflow.create(workflow_config)
+            MetadataWorkflow.create(workflow_config)
 
     def test_debug_not_show_authorization_headers(self):
         current_dir = pathlib.Path(__file__).resolve().parent
         config_file = current_dir.joinpath("mysql_test.yaml")
         workflow_config = load_config_file(config_file)
-        workflow = Workflow.create(workflow_config)
+        workflow = MetadataWorkflow.create(workflow_config)
         workflow_config["workflowConfig"]["loggerLevel"] = "DEBUG"
         authorization_pattern = re.compile(
             r".*['\"]?Authorization['\"]?: ?['\"]?[^*]*$"

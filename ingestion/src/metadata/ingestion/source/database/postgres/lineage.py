@@ -17,6 +17,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresScheme,
 )
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -49,7 +50,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                 )
             """
 
-    def next_record(self) -> Iterable[AddLineageRequest]:
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

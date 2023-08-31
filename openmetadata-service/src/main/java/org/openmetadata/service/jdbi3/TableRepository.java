@@ -614,7 +614,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void prepare(Table table) {
+  public void prepare(Table table, boolean update) {
     DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())

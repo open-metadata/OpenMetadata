@@ -39,7 +39,8 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
@@ -61,9 +62,7 @@ logger = ingestion_logger()
 
 
 class PowerbiSource(DashboardServiceSource):
-    """
-    PowerBi Source Class
-    """
+    """PowerBi Source Class"""
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
@@ -285,7 +284,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def yield_bulk_datamodel(
         self, dataset: Dataset
-    ) -> Iterable[CreateDashboardDataModelRequest]:
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
         Method to fetch DataModels in bulk
         """
@@ -300,17 +299,15 @@ class PowerbiSource(DashboardServiceSource):
                 columns=self._get_column_info(dataset),
                 project=self._fetch_dataset_workspace(dataset_id=dataset.id),
             )
-            yield data_model_request
-            self.status.scanned(f"Data Model Scanned: {data_model_request.displayName}")
+            yield Either(right=data_model_request)
         except Exception as exc:
-            error_msg = f"Error yielding Data Model [{dataset.name}]: {exc}"
-            self.status.failed(
-                name=dataset.name,
-                error=error_msg,
-                stack_trace=traceback.format_exc(),
+            yield Either(
+                left=StackTraceError(
+                    name=dataset.name,
+                    error=f"Error yielding Data Model [{dataset.name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
-            logger.error(error_msg)
-            logger.debug(traceback.format_exc())
 
     def _get_child_columns(self, table: PowerBiTable) -> List[Column]:
         """
@@ -338,12 +335,7 @@ class PowerbiSource(DashboardServiceSource):
         return columns
 
     def _get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:
-        """
-        Args:
-            data_source: DataSource
-        Returns:
-            Columns details for Data Model
-        """
+        """Build columns from dataset"""
         datasource_columns = []
         for table in dataset.tables or []:
             try:
@@ -365,7 +357,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
@@ -403,18 +395,21 @@ class PowerbiSource(DashboardServiceSource):
                     displayName=dashboard_details.name,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error creating dashboard [{dashboard_details}]: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=f"Error creating dashboard [{dashboard_details}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def create_report_dashboard_lineage(
         self, dashboard_details: PowerBIDashboard
-    ) -> Iterable[CreateDashboardRequest]:
-        """
-        create lineage between report and dashboard
-        """
+    ) -> Iterable[Either[CreateDashboardRequest]]:
+        """Create lineage between report and dashboard"""
         try:
             charts = dashboard_details.tiles
             dashboard_fqn = fqn.build(
@@ -446,12 +441,17 @@ class PowerbiSource(DashboardServiceSource):
                             to_entity=dashboard_entity, from_entity=report_entity
                         )
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error to yield report and dashboard lineage details: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Lineage",
+                    error=f"Error to yield report and dashboard lineage details: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def create_datamodel_report_lineage(
         self, db_service_name: str, dashboard_details: PowerBIReport
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         create the lineage between datamodel and report
         """
@@ -492,9 +492,15 @@ class PowerbiSource(DashboardServiceSource):
                         datamodel_entity=datamodel_entity,
                     )
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error to yield datamodel and report lineage details for DB service name [{db_service_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name=f"{db_service_name} Report Lineage",
+                    error=(
+                        "Error to yield datamodel and report lineage details for DB "
+                        f"service name [{db_service_name}]: {exc}"
+                    ),
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def create_table_datamodel_lineage(
@@ -502,10 +508,8 @@ class PowerbiSource(DashboardServiceSource):
         db_service_name: str,
         tables: Optional[List[PowerBiTable]],
         datamodel_entity: Optional[DashboardDataModel],
-    ):
-        """
-        Method to create lineage between table and datamodels
-        """
+    ) -> Iterable[Either[CreateDashboardRequest]]:
+        """Method to create lineage between table and datamodels"""
         for table in tables or []:
             try:
                 table_fqn = fqn.build(
@@ -526,16 +530,22 @@ class PowerbiSource(DashboardServiceSource):
                         to_entity=datamodel_entity, from_entity=table_entity
                     )
             except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield datamodel lineage details for DB service name [{db_service_name}]: {exc}"
+                yield Either(
+                    left=StackTraceError(
+                        name="DataModel Lineage",
+                        error=(
+                            "Error to yield datamodel lineage details for DB "
+                            f"service name [{db_service_name}]: {exc}"
+                        ),
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[PowerBIDashboard, PowerBIReport],
         db_service_name: str,
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
         tables - datamodel - report - dashboard
@@ -552,14 +562,17 @@ class PowerbiSource(DashboardServiceSource):
                 )
 
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name="Dashboard Lineage",
+                    error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def yield_dashboard_chart(
         self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method
         Args:
             dashboard_details:
@@ -579,24 +592,27 @@ class PowerbiSource(DashboardServiceSource):
                             chart_display_name, "Chart Pattern not Allowed"
                         )
                         continue
-                    yield CreateChartRequest(
-                        name=chart.id,
-                        displayName=chart_display_name,
-                        chartType=ChartType.Other.value,
-                        sourceUrl=self._get_chart_url(
-                            report_id=chart.reportId,
-                            workspace_id=self.context.workspace.id,
-                            dashboard_id=dashboard_details.id,
-                        ),
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    yield Either(
+                        right=CreateChartRequest(
+                            name=chart.id,
+                            displayName=chart_display_name,
+                            chartType=ChartType.Other.value,
+                            sourceUrl=self._get_chart_url(
+                                report_id=chart.reportId,
+                                workspace_id=self.context.workspace.id,
+                                dashboard_id=dashboard_details.id,
+                            ),
+                            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        )
                     )
-                    self.status.scanned(chart_display_name)
                 except Exception as exc:
-                    name = chart.title
-                    error = f"Error creating chart [{name}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(name, error, traceback.format_exc())
+                    yield Either(
+                        left=StackTraceError(
+                            name=chart.title,
+                            error=f"Error creating chart [{chart.title}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]

@@ -63,7 +63,7 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  public void prepare(Type type) {
+  public void prepare(Type type, boolean update) {
     TypeRegistry.instance().validateCustomProperties(type);
   }
 

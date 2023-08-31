@@ -1,7 +1,7 @@
 package org.openmetadata.service.migration.mysql.v112;
 
-import static org.openmetadata.service.migration.postgres.v112.Migration.lowerCaseUserNameAndEmail;
-import static org.openmetadata.service.migration.postgres.v112.Migration.unquoteTestSuiteMigration;
+import static org.openmetadata.service.migration.utils.V112.MigrationUtil.fixExecutableTestSuiteFQN;
+import static org.openmetadata.service.migration.utils.V112.MigrationUtil.lowerCaseUserNameAndEmail;
 
 import lombok.SneakyThrows;
 import org.jdbi.v3.core.Handle;
@@ -11,7 +11,6 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 public class Migration extends MigrationProcessImpl {
   private CollectionDAO collectionDAO;
-  private Handle handle;
 
   public Migration(MigrationFile migrationFile) {
     super(migrationFile);
@@ -20,7 +19,6 @@ public class Migration extends MigrationProcessImpl {
   @Override
   public void initialize(Handle handle) {
     super.initialize(handle);
-    this.handle = handle;
     this.collectionDAO = handle.attach(CollectionDAO.class);
   }
 
@@ -28,8 +26,7 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     // Run Data Migration to Remove the quoted Fqn`
-    unquoteTestSuiteMigration(collectionDAO);
-
+    fixExecutableTestSuiteFQN(collectionDAO);
     // Run UserName Migration to make lowercase
     lowerCaseUserNameAndEmail(collectionDAO);
   }
