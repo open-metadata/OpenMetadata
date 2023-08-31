@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, round, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -37,8 +37,8 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  TIER_BAR_COLOR_MAP,
   TIER_DATA,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -59,6 +59,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -132,7 +133,10 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
+            <ResponsiveContainer
+              debounce={1}
+              id={`${DataInsightChartType.TotalEntitiesByTier}-graph`}
+              minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
                   stroke={GRAPH_BACKGROUND_COLOR}
@@ -155,7 +159,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {tiers.map((tier) => (
+                {tiers.map((tier, i) => (
                   <Line
                     dataKey={tier}
                     hide={
@@ -164,7 +168,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                         : false
                     }
                     key={tier}
-                    stroke={TIER_BAR_COLOR_MAP[tier]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       tier === activeMouseHoverKey
@@ -180,30 +184,27 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
-                <Typography.Paragraph
-                  className="data-insight-label-text"
-                  style={{ marginBottom: '4px' }}>
-                  {`${t('label.assigned-entity', {
-                    entity: t('label.tier'),
-                  })} %`}
-                </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}
                   className="m-b-md"
                   duration={selectedDays}
+                  label={`${t('label.assigned-entity', {
+                    entity: t('label.tier'),
+                  })} %`}
                   progress={Number(total)}
                   showLabel={false}
                 />
               </Col>
-              {tiers.map((tiers) => {
+              {tiers.map((tiers, i) => {
                 return (
                   <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
+                    <EntitySummaryProgressBar
+                      entity={TIER_DATA[tiers as keyof typeof TIER_DATA]}
+                      label={round(latestData[tiers] || 0, 2) + '%'}
+                      latestData={latestData}
+                      pluralize={false}
                       progress={latestData[tiers]}
-                      showLabel={false}
-                      startValue={Number(latestData[tiers] || 0).toFixed(2)}
-                      successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
+                      strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   </Col>
                 );
