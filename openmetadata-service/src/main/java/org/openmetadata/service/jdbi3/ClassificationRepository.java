@@ -103,11 +103,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
   }
 
+  @Override
   @SuppressWarnings("unused")
   public void postUpdate(Classification entity) {
     String scriptTxt = "ctx._source.disabled=true";
     try {
-      searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
+      searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt, null);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

@@ -745,11 +745,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void postUpdate(T entity) {
     if (supportsSearchIndex) {
       try {
-        if (entity.getEntityReference().getType().equals(Entity.TEST_SUITE)) {
-          searchClient.addTestCaseFromLogicalTestSuite(entity);
+        if (entity.getEntityReference().getType().equals(Entity.TEST_CASE)) {
+          String scriptTxt = "ctx._source.testSuites.add(params)";
+          searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt, null);
         } else {
           String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-          searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
+          searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt, null);
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -876,7 +877,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public final DeleteResponse<T> delete(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
+  public DeleteResponse<T> delete(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.getEntity());
     deleteFromSearch(response.getEntity(), response.getChangeType());

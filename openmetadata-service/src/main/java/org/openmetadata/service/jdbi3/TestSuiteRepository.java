@@ -173,7 +173,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
-  @Override
   protected void postCreate(TestSuite entity) {}
 
   public void storeExecutableRelationship(TestSuite testSuite) {

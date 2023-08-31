@@ -638,7 +638,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     if (existingTestCaseCount != testCaseIds.size()) {
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
-    return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+    Response response = repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+    repository.postUpdate((TestCase) response.getEntity());
+    return response;
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {

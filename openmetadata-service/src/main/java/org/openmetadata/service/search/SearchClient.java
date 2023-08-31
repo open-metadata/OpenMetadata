@@ -83,7 +83,8 @@ public interface SearchClient {
 
   void softDeleteOrRestoreEntityFromSearch(EntityReference entity, boolean delete) throws IOException;
 
-  void updateSearchEntityUpdated(EntityReference entity, String script) throws IOException;
+  void updateSearchEntityUpdated(EntityReference entity, String script, Map<String, Object> document)
+      throws IOException;
 
   void addTestCaseFromLogicalTestSuite(Object testSuite) throws IOException;
 

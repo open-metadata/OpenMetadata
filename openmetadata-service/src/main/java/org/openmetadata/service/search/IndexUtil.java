@@ -105,7 +105,7 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
       return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TAG)) {
+    } else if (type.equalsIgnoreCase(Entity.TAG) || type.equalsIgnoreCase(Entity.CLASSIFICATION)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;

@@ -815,7 +815,8 @@ public class OpenSearchClientImpl implements SearchClient {
    * @throws IOException
    */
   @Override
-  public void updateSearchEntityUpdated(EntityReference entity, String scriptTxt) throws IOException {
+  public void updateSearchEntityUpdated(EntityReference entity, String scriptTxt, Map<String, Object> document)
+      throws IOException {
     String entityType = entity.getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
