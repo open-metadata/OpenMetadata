@@ -11,6 +11,10 @@
           "description": "SQL query",
           "type": "string"
         },
+        "query_type": {
+          "description": "SQL query type",
+          "type": "string"
+        },
         "userName": {
           "description": "Name of the user that executed the SQL query",
           "type": "string"

@@ -24,6 +24,7 @@ from sqlparse.sql import Function, Identifier
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
@@ -32,6 +33,13 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.utils.lifeCycle import (
+    Accessed,
+    Created,
+    Deleted,
+    LifeCycleProperties,
+    Updated,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -54,6 +62,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
+    SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
@@ -75,6 +84,7 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
@@ -420,3 +430,29 @@ class SnowflakeSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
         return None
+
+    def ingest_table_life_cycle_data(self, table: Table):
+        """
+        Method to get the source url for snowflake
+        """
+        try:
+            results = self.engine.execute(
+                SNOWFLAKE_LIFE_CYCLE_QUERY.format(
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                    table_name=table.name.__root__,
+                )
+            ).all()
+            for row in results:
+                life_cycle = init_empty_life_cycle_properties()
+                life_cycle.created = Created(created_at=row[0])
+                if row[1]:
+                    life_cycle.deleted = Deleted(deleted_at=row[0])
+                self.metadata.ingest_life_cycle_data(
+                    entity=table, life_cycle_data=life_cycle
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}"
+            )

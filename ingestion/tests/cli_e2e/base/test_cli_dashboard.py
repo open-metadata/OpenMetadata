@@ -37,7 +37,7 @@ class CliDashboardBase(TestCase):
 
         # 1. deploy without including tags and data models
         @pytest.mark.order(1)
-        def test_not_including(self) -> None:
+        def test_a_not_including(self) -> None:
             # do anything need before running first test
             self.prepare()
             # build config file for ingest without including data models and tags
@@ -55,7 +55,7 @@ class CliDashboardBase(TestCase):
 
         # 2. deploy vanilla ingestion including lineage, tags and data models
         @pytest.mark.order(2)
-        def test_vanilla_ingestion(self) -> None:
+        def test_b_vanilla_ingestion(self) -> None:
             # build config file for ingest
             self.build_config_file(E2EType.INGEST)
             # run ingest
@@ -65,7 +65,7 @@ class CliDashboardBase(TestCase):
 
         # 3. deploy with mixed filter patterns
         @pytest.mark.order(3)
-        def test_filter_mix(self) -> None:
+        def test_c_filter_mix(self) -> None:
             # build config file for ingest with filters
             self.build_config_file(
                 E2EType.INGEST_DASHBOARD_FILTER_MIX,

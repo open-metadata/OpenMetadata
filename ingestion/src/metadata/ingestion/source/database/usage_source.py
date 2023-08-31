@@ -107,6 +107,7 @@ class UsageSource(QueryParserSource, ABC):
                             queries.append(
                                 TableQuery(
                                     query=self.format_query(row["query_text"]),
+                                    query_type=row.get("query_type"),
                                     userName=row["user_name"],
                                     startTime=str(row["start_time"]),
                                     endTime=str(row["end_time"]),

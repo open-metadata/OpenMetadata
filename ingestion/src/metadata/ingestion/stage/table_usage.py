@@ -92,6 +92,7 @@ class TableUsageStage(Stage[QueryParserData]):
             self.table_queries[(table, record.date)].append(
                 CreateQueryRequest(
                     query=record.sql,
+                    query_type=record.query_type,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,
@@ -101,6 +102,7 @@ class TableUsageStage(Stage[QueryParserData]):
             self.table_queries[(table, record.date)] = [
                 CreateQueryRequest(
                     query=record.sql,
+                    query_type=record.query_type,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,

@@ -206,7 +206,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (lifeCycle.getCreated() != null) {
       if (currentLifeCycle.getCreated() == null
-              || lifeCycle.getCreated().getCreatedAt().compareTo(currentLifeCycle.getCreated().getCreatedAt()) > 0) {
+          || lifeCycle.getCreated().getCreatedAt().compareTo(currentLifeCycle.getCreated().getCreatedAt()) > 0) {
         currentLifeCycle.setCreated(lifeCycle.getCreated());
       }
     }

@@ -37,6 +37,7 @@ from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
+from metadata.ingestion.ometa.mixins.life_cycle_mixin import LifeCycleMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
@@ -107,6 +108,7 @@ class OpenMetadata(
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
+    LifeCycleMixin,
     Generic[T, C],
 ):
     """

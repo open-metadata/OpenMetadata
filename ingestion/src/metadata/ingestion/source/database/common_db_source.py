@@ -418,6 +418,8 @@ class CommonDbSourceService(
                 )
                 self.context.table_views.append(table_view)
 
+            self.ingest_table_life_cycle_data(table=self.context.table)
+
         except Exception as exc:
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
@@ -535,4 +537,9 @@ class CommonDbSourceService(
     ) -> Optional[str]:
         """
         By default the source url is not supported for
+        """
+
+    def ingest_table_life_cycle_data(self, table: Table):
+        """
+        Get the life cycle data of the table and call the API
         """

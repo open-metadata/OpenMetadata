@@ -58,6 +58,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties, get_query_type
 
 logger = ingestion_logger()
 
@@ -331,39 +332,31 @@ class MetadataUsageBulkSink(BulkSink):
         Method to call the lifeCycle API to store the data
         """
         try:
-            life_cycle = LifeCycleProperties(
-                created=None, updated=None, deleted=None, accessed=None
-            )
-            import re
-
-            select_pattern = re.compile(r"^\s*SELECT", re.IGNORECASE)
-            create_pattern = re.compile(r"^\s*CREATE", re.IGNORECASE)
-            update_pattern = re.compile(
-                r"^\s*(UPDATE|INSERT|DELETE|MERGE)", re.IGNORECASE
-            )
-            drop_pattern = re.compile(r"^\s*DROP", re.IGNORECASE)
+            life_cycle = init_empty_life_cycle_properties()
+            
             for create_query in table_usage.sqlQueries:
                 user = None
                 if create_query.users:
                     user = self.metadata.get_entity_reference(
                         entity=User, fqn=create_query.users[0]
                     )
-                if re.match(create_pattern, create_query.query.__root__):
-                    if (
-                        not life_cycle.created
-                        or life_cycle.created.created_at < create_query.queryDate
-                    ):
-                        life_cycle.created = Created(
-                            created_at=create_query.queryDate, created_by=user
-                        )
-                elif re.match(update_pattern, create_query.query.__root__):
-                    if (
-                        not life_cycle.updated
-                        or life_cycle.updated.updated_at < create_query.queryDate
-                    ):
-                        life_cycle.updated = Updated(
-                            updated_at=create_query.queryDate, updated_by=user
-                        )
+                query_type = get_query_type(create_query=create_query)
+                if (
+                    query_type == type(Created) and
+                    (not life_cycle.created
+                    or life_cycle.created.created_at < create_query.queryDate)
+                ):
+                    life_cycle.created = Created(
+                        created_at=create_query.queryDate, created_by=user
+                    )
+                elif (
+                    query_type == type(Updated) and
+                    (not life_cycle.updated
+                    or life_cycle.updated.updated_at < create_query.queryDate)
+                ):
+                    life_cycle.updated = Updated(
+                        updated_at=create_query.queryDate, updated_by=user
+                    )
                 elif re.match(drop_pattern, create_query.query.__root__):
                     if (
                         not life_cycle.deleted
@@ -380,7 +373,7 @@ class MetadataUsageBulkSink(BulkSink):
                         life_cycle.accessed = Accessed(
                             accessed_at=create_query.queryDate, accessed_by=user
                         )
-            self.metadata.ingest_table_life_cycle_data(
+            self.metadata.ingest_life_cycle_data(
                 table=table_entity, life_cycle_data=life_cycle
             )
         except Exception as err:

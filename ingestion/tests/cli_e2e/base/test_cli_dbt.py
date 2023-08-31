@@ -32,7 +32,7 @@ class CliDBTBase(TestCase):
 
         # 1. deploy vanilla ingestion
         @pytest.mark.order(1)
-        def test_connector_ingestion(self) -> None:
+        def test_a_connector_ingestion(self) -> None:
             # run ingest with dbt tables
             result = self.run_command(test_file_path=self.config_file_path)
             sink_status, source_status = self.retrieve_statuses(result)
@@ -40,7 +40,7 @@ class CliDBTBase(TestCase):
 
         # 2. deploy dbt ingestion
         @pytest.mark.order(2)
-        def test_dbt_ingestion(self) -> None:
+        def test_b_dbt_ingestion(self) -> None:
             # run the dbt ingestion
             result = self.run_command(test_file_path=self.dbt_file_path)
             sink_status, source_status = self.retrieve_statuses(result)
@@ -48,7 +48,7 @@ class CliDBTBase(TestCase):
 
         # 3. run tests on dbt ingestion
         @pytest.mark.order(3)
-        def test_entities(self) -> None:
+        def test_c_entities(self) -> None:
             for table_fqn in self.fqn_dbt_tables():
                 table: Table = self.openmetadata.get_by_name(
                     entity=Table, fqn=table_fqn, fields=["*"]
@@ -67,7 +67,7 @@ class CliDBTBase(TestCase):
 
         # 4. run tests on dbt test cases and test results
         @pytest.mark.order(4)
-        def test_dbt_test_cases(self) -> None:
+        def test_d_dbt_test_cases(self) -> None:
             test_case_entity_list = self.openmetadata.list_entities(
                 entity=TestDefinition,
                 params={"testPlatform": TestPlatform.DBT.value},
@@ -76,7 +76,7 @@ class CliDBTBase(TestCase):
 
         # 5. test dbt lineage
         @pytest.mark.order(5)
-        def test_lineage(self) -> None:
+        def test_e_lineage(self) -> None:
             for table_fqn in self.fqn_dbt_tables():
                 lineage = self.retrieve_lineage(table_fqn)
                 self.assertTrue(len(lineage["upstreamEdges"]) >= 4)

@@ -34,6 +34,10 @@
           "description": "SQL query",
           "type": "string"
         },
+        "query_type": {
+          "description": "SQL query type",
+          "type": "string"
+        },
         "serviceName": {
           "description": "Name that identifies this database service.",
           "type": "string"
