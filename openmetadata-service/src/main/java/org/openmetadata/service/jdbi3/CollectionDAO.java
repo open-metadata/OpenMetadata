@@ -3167,6 +3167,12 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "report_data_time_series";
     }
+
+    @SqlQuery("SELECT json FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
+    List<String> listReportDataAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
+
+    @SqlUpdate("DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
+    void deleteReportDataTypeAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {
