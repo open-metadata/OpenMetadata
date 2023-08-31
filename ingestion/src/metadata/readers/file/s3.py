@@ -25,11 +25,12 @@ class S3Reader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None, **__) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True,**__) -> bytes:
         try:
             return self.client.get_object(Bucket=bucket_name, Key=path)["Body"].read()
         except Exception as err:
-            logger.debug(traceback.format_exc())
+            if verbose:
+                logger.debug(traceback.format_exc())
             raise ReadException(f"Error fetching file [{path}] from repo: {err}")
 
     def _get_tree(self) -> List[str]:

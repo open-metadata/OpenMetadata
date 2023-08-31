@@ -105,6 +105,8 @@ class S3Source(StorageServiceSource):
                     metadata_config_response = self.s3_reader.read(
                         path=OPENMETADATA_TEMPLATE_FILE_NAME,
                         bucket_name=bucket_response.name,
+                verbose=False
+                        
                     )
                     content = json.loads(metadata_config_response)
                     metadata_config = StorageContainerConfig.parse_obj(content)

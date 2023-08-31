@@ -256,6 +256,7 @@ class DatalakeSource(DatabaseServiceSource):
             metadata_config_response = self.reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
                 bucket_name=bucket_name,
+                verbose=False
             )
             content = json.loads(metadata_config_response)
             metadata_entry = StorageContainerConfig.parse_obj(content)
