@@ -202,7 +202,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
 
-  EntityRepository(
+  protected EntityRepository(
       String collectionPath,
       String entityType,
       Class<T> entityClass,
