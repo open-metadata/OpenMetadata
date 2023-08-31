@@ -68,7 +68,8 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either, StackTraceError
@@ -655,6 +656,9 @@ class LookerSource(DashboardServiceSource):
                                 toEntity=EntityReference(
                                     id=self.context.dashboard.id.__root__,
                                     type="dashboard",
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DashboardLineage
                                 ),
                             )
                         )
