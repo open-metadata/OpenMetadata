@@ -32,7 +32,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.superset.models import (
     DashboradResult,
@@ -134,7 +135,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         self,
         dashboard_details: Union[FetchDashboard, DashboradResult],
         db_service_name: DatabaseService,
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between datamodel and table
         """
@@ -171,9 +172,15 @@ class SupersetSourceMixin(DashboardServiceSource):
                                 to_entity=to_entity, from_entity=from_entity
                             )
                     except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.error(
-                            f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+                        yield Either(
+                            left=StackTraceError(
+                                name=db_service_name,
+                                error=(
+                                    "Error to yield dashboard lineage details for DB "
+                                    f"service name [{db_service_name}]: {exc}"
+                                ),
+                                stack_trace=traceback.format_exc(),
+                            )
                         )
 
     def _get_datamodel(

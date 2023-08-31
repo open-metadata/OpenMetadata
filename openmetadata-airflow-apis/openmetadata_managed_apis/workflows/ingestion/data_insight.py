@@ -43,6 +43,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.workflow_output_handler import print_data_insight_status
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -63,7 +64,7 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_data_insight_status(workflow)
     workflow.stop()
 
 

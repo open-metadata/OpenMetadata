@@ -67,7 +67,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public void prepare(EventSubscription entity) {
+  public void prepare(EventSubscription entity, boolean update) {
     validateFilterRules(entity);
   }
 

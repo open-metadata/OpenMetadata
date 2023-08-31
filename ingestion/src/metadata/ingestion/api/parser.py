@@ -383,7 +383,7 @@ def parse_server_config(config_dict: dict) -> None:
 
 def parse_workflow_config_gracefully(
     config_dict: dict,
-) -> Optional[OpenMetadataWorkflowConfig]:
+) -> OpenMetadataWorkflowConfig:
     """
     This function either correctly parses the pydantic class, or
     throws a scoped error while fetching the required source connection

@@ -14,7 +14,7 @@ Glue pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -33,7 +33,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.gluePipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
@@ -77,23 +78,17 @@ class GluepipelineSource(PipelineServiceSource):
         return cls(config, metadata_config)
 
     def get_pipelines_list(self) -> Iterable[dict]:
-        """
-        Get List of all pipelines
-        """
         for workflow in self.glue.list_workflows()["Workflows"]:
             jobs = self.glue.get_workflow(Name=workflow, IncludeGraph=True)["Workflow"]
             yield jobs
 
     def get_pipeline_name(self, pipeline_details: dict) -> str:
-        """
-        Get Pipeline Name
-        """
         return pipeline_details[NAME]
 
-    def yield_pipeline(self, pipeline_details: Any) -> Iterable[CreatePipelineRequest]:
-        """
-        Method to Get Pipeline Entity
-        """
+    def yield_pipeline(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[CreatePipelineRequest]]:
+        """Method to Get Pipeline Entity"""
         source_url = (
             f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/glue/home?"
             f"region={self.service_connection.awsConfig.awsRegion}#/v2/etl-configuration/"
@@ -107,7 +102,7 @@ class GluepipelineSource(PipelineServiceSource):
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
             sourceUrl=source_url,
         )
-        yield pipeline_request
+        yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
     def get_tasks(self, pipeline_details: Any) -> List[Task]:
@@ -140,7 +135,7 @@ class GluepipelineSource(PipelineServiceSource):
 
     def yield_pipeline_status(
         self, pipeline_details: Any
-    ) -> Iterable[OMetaPipelineStatus]:
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         for job in self.job_name_list:
             try:
                 runs = self.glue.get_job_runs(JobName=job)
@@ -164,17 +159,24 @@ class GluepipelineSource(PipelineServiceSource):
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,
                     )
-                    yield OMetaPipelineStatus(
-                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                        pipeline_status=pipeline_status,
+                    yield Either(
+                        right=OMetaPipelineStatus(
+                            pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                            pipeline_status=pipeline_status,
+                        )
                     )
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Failed to yield pipeline status: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name=self.context.pipeline.fullyQualifiedName.__root__,
+                        error=f"Failed to yield pipeline status: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources
         """
