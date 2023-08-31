@@ -81,6 +81,7 @@ class DataInsightWorkflow(WorkflowStatusMixin):
     def __init__(self, config: OpenMetadataWorkflowConfig) -> None:
         self.config = config
         self._timer: Optional[RepeatedTimer] = None
+        self.date = datetime.utcnow().strftime("%Y-%m-%d")
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 
@@ -172,6 +173,9 @@ class DataInsightWorkflow(WorkflowStatusMixin):
         """Data processor method to refine raw data into report data and ingest it in ES"""
         for report_data_type in ReportDataType:
             logger.info(f"Processing data for report type {report_data_type}")
+            # we delete the report data for the current date to avoid duplicates
+            # entries in the database.
+            self.metadata.delete_report_data(report_data_type, self.date)
             try:
                 self.source = DataProcessor.create(
                     _data_processor_type=report_data_type.value, metadata=self.metadata
