@@ -51,7 +51,7 @@ DF_READER_MAP = {
 }
 
 
-def get_reader(
+def get_df_reader(
     type_: SupportedTypes, config_source: ConfigSource, client: Optional[Any]
 ) -> DataFrameReader:
     """

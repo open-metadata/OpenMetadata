@@ -14,6 +14,7 @@ import traceback
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, Iterable, List, Optional
+from metadata.readers.file.base import ReadException
 
 from pydantic import ValidationError
 
@@ -47,12 +48,16 @@ from metadata.ingestion.source.storage.s3.models import (
 )
 from metadata.ingestion.source.storage.storage_service import (
     KEY_SEPARATOR,
+    OPENMETADATA_TEMPLATE_FILE_NAME,
     StorageServiceSource,
 )
+from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+S3_CLIENT_ROOT_RESPONSE = "Contents"
 
 
 class S3Metric(Enum):
@@ -71,6 +76,7 @@ class S3Source(StorageServiceSource):
         self.cloudwatch_client = self.connection.cloudwatch_client
 
         self._bucket_cache: Dict[str, Container] = {}
+        self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -93,10 +99,13 @@ class S3Source(StorageServiceSource):
                     bucket_response=bucket_response
                 )
                 self._bucket_cache[bucket_response.name] = self.context.container
-
-                metadata_config = _load_metadata_file_s3(
-                    bucket_name=bucket_response.name, client=self.s3_client
-                )
+                try:
+                    metadata_config = self.s3_reader.read(
+                    path=OPENMETADATA_TEMPLATE_FILE_NAME,
+                    bucket_name=bucket_response.name,
+                    )
+                except ReadException:
+                    metadata_config = None
                 if metadata_config:
                     for metadata_entry in metadata_config.entries:
                         logger.info(
@@ -162,7 +171,6 @@ class S3Source(StorageServiceSource):
         )
         # if we have a sample file to fetch a schema from
         if sample_key:
-
             columns = self._get_columns(
                 container_name=bucket_name,
                 sample_key=sample_key,
@@ -284,15 +292,14 @@ class S3Source(StorageServiceSource):
         """
         prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
         # no objects found in the data path
-        if not prefix_exits(
-            bucket_name=bucket_name, prefix=prefix, client=self.s3_client
-        ):
+        try:
+            response = self.s3_reader.read(path=prefix, bucket_name=bucket_name)
+        except ReadException:
             logger.warning(f"Ignoring metadata entry {prefix} - no files found")
             return None
         # this will look only in the first 1000 files under that path (default for list_objects_v2).
         # We'd rather not do pagination here as it would incur unwanted costs
         try:
-            response = self.s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
             candidate_keys = [
                 entry["Key"]
                 for entry in response[S3_CLIENT_ROOT_RESPONSE]

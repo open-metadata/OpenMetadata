@@ -20,7 +20,7 @@ from metadata.readers.dataframe.models import (
     DatalakeColumnWrapper,
     DatalakeTableSchemaWrapper,
 )
-from metadata.readers.dataframe.reader_factory import SupportedTypes, get_reader
+from metadata.readers.dataframe.reader_factory import SupportedTypes, get_df_reader
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -39,14 +39,14 @@ def fetch_dataframe(
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
     try:
-        key_extension: Optional[SupportedTypes] = file_fqn.key_extension or next(
+        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(
             supported_type or None
             for supported_type in SupportedTypes
             if key.endswith(supported_type.value)
         )
-        if key_extension and not key.endswith("/"):
-            df_reader = get_reader(
-                type_=key_extension,
+        if file_extension and not key.endswith("/"):
+            df_reader = get_df_reader(
+                type_=file_extension,
                 config_source=config_source,
                 client=client,
             )

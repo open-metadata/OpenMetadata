@@ -56,6 +56,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 KEY_SEPARATOR = "/"
+OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
@@ -180,7 +181,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             file_fqn=DatalakeTableSchemaWrapper(
                 key=sample_key,
                 bucket_name=bucket_name,
-                key_extension=SupportedTypes(metadata_entry.structureFormat),
+                file_extension=SupportedTypes(metadata_entry.structureFormat),
             ),
         )
         columns = []

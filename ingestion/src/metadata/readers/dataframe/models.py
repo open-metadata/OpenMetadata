@@ -38,4 +38,14 @@ class DatalakeTableSchemaWrapper(BaseModel):
 
     key: str
     bucket_name: str
-    key_extension: Optional[Any]
+    file_extension: Optional[Any]
+
+
+class DatalakeTableMetadata(BaseModel):
+    """
+    Used to yield metadata from datalake buckets
+    """
+
+    table: str
+    table_type: str
+    file_extension: Optional[Any]

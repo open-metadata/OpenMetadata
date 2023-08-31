@@ -57,7 +57,6 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.columns import clean_dataframe
-from metadata.ingestion.source.storage.manifest_utils import _load_metadata_file_s3
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils import fqn
@@ -259,6 +258,11 @@ class DatalakeSource(DatabaseServiceSource):
         """
         bucket_name = self.context.database_schema.name.__root__
         prefix = self.service_connection.prefix
+        metadata_entry = _load_metadata_file(
+            self.service_connection.configSource,
+            client=self.client,
+            bucket_name=bucket_name,
+        )
         if self.source_config.includeTables:
             if isinstance(self.service_connection.configSource, GCSConfig):
                 bucket = self.client.get_bucket(bucket_name)
@@ -267,20 +271,20 @@ class DatalakeSource(DatabaseServiceSource):
                     # adding this condition as the gcp blobs also contains directory, which we can filter out
                     if self.filter_dl_table(table_name):
                         continue
-                    if table_name.endswith("/") or not get_file_format_type(
-                        key_name=key.name
-                    ):
+                    file_extension = get_file_format_type(
+                        key_name=key.name, metadata_entry=metadata_entry
+                    )
+                    if table_name.endswith("/") or not file_extension:
                         logger.debug(
                             f"Object filtered due to unsupported file type: {key.name}"
                         )
                         continue
 
-                    yield table_name, TableType.Regular
+                    yield table_name, TableType.Regular, file_extension
             if isinstance(self.service_connection.configSource, S3Config):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
-                metadata_entry = _load_metadata_file_s3(bucket_name, client=self.client)
                 for key in list_s3_objects(self.client, **kwargs):
                     table_name = self.standardize_table_name(bucket_name, key["Key"])
                     if self.filter_dl_table(table_name):
@@ -330,7 +334,7 @@ class DatalakeSource(DatabaseServiceSource):
                 file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
                     bucket_name=schema_name,
-                    key_extension=table_extension,
+                    file_extension=table_extension,
                 ),
             )
 
