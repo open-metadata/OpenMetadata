@@ -15,7 +15,7 @@ Processor util to fetch pii sensitive columns
 from typing import Optional
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.data.table import Column, Table, TableData
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -23,9 +23,9 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.column_name_scanner import ColumnNameScanner
 from metadata.pii.constants import PII
-from metadata.pii.ner_scanner import NERScanner
+from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
+from metadata.pii.scanners.ner_scanner import NERScanner
 from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
 
@@ -66,6 +66,47 @@ class PIIProcessor:
             tag_label=tag_label,
         )
 
+    def process_column(
+        self,
+        table_entity: Table,
+        idx: int,
+        column: Column,
+        table_data: Optional[TableData],
+        confidence_threshold: float,
+    ) -> None:
+        """
+        Tag a column with PII if we find it using our scanners
+        """
+
+        # First, check if the column we are about to process
+        # already has PII tags or not
+        column_has_pii_tag = any(
+            (PII in tag.tagFQN.__root__ for tag in column.tags or [])
+        )
+
+        # If it has PII tags, we skip the processing
+        # for the column
+        if column_has_pii_tag is True:
+            return
+
+        # Scan by column name. If no results there, check the sample data, if any
+        tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
+            self.ner_scanner.scan([row[idx] for row in table_data.rows])
+            if table_data
+            else None
+        )
+
+        if (
+            tag_and_confidence
+            and tag_and_confidence.tag
+            and tag_and_confidence.confidence >= confidence_threshold / 100
+        ):
+            self.patch_column_tag(
+                tag_type=tag_and_confidence.tag.value,
+                table_entity=table_entity,
+                column_fqn=column.fullyQualifiedName.__root__,
+            )
+
     def process(
         self,
         table_data: Optional[TableData],
@@ -79,35 +120,13 @@ class PIIProcessor:
         and TableData
         """
         for idx, column in enumerate(table_entity.columns):
-
             try:
-                # First, check if the column we are about to process
-                # already has PII tags or not
-                column_has_pii_tag = any(
-                    (PII in tag.tagFQN.__root__ for tag in column.tags or [])
+                self.process_column(
+                    table_entity=table_entity,
+                    idx=idx,
+                    column=column,
+                    table_data=table_data,
+                    confidence_threshold=confidence_threshold,
                 )
-
-                # If it has PII tags, we skip the processing
-                # for the column
-                if column_has_pii_tag is True:
-                    continue
-
-                # Scan by column name. If no results there, check the sample data, if any
-                tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
-                    self.ner_scanner.scan([row[idx] for row in table_data.rows])
-                    if table_data
-                    else None
-                )
-
-                if (
-                    tag_and_confidence
-                    and tag_and_confidence.tag
-                    and tag_and_confidence.confidence >= confidence_threshold / 100
-                ):
-                    self.patch_column_tag(
-                        tag_type=tag_and_confidence.tag.value,
-                        table_entity=table_entity,
-                        column_fqn=column.fullyQualifiedName.__root__,
-                    )
             except Exception as err:
                 logger.warning(f"Error computing PII tags for [{column}] - [{err}]")
