@@ -100,7 +100,7 @@ const addKpi = (data) => {
   cy.get('[data-testid="end-date"]')
     .scrollIntoView()
     .click()
-    .type(`${startDate}{enter}`);
+    .type(`${endDate}{enter}`);
   cy.clickOutside();
   cy.get(descriptionBox).scrollIntoView().type('cypress test');
   cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
