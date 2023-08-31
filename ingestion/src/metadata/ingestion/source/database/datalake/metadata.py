@@ -95,8 +95,6 @@ class DatalakeSource(DatabaseServiceSource):
 
         self.client = self.connection.client
         self.table_constraints = None
-        self.data_models = {}
-        self.dbt_tests = {}
         self.database_source_state = set()
         self.config_source = self.service_connection.configSource
         self.connection_obj = self.connection

@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
