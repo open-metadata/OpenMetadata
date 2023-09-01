@@ -163,7 +163,7 @@ describe('Add and Remove Owner', () => {
       'testSuiteDetails'
     );
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCases');
-    cy.get('[data-testid="appbar-item-data-quality"]')
+    cy.get('[data-testid="app-bar-item-data-quality"]')
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@testSuites', 200);
@@ -189,7 +189,9 @@ describe('Add and Remove Owner', () => {
       '/api/v1/teams/name/Organization?fields=*',
       'getOrganization'
     );
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@getOrganization', 200);
     verifyResponseStatusCode('@teamPermission', 200);
@@ -203,8 +205,9 @@ describe('Add and Remove Owner', () => {
     interceptURL('GET', '/api/v1/permissions/glossary/*', 'glossaryPermission');
     interceptURL('GET', '/api/v1/glossaries?*', 'getGlossaries');
     cy.get('[data-testid="governance"]').should('be.visible').click();
-    cy.get('[data-testid="appbar-item-glossary"]').click({
+    cy.get('[data-testid="app-bar-item-glossary"]').click({
       waitForAnimations: true,
+      force: true,
     });
     verifyResponseStatusCode('@getGlossaries', 200);
     cy.get('[data-testid="add-glossary"]').click();
@@ -238,9 +241,9 @@ describe('Add and Remove Owner', () => {
       'getGlossaryTermDetails'
     );
     cy.get('[data-testid="governance"]').should('be.visible').click();
-    cy.get('[data-testid="appbar-item-glossary"]')
+    cy.get('[data-testid="app-bar-item-glossary"]')
       .should('be.visible')
-      .click({ waitForAnimations: true });
+      .click({ waitForAnimations: true, force: true });
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
     interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
@@ -274,9 +277,9 @@ describe('Add and Remove Owner', () => {
     interceptURL('GET', '/api/v1/glossaries?*', 'getGlossaries');
 
     cy.get('[data-testid="governance"]').should('be.visible').click();
-    cy.get('[data-testid="appbar-item-glossary"]')
+    cy.get('[data-testid="app-bar-item-glossary"]')
       .should('be.visible')
-      .click({ waitForAnimations: true });
+      .click({ waitForAnimations: true, force: true });
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
     interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');

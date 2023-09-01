@@ -126,7 +126,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void prepare(Dashboard dashboard) {
+  public void prepare(Dashboard dashboard, boolean update) {
     populateService(dashboard);
     dashboard.setCharts(EntityUtil.getEntityReferences(dashboard.getCharts(), Include.NON_DELETED));
     dashboard.setDataModels(EntityUtil.getEntityReferences(dashboard.getDataModels(), Include.NON_DELETED));

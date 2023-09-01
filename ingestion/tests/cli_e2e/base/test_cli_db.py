@@ -20,7 +20,7 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 
 from .e2e_types import E2EType
 from .test_cli import CliBase
@@ -243,56 +243,54 @@ class CliDBBase(TestCase):
 
         @abstractmethod
         def assert_for_vanilla_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ) -> None:
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_table_with_profiler(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_table_with_profiler_time_partition(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_delete_table_is_marked_as_deleted(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_schemas_includes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_schemas_excludes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_tables_includes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_tables_excludes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_mix(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
+        def assert_filtered_mix(self, source_status: Status, sink_status: SinkStatus):
             raise NotImplementedError()
 
         @staticmethod

@@ -13,7 +13,7 @@
 
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
-import { ReactComponent as AddReactionIcon } from 'assets/svg/add-reaction-emoji.svg';
+import { ReactComponent as AddReactionIcon } from 'assets/svg/ic-reaction.svg';
 import { groupBy, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';

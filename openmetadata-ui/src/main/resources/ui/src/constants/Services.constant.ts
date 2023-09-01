@@ -13,6 +13,7 @@
 
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
+import lightDash from 'assets/img/service-icon-lightdash.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
 import { EntityType } from 'enums/entity.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -32,6 +33,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
@@ -174,6 +176,8 @@ export const MS_AZURE = msAzure;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
+export const LIGHT_DASH = lightDash;
+export const COUCHBASE = couchbase;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -382,6 +386,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
+  DatabaseServiceType.Couchbase,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
