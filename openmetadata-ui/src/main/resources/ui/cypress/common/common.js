@@ -25,8 +25,8 @@ import {
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
-const RETRY_TIMES = 4;
-const BASE_WAIT_TIME = 20000;
+export const RETRY_TIMES = 4;
+export const BASE_WAIT_TIME = 20000;
 
 const ADMIN = 'admin';
 const RETRIES_COUNT = 4;

@@ -36,7 +36,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  public void prepare(StoredProcedure storedProcedure) {
+  public void prepare(StoredProcedure storedProcedure, boolean update) {
     DatabaseSchema schema = Entity.getEntity(storedProcedure.getDatabaseSchema(), "", ALL);
     storedProcedure
         .withDatabaseSchema(schema.getEntityReference())

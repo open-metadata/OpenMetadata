@@ -70,7 +70,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public void prepare(SearchIndex searchIndex) {
+  public void prepare(SearchIndex searchIndex, boolean update) {
     SearchService searchService = Entity.getEntity(searchIndex.getService(), "", ALL);
     searchIndex.setService(searchService.getEntityReference());
     searchIndex.setServiceType(searchService.getServiceType());

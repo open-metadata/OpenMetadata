@@ -46,7 +46,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void prepare(Report report) {
+  public void prepare(Report report, boolean update) {
     // TODO report does not have service yet
   }
 

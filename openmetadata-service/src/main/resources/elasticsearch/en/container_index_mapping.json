@@ -88,7 +88,7 @@
         "type": "text"
       },
       "sourceUrl": {
-        "type": "text"
+        "type": "keyword"
       },
       "parent": {
         "properties": {

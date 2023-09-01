@@ -48,7 +48,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public void prepare(Domain entity) {
+  public void prepare(Domain entity, boolean update) {
     // Parent, Experts, Owner are already validated
   }
 

@@ -43,7 +43,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void prepare(Tag entity) {
+  public void prepare(Tag entity, boolean update) {
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent(), NON_DELETED);
     entity.setParent(parentTerm);

@@ -110,7 +110,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) {
+  public void prepare(User user, boolean update) {
     validateTeams(user);
     validateRoles(user.getRoles());
   }
