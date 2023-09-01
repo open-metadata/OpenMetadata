@@ -30,8 +30,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.workflow.profiler import ProfilerWorkflow
 
 """
 Check Partitioned Table in Profiler Workflow

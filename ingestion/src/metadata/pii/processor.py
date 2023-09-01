@@ -12,39 +12,67 @@
 """
 Processor util to fetch pii sensitive columns
 """
-from typing import Optional
+import traceback
+from typing import Optional, cast
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Column, Table, TableData
+from metadata.generated.schema.entity.data.table import Column, TableData
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
+from metadata.profiler.api.models import PatchColumnTagResponse, ProfilerResponse
 from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
-class PIIProcessor:
+class PIIProcessor(Processor):
     """
     A scanner that uses Spacy NER for entity recognition
     """
 
-    def __init__(self, metadata: OpenMetadata):
-
+    def __init__(self, metadata: OpenMetadata, config: OpenMetadataWorkflowConfig):
+        super().__init__()
+        self.config = config
         self.metadata = metadata
-        self.ner_scanner = NERScanner()
 
-    def patch_column_tag(
-        self, tag_type: str, table_entity: Table, column_fqn: str
-    ) -> None:
+        # Init and type the source config
+        self.source_config: DatabaseServiceProfilerPipeline = cast(
+            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
+        )  # Used to satisfy type checked
+
+        self.ner_scanner = NERScanner()
+        self.confidence_threshold = self.source_config.confidence
+
+    @classmethod
+    def create(
+        cls, metadata: OpenMetadata, config: OpenMetadataWorkflowConfig
+    ) -> "Step":
+        return cls(metadata=metadata, config=config)
+
+    def close(self) -> None:
+        """Nothing to close"""
+
+    def build_column_tag(
+        self, tag_type: str, column_fqn: str
+    ) -> PatchColumnTagResponse:
         """
         Build the tag and run the PATCH
         """
@@ -60,20 +88,16 @@ class PIIProcessor:
             state=State.Suggested,
             labelType=LabelType.Automated,
         )
-        self.metadata.patch_column_tag(
-            table=table_entity,
-            column_fqn=column_fqn,
-            tag_label=tag_label,
-        )
+
+        return PatchColumnTagResponse(column_fqn=column_fqn, tag_label=tag_label)
 
     def process_column(
         self,
-        table_entity: Table,
         idx: int,
         column: Column,
         table_data: Optional[TableData],
         confidence_threshold: float,
-    ) -> None:
+    ) -> Optional[PatchColumnTagResponse]:
         """
         Tag a column with PII if we find it using our scanners
         """
@@ -101,32 +125,45 @@ class PIIProcessor:
             and tag_and_confidence.tag
             and tag_and_confidence.confidence >= confidence_threshold / 100
         ):
-            self.patch_column_tag(
+            return self.build_column_tag(
                 tag_type=tag_and_confidence.tag.value,
-                table_entity=table_entity,
                 column_fqn=column.fullyQualifiedName.__root__,
             )
 
-    def process(
+    def _run(
         self,
-        table_data: Optional[TableData],
-        table_entity: Table,
-        confidence_threshold: float,
-    ):
+        record: ProfilerResponse,
+    ) -> Either[ProfilerResponse]:
         """
         Main entrypoint for the scanner.
 
         Adds PII tagging based on the column names
         and TableData
         """
-        for idx, column in enumerate(table_entity.columns):
+
+        # We don't always need to process
+        if not self.source_config.processPiiSensitive:
+            return Either(right=record)
+
+        column_tags = []
+        for idx, column in enumerate(record.table.columns):
             try:
-                self.process_column(
-                    table_entity=table_entity,
+                col_tag = self.process_column(
                     idx=idx,
                     column=column,
-                    table_data=table_data,
-                    confidence_threshold=confidence_threshold,
+                    table_data=record.sample_data,
+                    confidence_threshold=self.confidence_threshold,
                 )
+                if col_tag:
+                    column_tags.append(col_tag)
             except Exception as err:
-                logger.warning(f"Error computing PII tags for [{column}] - [{err}]")
+                self.status.failed(
+                    StackTraceError(
+                        name=record.table.fullyQualifiedName.__root__,
+                        error=f"Error computing PII tags for [{column}] - [{err}]",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
+
+        record.column_tags = column_tags
+        return Either(right=record)

@@ -28,7 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import print_profiler_status
 
 

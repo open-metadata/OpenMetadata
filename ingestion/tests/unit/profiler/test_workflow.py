@@ -38,12 +38,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ProfilerProcessorConfig
-from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.processor.default import DefaultProfiler
 from metadata.profiler.source.base.profiler_source import ProfilerSource
+from metadata.workflow.profiler import ProfilerWorkflow
 
 TABLE = Table(
     id=uuid.uuid4(),
