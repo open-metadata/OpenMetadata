@@ -41,7 +41,14 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
       };
     });
 
-    return <AntdTable {...rest} columns={column} dataSource={dataSource} />;
+    return (
+      <AntdTable
+        {...rest}
+        columns={column}
+        data-testid="skeleton-table"
+        dataSource={dataSource}
+      />
+    );
   }
 
   return <AntdTable {...rest} />;
