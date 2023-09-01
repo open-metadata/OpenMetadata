@@ -27,7 +27,8 @@ export const visitGlossaryPage = () => {
     waitForAnimations: true,
   });
 
-  cy.get('[data-testid="app-bar-item-glossary"]').click();
+  // Applying force true as the hover over tooltip
+  cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
   verifyResponseStatusCode('@getGlossaries', 200);
 };
