@@ -30,12 +30,9 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
-    TestSuitePipeline,
-)
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.fqn import split
+from metadata.workflow.workflow_output_handler import print_status
 
 try:
     from airflow.operators.python import PythonOperator
@@ -64,8 +61,8 @@ from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.utils import model_str
+from metadata.workflow.metadata import MetadataWorkflow
 
 logger = workflow_logger()
 
@@ -231,11 +228,11 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_operator_logger(workflow_config)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-    workflow = Workflow.create(config)
+    workflow = MetadataWorkflow.create(config)
 
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

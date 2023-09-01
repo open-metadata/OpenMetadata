@@ -122,6 +122,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      loading={isLoading}
       title={
         <PageHeader
           data={{

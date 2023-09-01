@@ -13,20 +13,19 @@
 
 import Icon from '@ant-design/icons';
 import { Popover, Space } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import AppState from '../../../AppState';
+import { ReactComponent as IconFeedDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
+import { ReactComponent as IconReplyFeed } from '../../../assets/svg/ic-reply.svg';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
 import Reaction from '../../Reactions/Reaction';
 import { ConfirmState } from './ActivityFeedCard.interface';
-
-import { ReactComponent as IconFeedDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconReaction } from '../../../assets/svg/Reaction.svg';
-import { ReactComponent as IconReplyFeed } from '../../../assets/svg/Reply.svg';
 
 interface Props {
   isAuthor: boolean;
@@ -180,7 +179,7 @@ const PopoverContent: FC<Props> = ({
         <Icon
           component={IconReaction}
           data-testid="add-reactions"
-          style={{ fontSize: '20px' }}
+          style={{ fontSize: '16px' }}
         />
       </Popover>
 
@@ -188,16 +187,16 @@ const PopoverContent: FC<Props> = ({
         <Icon
           component={IconReplyFeed}
           data-testid="add-reply"
-          style={{ fontSize: '20px' }}
+          style={{ fontSize: '16px' }}
           onClick={handleReply}
         />
       )}
 
       {editCheck && (
         <Icon
-          component={EditIcon}
+          component={IconEdit}
           data-testid="edit-message"
-          style={{ fontSize: '18px' }}
+          style={{ fontSize: '16px' }}
           onClick={handleEdit}
         />
       )}
@@ -206,7 +205,7 @@ const PopoverContent: FC<Props> = ({
         <Icon
           component={IconFeedDelete}
           data-testid="delete-message"
-          style={{ fontSize: '18px' }}
+          style={{ fontSize: '16px' }}
           onClick={handleDelete}
         />
       ) : null}

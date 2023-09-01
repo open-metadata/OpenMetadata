@@ -35,7 +35,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -137,22 +138,28 @@ class GlueSource(DatabaseServiceSource):
                             continue
                         database_names.add(schema.CatalogId)
                     except Exception as exc:
-                        error = f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}"
-                        logger.debug(traceback.format_exc())
-                        logger.warning(error)
                         self.status.failed(
-                            schema.CatalogId, error, traceback.format_exc()
+                            StackTraceError(
+                                name=schema.CatalogId,
+                                error=f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}",
+                                stack_trace=traceback.format_exc(),
+                            )
                         )
+
             yield from database_names
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName,
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName,
+            )
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -179,25 +186,30 @@ class GlueSource(DatabaseServiceSource):
                         continue
                     yield schema.Name
                 except Exception as exc:
-                    error = f"Unexpected exception to get database schema [{schema.Name}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(schema.Name, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=schema.Name,
+                            error=f"Unexpected exception to get database schema [{schema.Name}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName,
-            sourceUrl=self.get_source_url(
-                database_name=self.context.database.name.__root__,
-                schema_name=schema_name,
-            ),
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName,
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                ),
+            )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -251,14 +263,17 @@ class GlueSource(DatabaseServiceSource):
                     self.context.table_data = table
                     yield table_name, table_type
                 except Exception as exc:
-                    error = f"Unexpected exception to get table [{table.Name}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(table.Name, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=table.Name,
+                            error=f"Unexpected exception to get table [{table.Name}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -282,16 +297,19 @@ class GlueSource(DatabaseServiceSource):
                     database_name=self.context.database.name.__root__,
                 ),
             )
-            yield table_request
+            yield Either(right=table_request)
             self.register_record(table_request=table_request)
         except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table_name,
+                    error=f"Unexpected exception to yield table [{table_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def prepare(self):
-        pass
+        """Nothing to prepare"""
 
     def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
@@ -323,11 +341,13 @@ class GlueSource(DatabaseServiceSource):
     def standardize_table_name(self, _: str, table: str) -> str:
         return table[:128]
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         yield from []
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """We don't pick up tags from Glue"""
 
     def get_source_url(
         self,
@@ -362,4 +382,4 @@ class GlueSource(DatabaseServiceSource):
         return None
 
     def close(self):
-        pass
+        """Nothing to close"""

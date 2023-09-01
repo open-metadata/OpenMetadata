@@ -33,7 +33,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -77,9 +78,7 @@ class FivetranSource(PipelineServiceSource):
         return cls(config, metadata_config)
 
     def get_connections_jobs(self, pipeline_details: FivetranPipelineDetails):
-        """
-        Returns the list of tasks linked to connection
-        """
+        """Returns the list of tasks linked to connection"""
         return [
             Task(
                 name=pipeline_details.pipeline_name,
@@ -89,7 +88,7 @@ class FivetranSource(PipelineServiceSource):
 
     def yield_pipeline(
         self, pipeline_details: FivetranPipelineDetails
-    ) -> Iterable[CreatePipelineRequest]:
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from fivetran
@@ -106,19 +105,17 @@ class FivetranSource(PipelineServiceSource):
                 source_name=pipeline_details.source.get("service"),
             ),
         )
-        yield pipeline_request
+        yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: FivetranPipelineDetails
-    ) -> Optional[OMetaPipelineStatus]:
-        """
-        Method to get task & pipeline status
-        """
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """Method to get task & pipeline status"""
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: FivetranPipelineDetails
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse all the stream available in the connection and create a lineage between them
         :param pipeline_details: pipeline_details object from airbyte
@@ -170,18 +167,18 @@ class FivetranSource(PipelineServiceSource):
                     )
                 )
 
-                yield AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type="table"),
-                        toEntity=EntityReference(id=to_entity.id, type="table"),
-                        lineageDetails=lineage_details,
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(id=from_entity.id, type="table"),
+                            toEntity=EntityReference(id=to_entity.id, type="table"),
+                            lineageDetails=lineage_details,
+                        )
                     )
                 )
 
     def get_pipelines_list(self) -> Iterable[FivetranPipelineDetails]:
-        """
-        Get List of all pipelines
-        """
+        """Get List of all pipelines"""
         for group in self.client.list_groups():
             for connector in self.client.list_group_connectors(
                 group_id=group.get("id")
@@ -193,9 +190,6 @@ class FivetranSource(PipelineServiceSource):
                 )
 
     def get_pipeline_name(self, pipeline_details: FivetranPipelineDetails) -> str:
-        """
-        Get Pipeline Name
-        """
         return pipeline_details.pipeline_name
 
     def get_source_url(

@@ -405,11 +405,10 @@ public class ElasticSearchClientImpl implements SearchClient {
    */
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    QueryBuilder wildcardQuery = QueryBuilders.queryStringQuery(sourceUrl).field("sourceUrl").escape(true);
     org.elasticsearch.action.search.SearchRequest searchRequest =
         new org.elasticsearch.action.search.SearchRequest("sourceUrlSearchAlias");
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(wildcardQuery);
+    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();

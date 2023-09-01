@@ -94,7 +94,7 @@
         "type": "text"
       },
       "sourceUrl": {
-        "type": "text"
+        "type": "keyword"
       },
       "charts": {
         "properties": {

@@ -113,6 +113,18 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         ),
       },
       {
+        title: t('label.target'),
+        dataIndex: 'targetDefinition',
+        key: 'targetDefinition',
+        render: (targetDefinition: Kpi['targetDefinition']) => {
+          const targetValue = targetDefinition?.length
+            ? `${+targetDefinition[0].value * 100}%`
+            : '-';
+
+          return <Typography.Text>{targetValue}</Typography.Text>;
+        },
+      },
+      {
         title: t('label.metric-type'),
         dataIndex: 'metricType',
         key: 'metricType',

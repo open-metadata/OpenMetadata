@@ -103,7 +103,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public void prepare(GlossaryTerm entity) {
+  public void prepare(GlossaryTerm entity, boolean update) {
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
