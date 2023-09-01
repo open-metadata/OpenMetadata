@@ -92,10 +92,10 @@ class QueryParserProcessor(Processor):
     def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
         if record and record.queries:
             data = []
-            for record in record.queries:
+            for table_query in record.queries:
                 try:
                     parsed_sql = parse_sql_statement(
-                        record,
+                        table_query,
                         ConnectionTypeDialectMapper.dialect_of(self.connection_type),
                     )
                     if parsed_sql:
@@ -104,7 +104,7 @@ class QueryParserProcessor(Processor):
                     return Either(
                         left=StackTraceError(
                             name="Query",
-                            error=f"Error processing query [{record.query}]: {exc}",
+                            error=f"Error processing query [{table_query.query}]: {exc}",
                             stack_trace=traceback.format_exc(),
                         )
                     )
