@@ -89,9 +89,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       Fields fieldList = entityRepository.getFields(fields);
       try {
         if (id != null) {
-          entity = (T) entityRepository.get(null, id, fieldList, Include.NON_DELETED, true);
+          entity = entityRepository.get(null, id, fieldList, Include.NON_DELETED, true);
         } else if (name != null) {
-          entity = (T) entityRepository.getByName(null, name, fieldList, Include.NON_DELETED, true);
+          entity = entityRepository.getByName(null, name, fieldList, Include.NON_DELETED, true);
         }
       } catch (EntityNotFoundException e) {
         entity = null;

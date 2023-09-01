@@ -32,6 +32,14 @@ public interface MigrationDAO {
       connectionType = POSTGRES)
   String getVersionMigrationChecksum(@Bind("version") String version) throws StatementException;
 
+  @ConnectionAwareSqlQuery(
+      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where version = :version and checksum = :checksum",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where version = :version and checksum = :checksum",
+      connectionType = POSTGRES)
+  String getSqlQuery(@Bind("version") String version, @Bind("checksum") String checksum) throws StatementException;
+
   @ConnectionAwareSqlUpdate(
       value =
           "INSERT INTO SERVER_CHANGE_LOG (version, migrationFileName, checksum, installed_on)"

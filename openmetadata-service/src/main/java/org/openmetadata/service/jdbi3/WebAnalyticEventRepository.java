@@ -32,7 +32,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public void prepare(WebAnalyticEvent entity) {
+  public void prepare(WebAnalyticEvent entity, boolean update) {
     /* Nothing to do */
   }
 

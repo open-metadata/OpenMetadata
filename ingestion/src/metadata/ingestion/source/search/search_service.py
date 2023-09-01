@@ -34,12 +34,11 @@ from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline i
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import (
-    DeleteEntity,
-    delete_entity_from_source,
-)
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -136,29 +135,21 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     @abstractmethod
     def yield_search_index(
         self, search_index_details: Any
-    ) -> Iterable[CreateSearchIndexRequest]:
-        """
-        Method to Get Search Index Entity
-        """
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """Method to Get Search Index Entity"""
 
     def yield_search_index_sample_data(
         self, search_index_details: Any
-    ) -> Iterable[SearchIndexSampleData]:
-        """
-        Method to Get Sample Data of Search Index Entity
-        """
+    ) -> Iterable[Either[SearchIndexSampleData]]:
+        """Method to Get Sample Data of Search Index Entity"""
 
     @abstractmethod
     def get_search_index_list(self) -> Optional[List[Any]]:
-        """
-        Get List of all search index
-        """
+        """Get List of all search index"""
 
     @abstractmethod
     def get_search_index_name(self, search_index_details: Any) -> str:
-        """
-        Get Search Index Name
-        """
+        """Get Search Index Name"""
 
     def get_search_index(self) -> Any:
         for index_details in self.get_search_index_list():
@@ -183,18 +174,14 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         yield self.config
 
     def prepare(self):
-        """
-        Nothing to prepare by default
-        """
+        """Nothing to prepare by default"""
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
-    def mark_search_indexes_as_deleted(self) -> Iterable[DeleteEntity]:
-        """
-        Method to mark the search index as deleted
-        """
+    def mark_search_indexes_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Method to mark the search index as deleted"""
         if self.source_config.markDeletedSearchIndexes:
             yield from delete_entity_from_source(
                 metadata=self.metadata,
@@ -218,9 +205,6 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.index_source_state.add(index_fqn)
-        self.status.scanned(search_index_request.name.__root__)
 
     def close(self):
-        """
-        Nothing to close by default
-        """
+        """Nothing to close by default"""

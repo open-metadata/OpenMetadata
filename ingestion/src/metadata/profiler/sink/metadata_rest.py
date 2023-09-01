@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -109,9 +110,17 @@ class MetadataRestSink(Sink[Entity]):
             error = f"Failed to sink profiler & test data for {name}: {err}"
             logger.debug(traceback.format_exc())
             logger.warning(error)
-            self.status.failed(name, error, traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=name, error=error, stack_trace=traceback.format_exc()
+                )
+            )
         except Exception as exc:
             error = f"Failed to ingest {log}: {exc}"
             logger.debug(traceback.format_exc())
             logger.warning(error)
-            self.status.failed(log, error, traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=log, error=error, stack_trace=traceback.format_exc()
+                )
+            )

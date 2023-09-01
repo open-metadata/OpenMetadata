@@ -56,7 +56,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public void prepare(Kpi kpi) {
+  public void prepare(Kpi kpi, boolean update) {
     // validate targetDefinition
     DataInsightChart chart = Entity.getEntity(kpi.getDataInsightChart(), "metrics", Include.NON_DELETED);
     kpi.setDataInsightChart(chart.getEntityReference());

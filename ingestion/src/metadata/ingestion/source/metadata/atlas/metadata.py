@@ -15,7 +15,7 @@ Atlas source to extract metadata
 
 import traceback
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -42,7 +42,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.api.models import Either, Entity, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
@@ -61,9 +63,7 @@ ATLAS_TABLE_TAG = "atlas_table"
 
 @dataclass
 class AtlasSource(Source):
-    """
-    Atlas source class
-    """
+    """Atlas source class"""
 
     config: WorkflowSource
     atlas_client: AtlasClient
@@ -107,11 +107,9 @@ class AtlasSource(Source):
         return cls(config, metadata_config)
 
     def prepare(self):
-        """
-        Not required to implement
-        """
+        """Not required to implement"""
 
-    def next_record(self):
+    def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
         for service in self.service_connection.databaseServiceName or []:
             check_service = self.metadata.get_by_name(
                 entity=DatabaseService, fqn=service
@@ -124,8 +122,12 @@ class AtlasSource(Source):
                         for key in self.tables:
                             yield from self._parse_table_entity(key, self.tables[key])
             else:
-                logger.warning(
-                    f"Cannot find service for {service} - type DatabaseService"
+                yield Either(
+                    left=StackTraceError(
+                        name=service,
+                        error=f"Cannot find service for {service} - type DatabaseService",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
         for service in self.service_connection.messagingServiceName or []:
@@ -140,14 +142,16 @@ class AtlasSource(Source):
                         for topic in self.topics:
                             yield from self._parse_topic_entity(topic)
             else:
-                logger.warning(
-                    f"Cannot find service for {service} - type MessagingService"
+                yield Either(
+                    left=StackTraceError(
+                        name=service,
+                        error=f"Cannot find service for {service} - type MessagingService",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def close(self):
-        """
-        Not required to implement
-        """
+        """Not required to implement"""
 
     def _parse_topic_entity(self, name):
         for key in self.topics:
@@ -180,9 +184,12 @@ class AtlasSource(Source):
                     yield from self.ingest_lineage(tpc_entity["guid"], name)
 
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to parse topi entry [{topic_entity}]: {exc}"
+                    yield Either(
+                        left=StackTraceError(
+                            name="Topic",
+                            error=f"Failed to parse topi entry [{topic_entity}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
                     )
 
     def _parse_table_entity(self, name, entity):  # pylint: disable=too-many-locals
@@ -241,7 +248,7 @@ class AtlasSource(Source):
                         tags=[ATLAS_TABLE_TAG],
                         classification_name=ATLAS_TAG_CATEGORY,
                         tag_description="Atlas Cluster Tag",
-                        classification_desciption="Tags associated with atlas entities",
+                        classification_description="Tags associated with atlas entities",
                     )
 
                     table_fqn = fqn.build(
@@ -272,12 +279,17 @@ class AtlasSource(Source):
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
 
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to parse for database : {db_entity} - table {table}: {exc}"
+                    yield Either(
+                        left=StackTraceError(
+                            name="Database",
+                            error=f"Failed to parse for database : {db_entity} - table {table}: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
                     )
 
-    def apply_table_tags(self, table_object: Table, table_entity: dict):
+    def apply_table_tags(
+        self, table_object: Table, table_entity: dict
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         apply default atlas table tag
         """
@@ -297,7 +309,7 @@ class AtlasSource(Source):
                     tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
                     classification_name=ATLAS_TAG_CATEGORY,
                     tag_description="Atlas Cluster Tag",
-                    classification_desciption="Tags associated with atlas entities",
+                    classification_description="Tags associated with atlas entities",
                 )
                 classification_tags = get_tag_labels(
                     metadata=self.metadata,
@@ -344,10 +356,8 @@ class AtlasSource(Source):
                 continue
         return om_cols
 
-    def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
-        """
-        Fetch and ingest lineage
-        """
+    def ingest_lineage(self, source_guid, name) -> Iterable[Either[AddLineageRequest]]:
+        """Fetch and ingest lineage"""
         try:
             lineage_response = self.atlas_client.get_lineage(source_guid)
             lineage_relations = lineage_response["relations"]
@@ -415,8 +425,15 @@ class AtlasSource(Source):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.debug(f"failed to parse lineage due to {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Lineage",
+                    error=f"failed to parse lineage due to {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def get_database_service(self):
+    def get_database_service(self) -> Optional[DatabaseService]:
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
@@ -430,7 +447,7 @@ class AtlasSource(Source):
         logger.error("Failed to create a service with name detlaLake")
         return None
 
-    def get_message_service(self):
+    def get_message_service(self) -> Optional[MessagingService]:
         service = self.metadata.create_or_update(
             CreateMessagingServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
@@ -444,16 +461,18 @@ class AtlasSource(Source):
         logger.error("Failed to create a service with name kafka")
         return None
 
-    def yield_lineage(self, from_entity_ref, to_entity_ref):
+    def yield_lineage(
+        self, from_entity_ref, to_entity_ref
+    ) -> Iterable[Either[AddLineageRequest]]:
         if from_entity_ref and to_entity_ref and from_entity_ref != to_entity_ref:
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
-            yield lineage
+            yield Either(right=lineage)
 
     def get_lineage_entity_ref(
         self, to_fqn, metadata_config, entity_type
-    ) -> EntityReference:
+    ) -> Optional[EntityReference]:
         metadata = OpenMetadata(metadata_config)
         if entity_type == "table":
             table = metadata.get_by_name(entity=Table, fqn=to_fqn)
