@@ -32,10 +32,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.pipeline.spline.metadata import SplineSource
 from metadata.ingestion.source.pipeline.spline.models import (
+    AttributesNames,
     ExecutionDetail,
     ExecutionEvent,
     ExecutionEvents,
     ExecutionPlan,
+    Extra,
     Inputs,
     Output,
 )
@@ -149,6 +151,16 @@ EXPECTED_LINEAGE_DETAILS = ExecutionDetail(
         ],
         output=Output(
             source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_test.filter"
+        ),
+        extra=Extra(
+            attributes=[
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-1"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-0"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-3"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-2"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-5"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-4"),
+            ]
         ),
     )
 )

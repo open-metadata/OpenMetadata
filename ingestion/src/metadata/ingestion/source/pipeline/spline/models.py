@@ -39,12 +39,9 @@ class Output(BaseModel):
 
 class AttributesNames(BaseModel):
     id: Optional[str]
-    name: Optional[str]
-    dataTypeId: Optional[str]
 
 
 class Extra(BaseModel):
-    appName: Optional[str]
     attributes: Optional[List[AttributesNames]] = []
 
 
@@ -63,7 +60,6 @@ class ExecutionDetail(BaseModel):
 class ColNodes(BaseModel):
     id: Optional[str] = Field(..., alias="_id")
     name: Optional[str]
-    originOpId: Optional[str]
 
 
 class ColLineage(BaseModel):
