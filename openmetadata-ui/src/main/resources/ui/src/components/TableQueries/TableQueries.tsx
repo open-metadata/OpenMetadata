@@ -318,7 +318,6 @@ const TableQueries: FC<TableQueriesProp> = ({
                 pageSize={PAGE_SIZE}
                 paging={tableQueries.paging}
                 pagingHandler={pagingHandler}
-                totalCount={tableQueries.paging.total}
               />
             )}
           </Col>

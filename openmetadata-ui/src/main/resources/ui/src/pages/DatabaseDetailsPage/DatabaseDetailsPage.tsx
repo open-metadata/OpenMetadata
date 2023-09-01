@@ -530,7 +530,6 @@ const DatabaseDetails: FunctionComponent = () => {
             pageSize={PAGE_SIZE}
             paging={databaseSchemaPaging}
             pagingHandler={databaseSchemaPagingHandler}
-            totalCount={databaseSchemaPaging.total}
           />
         )}
       </Col>

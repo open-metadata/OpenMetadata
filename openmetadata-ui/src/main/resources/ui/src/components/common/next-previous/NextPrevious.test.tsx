@@ -38,7 +38,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const pagination = getByTestId('pagination');
@@ -59,7 +58,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const previous = getByTestId('previous');
@@ -86,7 +84,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const previous = getByTestId('previous');
@@ -109,7 +106,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const next = getByTestId('next');
@@ -134,7 +130,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const next = getByTestId('next');
@@ -158,7 +153,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const next = getByTestId('next');
@@ -184,7 +178,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const next = getByTestId('next');
@@ -210,7 +203,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const next = getByTestId('next');
@@ -241,7 +233,6 @@ describe('Test Pagination Component', () => {
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
-        totalCount={paging.total}
       />
     );
     const nextButton = getByTestId('next');

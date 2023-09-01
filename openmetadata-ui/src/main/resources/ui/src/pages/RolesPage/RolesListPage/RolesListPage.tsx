@@ -138,7 +138,6 @@ const RolesListPage = () => {
             pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={handlePaging}
-            totalCount={paging.total}
           />
         )}
       </Col>

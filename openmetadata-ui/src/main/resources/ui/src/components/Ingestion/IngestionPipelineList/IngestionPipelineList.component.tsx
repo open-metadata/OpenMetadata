@@ -10,32 +10,44 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FilterOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Table, Typography } from 'antd';
 import Tooltip from 'antd/es/tooltip';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import Loader from 'components/Loader/Loader';
+import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import cronstrue from 'cronstrue';
-import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from 'generated/type/paging';
+import { map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from 'rest/ingestionPipelineAPI';
+import { showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 
 export const IngestionPipelineList = () => {
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
-  const [paging, setPaging] = useState<Paging>({ total: 0 });
+  const [pipelinePaging, setPipelinePaging] = useState<Paging>({ total: 0 });
   const [selectedPipelines, setSelectedPipelines] =
     useState<Array<IngestionPipeline>>();
   const [selectedRowKeys, setSelectedRowKeys] = useState<Array<React.Key>>([]);
   const [deploying, setDeploying] = useState(false);
-
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pipelineTypeFilter, setPipelineTypeFilter] =
+    useState<PipelineType[]>();
+  const [pageSize, setPageSize] = useState(10);
   const { t } = useTranslation();
 
   const renderNameField = (_: string, record: IngestionPipeline) => {
@@ -71,57 +83,52 @@ export const IngestionPipelineList = () => {
   };
 
   const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 500,
-        render: renderNameField,
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'pipelineType',
-        key: 'pipelineType',
-        filterDropdown: ({
-          setSelectedKeys,
-          selectedKeys,
-          confirm,
-          clearFilters,
-          close,
-        }) => (
-          <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
-            {/* <Input
-              placeholder={`Search ${dataIndex}`}
-              ref={searchInput}
-              style={{ marginBottom: 8, display: 'block' }}
-              value={selectedKeys[0]}
-              onChange={(e) =>
-                setSelectedKeys(e.target.value ? [e.target.value] : [])
-              }
-              onPressEnter={() =>
-                handleSearch(selectedKeys as string[], confirm, dataIndex)
-              }
-            /> */}
-          </div>
-        ),
-      },
-      {
-        title: t('label.schedule'),
-        dataIndex: 'schedule',
-        key: 'schedule',
-        render: renderScheduleField,
-      },
-      {
-        title: t('label.recent-run-plural'),
-        dataIndex: 'recentRuns',
-        key: 'recentRuns',
-        width: 180,
-        render: (_, record) => (
-          <IngestionRecentRuns classNames="align-middle" ingestion={record} />
-        ),
-      },
-    ],
+    () =>
+      pipelines
+        ? [
+            {
+              title: t('label.name'),
+              dataIndex: 'name',
+              key: 'name',
+              width: 500,
+              render: renderNameField,
+            },
+            {
+              title: t('label.type'),
+              dataIndex: 'pipelineType',
+              key: 'pipelineType',
+              filterDropdown: ColumnFilter,
+              filterIcon: (filtered: boolean) => (
+                <FilterOutlined
+                  style={{ color: filtered ? '#0968da' : undefined }}
+                />
+              ),
+              filters: map(PipelineType, (value) => ({
+                text: startCase(value),
+                value,
+              })),
+              filteredValue: pipelineTypeFilter,
+            },
+            {
+              title: t('label.schedule'),
+              dataIndex: 'schedule',
+              key: 'schedule',
+              render: renderScheduleField,
+            },
+            {
+              title: t('label.recent-run-plural'),
+              dataIndex: 'recentRuns',
+              key: 'recentRuns',
+              width: 180,
+              render: (_, record) => (
+                <IngestionRecentRuns
+                  classNames="align-middle"
+                  ingestion={record}
+                />
+              ),
+            },
+          ]
+        : [],
     [renderScheduleField, renderNameField]
   );
 
@@ -160,23 +167,60 @@ export const IngestionPipelineList = () => {
     }
   };
 
-  const fetchPipelines = async () => {
+  const fetchPipelines = async ({
+    cursor,
+    pipelineType,
+    limit,
+  }: {
+    cursor?: string;
+    pipelineType?: PipelineType[];
+    limit?: number;
+  }) => {
+    setLoading(true);
     try {
       const { data, paging } = await getIngestionPipelines({
-        arrQueryFields: ['owner', 'pipelineStatuses'],
+        arrQueryFields: ['owner'],
         serviceType: 'databaseService',
+        paging: cursor,
+        pipelineType,
+        limit,
       });
 
       setPipelines(data);
-      setPaging(paging);
+      setPipelinePaging(paging);
     } catch {
       // Error
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handlePageChange = (cursor: string | number, activePage?: number) => {
+    const pagingString = `&${cursor}=${pipelinePaging[cursor as keyof Paging]}`;
+
+    fetchPipelines({ cursor: pagingString, limit: pageSize });
+    setCurrentPage(activePage ?? 1);
+  };
+
   useEffect(() => {
-    fetchPipelines();
+    fetchPipelines({ limit: pageSize });
   }, []);
+
+  const handleTableChange: TableProps<IngestionPipeline>['onChange'] = (
+    _pagination,
+    filters
+  ) => {
+    setPipelineTypeFilter(filters.pipelineType as PipelineType[]);
+    fetchPipelines({
+      pipelineType: filters.pipelineType as PipelineType[],
+      limit: pageSize,
+    });
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    fetchPipelines({ pipelineType: pipelineTypeFilter, limit: size });
+  };
 
   return (
     <Row gutter={[16, 16]}>
@@ -193,6 +237,10 @@ export const IngestionPipelineList = () => {
         <Table
           columns={tableColumn}
           dataSource={pipelines}
+          loading={{
+            spinning: loading,
+            indicator: <Loader />,
+          }}
           pagination={false}
           rowKey="fullyQualifiedName"
           rowSelection={{
@@ -210,16 +258,20 @@ export const IngestionPipelineList = () => {
             selectedRowKeys,
           }}
           size="small"
+          onChange={handleTableChange}
         />
       </Col>
       <Col span={24}>
-        <NextPrevious
-          currentPage={1}
-          pageSize={10}
-          paging={paging}
-          //   pagingHandler={(...rest) => console.log(rest)}
-          totalCount={paging.total}
-        />
+        {showPagination(pipelinePaging) && (
+          <NextPrevious
+            showPageSize
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={pipelinePaging}
+            pagingHandler={handlePageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
       </Col>
     </Row>
   );

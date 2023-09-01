@@ -420,7 +420,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             pageSize={PAGE_SIZE}
             paging={pagingData.paging}
             pagingHandler={pagingData.onPagingClick}
-            totalCount={pagingData.paging.total}
           />
         )}
       </Col>

@@ -85,6 +85,7 @@ export const getIngestionPipelines = async (data: {
   pipelineType?: PipelineType[];
   testSuite?: string;
   serviceType?: string;
+  limit?: number;
 }) => {
   const {
     arrQueryFields,
@@ -93,12 +94,14 @@ export const getIngestionPipelines = async (data: {
     pipelineType,
     testSuite,
     serviceType,
+    limit,
   } = data;
   const queryParamString = QueryString.stringify({
     service: serviceFilter,
     testSuite,
     pipelineType: pipelineType?.length ? pipelineType.join(',') : undefined,
     type: serviceType,
+    limit,
   });
 
   const url = `${getURLWithQueryFields(

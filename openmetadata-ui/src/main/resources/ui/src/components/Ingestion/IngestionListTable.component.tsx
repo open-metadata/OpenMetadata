@@ -213,7 +213,6 @@ function IngestionListTable({
           pageSize={PAGE_SIZE}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
-          totalCount={paging.total}
         />
       )}
     </Space>

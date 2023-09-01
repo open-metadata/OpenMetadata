@@ -1217,7 +1217,6 @@ const TagsPage = () => {
                   pageSize={PAGE_SIZE}
                   paging={paging}
                   pagingHandler={handlePageChange}
-                  totalCount={paging.total}
                 />
               )}
             </Space>
