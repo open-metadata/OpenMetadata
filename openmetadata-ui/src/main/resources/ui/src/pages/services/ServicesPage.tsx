@@ -57,6 +57,7 @@ const ServicesPage = () => {
 
   return viewAllPermission ? (
     <Tabs
+      destroyInactiveTabPane
       activeKey={search as string}
       items={[
         {
@@ -66,7 +67,7 @@ const ServicesPage = () => {
         },
         {
           key: 'pipelines',
-          children: <IngestionPipelineList />,
+          children: <IngestionPipelineList serviceName={serviceName} />,
           label: 'Pipelines',
         },
       ]}

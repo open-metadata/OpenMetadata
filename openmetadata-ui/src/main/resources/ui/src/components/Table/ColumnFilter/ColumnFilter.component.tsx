@@ -28,8 +28,8 @@ export const ColumnFilter = ({
       setSelectedKeys(selectedKeys.filter((key) => key !== checkedKey));
     } else {
       setSelectedKeys([...selectedKeys, checkedKey]);
-      confirm();
     }
+    confirm();
   };
 
   return (

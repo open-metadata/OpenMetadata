@@ -24,7 +24,7 @@ import {
   PipelineType,
 } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from 'generated/type/paging';
-import { map, startCase } from 'lodash';
+import { isNil, map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,7 +36,11 @@ import { getEntityName } from 'utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 
-export const IngestionPipelineList = () => {
+export const IngestionPipelineList = ({
+  serviceName,
+}: {
+  serviceName: string;
+}) => {
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
   const [pipelinePaging, setPipelinePaging] = useState<Paging>({ total: 0 });
   const [selectedPipelines, setSelectedPipelines] =
@@ -107,6 +111,7 @@ export const IngestionPipelineList = () => {
                 text: startCase(value),
                 value,
               })),
+              filtered: !isNil(pipelineTypeFilter),
               filteredValue: pipelineTypeFilter,
             },
             {
@@ -163,6 +168,8 @@ export const IngestionPipelineList = () => {
         })
       );
     } finally {
+      setPipelineTypeFilter(undefined);
+      setSelectedRowKeys([]);
       setDeploying(false);
     }
   };
@@ -180,7 +187,7 @@ export const IngestionPipelineList = () => {
     try {
       const { data, paging } = await getIngestionPipelines({
         arrQueryFields: ['owner'],
-        serviceType: 'databaseService',
+        serviceType: serviceName,
         paging: cursor,
         pipelineType,
         limit,
@@ -204,7 +211,7 @@ export const IngestionPipelineList = () => {
 
   useEffect(() => {
     fetchPipelines({ limit: pageSize });
-  }, []);
+  }, [serviceName]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] = (
     _pagination,
