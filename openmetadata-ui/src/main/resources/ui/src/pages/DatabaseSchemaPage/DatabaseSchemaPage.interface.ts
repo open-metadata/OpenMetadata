@@ -10,15 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Paging } from 'generated/type/paging';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 
-export interface StoredProcedureTabProps {
-  data: ServicePageData[];
+export interface StoredProcedureData {
   isLoading: boolean;
+  deleted: boolean;
+  data: ServicePageData[];
   paging: Paging;
   currentPage: number;
-  showDeletedStoredProcedure: boolean;
-  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
-  onShowDeletedStoreProcedureChange: (value: boolean) => void;
 }

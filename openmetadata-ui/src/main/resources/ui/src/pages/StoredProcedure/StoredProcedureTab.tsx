@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Table, Typography } from 'antd';
+import { Col, Row, Switch, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -32,8 +32,10 @@ const StoredProcedureTab = ({
   data,
   isLoading,
   paging,
+  showDeletedStoredProcedure,
   pagingHandler,
   currentPage,
+  onShowDeletedStoreProcedureChange,
 }: StoredProcedureTabProps) => {
   const { t } = useTranslation();
 
@@ -72,38 +74,48 @@ const StoredProcedureTab = ({
   );
 
   return (
-    <Space
-      className="w-full p-x-lg"
-      data-testid="stored-procedure-table"
-      direction="vertical"
-      size="middle">
-      <Table
-        bordered
-        className="mt-4 table-shadow"
-        columns={tableColumn}
-        data-testid="data-models-table"
-        dataSource={data}
-        loading={{
-          spinning: isLoading,
-          indicator: <Loader size="small" />,
-        }}
-        locale={{
-          emptyText: <ErrorPlaceHolder className="m-y-md" />,
-        }}
-        pagination={false}
-        rowKey="id"
-        size="small"
-      />
-      {paging && paging.total > PAGE_SIZE && (
-        <NextPrevious
-          currentPage={currentPage}
-          pageSize={PAGE_SIZE}
-          paging={paging}
-          pagingHandler={pagingHandler}
-          totalCount={paging.total}
+    <Row className="p-lg" data-testid="stored-procedure-table" gutter={[0, 16]}>
+      <Col className="d-flex justify-end" span={24}>
+        <Switch
+          checked={showDeletedStoredProcedure}
+          data-testid="show-deleted-stored-procedure"
+          onClick={onShowDeletedStoreProcedureChange}
         />
-      )}
-    </Space>
+        <Typography.Text className="m-l-xs">
+          {t('label.deleted')}
+        </Typography.Text>{' '}
+      </Col>
+      <Col span={24}>
+        <Table
+          bordered
+          columns={tableColumn}
+          data-testid="data-models-table"
+          dataSource={data}
+          loading={{
+            spinning: isLoading,
+            indicator: <Loader size="small" />,
+          }}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      </Col>
+
+      <Col span={24}>
+        {paging && paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={pagingHandler}
+            totalCount={paging.total}
+          />
+        )}
+      </Col>
+    </Row>
   );
 };
 

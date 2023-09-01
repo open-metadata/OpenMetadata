@@ -36,12 +36,10 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
-import { Paging } from 'generated/type/paging';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isString, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import StoredProcedureTab from 'pages/StoredProcedure/StoredProcedureTab';
 import React, {
   FunctionComponent,
@@ -79,6 +77,7 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { StoredProcedureData } from './DatabaseSchemaPage.interface';
 import SchemaTablesTab from './SchemaTablesTab';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
@@ -118,17 +117,25 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [currentTablesPage, setCurrentTablesPage] =
     useState<number>(INITIAL_PAGING_VALUE);
 
-  const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
-  const [isStoredProcedureLoading, setIsStoredProcedureLoading] =
-    useState<boolean>(false);
-  const [storedProcedurePaging, setStoredProcedurePaging] =
-    useState<Paging>(pagingObject);
-  const [storedProcedureCurrentPage, setStoredProcedureCurrentPage] =
-    useState(1);
+  const [storedProcedure, setStoredProcedure] = useState<StoredProcedureData>({
+    data: [],
+    isLoading: false,
+    deleted: false,
+    paging: pagingObject,
+    currentPage: INITIAL_PAGING_VALUE,
+  });
 
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
     setCurrentTablesPage(INITIAL_PAGING_VALUE);
+  };
+
+  const handleShowDeletedStoredProcedure = (value: boolean) => {
+    setStoredProcedure((prev) => ({
+      ...prev,
+      currentPage: INITIAL_PAGING_VALUE,
+      deleted: value,
+    }));
   };
 
   const { tags, tier } = useMemo(
@@ -213,22 +220,23 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const fetchStoreProcedureDetails = useCallback(
     async (params?: ListDataModelParams) => {
       try {
-        setIsStoredProcedureLoading(true);
+        setStoredProcedure((prev) => ({ ...prev, isLoading: true }));
         const { data, paging } = await getStoredProceduresList({
           service: getDecodedFqn(databaseSchemaFQN),
           fields: 'owner,tags,followers',
-          include: Include.NonDeleted,
+          include: storedProcedure.deleted
+            ? Include.Deleted
+            : Include.NonDeleted,
           ...params,
         });
-        setStoredProcedure(data);
-        setStoredProcedurePaging(paging);
+        setStoredProcedure((prev) => ({ ...prev, data, paging }));
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsStoredProcedureLoading(false);
+        setStoredProcedure((prev) => ({ ...prev, isLoading: false }));
       }
     },
-    [databaseSchemaFQN]
+    [databaseSchemaFQN, storedProcedure.deleted]
   );
 
   const getSchemaTables = useCallback(
@@ -488,23 +496,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     async (cursorType: string | number, activePage?: number) => {
       const pagingString = {
         [cursorType]:
-          storedProcedurePaging[
-            cursorType as keyof typeof storedProcedurePaging
+          storedProcedure.paging[
+            cursorType as keyof typeof storedProcedure.paging
           ],
       };
 
       await fetchStoreProcedureDetails(pagingString);
 
-      setStoredProcedureCurrentPage(activePage ?? 1);
+      setStoredProcedure((prev) => ({
+        ...prev,
+        currentPage: activePage ?? INITIAL_PAGING_VALUE,
+      }));
     },
-    [storedProcedurePaging]
+    [storedProcedure.paging]
   );
 
   useEffect(() => {
     if (activeTab === EntityTabs.STORED_PROCEDURE) {
       fetchStoreProcedureDetails();
     }
-  }, [activeTab]);
+  }, [activeTab, storedProcedure.deleted]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
@@ -631,7 +642,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
-          count={storedProcedurePaging?.total}
+          count={storedProcedure.paging.total}
           id={EntityTabs.STORED_PROCEDURE}
           isActive={activeTab === EntityTabs.STORED_PROCEDURE}
           name={t('label.stored-procedure')}
@@ -640,11 +651,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       key: EntityTabs.STORED_PROCEDURE,
       children: (
         <StoredProcedureTab
-          currentPage={storedProcedureCurrentPage}
-          data={storedProcedure}
-          isLoading={isStoredProcedureLoading}
-          paging={storedProcedurePaging}
+          currentPage={storedProcedure.currentPage}
+          data={storedProcedure.data}
+          isLoading={storedProcedure.isLoading}
+          paging={storedProcedure.paging}
           pagingHandler={storedProcedurePagingHandler}
+          showDeletedStoredProcedure={storedProcedure.deleted}
+          onShowDeletedStoreProcedureChange={handleShowDeletedStoredProcedure}
         />
       ),
     },
