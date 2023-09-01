@@ -124,7 +124,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public void prepare(TestSuite entity) {
+  public void prepare(TestSuite entity, boolean update) {
     /* Nothing to do */
   }
 
@@ -163,7 +163,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     // the relationship to test cases if hardDelete is true. Test Cases
     // will not be deleted.
     String updatedBy = securityContext.getUserPrincipal().getName();
-    preDelete(original);
+    preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
 
     String changeType;

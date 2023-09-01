@@ -171,7 +171,7 @@ export const goToAdvanceSearch = () => {
     'explorePage'
   );
   // Navigate to explore page
-  cy.get('[data-testid="appbar-item-explore"]')
+  cy.get('[data-testid="app-bar-item-explore"]')
     .should('exist')
     .and('be.visible')
     .click();

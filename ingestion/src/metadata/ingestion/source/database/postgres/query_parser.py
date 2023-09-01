@@ -29,7 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_GET_DATABASE
 from metadata.ingestion.source.database.postgres.utils import (

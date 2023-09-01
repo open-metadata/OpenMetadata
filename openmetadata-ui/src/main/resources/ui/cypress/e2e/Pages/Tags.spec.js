@@ -121,7 +121,7 @@ describe('Tags page should work', () => {
 
     // adding manual wait to open dropdown in UI
     cy.wait(500);
-    cy.get('[data-testid="appbar-item-tags"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-tags"]').should('be.visible').click();
     verifyResponseStatusCode('@getTags', 200);
   });
 

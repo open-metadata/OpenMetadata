@@ -24,9 +24,9 @@ import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { customFormatDateTime } from 'utils/date-time/DateTimeUtils';
 import { parseSearchParams } from 'utils/Query/QueryUtils';
 import { getQueryPath } from 'utils/RouterUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
@@ -69,8 +69,8 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
-    const queryDate = getFormattedDateFromSeconds(
-      query.queryDate ?? 0,
+    const queryDate = customFormatDateTime(
+      query.queryDate || 0,
       QUERY_DATE_FORMAT
     );
 

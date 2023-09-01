@@ -23,10 +23,10 @@ describe('LeftSidebar', () => {
       </BrowserRouter>
     );
 
-    const exploreLink = screen.getByTestId('appbar-item-explore');
-    const qualityLink = screen.getByTestId('appbar-item-data-quality');
-    const insightLink = screen.getByTestId('appbar-item-data-insight');
-    const settingsLink = screen.getByTestId('appbar-item-settings');
+    const exploreLink = screen.getByTestId('app-bar-item-explore');
+    const qualityLink = screen.getByTestId('app-bar-item-data-quality');
+    const insightLink = screen.getByTestId('app-bar-item-data-insight');
+    const settingsLink = screen.getByTestId('app-bar-item-settings');
 
     expect(exploreLink).toBeInTheDocument();
     expect(qualityLink).toBeInTheDocument();

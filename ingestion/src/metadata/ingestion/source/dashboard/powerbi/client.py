@@ -19,7 +19,7 @@ from typing import List, Optional, Tuple
 
 import msal
 
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,

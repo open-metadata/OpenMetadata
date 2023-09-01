@@ -33,12 +33,11 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDataModel } from 'rest/dataModelsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
-import { getFeedCounts, refreshPage } from 'utils/CommonUtils';
+import { getFeedCounts } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
@@ -59,6 +58,7 @@ const DataModelDetails = ({
   handleUpdateDescription,
   handleColumnUpdateDataModel,
   onUpdateDataModel,
+  handleToggleDelete,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -170,7 +170,7 @@ const DataModelDetails = ({
         }),
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -180,6 +180,12 @@ const DataModelDetails = ({
       );
     }
   };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
 
   const modelComponent = useMemo(() => {
     return (
@@ -346,7 +352,7 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}

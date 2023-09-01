@@ -44,7 +44,7 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public void prepare(Bot entity) {
+  public void prepare(Bot entity, boolean update) {
     User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
     entity.withBotUser(user.getEntityReference());
   }

@@ -21,9 +21,9 @@ import {
   StatusType,
   Task,
 } from '../generated/entity/data/pipeline';
+import { formatDateTimeFromSeconds } from './date-time/DateTimeUtils';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
 import SVGIcons from './SvgUtils';
-import { formatDateTimeFromSeconds } from './TimeUtils';
 
 interface StatusIndicatorInterface {
   status: StatusType;
@@ -70,7 +70,7 @@ export const getTableViewData = (
       viewData.push({
         name: execute.name,
         status: execute.executionStatus,
-        timestamp: formatDateTimeFromSeconds(execution.timestamp as number),
+        timestamp: formatDateTimeFromSeconds(execution.timestamp),
         executionStatus: execute.executionStatus,
         type: '--',
       });

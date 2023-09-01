@@ -31,7 +31,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
@@ -77,9 +78,7 @@ class SagemakerSource(MlModelServiceSource):
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
     ) -> Iterable[SageMakerModel]:
-        """
-        List and filters models
-        """
+        """List and filters models"""
         args, has_more_models, models = {"MaxResults": 100}, True, []
         try:
             while has_more_models:
@@ -127,12 +126,10 @@ class SagemakerSource(MlModelServiceSource):
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model: SageMakerModel
-    ) -> Iterable[CreateMlModelRequest]:
+    ) -> Iterable[Either[CreateMlModelRequest]]:
         """
         Prepare the Request model
         """
-        self.status.scanned(model.name)
-
         mlmodel_request = CreateMlModelRequest(
             name=model.name,
             algorithm=self._get_algorithm(),  # Setting this to a constant

@@ -416,7 +416,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
     repository.isTestSuiteExecutable(create.getTestSuite());
-    repository.prepareInternal(test);
+    repository.prepareInternal(test, true);
     PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

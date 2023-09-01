@@ -30,12 +30,11 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import (
-    DeleteEntity,
-    delete_entity_from_source,
-)
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
@@ -147,67 +146,52 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
 
     @abstractmethod
-    def yield_pipeline(self, pipeline_details: Any) -> Iterable[CreatePipelineRequest]:
-        """
-        Method to Get Pipeline Entity
-        """
+    def yield_pipeline(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[CreatePipelineRequest]]:
+        """Method to Get Pipeline Entity"""
 
     @abstractmethod
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        """
-        Get lineage between pipeline and data sources
-        """
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Get lineage between pipeline and data sources"""
 
     @abstractmethod
     def get_pipelines_list(self) -> Optional[List[Any]]:
-        """
-        Get List of all pipelines
-        """
+        """Get List of all pipelines"""
 
     @abstractmethod
     def get_pipeline_name(self, pipeline_details: Any) -> str:
-        """
-        Get Pipeline Name
-        """
+        """Get Pipeline Name"""
 
     @abstractmethod
     def yield_pipeline_status(
         self, pipeline_details: Any
-    ) -> Optional[OMetaPipelineStatus]:
-        """
-        Get Pipeline Status
-        """
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """Get Pipeline Status"""
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any
-    ) -> Iterable[AddLineageRequest]:
-        """
-        Yields lineage if config is enabled
-        """
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Yields lineage if config is enabled"""
         if self.source_config.includeLineage:
             yield from self.yield_pipeline_lineage_details(pipeline_details) or []
 
-    def yield_tag(
-        self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[OMetaTagAndClassification]]:
-        """
-        Method to fetch pipeline tags
-        """
-        return  # Pipeline does not support fetching tags except Dagster
+    def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Method to fetch pipeline tags"""
 
     def close(self):
-        """
-        Method to implement any required logic after the ingestion process is completed
-        """
+        """Method to implement any required logic after the ingestion process is completed"""
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
     def yield_create_request_pipeline_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=PipelineService, config=config
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=PipelineService, config=config
+            )
         )
 
     def get_pipeline(self) -> Any:
@@ -229,9 +213,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
-        """
-        Mark the pipeline record as scanned and update the pipeline_source_state
-        """
+        """Mark the pipeline record as scanned and update the pipeline_source_state"""
         pipeline_fqn = fqn.build(
             self.metadata,
             entity_type=Pipeline,
@@ -240,12 +222,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.pipeline_source_state.add(pipeline_fqn)
-        self.status.scanned(pipeline_fqn)
 
-    def mark_pipelines_as_deleted(self) -> Iterable[DeleteEntity]:
-        """
-        Method to mark the pipelines as deleted
-        """
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Method to mark the pipelines as deleted"""
         if self.source_config.markDeletedPipelines:
             yield from delete_entity_from_source(
                 metadata=self.metadata,

@@ -50,7 +50,7 @@ const Suggestions = ({
   searchCriteria,
 }: SuggestionProp) => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
