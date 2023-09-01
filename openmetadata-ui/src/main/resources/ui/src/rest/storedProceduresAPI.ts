@@ -70,11 +70,13 @@ export const getStoredProceduresByName = async (
 
 export const getStoredProceduresDetailsByFQN = async (
   storedProceduresName: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  include = Include.All
 ) => {
   const url = `${getURLWithQueryFields(
     `${URL}/name/${storedProceduresName}`,
-    arrQueryFields
+    arrQueryFields,
+    `include=${include}`
   )}`;
 
   const response = await APIClient.get<StoredProcedure>(url);
