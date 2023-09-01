@@ -106,7 +106,7 @@
         "type": "text"
       },
       "sourceUrl": {
-        "type": "text"
+        "type": "keyword"
       },
       "columns": {
         "properties": {

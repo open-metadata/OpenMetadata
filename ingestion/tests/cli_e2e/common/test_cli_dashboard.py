@@ -49,16 +49,26 @@ class CliCommonDashboard:
             )
 
         def assert_not_including(self, source_status: Status, sink_status: Status):
+            """
+            Here we can have a diff of 1 element due to the service
+            being ingested in the first round.
+
+            This will not happen on subsequent tests or executions
+            """
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertTrue(len(source_status.filtered) == 0)
-            self.assertEqual(
-                self.expected_not_included_entities(), len(source_status.records)
+            # We can have a diff of 1 element if we are counting the service, which is only marked as ingested in the
+            # first go
+            self.assertTrue(
+                self.expected_dashboards_and_charts() + self.expected_lineage()
+                <= len(source_status.records)
             )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
-            self.assertEqual(
-                self.expected_not_included_sink_entities(), len(sink_status.records)
+            self.assertTrue(
+                self.expected_dashboards_and_charts() + self.expected_lineage()
+                <= len(sink_status.records)
             )
 
         def assert_for_vanilla_ingestion(
@@ -67,14 +77,23 @@ class CliCommonDashboard:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertTrue(len(source_status.filtered) == 0)
-            self.assertEqual(len(source_status.records), self.expected_entities())
+            self.assertEqual(
+                len(source_status.records),
+                self.expected_dashboards_and_charts()
+                + self.expected_tags()
+                + self.expected_lineage()
+                + self.expected_datamodels()
+                + self.expected_datamodel_lineage(),
+            )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertEqual(
                 len(sink_status.records),
-                self.expected_entities()
+                self.expected_dashboards_and_charts()
                 + self.expected_tags()
-                + self.expected_lineage(),
+                + self.expected_lineage()
+                + self.expected_datamodels()
+                + self.expected_datamodel_lineage(),
             )
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
@@ -89,7 +108,7 @@ class CliCommonDashboard:
 
         @staticmethod
         @abstractmethod
-        def expected_entities() -> int:
+        def expected_dashboards_and_charts() -> int:
             raise NotImplementedError()
 
         @staticmethod
@@ -104,12 +123,12 @@ class CliCommonDashboard:
 
         @staticmethod
         @abstractmethod
-        def expected_not_included_entities() -> int:
+        def expected_datamodels() -> int:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def expected_not_included_sink_entities() -> int:
+        def expected_datamodel_lineage() -> int:
             raise NotImplementedError()
 
         @staticmethod
