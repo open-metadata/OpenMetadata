@@ -42,7 +42,7 @@ class OMetaQueryMixin:
         :param queries: CreateQueryRequest to add
         """
         for create_query in queries:
-            if not create_query.is_life_cycle_query:
+            if not create_query.exclude_usage:
                 query = self.client.put(
                     self.get_suffix(Query), data=create_query.json()
                 )

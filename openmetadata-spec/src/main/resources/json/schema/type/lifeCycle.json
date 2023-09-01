@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/utils/lifeCycle.json",
+  "$id": "https://open-metadata.org/schema/type/lifeCycle.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Life Cycle Properties",
   "description": "This schema defines Life Cycle Properties.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.util.LifeCycle",
+  "javaType": "org.openmetadata.schema.type.LifeCycle",
   "definitions": {
     "created": {
       "description": "Created information of the data asset",
@@ -12,12 +12,12 @@
       "properties": {
         "created_at": {
           "description": "Timestamp of data asset when it got created",
-          "$ref": "../../type/basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/dateTime",
           "default": null
         },
         "created_by": {
           "description": "User that created the data asset",
-          "$ref": "../../type/entityReference.json",
+          "$ref": "entityReference.json",
           "default": null
         }
       },
@@ -30,13 +30,12 @@
       "properties": {
         "updated_at": {
           "description": "Timestamp of data asset when it got updated",
-          "$ref": "../../type/basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/dateTime",
           "default": null
-          
         },
         "updated_by": {
           "description": "User that updated the data asset",
-          "$ref": "../../type/entityReference.json",
+          "$ref": "entityReference.json",
           "default": null
         }
       },
@@ -49,13 +48,12 @@
       "properties": {
         "accessed_at": {
           "description": "Timestamp of data asset when it got accessed",
-          "$ref": "../../type/basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/dateTime",
           "default": null
-          
         },
         "accessed_by": {
           "description": "User that accessed the data asset",
-          "$ref": "../../type/entityReference.json",
+          "$ref": "entityReference.json",
           "default": null
         }
       },
@@ -68,13 +66,12 @@
       "properties": {
         "deleted_at": {
           "description": "Timestamp of data asset when it got deleted",
-          "$ref": "../../type/basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/dateTime",
           "default": null
-          
         },
         "deleted_by": {
           "description": "User that deleted the data asset",
-          "$ref": "../../type/entityReference.json",
+          "$ref": "entityReference.json",
           "default": null
         }
       },

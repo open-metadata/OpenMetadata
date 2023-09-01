@@ -110,7 +110,7 @@ class UsageSource(QueryParserSource, ABC):
                                 TableQuery(
                                     query=self.format_query(row["query_text"]),
                                     query_type=query_type,
-                                    is_life_cycle_query=self.check_life_cycle_query(
+                                    exclude_usage=self.check_life_cycle_query(
                                         query_type=query_type
                                     ),
                                     userName=row["user_name"],

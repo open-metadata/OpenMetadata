@@ -14,18 +14,14 @@ Mixin class containing Life Cycle specific methods
 To be used by OpenMetadata class
 """
 import traceback
-from typing import Optional, Type, TypeVar
+from typing import Optional
 
-from pydantic import BaseModel
-
-from metadata.generated.schema.entity.utils.lifeCycle import LifeCycleProperties
+from metadata.generated.schema.type.lifeCycle import LifeCycleProperties
+from metadata.ingestion.api.models import Entity
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
-
-LRU_CACHE_SIZE = 4096
-T = TypeVar("T", bound=BaseModel)
 
 
 class LifeCycleMixin:
@@ -38,10 +34,10 @@ class LifeCycleMixin:
     client: REST
 
     def ingest_life_cycle_data(
-        self, entity: Type[T], life_cycle_data: LifeCycleProperties
+        self, entity: Entity, life_cycle_data: LifeCycleProperties
     ) -> Optional[LifeCycleProperties]:
         """
-        PUT life cycle data for a table
+        PUT life cycle data for a entity
 
         :param entity: Entity to update the life cycle for
         :param life_cycle_data: Life Cycle data to add

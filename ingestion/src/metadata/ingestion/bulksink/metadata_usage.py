@@ -39,12 +39,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.entity.utils.lifeCycle import (
-    Accessed,
-    Created,
-    Deleted,
-    Updated,
-)
+from metadata.generated.schema.type.lifeCycle import Accessed, Created, Deleted, Updated
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import StackTraceError
@@ -350,7 +345,11 @@ class MetadataUsageBulkSink(BulkSink):
         self, table_entity: Table, table_usage: TableUsageCount
     ):
         """
-        Method to call the lifeCycle API to store the data
+        Method to call the lifeCycle API to store the data.
+        We iterate over all the queries of a table entity and pick the life cycle
+        data according to the query.
+        The life cycle data will only be added if the current lifecycle datetime is less the datetime of
+        the query being processed.
         """
         try:
             life_cycle = init_empty_life_cycle_properties()
@@ -394,8 +393,14 @@ class MetadataUsageBulkSink(BulkSink):
                 entity=table_entity, life_cycle_data=life_cycle
             )
         except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get life cycle data for table: {err}")
+            error = f"Unable to get life cycle data for table {table_entity.fullyQualifiedName}: {err}"
+            self.status.failed(
+                StackTraceError(
+                    name=table_usage.table,
+                    error=error,
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         if Path(self.config.filename).exists():

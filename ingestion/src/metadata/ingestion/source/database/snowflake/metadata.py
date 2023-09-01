@@ -24,7 +24,6 @@ from sqlparse.sql import Function, Identifier
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
-    Table,
     TablePartition,
     TableType,
 )
@@ -34,12 +33,13 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.utils.lifeCycle import Created, Deleted
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.lifeCycle import Created, Deleted
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -433,11 +433,12 @@ class SnowflakeSource(CommonDbSourceService):
             logger.error(f"Unable to get source url: {exc}")
         return None
 
-    def ingest_table_life_cycle_data(self, table: Table):
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
-        Method to get the source url for snowflake
+        Get the life cycle data of the table
         """
         try:
+            table = self.context.table
             results = self.engine.execute(
                 SNOWFLAKE_LIFE_CYCLE_QUERY.format(
                     database_name=table.database.name,
@@ -449,9 +450,11 @@ class SnowflakeSource(CommonDbSourceService):
                 life_cycle = init_empty_life_cycle_properties()
                 life_cycle.created = Created(created_at=row[0])
                 if row[1]:
-                    life_cycle.deleted = Deleted(deleted_at=row[0])
-                self.metadata.ingest_life_cycle_data(
-                    entity=table, life_cycle_data=life_cycle
+                    life_cycle.deleted = Deleted(deleted_at=row[1])
+                yield Either(
+                    right=OMetaLifeCycleData(
+                        entity=table, life_cycle_properties=life_cycle
+                    )
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())

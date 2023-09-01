@@ -261,7 +261,7 @@
     },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
-      "$ref": "../utils/lifeCycle.json"
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["id", "name", "service"],

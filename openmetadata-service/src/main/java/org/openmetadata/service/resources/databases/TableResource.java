@@ -58,13 +58,13 @@ import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
-import org.openmetadata.schema.util.LifeCycle;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -929,28 +929,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     Table table = repository.addLifeCycle(fqn, lifeCycle);
     return addHref(uriInfo, table);
-  }
-
-  @GET
-  @Path("/{fqn}/lifeCycle")
-  @Operation(
-      operationId = "getLifeCycle",
-      summary = "Get Life Cycle",
-      description = "Get Life Cycle information",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Get Life Cycle information.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = LifeCycle.class)))
-      })
-  public LifeCycle getLifeCycle(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the table", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_LIFE_CYCLE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getLifeCycle(fqn);
   }
 
   public static Table validateNewTable(Table table) {

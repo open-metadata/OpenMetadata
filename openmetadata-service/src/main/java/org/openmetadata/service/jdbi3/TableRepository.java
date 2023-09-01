@@ -51,8 +51,26 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.*;
-import org.openmetadata.schema.util.LifeCycle;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.ColumnProfilerConfig;
+import org.openmetadata.schema.type.DailyCount;
+import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SystemProfile;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TableJoins;
+import org.openmetadata.schema.type.TableProfile;
+import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -239,16 +257,6 @@ public class TableRepository extends EntityRepository<Table> {
 
     table.setLifeCycle(currentLifeCycle);
     return table.withLifeCycle(currentLifeCycle);
-  }
-
-  @Transaction
-  public LifeCycle getLifeCycle(String fqn) {
-    // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityByName(fqn);
-    table.setService(getContainer(table.getId()));
-
-    LifeCycle lifeCycle = getLifeCycleData(table);
-    return lifeCycle;
   }
 
   @Transaction

@@ -17,7 +17,7 @@ import re
 import traceback
 from typing import Any, Optional
 
-from metadata.generated.schema.entity.utils.lifeCycle import (
+from metadata.generated.schema.type.lifeCycle import (
     Accessed,
     Created,
     Deleted,

@@ -79,8 +79,8 @@
       "description": "SQL query type",
       "type": "string"
     },
-    "is_life_cycle_query": {
-      "description": "Flag to check if query is to used for life cycle properties",
+    "exclude_usage": {
+      "description": "Flag to check if query is to be excluded while processing usage",
       "type": "boolean"
     },
     "checksum": {
