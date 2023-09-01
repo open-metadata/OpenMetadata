@@ -3171,7 +3171,13 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
     List<String> listReportDataAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
 
-    @SqlUpdate("DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and DATE(TO_TIMESTAMP((json ->> 'timestamp')::bigint/1000)) = DATE(:date)",
+        connectionType = POSTGRES)
     void deleteReportDataTypeAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
   }
 
