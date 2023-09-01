@@ -64,6 +64,7 @@ const mockProp = {
   customProperties: mockProperties,
   updateEntityType: mockUpdateEntityType,
   isLoading: false,
+  isButtonLoading: false,
 };
 
 describe('Test CustomField Table Component', () => {

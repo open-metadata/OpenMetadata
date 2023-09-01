@@ -80,11 +80,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
       dataSource={childrenList}
       loading={isLoading}
       locale={{
-        emptyText: (
-          <div className="p-y-md">
-            <ErrorPlaceHolder />
-          </div>
-        ),
+        emptyText: <ErrorPlaceHolder className="p-y-md" />,
       }}
       pagination={false}
       rowKey="id"

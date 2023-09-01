@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Table, Tabs, Typography } from 'antd';
+import { Col, Row, Space, Switch, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -23,6 +23,7 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from 'components/common/Table/Table';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import Loader from 'components/Loader/Loader';
@@ -510,10 +511,7 @@ const DatabaseDetails: FunctionComponent = () => {
           columns={tableColumn}
           data-testid="database-databaseSchemas"
           dataSource={schemaData}
-          loading={{
-            spinning: schemaDataLoading,
-            indicator: <Loader size="small" />,
-          }}
+          loading={schemaDataLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
           }}

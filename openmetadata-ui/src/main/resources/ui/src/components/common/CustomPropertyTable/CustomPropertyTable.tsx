@@ -196,15 +196,17 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
     isEmpty(entityTypeDetail.customProperties) &&
     isUndefined(entityDetails.extension)
   ) {
-    <div className="flex-center tab-content-height">
-      <ErrorPlaceHolder className={className}>
-        <Typography.Paragraph>
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.custom-property-plural'),
-          })}
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
-    </div>;
+    return (
+      <div className="flex-center tab-content-height">
+        <ErrorPlaceHolder className={className}>
+          <Typography.Paragraph>
+            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: t('label.custom-property-plural'),
+            })}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      </div>
+    );
   }
 
   return isEmpty(entityTypeDetail.customProperties) &&
@@ -216,7 +218,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
       className="m-md"
       columns={tableColumn}
       data-testid="custom-properties-table"
-      dataSource={entityTypeDetail.customProperties || []}
+      dataSource={entityTypeDetail.customProperties ?? []}
       loading={entityTypeDetailLoading}
       pagination={false}
       rowKey="name"

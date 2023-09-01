@@ -11,20 +11,19 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Table as TableAntd, Typography } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
+import TableAntd from 'components/common/Table/Table';
 import { PAGE_SIZE } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { EntityLinkThreadCount } from 'generated/api/feed/threadCount';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Table } from 'generated/entity/data/table';
-import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -137,29 +136,27 @@ function SchemaTablesTab({
         </Row>
       </Col>
       <Col span={24}>
-        {tableDataLoading ? (
-          <Loader />
-        ) : isEmpty(tableData) && !showDeletedTables ? (
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-          />
-        ) : (
-          <TableAntd
-            bordered
-            columns={tableColumn}
-            data-testid="databaseSchema-tables"
-            dataSource={tableData.data}
-            locale={{
-              emptyText: <ErrorPlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        )}
-
-        {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
+        <TableAntd
+          bordered
+          columns={tableColumn}
+          data-testid="databaseSchema-tables"
+          dataSource={tableData.data}
+          loading={tableDataLoading}
+          locale={{
+            emptyText: (
+              <ErrorPlaceHolder
+                className="mt-0-important"
+                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+              />
+            ),
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      </Col>
+      {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
+        <Col span={24}>
           <NextPrevious
             currentPage={currentTablesPage}
             pageSize={PAGE_SIZE}
@@ -167,8 +164,8 @@ function SchemaTablesTab({
             pagingHandler={tablePaginationHandler}
             totalCount={tableData.paging.total}
           />
-        )}
-      </Col>
+        </Col>
+      )}
     </Row>
   );
 }

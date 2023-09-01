@@ -12,12 +12,13 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Divider, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Divider, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import Table from 'components/common/Table/Table';
 import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from 'components/Loader/Loader';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
@@ -579,7 +580,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               {t('label.add')}
             </Button>
           }
-          className="mt-24"
           heading={t('label.pipeline')}
           permission={createPermission}
           type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
@@ -590,11 +590,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     [testSuiteFQN]
   );
 
-  if (isLoading || isFetchingStatus) {
-    return <Loader />;
-  }
-
-  if (!isAirflowAvailable) {
+  if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
     return <ErrorPlaceHolderIngestion />;
   }
 
@@ -607,6 +603,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           ...test,
           key: test.name,
         }))}
+        loading={isLoading || isFetchingStatus}
         locale={{ emptyText: errorPlaceholder }}
         pagination={false}
         rowKey="name"
