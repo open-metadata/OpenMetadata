@@ -50,7 +50,6 @@ public class TestTransactionResource {
   }
 
   @PUT
-  @Transaction
   @Path("/createwithtransactions")
   @Operation(
       operationId = "createOrUpdate",

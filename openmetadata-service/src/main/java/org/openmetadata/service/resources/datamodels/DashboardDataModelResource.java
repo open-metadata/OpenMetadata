@@ -52,6 +52,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
@@ -257,6 +258,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDataModel",
@@ -276,6 +278,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return create(uriInfo, securityContext, dashboardDataModel);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -301,6 +304,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDataModel",
@@ -319,6 +323,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return createOrUpdate(uriInfo, securityContext, dashboardDataModel);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -337,6 +342,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -353,6 +359,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -374,6 +381,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -397,6 +405,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -303,6 +304,7 @@ public class DashboardServiceResource
     return response;
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDashboardService",
@@ -324,6 +326,7 @@ public class DashboardServiceResource
     return response;
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -348,6 +351,7 @@ public class DashboardServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -375,6 +379,7 @@ public class DashboardServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -401,6 +406,7 @@ public class DashboardServiceResource
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

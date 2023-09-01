@@ -58,6 +58,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -275,6 +276,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return decryptOrNullify(securityContext, super.getVersionInternal(securityContext, id, version));
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createWorkflow",
@@ -296,6 +298,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .build();
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/trigger/{id}")
   @Operation(
@@ -325,6 +328,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return pipelineServiceClient.runAutomationsWorkflow(workflow);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -352,6 +356,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateWorkflow",
@@ -373,6 +378,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .build();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -397,6 +403,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .build();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -422,6 +429,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

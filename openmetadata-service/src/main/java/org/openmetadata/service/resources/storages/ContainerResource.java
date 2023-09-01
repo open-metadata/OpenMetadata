@@ -42,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -207,6 +208,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createContainer",
@@ -225,6 +227,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return create(uriInfo, securityContext, container);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -249,6 +252,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateContainer",
@@ -267,6 +271,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return createOrUpdate(uriInfo, securityContext, container);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -288,6 +293,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -312,6 +318,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .toResponse();
   }
 
+  @JdbiUnitOfWork
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -331,6 +338,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return super.listVersionsInternal(securityContext, id);
   }
 
+  @JdbiUnitOfWork
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -358,6 +366,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -379,6 +388,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -401,6 +411,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

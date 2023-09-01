@@ -57,6 +57,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.Reindex;
@@ -241,6 +242,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createGlossary",
@@ -259,6 +261,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return create(uriInfo, securityContext, glossary);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -283,6 +286,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateGlossary",
@@ -301,6 +305,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return createOrUpdate(uriInfo, securityContext, glossary);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -326,6 +331,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -348,6 +354,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -369,10 +376,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation")
-  public String getCsvDocumentation(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
-          String name) {
+  public String getCsvDocumentation(@Context SecurityContext securityContext) {
     return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
   }
 
@@ -397,6 +401,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return exportCsvInternal(securityContext, name);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/name/{name}/import")
   @Consumes(MediaType.TEXT_PLAIN)

@@ -67,6 +67,7 @@ import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -247,6 +248,7 @@ public class FeedResource {
     return addHref(uriInfo, dao.getTask(Integer.parseInt(id)));
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/tasks/{id}/resolve")
   @Operation(
@@ -270,6 +272,7 @@ public class FeedResource {
     return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/tasks/{id}/close")
   @Operation(
@@ -293,6 +296,7 @@ public class FeedResource {
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask).toResponse();
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -358,6 +362,7 @@ public class FeedResource {
     return dao.getThreadsCount(filter, entityLink);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createThread",
@@ -377,6 +382,7 @@ public class FeedResource {
     return Response.created(thread.getHref()).entity(thread).build();
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/{id}/posts")
   @Operation(
@@ -401,6 +407,7 @@ public class FeedResource {
     return Response.created(thread.getHref()).entity(thread).build();
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{threadId}/posts/{postId}")
   @Operation(
@@ -436,6 +443,7 @@ public class FeedResource {
     return response.toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{threadId}")
   @Operation(
@@ -461,6 +469,7 @@ public class FeedResource {
     return dao.deleteThread(thread, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{threadId}/posts/{postId}")
   @Operation(

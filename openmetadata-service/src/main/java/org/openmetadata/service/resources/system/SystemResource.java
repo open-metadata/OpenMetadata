@@ -37,6 +37,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
@@ -107,6 +108,7 @@ public class SystemResource {
     return systemRepository.getConfigWithKey(name);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/settings")
   @Operation(
@@ -125,6 +127,7 @@ public class SystemResource {
     return systemRepository.createOrUpdate(settingName);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/settings/{settingName}")
   @Operation(

@@ -56,6 +56,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -259,6 +260,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDashboard",
@@ -277,6 +279,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return create(uriInfo, securityContext, dashboard);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -301,6 +304,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDashboard",
@@ -319,6 +323,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -337,6 +342,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -353,6 +359,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -374,6 +381,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -397,6 +405,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

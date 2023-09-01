@@ -118,6 +118,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -468,6 +469,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createUser",
@@ -529,6 +531,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return authenticationConfiguration.getProvider().equals(AuthProvider.BASIC);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       summary = "Update user",
@@ -563,6 +566,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return response.toResponse();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/generateToken/{id}")
   @Operation(
@@ -595,6 +599,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/revokeToken")
   @Operation(
@@ -693,6 +698,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user.getAuthenticationMechanism();
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -745,6 +751,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -768,6 +775,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return response;
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -789,6 +797,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -806,6 +815,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/signup")
   @Operation(
@@ -824,6 +834,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/registrationConfirmation")
   @Operation(
@@ -843,6 +854,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/resendRegistrationToken")
   @Operation(
@@ -869,6 +881,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .build();
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/generatePasswordResetLink")
   @Operation(
@@ -901,6 +914,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/password/reset")
   @Operation(
@@ -919,6 +933,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(200).entity("Password Changed Successfully").build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/changePassword")
   @Operation(
@@ -944,6 +959,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(OK).entity("Password Updated Successfully").build();
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/checkEmailInUse")
   @Operation(
@@ -962,6 +978,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(emailExists).build();
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/checkEmailVerified")
   @Operation(
@@ -1056,6 +1073,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/security/token/revoke")
   @Operation(
@@ -1100,6 +1118,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/security/token")
   @Operation(
@@ -1169,6 +1188,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return exportCsvInternal(securityContext, team);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/import")
   @Consumes(MediaType.TEXT_PLAIN)

@@ -60,6 +60,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -275,6 +276,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createType",
@@ -292,6 +294,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return create(uriInfo, securityContext, type);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -316,6 +319,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       summary = "Create or update a type",
@@ -333,6 +337,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return createOrUpdate(uriInfo, securityContext, type);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -350,6 +355,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return delete(uriInfo, securityContext, id, false, true);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -367,6 +373,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}")
   @Operation(

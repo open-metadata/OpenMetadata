@@ -122,7 +122,6 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -389,7 +388,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Initialize a given entity if it does not exist. */
-  @JdbiUnitOfWork
   public void initializeEntity(T entity) {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
@@ -409,7 +407,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityUpdater(original, updated, operation);
   }
 
-  @JdbiUnitOfWork
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
     return get(uriInfo, id, fields, NON_DELETED, false);
   }
@@ -434,7 +431,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** getReference is used for getting the entity references from the entity in the cache. */
-  @JdbiUnitOfWork
   public final EntityReference getReference(UUID id, Include include) throws EntityNotFoundException {
     return find(id, include).getEntityReference();
   }
@@ -442,7 +438,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @JdbiUnitOfWork
   public T find(UUID id, Include include) throws EntityNotFoundException {
     try {
       @SuppressWarnings("unchecked")
@@ -461,7 +456,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getByName(uriInfo, fqn, fields, NON_DELETED, false);
   }
 
-  @JdbiUnitOfWork
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     if (!fromCache) {
@@ -497,7 +491,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @JdbiUnitOfWork
   public T findByName(String fqn, Include include) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     try {
@@ -552,7 +545,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @JdbiUnitOfWork
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
     List<String> errors = new ArrayList<>();
@@ -725,7 +717,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
-  @JdbiUnitOfWork
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
@@ -743,7 +734,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @JdbiUnitOfWork
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);
@@ -765,7 +755,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @JdbiUnitOfWork
   public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
     // Get entity
     T entity = dao.findEntityById(entityId);
@@ -798,7 +787,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @JdbiUnitOfWork
   public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) {
     T originalEntity = dao.findEntityById(entityId);
 
@@ -892,7 +880,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new DeleteResponse<>(updated, changeType);
   }
 
-  @JdbiUnitOfWork
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     // Validate entity
@@ -900,7 +887,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
 
@@ -974,7 +960,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
   }
 
-  @JdbiUnitOfWork
   public PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) {
     T entity = find(entityId, NON_DELETED);
 

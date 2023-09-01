@@ -56,6 +56,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -255,6 +256,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDatabase",
@@ -273,6 +275,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return create(uriInfo, securityContext, database);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -297,6 +300,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDatabase",
@@ -314,6 +318,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return createOrUpdate(uriInfo, securityContext, database);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -339,6 +344,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -362,6 +368,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

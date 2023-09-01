@@ -57,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -209,6 +210,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createMlModel",
@@ -227,6 +229,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return create(uriInfo, securityContext, mlModel);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -251,6 +254,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateMlModel",
@@ -269,6 +273,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return createOrUpdate(uriInfo, securityContext, mlModel);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -290,6 +295,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -358,6 +364,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -379,6 +386,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -401,6 +409,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

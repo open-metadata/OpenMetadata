@@ -65,6 +65,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -319,6 +320,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createTeam",
@@ -336,6 +338,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return create(uriInfo, securityContext, team);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateTeam",
@@ -354,6 +357,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return createOrUpdate(uriInfo, securityContext, team);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -378,6 +382,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -403,6 +408,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -424,6 +430,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -466,6 +473,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return exportCsvInternal(securityContext, name);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/name/{name}/import")
   @Consumes(MediaType.TEXT_PLAIN)

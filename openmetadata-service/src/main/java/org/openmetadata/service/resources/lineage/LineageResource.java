@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -160,6 +161,7 @@ public class LineageResource {
     return addHref(uriInfo, dao.getByName(entity, fqn, upstreamDepth, downStreamDepth));
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "addLineageEdge",
@@ -180,6 +182,7 @@ public class LineageResource {
     return Response.status(Status.OK).build();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
   @Operation(

@@ -62,6 +62,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
@@ -290,6 +291,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return new FunctionList(CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class));
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createPolicy",
@@ -308,6 +310,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return create(uriInfo, securityContext, policy);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -332,6 +335,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdatePolicy",
@@ -350,6 +354,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return createOrUpdate(uriInfo, securityContext, policy);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -371,6 +376,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -394,6 +400,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

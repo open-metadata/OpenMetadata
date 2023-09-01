@@ -68,6 +68,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -311,6 +312,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createTable",
@@ -329,6 +331,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return create(uriInfo, securityContext, table);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateTable",
@@ -347,6 +350,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return createOrUpdate(uriInfo, securityContext, table);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -371,6 +375,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -396,6 +401,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -417,6 +423,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -434,6 +441,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -456,6 +464,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/joins")
   @Operation(
@@ -484,6 +493,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/sampleData")
   @Operation(
@@ -532,6 +542,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/sampleData")
   @Operation(
@@ -554,6 +565,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/tableProfilerConfig")
   @Operation(
@@ -577,6 +589,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @GET
   @Path("/{id}/tableProfilerConfig")
   @Operation(
@@ -599,6 +612,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/tableProfilerConfig")
   @Operation(
@@ -756,6 +770,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return repository.getSystemProfiles(fqn, startTs, endTs);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/tableProfile")
   @Operation(
@@ -808,6 +823,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return Response.ok().build();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/dataModel")
   @Operation(
@@ -831,6 +847,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/customMetric")
   @Operation(
@@ -855,6 +872,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/customMetric/{columnName}/{customMetricName}")
   @Operation(
@@ -881,6 +899,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(

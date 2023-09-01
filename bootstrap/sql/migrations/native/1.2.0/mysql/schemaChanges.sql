@@ -71,3 +71,5 @@ CREATE TABLE IF NOT EXISTS stored_procedure_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+ALTER TABLE entity_realtion ADD INDEX from_entity_type_index(fromId, fromEntity), ADD INDEX to_entity_type_index(toId, toEntity);

@@ -53,6 +53,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -215,6 +216,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDomain",
@@ -233,6 +235,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return create(uriInfo, securityContext, domain);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDomain",
@@ -275,6 +278,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -292,6 +296,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return delete(uriInfo, securityContext, id, true, true);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(

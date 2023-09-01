@@ -47,6 +47,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -280,6 +281,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return repository.getTestSummary(testSuiteId);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createLogicalTestSuite",
@@ -300,6 +302,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return create(uriInfo, securityContext, testSuite);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Path("/executable")
   @Operation(
@@ -321,6 +324,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return create(uriInfo, securityContext, testSuite);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -345,6 +349,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateLogicalTestSuite",
@@ -364,6 +369,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/executable")
   @Operation(
@@ -383,6 +389,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -414,6 +421,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return response.toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -445,6 +453,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return response.toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/executable/name/{name}")
   @Operation(
@@ -480,6 +489,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return response.toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/executable/{id}")
   @Operation(
@@ -514,6 +524,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return response.toResponse();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

@@ -57,6 +57,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -294,6 +295,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createGlossaryTerm",
@@ -312,6 +314,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return create(uriInfo, securityContext, term);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -336,6 +339,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateGlossaryTerm",
@@ -354,6 +358,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return createOrUpdate(uriInfo, securityContext, term);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -378,6 +383,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -401,6 +407,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

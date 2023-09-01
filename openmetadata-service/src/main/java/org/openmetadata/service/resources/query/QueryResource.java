@@ -47,6 +47,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -234,6 +235,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createQuery",
@@ -255,6 +257,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return create(uriInfo, securityContext, query);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateQuery",
@@ -273,6 +276,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return createOrUpdate(uriInfo, securityContext, query);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -297,6 +301,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -318,6 +323,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/vote")
   @Operation(
@@ -339,6 +345,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -361,6 +368,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/usage")
   @Operation(
@@ -383,6 +391,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return repository.addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/usage")
   @Operation(
@@ -407,6 +416,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .toResponse();
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -424,6 +434,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -441,6 +452,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return delete(uriInfo, securityContext, id, false, true);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(

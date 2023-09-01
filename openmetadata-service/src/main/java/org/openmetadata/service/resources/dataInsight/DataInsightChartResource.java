@@ -50,6 +50,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.IndexUtil;
@@ -263,6 +264,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDataInsightChart",
@@ -282,6 +284,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return create(uriInfo, securityContext, dataInsightChart);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -307,6 +310,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDataInsightChart",
@@ -325,6 +329,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return createOrUpdate(uriInfo, securityContext, dataInsightChart);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -347,6 +352,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -370,6 +376,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

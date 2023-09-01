@@ -58,6 +58,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TopicRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -256,6 +257,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createTopic",
@@ -274,6 +276,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return create(uriInfo, securityContext, topic);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -298,6 +301,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateTopic",
@@ -315,6 +319,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return createOrUpdate(uriInfo, securityContext, topic);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/sampleData")
   @Operation(
@@ -363,6 +368,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return addHref(uriInfo, topic);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -384,6 +390,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -407,6 +414,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -428,6 +436,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -450,6 +459,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

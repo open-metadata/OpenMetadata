@@ -33,7 +33,6 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
@@ -165,7 +164,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     return searchIndex;
   }
 
-  @Transaction
   public SearchIndex addSampleData(UUID searchIndexId, SearchIndexSampleData sampleData) {
     // Validate the request content
     SearchIndex searchIndex = daoCollection.searchIndexDAO().findEntityById(searchIndexId);

@@ -58,6 +58,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -340,6 +341,7 @@ public class MetadataServiceResource
     return decryptOrNullify(securityContext, metadataService);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createMetadataService",
@@ -361,6 +363,7 @@ public class MetadataServiceResource
     return response;
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateMetadataService",
@@ -382,6 +385,7 @@ public class MetadataServiceResource
     return response;
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -406,6 +410,7 @@ public class MetadataServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -432,6 +437,7 @@ public class MetadataServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -457,6 +463,7 @@ public class MetadataServiceResource
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

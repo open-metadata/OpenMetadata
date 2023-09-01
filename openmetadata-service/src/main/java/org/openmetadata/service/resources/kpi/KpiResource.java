@@ -45,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -237,6 +238,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createKpi",
@@ -257,6 +259,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return create(uriInfo, securityContext, kpi);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -281,6 +284,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateKpi",
@@ -319,6 +323,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -344,6 +349,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -361,6 +367,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{name}/kpiResult")
   @Operation(
@@ -439,6 +446,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return repository.getKpiResult(name);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{name}/kpiResult/{timestamp}")
   @Operation(

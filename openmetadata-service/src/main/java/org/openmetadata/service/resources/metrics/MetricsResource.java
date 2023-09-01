@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricsRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -159,6 +160,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
     return super.create(uriInfo, securityContext, metrics);
   }
 
+  @JdbiUnitOfWork
   @Override
   @PUT
   @Operation(

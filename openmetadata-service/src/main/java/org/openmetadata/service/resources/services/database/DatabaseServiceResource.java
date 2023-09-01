@@ -59,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -219,6 +220,7 @@ public class DatabaseServiceResource
     return decryptOrNullify(securityContext, databaseService);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/testConnectionResult")
   @Operation(
@@ -307,6 +309,7 @@ public class DatabaseServiceResource
     return decryptOrNullify(securityContext, databaseService);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDatabaseService",
@@ -328,6 +331,7 @@ public class DatabaseServiceResource
     return response;
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDatabaseService",
@@ -349,6 +353,7 @@ public class DatabaseServiceResource
     return response;
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -373,6 +378,7 @@ public class DatabaseServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -400,6 +406,7 @@ public class DatabaseServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -426,6 +433,7 @@ public class DatabaseServiceResource
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

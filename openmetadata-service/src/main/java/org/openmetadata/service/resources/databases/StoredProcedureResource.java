@@ -27,6 +27,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -223,6 +224,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createStoredProcedure",
@@ -242,6 +244,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return create(uriInfo, securityContext, storedProcedure);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -266,6 +269,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateStoredProcedure",
@@ -284,6 +288,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return createOrUpdate(uriInfo, securityContext, storedProcedure);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -305,6 +310,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -328,6 +334,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         .toResponse();
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -353,6 +360,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -375,6 +383,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
+  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

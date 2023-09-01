@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -133,6 +134,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @JdbiUnitOfWork
   @Override
   @POST
   @Operation(
@@ -151,6 +153,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return super.create(uriInfo, securityContext, report);
   }
 
+  @JdbiUnitOfWork
   @Override
   @PUT
   @Operation(
