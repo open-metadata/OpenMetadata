@@ -22,6 +22,7 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
@@ -32,6 +33,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleDataWithMessages';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
@@ -89,6 +91,11 @@ function SearchIndexDetailsPage() {
   );
   const [searchIndexPermissions, setSearchIndexPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const viewPermission = useMemo(
+    () => searchIndexPermissions.ViewAll || searchIndexPermissions.ViewBasic,
+    [searchIndexPermissions]
+  );
 
   const entityFQN = useMemo(
     () => encodeURIComponent(decodeURIComponent(searchIndexFQN)),
@@ -434,6 +441,43 @@ function SearchIndexDetailsPage() {
         ),
       },
       {
+        label: (
+          <TabsLabel
+            id={EntityTabs.SAMPLE_DATA}
+            name={t('label.sample-data')}
+          />
+        ),
+        key: EntityTabs.SAMPLE_DATA,
+        children: !(
+          searchIndexPermissions.ViewAll ||
+          searchIndexPermissions.ViewSampleData
+        ) ? (
+          <div className="m-t-xlg">
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          </div>
+        ) : (
+          <SampleDataWithMessages
+            entityId={searchIndexDetails?.id ?? ''}
+            entityType={EntityType.SEARCH_INDEX}
+          />
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.SEARCH_INDEX_SETTINGS}
+            name={t('label.search-index-setting-plural')}
+          />
+        ),
+        key: EntityTabs.SEARCH_INDEX_SETTINGS,
+        children: (
+          <QueryViewer
+            sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
+            title={t('label.search-index-setting-plural')}
+          />
+        ),
+      },
+      {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
@@ -619,11 +663,11 @@ function SearchIndexDetailsPage() {
   }, [entityFQN]);
 
   useEffect(() => {
-    if (searchIndexPermissions.ViewAll || searchIndexPermissions.ViewBasic) {
+    if (viewPermission) {
       fetchSearchIndexDetails();
       getEntityFeedCount();
     }
-  }, [searchIndexFQN, searchIndexPermissions]);
+  }, [searchIndexFQN, viewPermission]);
 
   const onThreadPanelClose = () => {
     setThreadLink('');
@@ -647,7 +691,7 @@ function SearchIndexDetailsPage() {
     return <Loader />;
   }
 
-  if (!(searchIndexPermissions.ViewAll || searchIndexPermissions.ViewBasic)) {
+  if (!viewPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 

@@ -166,6 +166,7 @@ export enum EntityTabs {
   CONNECTION = 'connection',
   SQL = 'sql',
   FIELDS = 'fields',
+  SEARCH_INDEX_SETTINGS = 'search-index-settings',
 }
 
 export enum EntityAction {

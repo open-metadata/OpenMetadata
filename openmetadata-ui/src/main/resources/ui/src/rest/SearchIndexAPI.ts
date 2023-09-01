@@ -119,7 +119,7 @@ export const removeFollower = async (searchIndexId: string, userId: string) => {
 
 export const getSampleDataBySearchIndexId = async (id: string) => {
   const response = await APIClient.get<SearchIndex>(
-    `/searchIndex/${id}/sampleData`
+    `/searchIndexes/${id}/sampleData`
   );
 
   return response.data;
