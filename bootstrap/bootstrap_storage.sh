@@ -10,6 +10,30 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+printUsage() {
+  cat <<-EOF
+USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate] [-d] [-f]
+   create           : Creates the tables. The target database should be empty
+   migrate          : Migrates the database to the latest version or creates the tables if the database is empty. Use "info" to see the current version and the pending migrations
+   info             : Shows the list of migrations applied and the pending migration waiting to be applied on the target database
+   validate         : Checks if all the migrations have been applied to the target database
+   drop             : Drops all the tables in the target database
+   drop-create      : Drops and recreates all the tables in the target database
+   es-drop          : Drops the indexes in ElasticSearch
+   es-create        : Creates the indexes in ElasticSearch
+   drop-create-all  : Drops and recreates all the tables in the database. Drops and creates all the indexes in ElasticSearch
+   migrate-all      : Migrates the database to the latest version and migrates the indexes in ElasticSearch
+   repair           : Repairs the DATABASE_CHANGE_LOG table, which is used to track all the migrations on the target database
+                      This involves removing entries for failed migrations and updating the checksum of migrations already applied on the target database
+   check-connection : Checks if a connection can be successfully obtained for the target database
+   rotate           : Rotate the Fernet Key defined in \$FERNET_KEY
+
+   Additionally, you can use:
+   -d for debug      : Enable Debugging Mode to get more info
+   -f for force      : Forces the server Migration to run, even if already run
+EOF
+}
+
 # Resolve links - $0 may be a softlink
 PRG="${0}"
 debug=false
@@ -33,7 +57,7 @@ fi
 
 opt="$1"
 shift
-# Parse options following the command
+
 while [ $# -gt 0 ]; do
   case "$1" in
     -d)
@@ -43,6 +67,9 @@ while [ $# -gt 0 ]; do
       force=true
       ;;
     *)
+      echo "Invalid option: -$1" >&2
+      echo "Only two options allowed after main argument command. Use -d for debug and -f for force. Refer:"
+      printUsage
       break
       ;;
   esac
@@ -75,29 +102,6 @@ else
   CLASSPATH=`mvn -pl openmetadata-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
 fi
 
-printUsage() {
-  cat <<-EOF
-USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate] [debug] [force]
-   create           : Creates the tables. The target database should be empty
-   migrate          : Migrates the database to the latest version or creates the tables if the database is empty. Use "info" to see the current version and the pending migrations
-   info             : Shows the list of migrations applied and the pending migration waiting to be applied on the target database
-   validate         : Checks if all the migrations have been applied to the target database
-   drop             : Drops all the tables in the target database
-   drop-create      : Drops and recreates all the tables in the target database
-   es-drop          : Drops the indexes in ElasticSearch
-   es-create        : Creates the indexes in ElasticSearch
-   drop-create-all  : Drops and recreates all the tables in the database. Drops and creates all the indexes in ElasticSearch
-   migrate-all      : Migrates the database to the latest version and migrates the indexes in ElasticSearch
-   repair           : Repairs the DATABASE_CHANGE_LOG table, which is used to track all the migrations on the target database. This involves removing entries for failed migrations and updating the checksum of migrations already applied on the target database
-   check-connection : Checks if a connection can be successfully obtained for the target database
-   rotate           : Rotate the Fernet Key defined in \$FERNET_KEY
-
-   Additionally, you can use:
-   -d for debug      : Enable Debugging Mode to get more info
-   -f for force      : Forces the server Migration to run, even if already run
-EOF
-}
-
 execute() {
   local command="$1"
   local debug="$2"
@@ -109,6 +113,7 @@ execute() {
   echo "The -force value is ${force} and the debug value is ${debug} and command used is ${command}"
   ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${FLYWAY_SQL_ROOT_DIR} -n ${NATIVE_SQL_ROOT_DIR} --${1} -force ${force}  -${debug}
 }
+
 
 case "${opt}" in
 create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate)
