@@ -217,11 +217,11 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toHaveTextContent(`${totalPage}/${totalPage} Page`);
   });
 
-  it('On clicking Previous and Next button respective pages should be rendered', () => {
+  it('On clicking Previous and Next button respective pages should be rendered', async () => {
     const paging = {
       before: 'test',
       after: '',
-      total: PAGE_SIZE * 2,
+      total: PAGE_SIZE * 3,
     };
 
     const totalPage = computeTotalPages(PAGE_SIZE, PAGE_SIZE * 2);
@@ -235,16 +235,16 @@ describe('Test Pagination Component', () => {
         pagingHandler={mockCallback}
       />
     );
-    const nextButton = getByTestId('next');
-    const prevButton = getByTestId('previous');
 
     act(() => {
+      const prevButton = getByTestId('previous');
       fireEvent.click(prevButton);
     });
 
     expect(mockCallback).toHaveBeenCalledTimes(1);
 
-    act(() => {
+    await act(() => {
+      const nextButton = getByTestId('next');
       fireEvent.click(nextButton);
     });
 

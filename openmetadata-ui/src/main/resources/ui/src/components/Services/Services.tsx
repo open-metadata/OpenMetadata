@@ -174,10 +174,10 @@ const Services = ({ serviceName }: ServicesProps) => {
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      render: (_, record) => (
+      render: (name, record) => (
         <Link
           className="d-flex gap-2 items-center"
-          data-testid="container-name"
+          data-testid={`service-name-${name}`}
           to={getServiceDetailsPath(
             encodeURIComponent(record.fullyQualifiedName ?? record.name),
             serviceName
