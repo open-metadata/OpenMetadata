@@ -15,6 +15,8 @@ import { AxiosError } from 'axios';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -437,6 +439,10 @@ const StoredProcedurePage = () => {
     setThreadLink('');
   };
 
+  const onExtensionUpdate = async (updatedData: StoredProcedure) => {
+    await handleStoreProcedureUpdate(updatedData, 'extension');
+  };
+
   const tabs = useMemo(
     () => [
       {
@@ -555,6 +561,29 @@ const StoredProcedurePage = () => {
               storedProcedurePermissions.EditAll ||
               storedProcedurePermissions.EditLineage
             }
+          />
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={
+              storedProcedure as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.STORED_PROCEDURE}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              storedProcedurePermissions.EditAll ||
+              storedProcedurePermissions.EditCustomFields
+            }
+            hasPermission={storedProcedurePermissions.ViewAll}
           />
         ),
       },
