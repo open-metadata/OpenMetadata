@@ -32,8 +32,8 @@ export const BAR_CHART_MARGIN: Margin = {
 
 export const DI_STRUCTURE = {
   rowContainerGutter: 32 as RowProps['gutter'],
-  leftContainerSpan: 19,
-  rightContainerSpan: 5,
+  leftContainerSpan: 16,
+  rightContainerSpan: 8,
   rightRowGutter: [8, 16] as RowProps['gutter'],
 };
 
@@ -53,28 +53,6 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
 ];
 
 export const BAR_SIZE = 15;
-
-export const ENTITIES_BAR_COLO_MAP: Record<string, string> = {
-  Chart: '#E7B85D',
-  Dashboard: '#416BB3',
-  Database: '#66B5AD',
-  DatabaseSchema: '#8D6AF1',
-  MlModel: '#699994',
-  Pipeline: '#6A86EB',
-  Table: '#7A57A6',
-  Topic: '#7DC177',
-  User: '#AD4F82',
-  TestSuite: '#C870C5',
-};
-
-export const TIER_BAR_COLOR_MAP: Record<string, string> = {
-  'Tier.Tier1': '#E7B85D',
-  'Tier.Tier2': '#416BB3',
-  'Tier.Tier3': '#66B5AD',
-  'Tier.Tier4': '#8D6AF1',
-  'Tier.Tier5': '#699994',
-  NoTier: '#6A86EB',
-};
 
 export const TIER_FILTER = {
   [i18n.t('label.tier-number', { tier: 1 })]: {
@@ -189,18 +167,35 @@ export const KPI_DATES = {
   endDate: '',
 };
 
-export const TOTAL_ENTITY_CHART_COLOR: Record<string, string> = {
-  Chart: '#1FA1F0',
-  Dashboard: '#416BB3',
-  Database: '#5CAE95',
-  DatabaseSchema: '#2269F5',
-  MlModel: '#76E9C6',
-  Pipeline: '#FEB019',
-  Table: '#9747FF',
-  Topic: '#76E9C6',
-  User: '#AD4F82',
-  TestSuite: '#C870C5',
-};
+export const TOTAL_ENTITY_CHART_COLOR = [
+  '#1FA1F0',
+  '#416BB3',
+  '#5CAE95',
+  '#2269F5',
+  '#76E9C6',
+  '#FEB019',
+  '#9747FF',
+  '#FF7C50',
+  '#AD4F82',
+  '#C870C5',
+  '#ED7014',
+  '#FCAE1E',
+  '#B56727',
+  '#F9E076',
+  '#3CB043',
+  '#48AAAD',
+  '#0492C2',
+  '#A1045A',
+  '#B65FCF',
+  '#67032F',
+  '#4E2A84',
+  '#78184A',
+  '#563C5C',
+  '#5F5498',
+  '#4E8C9C',
+  '#F4F2FF',
+  '#ECFBFF',
+];
 
 export const KPI_WIDGET_GRAPH_COLORS = ['#5F5498', '#4E8C9C'];
 export const KPI_WIDGET_GRAPH_BG_COLORS = ['#F4F2FF', '#ECFBFF'];
