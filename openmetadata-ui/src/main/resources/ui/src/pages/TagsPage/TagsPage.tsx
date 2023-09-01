@@ -18,7 +18,6 @@ import {
   Row,
   Space,
   Switch,
-  Table,
   Tooltip,
   Typography,
 } from 'antd';
@@ -36,6 +35,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from 'components/common/Table/Table';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import Loader from 'components/Loader/Loader';
@@ -1195,33 +1195,30 @@ const TagsPage = () => {
             </Space>
           </div>
 
-          {isTagsLoading ? (
-            <Loader />
-          ) : (
-            <Space className="w-full m-b-md" direction="vertical" size="large">
-              <Table
-                bordered
-                className={isClassificationDisabled ? 'opacity-60' : ''}
-                columns={tableColumn}
-                data-testid="table"
-                dataSource={tags}
-                pagination={false}
-                rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-                rowKey="id"
-                size="small"
-              />
+          <Space className="w-full m-b-md" direction="vertical" size="large">
+            <Table
+              bordered
+              className={isClassificationDisabled ? 'opacity-60' : ''}
+              columns={tableColumn}
+              data-testid="table"
+              dataSource={tags}
+              loading={isTagsLoading}
+              pagination={false}
+              rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
+              rowKey="id"
+              size="small"
+            />
 
-              {paging.total > PAGE_SIZE && (
-                <NextPrevious
-                  currentPage={currentPage}
-                  pageSize={PAGE_SIZE}
-                  paging={paging}
-                  pagingHandler={handlePageChange}
-                  totalCount={paging.total}
-                />
-              )}
-            </Space>
-          )}
+            {paging.total > PAGE_SIZE && (
+              <NextPrevious
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={paging}
+                pagingHandler={handlePageChange}
+                totalCount={paging.total}
+              />
+            )}
+          </Space>
 
           {/* Classification Form */}
           {isAddingClassification && (
