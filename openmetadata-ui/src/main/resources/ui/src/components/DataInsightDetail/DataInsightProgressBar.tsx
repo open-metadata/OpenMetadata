@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Progress, Typography } from 'antd';
+import { Progress } from 'antd';
 import classNames from 'classnames';
-import { isNil, round } from 'lodash';
+import { round } from 'lodash';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import ChangeInValueIndicator from './ChangeInValueIndicator';
+import CustomStatistic from './CustomStatistic';
 
 interface DataInsightProgressBarProps {
   width?: number;
@@ -27,50 +26,39 @@ interface DataInsightProgressBarProps {
   showSuccessInfo?: boolean;
   label?: string;
   target?: number;
-  successValue?: number | string;
-  startValue?: number | string;
   suffix?: string;
   changeInValue?: number;
   duration?: number;
-  showEndValueAsLabel?: boolean;
 }
 
 const DataInsightProgressBar = ({
-  showEndValueAsLabel = false,
   width,
   progress,
   className,
   target,
-  startValue,
   label,
   suffix = '%',
-  successValue = 100,
-  showLabel = true,
   showSuccessInfo = false,
   changeInValue,
   duration,
 }: DataInsightProgressBarProps) => {
-  const { t } = useTranslation();
-
   return (
     <div
       className={classNames(className)}
       data-testid="progress-bar-container"
       style={{ width }}>
-      {showLabel && (
-        <Typography.Paragraph className="data-insight-label-text">
-          {label ?? t('label.latest')}
-        </Typography.Paragraph>
-      )}
+      <CustomStatistic
+        changeInValue={changeInValue}
+        duration={duration}
+        label={label}
+        value={`${progress}${suffix}`}
+      />
+
       <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
         <Progress
           className="data-insight-progress-bar"
-          format={(per) => (
+          format={() => (
             <>
-              <span data-testid="progress-bar-value">
-                {startValue ?? per}
-                {suffix}
-              </span>
               {target && (
                 <span
                   className="data-insight-kpi-target"
@@ -81,10 +69,6 @@ const DataInsightProgressBar = ({
                   </span>
                 </span>
               )}
-              <span data-testid="progress-bar-label">
-                {successValue}
-                {showEndValueAsLabel ? '' : suffix}
-              </span>
             </>
           )}
           percent={progress}
@@ -94,16 +78,6 @@ const DataInsightProgressBar = ({
           <SVGIcons className="m-l-xs" icon={Icons.SUCCESS_BADGE} />
         )}
       </div>
-
-      {changeInValue && !isNil(changeInValue) ? (
-        <ChangeInValueIndicator
-          changeInValue={changeInValue}
-          duration={duration}
-          suffix={suffix}
-        />
-      ) : (
-        ''
-      )}
     </div>
   );
 };

@@ -31,7 +31,6 @@ import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUser
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
@@ -127,6 +126,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      loading={isLoading}
       title={
         <PageHeader
           data={{
@@ -135,9 +135,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isLoading ? (
-        <Loader />
-      ) : isEmpty(mostActiveUsers) ? (
+      {isEmpty(mostActiveUsers) ? (
         <EmptyGraphPlaceholder />
       ) : (
         <Table

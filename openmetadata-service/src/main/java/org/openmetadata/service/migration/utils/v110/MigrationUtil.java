@@ -4,11 +4,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.util.EntityUtil.hash;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -61,7 +59,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -72,7 +69,6 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -157,55 +153,60 @@ public class MigrationUtil {
     }
     while (true) {
       // Read from Database
-      List<String> jsons = dao.migrationListAfterWithOffset(limitParam, nameHashColumn);
-      LOG.debug("[{}]Read a Batch of Size: {}", dao.getTableName(), jsons.size());
-      if (jsons.isEmpty()) {
+      try {
+        List<String> jsons = dao.migrationListAfterWithOffset(limitParam, nameHashColumn);
+        LOG.debug("[{}]Read a Batch of Size: {}", dao.getTableName(), jsons.size());
+        if (jsons.isEmpty()) {
+          break;
+        }
+        // Process Update
+        for (String json : jsons) {
+          // Update the Statements to Database
+          T entity = JsonUtils.readValue(json, clazz);
+          try {
+            String hash;
+            if (entity.getFullyQualifiedName() != null) {
+              hash =
+                  withName
+                      ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
+                      : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+            } else {
+              LOG.info(
+                  "Failed in creating FQN Hash for Entity Name : {}, since the FQN is null. Auto Correcting.",
+                  entity.getName());
+              hash =
+                  withName
+                      ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getName()))
+                      : FullyQualifiedName.buildHash(entity.getName());
+              entity.setFullyQualifiedName(entity.getName());
+              dao.update(entity.getId(), entity.getName(), JsonUtils.pojoToJson(entity));
+            }
+            int result =
+                handle
+                    .createUpdate(updateSql)
+                    .bind("nameHashColumnValue", hash)
+                    .bind("id", entity.getId().toString())
+                    .execute();
+            if (result <= 0) {
+              LOG.error("No Rows Affected for Updating Hash with Entity Name : {}", entity.getFullyQualifiedName());
+            }
+          } catch (Exception ex) {
+            LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
+          }
+        }
+      } catch (Exception ex) {
+        LOG.warn("Failed to list the entities, they might already migrated ", ex);
         break;
       }
-      // Process Update
-      for (String json : jsons) {
-        // Update the Statements to Database
-        T entity = JsonUtils.readValue(json, clazz);
-        try {
-          String hash;
-          if (entity.getFullyQualifiedName() != null) {
-            hash =
-                withName
-                    ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
-                    : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-          } else {
-            LOG.info(
-                "Failed in creating FQN Hash for Entity Name : {}, since the FQN is null. Auto Correcting.",
-                entity.getName());
-            hash =
-                withName
-                    ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getName()))
-                    : FullyQualifiedName.buildHash(entity.getName());
-            entity.setFullyQualifiedName(entity.getName());
-            dao.update(entity.getId(), entity.getName(), JsonUtils.pojoToJson(entity));
-          }
-          int result =
-              handle
-                  .createUpdate(updateSql)
-                  .bind("nameHashColumnValue", hash)
-                  .bind("id", entity.getId().toString())
-                  .execute();
-          if (result <= 0) {
-            LOG.error("No Rows Affected for Updating Hash with Entity Name : {}", entity.getFullyQualifiedName());
-          }
-        } catch (Exception ex) {
-          LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
-        }
-      }
+      LOG.debug("End Migration for table : {}", dao.getTableName());
     }
-    LOG.debug("End Migration for table : {}", dao.getTableName());
   }
 
   public static MigrationDAO.ServerMigrationSQLTable buildServerMigrationTable(String version, String statement) {
     MigrationDAO.ServerMigrationSQLTable result = new MigrationDAO.ServerMigrationSQLTable();
     result.setVersion(String.valueOf(version));
     result.setSqlStatement(statement);
-    result.setCheckSum(EntityUtil.hash(statement));
+    result.setCheckSum(hash(statement));
     return result;
   }
 
@@ -406,11 +407,13 @@ public class MigrationUtil {
     if (!nullOrEmpty(queryList)) {
       for (String sql : queryList) {
         try {
-          handle.execute(sql);
-          migrationDAO.upsertServerMigrationSQL(version, sql, EntityUtil.hash(sql));
+          String previouslyRanSql = migrationDAO.getSqlQuery(hash(sql), version);
+          if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
+            handle.execute(sql);
+            migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
+          }
         } catch (Exception e) {
           LOG.error(String.format("Failed to run sql %s due to %s", sql, e));
-          throw e;
         }
       }
     }
@@ -450,110 +453,101 @@ public class MigrationUtil {
     return entity;
   }
 
+  /**
+   * Test Suites Migration in 1.0.x -> 1.1.4 1. This is the first time users are migrating from User created TestSuite
+   * to System created native TestSuite Per Table 2. Our Goal with this migration is to list all the test cases and
+   * create .testSuite with executable set to true and associate all of the respective test cases with new native test
+   * suite.
+   *
+   * @param collectionDAO
+   */
   @SneakyThrows
   public static void testSuitesMigration(CollectionDAO collectionDAO) {
+    // Update existing test suites as logical test suites and delete any ingestion pipeline associated with the existing
+    // test suite
+    migrateExistingTestSuitesToLogical(collectionDAO);
+
+    // create native test suites
+    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
+    Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable(collectionDAO);
+    for (String tableFQN : testCasesByTable.keySet()) {
+      String nativeTestSuiteFqn = tableFQN + ".testSuite";
+      List<TestCase> testCases = testCasesByTable.get(tableFQN);
+      if (testCases != null && !testCases.isEmpty()) {
+        MessageParser.EntityLink entityLink =
+            MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
+        TestSuite newExecutableTestSuite =
+            getTestSuite(
+                    collectionDAO,
+                    new CreateTestSuite()
+                        .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
+                        .withDisplayName(nativeTestSuiteFqn)
+                        .withExecutableEntityReference(entityLink.getEntityFQN()),
+                    "ingestion-bot")
+                .withExecutable(true)
+                .withFullyQualifiedName(nativeTestSuiteFqn);
+        testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
+        try {
+          testSuiteRepository
+              .getDao()
+              .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
+        } catch (Exception ex) {
+          LOG.warn("TestSuite %s exists".format(nativeTestSuiteFqn));
+        }
+        // add relationship between executable TestSuite with Table
+        testSuiteRepository.addRelationship(
+            newExecutableTestSuite.getExecutableEntityReference().getId(),
+            newExecutableTestSuite.getId(),
+            Entity.TABLE,
+            TEST_SUITE,
+            Relationship.CONTAINS);
+
+        // add relationship between all the testCases that are created against a table with native test suite.
+        for (TestCase testCase : testCases) {
+          testSuiteRepository.addRelationship(
+              newExecutableTestSuite.getId(), testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+        }
+      }
+    }
+  }
+
+  private static void migrateExistingTestSuitesToLogical(CollectionDAO collectionDAO) {
     IngestionPipelineRepository ingestionPipelineRepository = new IngestionPipelineRepository(collectionDAO);
     TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
+    ListFilter filter = new ListFilter(Include.ALL);
+    List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
+    for (TestSuite testSuite : testSuites) {
+      testSuite.setExecutable(false);
+      List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
+          collectionDAO
+              .relationshipDAO()
+              .findTo(testSuite.getId().toString(), TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
+      for (CollectionDAO.EntityRelationshipRecord ingestionRecord : ingestionPipelineRecords) {
+        // remove relationship
+        collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId().toString(), INGESTION_PIPELINE);
+        // Cannot use Delete directly it uses other repos internally
+        ingestionPipelineRepository.getDao().delete(ingestionRecord.getId().toString());
+      }
+    }
+  }
+
+  public static Map<String, ArrayList<TestCase>> groupTestCasesByTable(CollectionDAO collectionDAO) {
+    Map<String, ArrayList<TestCase>> testCasesByTable = new HashMap<>();
     TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
     List<TestCase> testCases = testCaseRepository.listAll(new Fields(Set.of("id")), new ListFilter(Include.ALL));
-
-    for (TestCase test : testCases) {
-
+    for (TestCase testCase : testCases) {
       // Create New Executable Test Suites
-      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
       // Create new Logical Test Suite
-      String testSuiteFqn = entityLink.getEntityFQN() + ".testSuite";
-      TestSuite stored;
-      try {
-        // If entity is found by Hash it is already migrated
-        testSuiteRepository.getDao().findEntityByName(testSuiteFqn, "nameHash", Include.ALL);
-      } catch (EntityNotFoundException entityNotFoundException) {
-        try {
-          // Check if the test Suite Exists, this brings the data on nameHash basis
-          stored =
-              testSuiteRepository
-                  .getDao()
-                  .findEntityByName(EntityInterfaceUtil.quoteName(testSuiteFqn), "nameHash", Include.ALL);
-          testSuiteRepository.addRelationship(
-              stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-          stored.setExecutable(true);
-          stored.setName(FullyQualifiedName.buildHash(testSuiteFqn));
-          // the update() method here internally calls FullyQualifiedName.buildHash so not adding it
-          stored.setFullyQualifiedName(EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)));
-          stored.setDisplayName(testSuiteFqn);
-          testSuiteRepository.getDao().update(stored);
-        } catch (EntityNotFoundException ex) {
-          try {
-            TestSuite newExecutableTestSuite =
-                getTestSuite(
-                        collectionDAO,
-                        new CreateTestSuite()
-                            .withName(FullyQualifiedName.buildHash(testSuiteFqn))
-                            .withDisplayName(testSuiteFqn)
-                            .withExecutableEntityReference(entityLink.getEntityFQN()),
-                        "ingestion-bot")
-                    .withExecutable(false);
-            // Create
-            testSuiteRepository.prepareInternal(newExecutableTestSuite, true);
-            testSuiteRepository
-                .getDao()
-                .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
-            // Here we aer manually adding executable relationship since the table Repository is not registered and
-            // result
-            // into null for entity type table
-            testSuiteRepository.addRelationship(
-                newExecutableTestSuite.getExecutableEntityReference().getId(),
-                newExecutableTestSuite.getId(),
-                Entity.TABLE,
-                TEST_SUITE,
-                Relationship.CONTAINS);
-
-            // add relationship from testSuite to TestCases
-            testSuiteRepository.addRelationship(
-                newExecutableTestSuite.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-
-            // Not a good approach but executable cannot be set true before
-            TestSuite temp = testSuiteRepository.getDao().findEntityByName(testSuiteFqn, "nameHash", Include.ALL);
-            temp.setExecutable(true);
-            testSuiteRepository.getDao().update("nameHash", temp);
-          } catch (Exception exIgnore) {
-            LOG.warn("Ignoring error since already added: {}", ex.getMessage());
-          }
-        }
+      ArrayList<TestCase> testCasesGroup = new ArrayList<>();
+      if (testCasesByTable.containsKey(entityLink.getEntityFQN())) {
+        testCasesGroup = testCasesByTable.get(entityLink.getEntityFQN());
+        testCasesGroup.add(testCase);
+      } else {
+        testCasesGroup.add(testCase);
       }
+      testCasesByTable.put(entityLink.getEntityFQN(), testCasesGroup);
     }
-
-    // Update Test Suites
-    ListFilter filter = new ListFilter(Include.ALL);
-    filter.addQueryParam("testSuiteType", "logical");
-    List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
-
-    for (TestSuite testSuiteRecord : testSuites) {
-      TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId(), Include.ALL);
-      if (Boolean.FALSE.equals(temp.getExecutable())) {
-        temp.setExecutable(false);
-        testSuiteRepository.getDao().update(temp);
-      }
-
-      // get Ingestion Pipelines
-      try {
-        List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
-            collectionDAO
-                .relationshipDAO()
-                .findTo(
-                    testSuiteRecord.getId().toString(),
-                    TEST_SUITE,
-                    Relationship.CONTAINS.ordinal(),
-                    INGESTION_PIPELINE);
-        for (CollectionDAO.EntityRelationshipRecord ingestionRecord : ingestionPipelineRecords) {
-          // remove relationship
-          collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId().toString(), INGESTION_PIPELINE);
-          // Cannot use Delete directly it uses other repos internally
-          ingestionPipelineRepository.getDao().delete(ingestionRecord.getId().toString());
-        }
-      } catch (EntityNotFoundException ex) {
-        // Already Removed
-      }
-    }
+    return testCasesByTable;
   }
 }
