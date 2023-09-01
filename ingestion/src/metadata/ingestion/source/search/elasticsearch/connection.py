@@ -35,26 +35,30 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
     """
     basic_auth = None
     api_key = None
-    if isinstance(connection.authType, BasicAuthentication):
+    if (
+        isinstance(connection.authType, BasicAuthentication)
+        and connection.authType.username
+    ):
         basic_auth = (
             connection.authType.username,
-            connection.authType.password.get_secret_value(),
+            connection.authType.password.get_secret_value()
+            if connection.authType.password
+            else None,
         )
 
     if isinstance(connection.authType, ApiAuthentication):
         api_key = (
-            connection.authType.apiKeyId,
-            connection.authType.apiKey.get_secret_value(),
+            connection.authType.apiKey.get_secret_value()
         )
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
+    
 
     return Elasticsearch(
-        [connection.hostPort],
-        basic_auth=basic_auth,
+        connection.hostPort,
+        http_auth=basic_auth,
         api_key=api_key,
-        scheme=connection.scheme.value,
         **connection.connectionArguments.__root__
     )
 

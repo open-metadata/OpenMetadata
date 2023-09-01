@@ -12,13 +12,8 @@
       "enum": ["ElasticSearch"],
       "default": "ElasticSearch"
     },
-    "connectionScheme": {
-      "description": "ElasticSearch Connection Scheme",
-      "type": "string",
-      "enum": ["http", "https"],
-      "default": "http"
-    },
     "basicAuthentication": {
+      "title": "Basic Authentication",
       "properties": {
         "username": {
           "description": "Elastic Search Username for Login",
@@ -30,10 +25,10 @@
           "format": "password"
         }
       },
-      "required": ["username","password"],
       "type": "object"
     },
     "apiAuthentication": {
+      "title": "API Authentication",
       "type": "object",
       "properties": {
         "apiKeyId": {
@@ -59,13 +54,8 @@
     "hostPort": {
       "title": "Host and Port",
       "description": "Host and port of the ElasticSearch service.",
-      "type": "string"
-    },
-    "scheme": {
-      "description": "Http/Https connection scheme",
       "type": "string",
-      "$ref": "#/definitions/connectionScheme",
-      "default": "http"
+      "format": "uri"
     },
     "authType": {
       "title": "Auth Configuration Type",
@@ -93,8 +83,5 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false,
-  "required": [
-    "hostPort"
-  ]
+  "additionalProperties": false
 }
