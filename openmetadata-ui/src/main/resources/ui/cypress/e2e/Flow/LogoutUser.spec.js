@@ -21,7 +21,7 @@ describe('Logout User', () => {
 
   it('After login logout the user and invalidate the token', () => {
     interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-    cy.get('[data-testid="appbar-item-logout"]').click();
+    cy.get('[data-testid="app-bar-item-logout"]').click();
 
     cy.get('[data-testid="confirm-logout"]').click();
 

@@ -126,8 +126,8 @@ describe('Test DataInsightPage Component', () => {
 
     const container = screen.getByTestId('data-insight-container');
     const insightSummary = screen.getByTestId('data-insight-summary');
-    const descriptionInsight = screen.getByTestId('description-insight');
-    const ownerInsight = screen.getByTestId('owner-insight');
+    const descriptionInsight = screen.getAllByTestId('description-insight');
+    const ownerInsight = screen.getAllByTestId('owner-insight');
     const tierInsight = screen.getByTestId('tier-insight');
 
     const totalEntityInsight = screen.getByTestId('total-entity-insight');
@@ -135,8 +135,8 @@ describe('Test DataInsightPage Component', () => {
     expect(container).toBeInTheDocument();
 
     expect(insightSummary).toBeInTheDocument();
-    expect(descriptionInsight).toBeInTheDocument();
-    expect(ownerInsight).toBeInTheDocument();
+    expect(descriptionInsight).toHaveLength(2);
+    expect(ownerInsight).toHaveLength(2);
     expect(tierInsight).toBeInTheDocument();
 
     expect(totalEntityInsight).toBeInTheDocument();

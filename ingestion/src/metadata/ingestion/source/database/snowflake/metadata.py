@@ -38,7 +38,8 @@ from metadata.generated.schema.entity.utils.lifeCycle import Created, Deleted
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -280,7 +281,9 @@ class SnowflakeSource(CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         if self.source_config.includeTags:
             result = []
             try:
@@ -304,8 +307,13 @@ class SnowflakeSource(CommonDbSourceService):
                         )
                     )
                 except Exception as inner_exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to fetch tags: {inner_exc}")
+                    yield Either(
+                        left=StackTraceError(
+                            name="Tags and Classifications",
+                            error=f"Failed to fetch tags due to [{inner_exc}]",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
             for res in result:
                 row = list(res)
@@ -317,7 +325,7 @@ class SnowflakeSource(CommonDbSourceService):
                     tags=[row[1]],
                     classification_name=row[0],
                     tag_description="SNOWFLAKE TAG VALUE",
-                    classification_desciption="SNOWFLAKE TAG NAME",
+                    classification_description="SNOWFLAKE TAG NAME",
                 )
 
     def query_table_names_and_types(

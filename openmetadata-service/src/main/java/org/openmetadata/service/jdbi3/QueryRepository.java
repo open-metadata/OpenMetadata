@@ -68,7 +68,7 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   @SneakyThrows
-  public void prepare(Query entity) {
+  public void prepare(Query entity, boolean update) {
     if (nullOrEmpty(entity.getName())) {
       String checkSum = EntityUtil.hash(entity.getQuery());
       entity.setChecksum(checkSum);

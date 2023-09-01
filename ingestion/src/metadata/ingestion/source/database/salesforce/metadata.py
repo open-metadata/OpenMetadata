@@ -39,7 +39,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
@@ -97,14 +98,18 @@ class SalesforceSource(DatabaseServiceSource):
         database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName,
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName,
+            )
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -115,14 +120,16 @@ class SalesforceSource(DatabaseServiceSource):
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName,
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName,
+            )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -167,14 +174,17 @@ class SalesforceSource(DatabaseServiceSource):
 
                     yield table_name, TableType.Regular
         except Exception as exc:
-            error = f"Unexpected exception for schema name [{schema_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(schema_name, error, traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=schema_name,
+                    error=f"Unexpected exception for schema name [{schema_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -197,14 +207,16 @@ class SalesforceSource(DatabaseServiceSource):
                     table_name=table_name,
                 ),
             )
-            yield table_request
+            yield Either(right=table_request)
             self.register_record(table_request=table_request)
-
         except Exception as exc:
-            error = f"Unexpected exception for table [{table_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table_name,
+                    error=f"Unexpected exception for table [{table_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_columns(self, salesforce_fields):
         """
@@ -250,11 +262,13 @@ class SalesforceSource(DatabaseServiceSource):
             return DataType.VARCHAR.value
         return DataType.UNKNOWN.value
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         yield from []
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """No tags to pick up"""
 
     def standardize_table_name(  # pylint: disable=unused-argument
         self, schema: str, table: str
@@ -262,7 +276,7 @@ class SalesforceSource(DatabaseServiceSource):
         return table
 
     def prepare(self):
-        pass
+        """Nothing to prepare"""
 
     def get_source_url(
         self,
@@ -281,7 +295,7 @@ class SalesforceSource(DatabaseServiceSource):
         return None
 
     def close(self):
-        pass
+        """Nothing to close"""
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)

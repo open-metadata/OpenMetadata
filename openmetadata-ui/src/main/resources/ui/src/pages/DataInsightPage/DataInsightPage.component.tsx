@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
@@ -44,6 +44,7 @@ import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
 import { searchQuery } from 'rest/searchAPI';
+import { formatDate } from 'utils/date-time/DateTimeUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
@@ -63,7 +64,6 @@ import {
   getDataInsightPathWithFqn,
   getTeamFilter,
 } from '../../utils/DataInsightUtils';
-import { getFormattedDateFromMilliSeconds } from '../../utils/TimeUtils';
 import { TeamStateType, TierStateType } from './DataInsight.interface';
 import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
@@ -115,6 +115,7 @@ const DataInsightPage = () => {
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const [isKpiLoading, setIsKpiLoading] = useState(false);
   const [selectedDaysFilter, setSelectedDaysFilter] = useState(
     DEFAULT_SELECTED_RANGE.days
   );
@@ -253,11 +254,14 @@ const DataInsightPage = () => {
   };
 
   const fetchKpiList = async () => {
+    setIsKpiLoading(true);
     try {
       const response = await getListKPIs({ fields: 'dataInsightChart' });
       setKpiList(response.data);
     } catch (_err) {
       setKpiList([]);
+    } finally {
+      setIsKpiLoading(false);
     }
   };
 
@@ -337,7 +341,10 @@ const DataInsightPage = () => {
             </div>
 
             {createKPIPermission && (
-              <Button type="primary" onClick={handleAddKPI}>
+              <Button
+                data-testid="add-kpi-btn"
+                type="primary"
+                onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
                 })}
@@ -346,46 +353,40 @@ const DataInsightPage = () => {
           </Space>
         </Col>
         <Col span={24}>
-          <Card>
-            <Space className="w-full justify-between">
-              <Space className="w-full">
-                <SearchDropdown
-                  label={t('label.team')}
-                  options={teamsOptions.options}
-                  searchKey="teams"
-                  selectedKeys={teamsOptions.selectedOptions}
-                  onChange={handleTeamChange}
-                  onGetInitialOptions={fetchDefaultTeamOptions}
-                  onSearch={handleTeamSearch}
-                />
+          <Space className="w-full justify-between align-center">
+            <Space className="w-full" size={16}>
+              <SearchDropdown
+                label={t('label.team')}
+                options={teamsOptions.options}
+                searchKey="teams"
+                selectedKeys={teamsOptions.selectedOptions}
+                onChange={handleTeamChange}
+                onGetInitialOptions={fetchDefaultTeamOptions}
+                onSearch={handleTeamSearch}
+              />
 
-                <SearchDropdown
-                  label={t('label.tier')}
-                  options={tierOptions.options}
-                  searchKey="tier"
-                  selectedKeys={tierOptions.selectedOptions}
-                  onChange={handleTierChange}
-                  onGetInitialOptions={fetchDefaultTierOptions}
-                  onSearch={handleTierSearch}
-                />
-              </Space>
-              <Space>
-                <Typography className="data-insight-label-text text-xs">
-                  {`${getFormattedDateFromMilliSeconds(
-                    chartFilter.startTs,
-                    'dd MMM yyyy'
-                  )} - ${getFormattedDateFromMilliSeconds(
-                    chartFilter.endTs,
-                    'dd MMM yyyy'
-                  )}`}
-                </Typography>
-                <DatePickerMenu
-                  handleDateRangeChange={handleDateRangeChange}
-                  showSelectedCustomRange={false}
-                />
-              </Space>
+              <SearchDropdown
+                label={t('label.tier')}
+                options={tierOptions.options}
+                searchKey="tier"
+                selectedKeys={tierOptions.selectedOptions}
+                onChange={handleTierChange}
+                onGetInitialOptions={fetchDefaultTierOptions}
+                onSearch={handleTierSearch}
+              />
             </Space>
-          </Card>
+            <Space>
+              <Typography className="data-insight-label-text text-xs">
+                {`${formatDate(chartFilter.startTs)} - ${formatDate(
+                  chartFilter.endTs
+                )}`}
+              </Typography>
+              <DatePickerMenu
+                handleDateRangeChange={handleDateRangeChange}
+                showSelectedCustomRange={false}
+              />
+            </Space>
+          </Space>
         </Col>
 
         {/* Do not show summary for KPIs */}
@@ -404,6 +405,7 @@ const DataInsightPage = () => {
             <KPIChart
               chartFilter={chartFilter}
               createKPIPermission={createKPIPermission}
+              isKpiLoading={isKpiLoading}
               kpiList={kpiList}
               viewKPIPermission={viewKPIPermission}
             />
@@ -420,6 +422,12 @@ const DataInsightPage = () => {
             <Col span={24}>
               <DescriptionInsight
                 chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
+                }
+                header={t('label.data-insight-description-summary-type', {
+                  type: t('label.data-asset'),
+                })}
                 kpi={descriptionKpi}
                 selectedDays={selectedDaysFilter}
               />
@@ -427,6 +435,38 @@ const DataInsightPage = () => {
             <Col span={24}>
               <OwnerInsight
                 chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfEntitiesWithOwnerByType
+                }
+                header={t('label.data-insight-owner-summary-type', {
+                  type: t('label.data-asset'),
+                })}
+                kpi={ownerKpi}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+            <Col span={24}>
+              <DescriptionInsight
+                chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfServicesWithDescription
+                }
+                header={t('label.data-insight-description-summary-type', {
+                  type: t('label.service'),
+                })}
+                kpi={descriptionKpi}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+            <Col span={24}>
+              <OwnerInsight
+                chartFilter={chartFilter}
+                dataInsightChartName={
+                  DataInsightChartType.PercentageOfServicesWithOwner
+                }
+                header={t('label.data-insight-owner-summary-type', {
+                  type: t('label.service'),
+                })}
                 kpi={ownerKpi}
                 selectedDays={selectedDaysFilter}
               />

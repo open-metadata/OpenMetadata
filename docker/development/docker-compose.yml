@@ -63,7 +63,7 @@ services:
       context: ../../.
       dockerfile: docker/development/Dockerfile
     container_name: execute_migrate_all
-    command: "./bootstrap/bootstrap_storage.sh migrate-all"
+    command: "./bootstrap/bootstrap_storage.sh migrate-all debug force"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}

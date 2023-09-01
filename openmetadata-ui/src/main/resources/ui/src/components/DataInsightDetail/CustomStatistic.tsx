@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
-import { isNil } from 'lodash';
+import { Col, Row, Typography } from 'antd';
+import { isNil, round } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import ChangeInValueIndicator from './ChangeInValueIndicator';
 
 interface CustomStatisticProps {
   value: number | string;
   label?: string;
   changeInValue?: number;
   duration?: number;
-  suffix?: string;
 }
 
 const CustomStatistic = ({
@@ -30,26 +28,40 @@ const CustomStatistic = ({
   label,
   changeInValue,
   duration,
-  suffix = '%',
 }: CustomStatisticProps) => {
   const { t } = useTranslation();
 
   return (
-    <Space direction="vertical" size={0} style={{ margin: 0 }}>
-      <Typography.Text className="data-insight-label-text">
-        {label ?? t('label.latest')}
-      </Typography.Text>
-      <Typography.Text className="font-bold text-lg">{value}</Typography.Text>
-      {changeInValue && !isNil(changeInValue) ? (
-        <ChangeInValueIndicator
-          changeInValue={changeInValue}
-          duration={duration}
-          suffix={suffix}
-        />
-      ) : (
-        ''
-      )}
-    </Space>
+    <Row justify="space-between">
+      <Col>
+        <Typography.Paragraph className="font-medium m-b-0">
+          {label}
+        </Typography.Paragraph>
+        <Typography.Paragraph className="font-bold text-2xl m-b-0">
+          {value}
+        </Typography.Paragraph>
+      </Col>
+      <Col className="text-right">
+        {!isNil(changeInValue) && (
+          <Typography.Paragraph className="m-b-0">
+            <Typography.Text
+              className="d-block"
+              type={changeInValue >= 0 ? 'success' : 'danger'}>
+              {`${changeInValue >= 0 ? '+' : ''}${round(
+                changeInValue || 0,
+                2
+              )}%`}
+            </Typography.Text>
+            <Typography.Text className="d-block">
+              {!isNil(duration) &&
+                t('label.days-change-lowercase', {
+                  days: duration,
+                })}
+            </Typography.Text>
+          </Typography.Paragraph>
+        )}
+      </Col>
+    </Row>
   );
 };
 
