@@ -109,7 +109,7 @@ class OpenMetadataSource(Source):
         """
         self.metadata.health_check()
 
-    def _iter(self, *args, **kwargs) -> Iterable[Either[ProfilerSourceAndEntity]]:
+    def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
 
         for database in self.get_database_entities():
             try:

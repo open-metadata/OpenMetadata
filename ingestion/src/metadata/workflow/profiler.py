@@ -14,7 +14,7 @@ Workflow definition for the profiler
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.api.steps import Processor, Sink
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
@@ -42,8 +42,8 @@ class ProfilerWorkflow(BaseWorkflow):
     def set_steps(self):
         self.source = OpenMetadataSource.create(self.config, self.metadata_config)
 
-        profiler_processor = ProfilerProcessor.create(self.config)
-        pii_processor = PIIProcessor.create(self.metadata, self.config)
+        profiler_processor = self._get_profiler_processor()
+        pii_processor = self._get_pii_processor()
         sink = self._get_sink()
         self.steps = (profiler_processor, pii_processor, sink)
 
@@ -62,3 +62,9 @@ class ProfilerWorkflow(BaseWorkflow):
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
+
+    def _get_profiler_processor(self) -> Processor:
+        return ProfilerProcessor.create(self.config, self.metadata_config)
+
+    def _get_pii_processor(self) -> Processor:
+        return PIIProcessor.create(self.config, self.metadata_config)

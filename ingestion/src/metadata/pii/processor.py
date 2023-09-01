@@ -17,6 +17,9 @@ from typing import Optional, cast
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, TableData
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -30,8 +33,10 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
+from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
@@ -48,10 +53,15 @@ class PIIProcessor(Processor):
     A scanner that uses Spacy NER for entity recognition
     """
 
-    def __init__(self, metadata: OpenMetadata, config: OpenMetadataWorkflowConfig):
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata_config: OpenMetadataConnection,
+    ):
         super().__init__()
         self.config = config
-        self.metadata = metadata
+        self.metadata_config = metadata_config
+        self.metadata = create_ometa_client(self.metadata_config)
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
@@ -63,9 +73,10 @@ class PIIProcessor(Processor):
 
     @classmethod
     def create(
-        cls, metadata: OpenMetadata, config: OpenMetadataWorkflowConfig
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection
     ) -> "Step":
-        return cls(metadata=metadata, config=config)
+        config = parse_workflow_config_gracefully(config_dict)
+        return cls(config=config, metadata_config=metadata_config)
 
     def close(self) -> None:
         """Nothing to close"""
