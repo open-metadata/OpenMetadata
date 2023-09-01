@@ -457,7 +457,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  
   public T getByName(UriInfo uriInfo, String fqn, Fields fields) {
     return getByName(uriInfo, fqn, fields, NON_DELETED, false);
   }
@@ -726,7 +725,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
- @JdbiUnitOfWork
+  @JdbiUnitOfWork
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
@@ -744,7 +743,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
- @JdbiUnitOfWork
+  @JdbiUnitOfWork
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);

@@ -89,7 +89,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(entityReference);
   }
 
- @JdbiUnitOfWork
+  @JdbiUnitOfWork
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityById(ingestionPipelineId);
