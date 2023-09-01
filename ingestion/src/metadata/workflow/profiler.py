@@ -40,7 +40,9 @@ class ProfilerWorkflow(BaseWorkflow):
         self.test_connection()
 
     def set_steps(self):
-        self.source = OpenMetadataSource.create(self.config, self.metadata_config)
+        self.source = OpenMetadataSource.create(
+            self.config.dict(), self.metadata_config
+        )
 
         profiler_processor = self._get_profiler_processor()
         pii_processor = self._get_pii_processor()
@@ -64,7 +66,7 @@ class ProfilerWorkflow(BaseWorkflow):
         return sink
 
     def _get_profiler_processor(self) -> Processor:
-        return ProfilerProcessor.create(self.config, self.metadata_config)
+        return ProfilerProcessor.create(self.config.dict(), self.metadata_config)
 
     def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config, self.metadata_config)
+        return PIIProcessor.create(self.config.dict(), self.metadata_config)

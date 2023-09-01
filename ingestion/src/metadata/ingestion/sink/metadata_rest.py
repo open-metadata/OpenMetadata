@@ -422,23 +422,39 @@ class MetadataRestSink(Sink):
         )
 
         if record.sample_data:
-            self.metadata.ingest_table_sample_data(
+            table_data = self.metadata.ingest_table_sample_data(
                 table=record.table, sample_data=record.sample_data
             )
-            logger.debug(
-                f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
-            )
+            if not table_data:
+                self.status.failed(
+                    StackTraceError(
+                        name=table.fullyQualifiedName.__root__,
+                        error="Error trying to ingest sample data for table",
+                    )
+                )
+            else:
+                logger.debug(
+                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
+                )
 
         for column_tag_response in record.column_tags or []:
-            self.metadata.patch_column_tag(
+            patched = self.metadata.patch_column_tag(
                 table=record.table,
                 column_fqn=column_tag_response.column_fqn,
                 tag_label=column_tag_response.tag_label,
             )
-            logger.debug(
-                f"Successfully patched tag {column_tag_response.tag_label} for"
-                f" {record.table.fullyQualifiedName.__root__}.{column_tag_response.column_fqn}"
-            )
+            if not patched:
+                self.status.failed(
+                    StackTraceError(
+                        name=table.fullyQualifiedName.__root__,
+                        error="Error patching tags for table",
+                    )
+                )
+            else:
+                logger.debug(
+                    f"Successfully patched tag {column_tag_response.tag_label} for"
+                    f" {record.table.fullyQualifiedName.__root__}.{column_tag_response.column_fqn}"
+                )
 
         return Either(right=table)
 

@@ -29,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.client_utils import create_ometa_client
@@ -137,10 +138,9 @@ class OpenMetadataSource(Source):
 
     @classmethod
     def create(
-        cls,
-        config: OpenMetadataWorkflowConfig,
-        metadata_config: OpenMetadataConnection,
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection
     ) -> "Step":
+        config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata_config=metadata_config)
 
     def filter_databases(self, database: Database) -> Optional[Database]:

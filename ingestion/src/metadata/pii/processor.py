@@ -37,7 +37,6 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.client_utils import create_ometa_client
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
@@ -122,7 +121,7 @@ class PIIProcessor(Processor):
         # If it has PII tags, we skip the processing
         # for the column
         if column_has_pii_tag is True:
-            return
+            return None
 
         # Scan by column name. If no results there, check the sample data, if any
         tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
@@ -140,6 +139,8 @@ class PIIProcessor(Processor):
                 tag_type=tag_and_confidence.tag.value,
                 column_fqn=column.fullyQualifiedName.__root__,
             )
+
+        return None
 
     def _run(
         self,

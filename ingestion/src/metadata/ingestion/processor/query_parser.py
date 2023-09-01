@@ -89,12 +89,10 @@ class QueryParserProcessor(Processor):
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata_config, connection_type)
 
-    def _run(  # pylint: disable=arguments-differ
-        self, queries: TableQueries
-    ) -> Optional[Either[QueryParserData]]:
-        if queries and queries.queries:
+    def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
+        if record and record.queries:
             data = []
-            for record in queries.queries:
+            for record in record.queries:
                 try:
                     parsed_sql = parse_sql_statement(
                         record,
