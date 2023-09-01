@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.fivetran.metadata import (
     FivetranPipelineDetails,
@@ -82,6 +82,9 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
         )
     ],
     service=FullyQualifiedEntityName(__root__="fivetran_source"),
+    sourceUrl=SourceUrl(
+        __root__="https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
+    ),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
@@ -140,5 +143,5 @@ class FivetranUnitTest(TestCase):
         )
 
     def test_pipelines(self):
-        pipline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0]
+        pipline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES

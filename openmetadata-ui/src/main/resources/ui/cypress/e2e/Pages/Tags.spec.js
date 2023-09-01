@@ -62,6 +62,7 @@ const validateForm = () => {
   // error messages
   cy.get('#tags_name_help').should('be.visible').contains('Name is required');
   cy.get('#tags_description_help')
+    .scrollIntoView()
     .should('be.visible')
     .contains('Description is required');
 
@@ -69,6 +70,7 @@ const validateForm = () => {
 
   // min length validation
   cy.get('[data-testid="name"]')
+    .scrollIntoView()
     .should('be.visible')
     .clear()
     .type(TAG_INVALID_NAMES.MIN_LENGTH);
@@ -78,6 +80,7 @@ const validateForm = () => {
 
   // max length validation
   cy.get('[data-testid="name"]')
+
     .should('be.visible')
     .clear()
     .type(TAG_INVALID_NAMES.MAX_LENGTH);
@@ -118,7 +121,7 @@ describe('Tags page should work', () => {
 
     // adding manual wait to open dropdown in UI
     cy.wait(500);
-    cy.get('[data-testid="appbar-item-tags"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-tags"]').should('be.visible').click();
     verifyResponseStatusCode('@getTags', 200);
   });
 

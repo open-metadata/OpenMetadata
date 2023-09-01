@@ -14,10 +14,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -33,58 +33,54 @@ public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
   public DomainRepository(CollectionDAO dao) {
-    super(
-        DomainResource.COLLECTION_PATH,
-        Entity.DOMAIN,
-        Domain.class,
-        dao.domainDAO(),
-        dao,
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+    super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
-  public Domain setFields(Domain entity, Fields fields) throws IOException {
-    entity.withParent(fields.contains("parent") ? getParent(entity) : null);
-    entity.withChildren(fields.contains("children") ? getChildren(entity) : null);
-    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
-  }
-
-  private EntityReference getParent(Domain entity) throws IOException {
-    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, DOMAIN, false);
-  }
-
-  private List<EntityReference> getChildren(Domain entity) throws IOException {
-    return findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
-  }
-
-  private List<EntityReference> getExperts(Domain entity) throws IOException {
-    return findTo(entity.getId(), Entity.DOMAIN, Relationship.EXPERT, Entity.USER);
+  public Domain setFields(Domain entity, Fields fields) {
+    return entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
   }
 
   @Override
-  public void prepare(Domain entity) throws IOException {
+  public Domain clearFields(Domain entity, Fields fields) {
+    entity.withParent(fields.contains("parent") ? entity.getParent() : null);
+    return entity;
+  }
+
+  @Override
+  public void prepare(Domain entity, boolean update) {
     // Parent, Experts, Owner are already validated
   }
 
   @Override
-  public void storeEntity(Domain entity, boolean update) throws IOException {
+  public void storeEntity(Domain entity, boolean update) {
     EntityReference parent = entity.getParent();
     List<EntityReference> children = entity.getChildren();
-    List<EntityReference> experts = entity.getExperts();
-    entity.withParent(null).withChildren(null).withExperts(null);
+    entity.withParent(null);
     store(entity, update);
-    entity.withParent(parent).withChildren(children).withExperts(experts);
+    entity.withParent(parent);
   }
 
   @Override
   public void storeRelationships(Domain entity) {
     if (entity.getParent() != null) {
-      addRelationship(entity.getParent().getId(), entity.getId(), Entity.DOMAIN, Entity.DOMAIN, Relationship.CONTAINS);
+      addRelationship(entity.getParent().getId(), entity.getId(), DOMAIN, DOMAIN, Relationship.CONTAINS);
     }
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
-      addRelationship(entity.getId(), expert.getId(), Entity.DOMAIN, Entity.USER, Relationship.EXPERT);
+      addRelationship(entity.getId(), expert.getId(), DOMAIN, Entity.USER, Relationship.EXPERT);
     }
+  }
+
+  @Override
+  public Domain setInheritedFields(Domain domain, Fields fields) {
+    // If subdomain does not have owner and experts, then inherit it from parent domain
+    EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
+    if (parentRef != null) {
+      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owner,experts", ALL);
+      inheritOwner(domain, fields, parent);
+      inheritExperts(domain, fields, parent);
+    }
+    return domain;
   }
 
   @Override
@@ -115,16 +111,16 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateExperts();
     }
 
-    private void updateExperts() throws JsonProcessingException {
+    private void updateExperts() {
       List<EntityReference> origExperts = listOrEmpty(original.getExperts());
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(
-          "experts",
-          Entity.DOMAIN,
+          FIELD_EXPERTS,
+          DOMAIN,
           original.getId(),
           Relationship.EXPERT,
           Entity.USER,

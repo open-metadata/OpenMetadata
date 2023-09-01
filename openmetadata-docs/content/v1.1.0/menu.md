@@ -8,22 +8,11 @@ site_menu:
     color: violet-70
     icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
-    url: /quick-start/local-deployment
+    url: /quick-start/local-docker-deployment
+  - category: Quickstart / Try OpenMetadata in Kubernetes
+    url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
-
-  - category: Releases
-    url: /releases
-    color: violet-70
-    icon: overview
-  - category: Releases / Latest Release
-    url: /releases/latest-release
-  - category: Releases / Supported Releases
-    url: /releases/supported
-  - category: Releases / Roadmap
-    url: /releases/roadmap
-  - category: Releases / All Releases
-    url: /releases/all-releases
 
   - category: Deployment
     url: /deployment
@@ -36,8 +25,6 @@ site_menu:
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
-  - category: Deployment / Docker Deployment / Volumes
-    url: /deployment/docker/volumes
   - category: Deployment / Docker Deployment / Enable Security
     url: /deployment/docker/security
 
@@ -50,13 +37,13 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
   - category: Deployment / Kubernetes Deployment / On Premises
-    url: /deployment/kubernetes/onprem
+    url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
-    url: /deployment/kubernetes/gke-troubleshooting
+  - category: Deployment / Kubernetes Deployment / FAQs
+    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
@@ -203,6 +190,19 @@ site_menu:
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
+  
+  - category: Releases
+    url: /releases
+    color: violet-70
+    icon: overview
+  - category: Releases / Latest Release
+    url: /releases/latest-release
+  - category: Releases / Supported Releases
+    url: /releases/supported
+  - category: Releases / Roadmap
+    url: /releases/roadmap
+  - category: Releases / All Releases
+    url: /releases/all-releases
 
   - category: Connectors
     url: /connectors
@@ -556,27 +556,27 @@ site_menu:
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
 
-  - category: How to guides
+  - category: How to Guides
     url: /how-to-guides
     color: violet-70
     icon: openmetadata
 
-  - category: How to guides / CLI Ingestion with basic auth
+  - category: How to Guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
-  - category: How to guides / Feature configurations
+  - category: How to Guides / Feature configurations
     url: /how-to-guides/feature-configurations
-  - category: How to guides / Feature configurations / Bots
+  - category: How to Guides / Feature configurations / Bots
     url: /how-to-guides/feature-configurations/bots
-  - category: How to guides / Teams and Users
+  - category: How to Guides / Teams and Users
     url: /how-to-guides/teams-and-users
-  - category: How to guides / Teams and Users / How to Organise Teams and Users
+  - category: How to Guides / Teams and Users / How to Organise Teams and Users
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
-  - category: How to guides / How to add a custom property to an entity
+  - category: How to Guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
-  - category: How to guides / How to add Custom Logo
+  - category: How to Guides / How to add Custom Logo
     url: /how-to-guides/how-to-add-custom-logo
-  - category: How to guides / How to Add Language Support
-    url: /how-to-guides/how-to-add-language-support
+  - category: How to Guides / How to Add Language Support
+    url: /how-to-guides/how-to-add-language-support 
 
   - category: Features
     url: /features

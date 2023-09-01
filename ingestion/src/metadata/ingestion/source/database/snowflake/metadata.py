@@ -36,7 +36,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -276,7 +277,9 @@ class SnowflakeSource(CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         if self.source_config.includeTags:
             result = []
             try:
@@ -300,8 +303,13 @@ class SnowflakeSource(CommonDbSourceService):
                         )
                     )
                 except Exception as inner_exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to fetch tags: {inner_exc}")
+                    yield Either(
+                        left=StackTraceError(
+                            name="Tags and Classifications",
+                            error=f"Failed to fetch tags due to [{inner_exc}]",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
             for res in result:
                 row = list(res)
@@ -313,7 +321,7 @@ class SnowflakeSource(CommonDbSourceService):
                     tags=[row[1]],
                     classification_name=row[0],
                     tag_description="SNOWFLAKE TAG VALUE",
-                    classification_desciption="SNOWFLAKE TAG NAME",
+                    classification_description="SNOWFLAKE TAG NAME",
                 )
 
     def query_table_names_and_types(
@@ -393,22 +401,30 @@ class SnowflakeSource(CommonDbSourceService):
 
     def get_source_url(
         self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
         Method to get the source url for snowflake
         """
-        account = self._get_current_account()
-        region_id = self._get_current_region()
-        region_name = self._clean_region_name(region_id)
-        if account and region_name:
-            tab_type = "view" if table_type == TableType.View else "table"
-            return (
-                f"https://app.snowflake.com/{region_name.lower()}/{account.lower()}/#/"
-                f"data/databases/{database_name}/schemas"
-                f"/{schema_name}/{tab_type}/{table_name}"
-            )
+        try:
+            account = self._get_current_account()
+            region_id = self._get_current_region()
+            region_name = self._clean_region_name(region_id)
+            if account and region_name:
+                tab_type = "view" if table_type == TableType.View else "table"
+                url = (
+                    f"https://app.snowflake.com/{region_name.lower()}"
+                    f"/{account.lower()}/#/data/databases/{database_name}"
+                )
+                if schema_name:
+                    url = f"{url}/schemas/{schema_name}"
+                    if table_name:
+                        url = f"{url}/{tab_type}/{table_name}"
+                return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
         return None

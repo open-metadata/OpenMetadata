@@ -100,7 +100,7 @@ jest.mock(
   }
 );
 
-jest.mock('components/EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="entity-lineage">EntityLineage</div>);

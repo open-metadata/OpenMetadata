@@ -43,7 +43,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
@@ -92,9 +93,7 @@ class TableauSource(DashboardServiceSource):
         self.tags: Set[TableauTag] = set()
 
     def prepare(self):
-        """
-        Restructure the API response to
-        """
+        """Restructure the API response"""
         try:
             # get workbooks which are considered Dashboards in OM
             self.workbooks = self.client.get_workbooks()
@@ -138,15 +137,9 @@ class TableauSource(DashboardServiceSource):
         return cls(config, metadata_config)
 
     def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
-        """
-        Get List of all dashboards
-        """
         return self.workbooks
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
-        """
-        Get Dashboard Name
-        """
         return dashboard.name
 
     def get_dashboard_details(self, dashboard: TableauDashboard) -> TableauDashboard:
@@ -159,34 +152,25 @@ class TableauSource(DashboardServiceSource):
     def get_owner_details(
         self, dashboard_details: TableauDashboard
     ) -> Optional[EntityReference]:
-        """Get dashboard owner
-
-        Args:
-            dashboard_details:
-        Returns:
-            Optional[EntityReference]
-        """
+        """Get dashboard owner from email"""
         if dashboard_details.owner and dashboard_details.owner.email:
             user = self.metadata.get_user_by_email(dashboard_details.owner.email)
             if user:
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
-    def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
-        """
-        Fetch Dashboard Tags
-        """
+    def yield_tag(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
             tags=[tag.label for tag in self.tags],
             classification_name=TABLEAU_TAG_CATEGORY,
             tag_description="Tableau Tag",
-            classification_desciption="Tags associated with tableau entities",
+            classification_description="Tags associated with tableau entities",
             include_tags=self.source_config.includeTags,
         )
 
     def yield_datamodel(
         self, dashboard_details: TableauDashboard
-    ) -> Iterable[CreateDashboardDataModelRequest]:
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         if self.source_config.includeDataModels:
             for data_model in dashboard_details.dataModels or []:
                 data_model_name = data_model.name if data_model.name else data_model.id
@@ -204,23 +188,19 @@ class TableauSource(DashboardServiceSource):
                         serviceType=DashboardServiceType.Tableau.value,
                         columns=self.get_column_info(data_model),
                     )
-                    yield data_model_request
-                    self.status.scanned(
-                        f"Data Model Scanned: {data_model_request.displayName}"
-                    )
+                    yield Either(right=data_model_request)
                 except Exception as exc:
-                    error_msg = f"Error yielding Data Model [{data_model_name}]: {exc}"
-                    self.status.failed(
-                        name=data_model_name,
-                        error=error_msg,
-                        stack_trace=traceback.format_exc(),
+                    yield Either(
+                        left=StackTraceError(
+                            name=data_model_name,
+                            error=f"Error yielding Data Model [{data_model_name}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
                     )
-                    logger.error(error_msg)
-                    logger.debug(traceback.format_exc())
 
     def yield_dashboard(
         self, dashboard_details: TableauDashboard
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         In OM a Dashboard will be a Workbook.
@@ -263,15 +243,20 @@ class TableauSource(DashboardServiceSource):
                 sourceUrl=dashboard_details.webpageUrl,
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.id,
+                    error=f"Error to yield dashboard for {dashboard_details}: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: TableauDashboard, db_service_name: str
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         In Tableau, we get the lineage between data models and data sources.
 
@@ -299,14 +284,20 @@ class TableauSource(DashboardServiceSource):
                                 to_entity=data_model_entity, from_entity=om_table
                             )
             except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
+                yield Either(
+                    left=StackTraceError(
+                        name="Lineage",
+                        error=(
+                            "Error to yield dashboard lineage details for DB "
+                            f"service name [{db_service_name}]: {err}"
+                        ),
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def yield_dashboard_chart(
         self, dashboard_details: TableauDashboard
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         """
         Method to fetch charts linked to dashboard
         """
@@ -329,7 +320,7 @@ class TableauSource(DashboardServiceSource):
                     f"/{workbook_chart_name.chart_url_name}"
                 )
 
-                yield CreateChartRequest(
+                chart = CreateChartRequest(
                     name=chart.id,
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
@@ -342,10 +333,15 @@ class TableauSource(DashboardServiceSource):
                     ),
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
-                self.status.scanned(chart.name)
+                yield Either(right=chart)
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name="Chart",
+                        error=f"Error to yield dashboard chart [{chart}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def close(self):
         """

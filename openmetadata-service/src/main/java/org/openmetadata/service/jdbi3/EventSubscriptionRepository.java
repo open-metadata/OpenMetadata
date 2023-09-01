@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 
 import com.lmax.disruptor.BatchEventProcessor;
-import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -56,12 +55,19 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public EventSubscription setFields(EventSubscription entity, Fields fields) {
-    entity.setStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
-    return entity; // No fields to set
+    if (entity.getStatusDetails() == null) {
+      entity.withStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
+    }
+    return entity;
   }
 
   @Override
-  public void prepare(EventSubscription entity) {
+  public EventSubscription clearFields(EventSubscription entity, Fields fields) {
+    return entity.withStatusDetails(fields.contains("statusDetails") ? entity.getStatusDetails() : null);
+  }
+
+  @Override
+  public void prepare(EventSubscription entity, boolean update) {
     validateFilterRules(entity);
   }
 
@@ -78,7 +84,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public void storeEntity(EventSubscription entity, boolean update) throws IOException {
+  public void storeEntity(EventSubscription entity, boolean update) {
     store(entity, update);
   }
 
@@ -212,7 +218,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());

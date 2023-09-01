@@ -138,7 +138,7 @@ const EntitySummaryDetails = ({
                     <span data-testid="owner-link">
                       {userDetails.ownerName}
                     </span>
-                    <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
+                    <span className="m-r-xss d-inline-block text-grey-muted">
                       {t('label.pipe-symbol')}
                     </span>
                   </>
@@ -180,7 +180,7 @@ const EntitySummaryDetails = ({
                 <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
                   <span data-testid="edit-tier">
                     <EditIcon
-                      className="tw-cursor-pointer"
+                      className="cursor-pointer"
                       color={DE_ACTIVE_COLOR}
                       width={14}
                     />
@@ -245,9 +245,9 @@ const EntitySummaryDetails = ({
             <>
               <a
                 className={classNames(
-                  'tw-inline-block tw-truncate link-text tw-align-middle',
+                  'd-inline-block truncate link-text align-middle',
                   {
-                    'tw-w-52': (displayVal as string).length > 32,
+                    'w-52': (displayVal as string).length > 32,
                   }
                 )}
                 data-testid={`${lowerCase(data.key)}-link`}
@@ -290,9 +290,9 @@ const EntitySummaryDetails = ({
             <>
               <span
                 className={classNames(
-                  'tw-inline-block tw-truncate tw-align-middle',
+                  'd-inline-block truncate link-text align-middle',
                   {
-                    'tw-w-52': (displayVal as string).length > 32,
+                    'w-52': (displayVal as string).length > 32,
                   }
                 )}
                 data-testid="owner-link"
@@ -306,9 +306,12 @@ const EntitySummaryDetails = ({
             </>
           ) : isTier ? (
             <Space
-              className={classNames('tw-mr-1  tw-truncate tw-align-middle', {
-                'tw-w-52': (displayVal as string).length > 32,
-              })}
+              className={classNames(
+                'd-inline-block truncate link-text align-middle',
+                {
+                  'w-52': (displayVal as string).length > 32,
+                }
+              )}
               data-testid="tier-name"
               direction="horizontal"
               title={displayVal as string}>
@@ -337,25 +340,21 @@ const EntitySummaryDetails = ({
             ) : (
               <>
                 {displayVal}
-                <Tooltip
-                  placement="bottom"
+                <AntdButton
+                  data-testid={`edit-${data.key}-icon`}
+                  disabled={isGroupType}
                   title={
                     isGroupType
                       ? t('message.group-team-type-change-message')
                       : t('label.edit-entity', {
                           entity: t('label.team-type'),
                         })
-                  }>
-                  <AntdButton
-                    className={isGroupType ? 'tw-opacity-50' : ''}
-                    data-testid={`edit-${data.key}-icon`}
-                    disabled={isGroupType}
-                    onClick={() => setShowTypeSelector(true)}>
-                    {updateTeamType ? (
-                      <EditIcon className="cursor-pointer" width={14} />
-                    ) : null}
-                  </AntdButton>
-                </Tooltip>
+                  }
+                  onClick={() => setShowTypeSelector(true)}>
+                  {updateTeamType ? (
+                    <EditIcon className="cursor-pointer" width={14} />
+                  ) : null}
+                </AntdButton>
               </>
             )
           ) : (

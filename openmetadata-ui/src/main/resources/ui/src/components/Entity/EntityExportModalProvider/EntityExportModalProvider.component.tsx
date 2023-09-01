@@ -14,7 +14,7 @@ import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getCurrentLocaleDate } from 'utils/TimeUtils';
+import { getCurrentISODate } from 'utils/date-time/DateTimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
   EntityExportModalContextProps,
@@ -80,7 +80,7 @@ export const EntityExportModalProvider = ({
     if (exportData) {
       form.setFieldValue(
         'fileName',
-        `${exportData.name}_${getCurrentLocaleDate()}`
+        `${exportData.name}_${getCurrentISODate()}`
       );
     }
   }, [exportData]);

@@ -245,7 +245,7 @@ sink:
   config: {}
 ```
 
-{% partial file="workflow-config-yaml.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 

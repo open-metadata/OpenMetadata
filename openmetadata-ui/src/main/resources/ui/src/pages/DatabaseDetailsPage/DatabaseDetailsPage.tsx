@@ -61,7 +61,6 @@ import {
   restoreDatabase,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -73,7 +72,6 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
@@ -82,12 +80,7 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityThreadLink,
-} from '../../utils/EntityUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
@@ -551,6 +544,16 @@ const DatabaseDetails: FunctionComponent = () => {
     databaseSchemaPagingHandler,
   ]);
 
+  const handleToggleDelete = () => {
+    setDatabase((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreDatabase = useCallback(async () => {
     try {
       await restoreDatabase(databaseId);
@@ -560,7 +563,7 @@ const DatabaseDetails: FunctionComponent = () => {
         }),
         2000
       );
-      getDetailsByFQN();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -590,6 +593,12 @@ const DatabaseDetails: FunctionComponent = () => {
     [databasePermission, database]
   );
 
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
+
   const tabs = useMemo(
     () => [
       {
@@ -609,10 +618,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 <Col data-testid="description-container" span={24}>
                   <DescriptionV1
                     description={description}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
                     entityFqn={databaseFQN}
                     entityName={databaseName}
                     entityType={EntityType.DATABASE}
@@ -650,7 +655,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={databaseFQN}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -661,7 +665,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={databaseFQN}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -743,7 +746,7 @@ const DatabaseDetails: FunctionComponent = () => {
           <Col className="p-x-lg" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              afterDeleteAction={afterDeleteAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
               permissions={databasePermission}

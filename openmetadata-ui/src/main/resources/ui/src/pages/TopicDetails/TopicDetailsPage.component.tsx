@@ -210,6 +210,16 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setTopicDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   useEffect(() => {
     fetchResourcePermission(topicFQN);
   }, [topicFQN]);
@@ -239,6 +249,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       createThread={createThread}
       fetchTopic={() => fetchTopicDetail(topicFQN)}
       followTopicHandler={followTopic}
+      handleToggleDelete={handleToggleDelete}
       topicDetails={topicDetails}
       topicPermissions={topicPermissions}
       unFollowTopicHandler={unFollowTopic}

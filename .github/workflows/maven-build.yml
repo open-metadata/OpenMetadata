@@ -12,6 +12,7 @@
 name: Maven MySQL Tests CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -111,12 +112,12 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-          mvn -pl :openmetadata-service clean test
+          mvn -pl :openmetadata-service clean test -am
 
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean test
 
       - name: Clean Up

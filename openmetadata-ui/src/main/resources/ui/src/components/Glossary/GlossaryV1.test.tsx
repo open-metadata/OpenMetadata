@@ -89,11 +89,11 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
 }));
 
-jest.mock('components/GlossaryDetails/GlossaryDetails.component', () => {
+jest.mock('./GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
 
-jest.mock('components/GlossaryTerms/GlossaryTermsV1.component', () => {
+jest.mock('./GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
 
@@ -111,9 +111,6 @@ jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () =>
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<span>U</span>)
 );
-jest.mock('../../utils/TimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('Jan 15, 1970, 12:26 PM'),
-}));
 
 jest.mock('./ImportGlossary/ImportGlossary', () =>
   jest

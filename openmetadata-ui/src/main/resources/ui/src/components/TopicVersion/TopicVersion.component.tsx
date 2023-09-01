@@ -11,33 +11,32 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps, Tag } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/tagLabel';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { stringToHTML } from 'utils/StringsUtils';
+import { getUpdatedMessageSchema } from 'utils/TopicVersionUtils';
 import { ChangeDescription } from '../../generated/entity/data/topic';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-  getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
 import { TopicVersionProp } from './TopicVersion.interface';
 
@@ -108,6 +107,20 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const schemaType = useMemo(() => {
+    const schemaTypeDiffText = getEntityVersionByField(
+      changeDescription,
+      'messageSchema.schemaType',
+      currentVersionData.displayName
+    );
+
+    return isEmpty(schemaTypeDiffText) ? undefined : (
+      <Tag data-testid="schema-type-diff">
+        {stringToHTML(schemaTypeDiffText)}
+      </Tag>
+    );
+  }, [changeDescription, currentVersionData]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -126,14 +139,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <TopicSchemaFields
-                    defaultExpandAllRows
                     isReadOnly
-                    entityFieldThreads={[]}
+                    isVersionView
                     entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}
-                    showSchemaDisplayTypeSwitch={false}
+                    schemaTypePlaceholder={schemaType}
                     onThreadLinkSelect={noop}
                   />
                 </Col>
@@ -167,9 +179,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: !entityPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -177,16 +187,20 @@ const TopicVersion: FC<TopicVersionProp> = ({
             }
             entityType={EntityType.TOPIC}
             hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
     ],
-    [description, messageSchemaDiff, currentVersionData, entityPermissions]
+    [
+      description,
+      messageSchemaDiff,
+      currentVersionData,
+      entityPermissions,
+      schemaType,
+      tags,
+    ]
   );
-
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
 
   return (
     <>
@@ -201,8 +215,10 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                entityType={EntityType.TOPIC}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
                 tierDisplayName={tierDisplayName}
                 version={version}
                 onVersionClick={backHandler}
@@ -220,7 +236,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={version}
         versionHandler={versionHandler}
         versionList={versionList}

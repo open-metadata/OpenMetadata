@@ -40,7 +40,6 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.schema.type.SubscriptionFilterOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.events.subscription.email.EmailPublisher;
 import org.openmetadata.service.events.subscription.gchat.GChatPublisher;
 import org.openmetadata.service.events.subscription.generic.GenericPublisher;
@@ -50,6 +49,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchIndexDefinition;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
@@ -158,7 +158,7 @@ public final class AlertUtil {
     Set<String> indexesToSearch = new HashSet<>();
     for (String entityType : entities) {
       try {
-        ElasticSearchIndexDefinition.ElasticSearchIndexType type = IndexUtil.getIndexMappingByEntityType(entityType);
+        SearchIndexDefinition.ElasticSearchIndexType type = IndexUtil.getIndexMappingByEntityType(entityType);
         indexesToSearch.add(type.indexName);
       } catch (RuntimeException ex) {
         LOG.error("Failing to get Index for EntityType");

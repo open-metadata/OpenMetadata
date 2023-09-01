@@ -25,8 +25,6 @@ import static org.openmetadata.service.security.policyevaluator.OperationContext
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
 import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -41,7 +39,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
-import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -53,32 +50,35 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public Policy setFields(Policy policy, Fields fields) throws IOException {
-    policy.setTeams(fields.contains("teams") ? getTeams(policy) : null);
-    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : null);
+  public Policy setFields(Policy policy, Fields fields) {
+    policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
+    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
+  }
+
+  @Override
+  public Policy clearFields(Policy policy, Fields fields) {
+    policy.setTeams(fields.contains("teams") ? policy.getTeams() : null);
+    return policy.withRoles(fields.contains("roles") ? policy.getRoles() : null);
   }
 
   /* Get all the teams that use this policy */
-  private List<EntityReference> getTeams(Policy policy) throws IOException {
+  private List<EntityReference> getTeams(Policy policy) {
     return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
   }
 
   /* Get all the roles that use this policy */
-  private List<EntityReference> getRoles(Policy policy) throws IOException {
+  private List<EntityReference> getRoles(Policy policy) {
     return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
   }
 
   @Override
-  public void prepare(Policy policy) throws IOException {
+  public void prepare(Policy policy, boolean update) {
     validateRules(policy);
   }
 
   @Override
-  public void storeEntity(Policy policy, boolean update) throws IOException {
+  public void storeEntity(Policy policy, boolean update) {
     store(policy, update);
-    if (update) {
-      PolicyCache.invalidatePolicy(policy.getId());
-    }
   }
 
   @Override
@@ -92,17 +92,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  protected void preDelete(Policy entity) {
+  protected void preDelete(Policy entity, String updateBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));
     }
-  }
-
-  @Override
-  protected void cleanup(Policy policy) throws IOException {
-    super.cleanup(policy);
-    PolicyCache.invalidatePolicy(policy.getId());
   }
 
   public void validateRules(Policy policy) {
@@ -157,12 +151,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       updateRules(original.getRules(), updated.getRules());
     }
 
-    private void updateRules(List<Rule> origRules, List<Rule> updatedRules) throws IOException {
+    private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {
       // Record change description
       List<Rule> deletedRules = new ArrayList<>();
       List<Rule> addedRules = new ArrayList<>();
@@ -184,27 +178,27 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
     }
 
-    private void updateRuleDescription(Rule stored, Rule updated) throws JsonProcessingException {
+    private void updateRuleDescription(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, FIELD_DESCRIPTION);
       recordChange(ruleField, stored.getDescription(), updated.getDescription());
     }
 
-    private void updateRuleEffect(Rule stored, Rule updated) throws JsonProcessingException {
+    private void updateRuleEffect(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "effect");
       recordChange(ruleField, stored.getEffect(), updated.getEffect());
     }
 
-    private void updateRuleOperations(Rule stored, Rule updated) throws JsonProcessingException {
+    private void updateRuleOperations(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "operations");
       recordChange(ruleField, stored.getOperations(), updated.getOperations());
     }
 
-    private void updateRuleResources(Rule stored, Rule updated) throws JsonProcessingException {
+    private void updateRuleResources(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "resources");
       recordChange(ruleField, stored.getResources(), updated.getResources());
     }
 
-    private void updateRuleCondition(Rule stored, Rule updated) throws JsonProcessingException {
+    private void updateRuleCondition(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "condition");
       recordChange(ruleField, stored.getCondition(), updated.getCondition());
     }

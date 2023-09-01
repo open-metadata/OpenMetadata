@@ -23,7 +23,6 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconNoDataFoundPlaceHolder from '../assets/img/no-data-placeholder.svg';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
-import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAdmin from '../assets/svg/admin.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -70,7 +69,7 @@ import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
-import IconForeignKey from '../assets/svg/foriegnKey.svg';
+import IconForeignKey from '../assets/svg/foreign-key.svg';
 import IconFullScreen from '../assets/svg/full-screen.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconHidePassword from '../assets/svg/hide-password.svg';
@@ -137,7 +136,7 @@ import IconDown from '../assets/svg/icon-down.svg';
 import IcEditPrimary from '../assets/svg/icon-edit-primary.svg';
 import IconInfoSecondary from '../assets/svg/icon-info.svg';
 import IconKey from '../assets/svg/icon-key.svg';
-import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconNotNull from '../assets/svg/icon-not-null.svg';
 import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
 import IconTestSuite from '../assets/svg/icon-test-suite.svg';
@@ -168,8 +167,6 @@ import IconPolicies from '../assets/svg/policies.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
-import IconReaction from '../assets/svg/Reaction.svg';
-import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
@@ -983,19 +980,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconDeployIngestion;
 
       break;
-    case Icons.ADD_REACTION:
-      IconComponent = IconAddReaction;
 
-      break;
-    case Icons.ADD_REPLY:
-      IconComponent = IconReplyFeed;
-
-      break;
-
-    case Icons.REACTION:
-      IconComponent = IconReaction;
-
-      break;
     case Icons.FEED_DELETE:
       IconComponent = IconFeedDelete;
 

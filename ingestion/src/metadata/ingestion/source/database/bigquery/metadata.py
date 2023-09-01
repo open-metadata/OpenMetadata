@@ -16,7 +16,6 @@ import traceback
 from typing import Iterable, List, Optional, Tuple
 
 from google import auth
-from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
@@ -43,23 +42,26 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcpCredentials import (
-    GcpCredentialsPath,
-)
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,
+    BIGQUERY_TABLE_AND_TYPE,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.utils import fqn
+from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -69,6 +71,11 @@ from metadata.utils.tag_utils import (
     get_tag_label,
     get_tag_labels,
 )
+
+_bigquery_table_types = {
+    "BASE TABLE": TableType.Regular,
+    "EXTERNAL": TableType.External,
+}
 
 
 class BQJSON(String):
@@ -198,7 +205,32 @@ class BigquerySource(CommonDbSourceService):
         _, project_ids = auth.default()
         return project_ids
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        return [
+            TableNameAndType(
+                name=table_name,
+                type_=_bigquery_table_types.get(table_type, TableType.Regular),
+            )
+            for table_name, table_type in self.engine.execute(
+                BIGQUERY_TABLE_AND_TYPE.format(schema_name)
+            )
+            or []
+        ]
+
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Build tag context
         :param _:
@@ -213,7 +245,7 @@ class BigquerySource(CommonDbSourceService):
                         tags=[value],
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
-                        classification_desciption="",
+                        classification_description="",
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.database.name.__root__]
@@ -232,11 +264,16 @@ class BigquerySource(CommonDbSourceService):
                         tags=[tag.display_name for tag in policy_tags],
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
-                        classification_desciption="",
+                        classification_description="",
                     )
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Skipping Policy Tag ingestion due to: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         try:
@@ -271,6 +308,10 @@ class BigquerySource(CommonDbSourceService):
             name=schema_name,
             database=self.context.database.fullyQualifiedName,
             description=self.get_schema_description(schema_name),
+            sourceUrl=self.get_source_url(
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            ),
         )
 
         dataset_obj = self.client.get_dataset(schema_name)
@@ -284,7 +325,7 @@ class BigquerySource(CommonDbSourceService):
                         classification_name=label_classification,
                     )
                 )
-        yield database_schema_request_obj
+        yield Either(right=database_schema_request_obj)
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
@@ -310,27 +351,33 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-        self.client = Client(project=database_name)
+        # TODO support location property in JSON Schema
+        # TODO support OAuth 2.0 scopes
+        kwargs = {}
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ):
             self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
+            if self.service_connection.credentials.gcpImpersonateServiceAccount:
+                kwargs[
+                    "impersonate_service_account"
+                ] = (
+                    self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+                )
+
+                kwargs[
+                    "lifetime"
+                ] = (
+                    self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+                )
+
+        self.client = get_bigquery_client(project_id=database_name, **kwargs)
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        if isinstance(
-            self.service_connection.credentials.gcpConfig, GcpCredentialsPath
-        ):
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
-        elif isinstance(
-            self.service_connection.credentials.gcpConfig.projectId, SingleProjectId
-        ):
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
-        elif hasattr(
+        if hasattr(
             self.service_connection.credentials.gcpConfig, "projectId"
         ) and isinstance(
             self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
@@ -438,15 +485,30 @@ class BigquerySource(CommonDbSourceService):
 
     def get_source_url(
         self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
         Method to get the source url for bigquery
         """
-        return (
-            f"https://console.cloud.google.com/bigquery?project={database_name}"
-            f"&ws=!1m5!1m4!4m3!1s{database_name}!2s{schema_name}!3s{table_name}"
-        )
+        try:
+            bigquery_host = "https://console.cloud.google.com/"
+            database_url = f"{bigquery_host}bigquery?project={database_name}"
+
+            schema_table_url = None
+            if schema_name:
+                schema_table_url = f"&ws=!1m4!1m3!3m2!1s{database_name}!2s{schema_name}"
+            if table_name:
+                schema_table_url = (
+                    f"&ws=!1m5!1m4!4m3!1s{database_name}"
+                    f"!2s{schema_name}!3s{table_name}"
+                )
+            if schema_table_url:
+                return f"{database_url}{schema_table_url}"
+            return database_url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get source url: {exc}")
+        return None

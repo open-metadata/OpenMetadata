@@ -70,7 +70,6 @@ import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profi
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../constants/profiler.constant';
@@ -137,17 +136,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
-
-  const showOperationGraph = useMemo(() => {
-    if (table?.serviceType) {
-      return allowedServiceForOperationGraph.includes(table.serviceType);
-    }
-
-    return false;
-  }, [table]);
 
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
@@ -501,6 +492,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
     if (fetchProfiler) {
       fetchLatestProfilerData();
+    } else {
+      setIsLoading(false);
     }
     if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);
@@ -590,9 +583,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     placement="topRight"
                     title={t('label.setting-plural')}>
                     <Button
+                      className="flex-center"
                       data-testid="profiler-setting-btn"
                       onClick={() => handleSettingModal(true)}>
-                      <SettingIcon className="self-center" />
+                      <SettingIcon />
                     </Button>
                   </Tooltip>
                 )}
@@ -602,13 +596,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isUndefined(profile) && !isDataQuality && (
             <div
-              className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+              className="border d-flex items-center border-warning rounded-4 p-xs m-b-md"
               data-testid="no-profiler-placeholder">
               <NoDataIcon />
-              <p className="tw-mb-0 tw-ml-2">
+              <p className="m-l-xs">
                 {t('message.no-profiler-message')}
                 <Link
-                  className="tw-ml-1"
                   target="_blank"
                   to={{
                     pathname:
@@ -693,10 +686,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               )}
 
               {isTableProfile && (
-                <TableProfilerChart
-                  dateRangeObject={dateRangeObject}
-                  showOperationGraph={showOperationGraph}
-                />
+                <TableProfilerChart dateRangeObject={dateRangeObject} />
               )}
 
               {settingModalVisible && (

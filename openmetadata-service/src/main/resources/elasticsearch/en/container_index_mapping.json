@@ -87,6 +87,9 @@
       "href": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "keyword"
+      },
       "parent": {
         "properties": {
           "id": {

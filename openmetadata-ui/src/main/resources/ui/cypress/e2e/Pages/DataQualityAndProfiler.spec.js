@@ -71,10 +71,8 @@ describe('Data Quality and Profiler should work properly', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
         .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
@@ -100,7 +98,9 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.clickOnLogo();
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
     cy.get('[data-menu-id*="databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
@@ -126,17 +126,17 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();
-    cy.get('[data-testid="slider-input"]')
+    cy.get('#root\\/profileSample')
       .scrollIntoView()
       .should('be.visible')
       .and('not.be.disabled')
       .type(10);
-    cy.get('[data-testid="next-button"]')
+    cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
 
-    scheduleIngestion();
+    scheduleIngestion(false);
 
     cy.wait('@deployIngestion').then(() => {
       cy.get('[data-testid="view-service-button"]')
@@ -183,7 +183,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
     cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
-    scheduleIngestion();
+    scheduleIngestion(false);
 
     cy.get('[data-testid="success-line"]')
       .scrollIntoView()
@@ -445,7 +445,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/search/query?q=*&index=test_case_search_index*',
       'getTestCase'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="add-test-suite-btn"]').click();
@@ -485,7 +485,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testCases/logicalTestCases',
       'putTestCase'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="test-suite-container"]')
@@ -522,7 +522,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testCases/logicalTestCases/*/*',
       'removeTestCase'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="test-suite-container"]')
@@ -546,7 +546,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
       'testSuite'
     );
-    cy.get('[data-testid="appbar-item-data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="test-suite-container"]')
@@ -602,11 +602,12 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCaseInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Column Profile')
       .click();
-
+    verifyResponseStatusCode('@getTestCaseInfo', 200);
     cy.get('[data-row-key="shop_id"]')
       .contains('shop_id')
       .scrollIntoView()
@@ -618,7 +619,6 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('#math_graph').scrollIntoView().should('be.visible');
     cy.get('#sum_graph').scrollIntoView().should('be.visible');
 
-    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCaseInfo');
     interceptURL(
       'GET',
       '/api/v1/dataQuality/testCases/*/testCaseResult?*',
@@ -629,10 +629,11 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get(`[data-testid="${testCaseName}"]`).click();
-    verifyResponseStatusCode('@getTestResult', 200);
-    cy.get(`[id="${testCaseName}_graph"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.wait('@getTestResult').then(() => {
+      cy.get(`[id="${testCaseName}_graph"]`)
+        .scrollIntoView()
+        .should('be.visible');
+    });
   });
 
   it('SQL query should be visible while editing the test case', () => {

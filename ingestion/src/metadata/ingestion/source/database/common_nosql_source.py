@@ -35,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -85,15 +86,20 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         yield self.service_connection.__dict__.get("databaseName") or DEFAULT_DATABASE
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
 
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName.__root__,
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName.__root__,
+                sourceUrl=self.get_source_url(database_name=database_name),
+            )
         )
 
     @abstractmethod
@@ -124,15 +130,21 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
 
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName.__root__,
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName.__root__,
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                ),
+            )
         )
 
     @abstractmethod
@@ -185,7 +197,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -202,25 +214,47 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 columns=columns,
                 tableConstraints=None,
                 databaseSchema=self.context.database_schema.fullyQualifiedName.__root__,
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    table_type=table_type,
+                ),
             )
 
-            yield table_request
+            yield Either(right=table_request)
             self.register_record(table_request=table_request)
         except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table_name,
+                    error=f"Unexpected exception to yield table [{table_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
         views are not supported with NoSQL
         """
         yield from []
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         tags are not supported with NoSQL
+        """
+
+    def get_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
+    ) -> Optional[str]:
+        """
+        By default the source url is not supported for
         """
 
     def close(self):

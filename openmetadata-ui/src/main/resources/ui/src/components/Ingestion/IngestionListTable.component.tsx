@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Table, Tooltip, Typography } from 'antd';
+import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
@@ -23,7 +24,6 @@ import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import NextPrevious from '../common/next-previous/NextPrevious';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -71,8 +71,8 @@ function IngestionListTable({
             : t('message.no-permission-to-view')
         }>
         <Typography.Link
-          className="tw-mr-2 overflow-wrap-anywhere"
-          data-testid="airflow-tree-view"
+          className="m-r-xs overflow-wrap-anywhere"
+          data-testid="ingestion-dag-link"
           disabled={!(permissions.ViewAll || permissions.ViewBasic)}
           href={`${airflowEndpoint}/tree?dag_id=${text}`}
           rel="noopener noreferrer"
@@ -181,11 +181,15 @@ function IngestionListTable({
   );
 
   return (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+    <Space
+      className="m-b-md w-full"
+      data-testid="ingestion-table"
+      direction="vertical"
+      size="large">
       <Table
         bordered
         columns={tableColumn}
-        data-testid="schema-table"
+        data-testid="ingestion-list-table"
         dataSource={ingestionData}
         loading={{
           spinning: isLoading,
@@ -212,7 +216,7 @@ function IngestionListTable({
           totalCount={paging.total}
         />
       )}
-    </div>
+    </Space>
   );
 }
 

@@ -20,7 +20,6 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
       
       # Migration 
       MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
@@ -156,11 +155,12 @@ services:
       WEB_CONF_XSS_CSP_ENABLED: ${WEB_CONF_XSS_CSP_ENABLED:-false}
       WEB_CONF_XSS_CSP_POLICY: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
       WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
-    depends_on:
-      elasticsearch:
-        condition: service_started
-      mysql:
-        condition: service_healthy
+      #Referrer-Policy
+      WEB_CONF_REFERRER_POLICY_ENABLED: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
+      WEB_CONF_REFERRER_POLICY_OPTION: ${WEB_CONF_REFERRER_POLICY_OPTION:-"SAME_ORIGIN"}
+      #Permission-Policy
+      WEB_CONF_PERMISSION_POLICY_ENABLED: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
+      WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
     networks:
       - app_net
 
@@ -173,7 +173,6 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
 
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -304,6 +303,9 @@ services:
     ports:
       - "8585:8585"
       - "8586:8586"
+    depends_on:
+      execute-migrate-all:
+        condition: service_completed_successfully
     networks:
       - app_net
     healthcheck:

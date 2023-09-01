@@ -11,7 +11,7 @@
   ],
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode",
+      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode, or Lightdash",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
@@ -25,7 +25,8 @@
         "CustomDashboard",
         "DomoDashboard",
         "QuickSight",
-        "QlikSense"
+        "QlikSense",
+        "Lightdash"
       ],
       "javaEnums": [
         {
@@ -60,6 +61,9 @@
         },
         {
           "name": "QlikSense"
+        },
+        {
+          "name": "Lightdash"
         }
       ]
     },
@@ -106,6 +110,9 @@
             },
             {
               "$ref": "./connections/dashboard/qlikSenseConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/lightdashConnection.json"
             }
           ]
         }

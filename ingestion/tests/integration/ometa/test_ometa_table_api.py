@@ -210,6 +210,10 @@ class OMetaTableTest(TestCase):
         )
         self.assertEqual(res.name, self.entity.name)
 
+        # Now check that we get a None if the table does not exist
+        nullable_res = self.metadata.get_by_name(entity=Table, fqn="something.made.up")
+        self.assertIsNone(nullable_res)
+
     def test_get_id(self):
         """
         We can fetch a Table by ID and get it back as Entity
@@ -344,7 +348,7 @@ class OMetaTableTest(TestCase):
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                timestamp=datetime.now(tz=timezone.utc).timestamp() + 1,
                 operation="UPDATE",
                 rowsAffected=110,
             ),

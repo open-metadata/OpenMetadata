@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Divider, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
@@ -27,6 +27,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from 'generated/entity/data/table';
 import { Operation } from 'generated/entity/policies/policy';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -127,14 +128,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     });
   };
 
-  const getAllIngestionWorkflows = async (paging?: string) => {
+  const getAllIngestionWorkflows = async () => {
     try {
       setIsLoading(true);
-      const response = await getIngestionPipelines(
-        ['owner', 'pipelineStatuses'],
-        testSuiteFQN,
-        paging
-      );
+      const response = await getIngestionPipelines({
+        arrQueryFields: ['owner', 'pipelineStatuses'],
+        testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
+      });
       setTestSuitePipelines(response.data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -179,10 +180,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
   };
-
-  const separator = (
-    <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
-  );
 
   const confirmDelete = (id: string, name: string) => {
     setDeleteSelection({
@@ -261,7 +258,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
             </Button>
           </Tooltip>
-          {separator}
+          <Divider type="vertical" />
           <Tooltip
             title={
               editPermission
@@ -329,17 +326,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 viewPermission ? name : t('message.no-permission-to-view')
               }>
               <a
-                className="link-text tw-mr-2"
+                className="link-text"
                 data-testid="airflow-tree-view"
                 href={`${airFlowEndPoint}`}
                 rel="noopener noreferrer"
                 target="_blank">
-                <Space>
+                <Space align="center">
                   {name}
-                  <ExternalLinkIcon
-                    className="tw-align-middle tw-ml-1"
-                    width={16}
-                  />
+                  <ExternalLinkIcon className="align-middle" width={16} />
                 </Space>
               </a>
             </Tooltip>
@@ -398,7 +392,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 {record.enabled ? (
                   <Fragment>
                     {getTriggerDeployButton(record)}
-                    {separator}
+                    <Divider type="vertical" />
                     <Tooltip
                       title={
                         editPermission
@@ -438,7 +432,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     </Button>
                   </Tooltip>
                 )}
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -462,7 +456,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     {t('label.edit')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     deletePermission
@@ -489,7 +483,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     )}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -509,7 +503,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     {t('label.kill')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     viewPermission

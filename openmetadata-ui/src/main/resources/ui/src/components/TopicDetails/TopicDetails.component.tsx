@@ -20,7 +20,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
 import SampleDataTopic from 'components/SampleDataTopic/SampleDataTopic';
@@ -30,26 +30,18 @@ import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getTopicDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagLabel } from 'generated/type/schema';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
-import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
-import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
-import {
-  getCurrentUserId,
-  getFeedCounts,
-  refreshPage,
-} from '../../utils/CommonUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -67,6 +59,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   createThread,
   onTopicUpdate,
   topicPermissions,
+  handleToggleDelete,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -76,9 +69,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -157,7 +147,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         }),
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -249,13 +239,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.TOPIC,
-      topicFQN,
-      setEntityFieldThreadCount,
-      setFeedCount
-    );
+    getFeedCounts(EntityType.TOPIC, topicFQN, setFeedCount);
   };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
 
   useEffect(() => {
     if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
@@ -274,11 +265,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={topicDetails.description}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityFqn={topicFQN}
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
                   hasEditAccess={
@@ -293,11 +280,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.MESSAGE_SCHEMA,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={topicDetails.fullyQualifiedName ?? ''}
+                  entityFqn={topicFQN}
                   hasDescriptionEditAccess={
                     topicPermissions.EditAll || topicPermissions.EditDescription
                   }
@@ -318,8 +301,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={topicDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityFqn={topicFQN}
                   entityType={EntityType.TOPIC}
                   permission={
                     (topicPermissions.EditAll || topicPermissions.EditTags) &&
@@ -333,8 +315,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={topicDetails.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityFqn={topicFQN}
                   entityType={EntityType.TOPIC}
                   permission={
                     (topicPermissions.EditAll || topicPermissions.EditTags) &&
@@ -380,7 +361,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         children: !(
           topicPermissions.ViewAll || topicPermissions.ViewSampleData
         ) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <div className="m-t-xlg">
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          </div>
         ) : (
           <SampleDataTopic topicId={topicDetails.id} />
         ),
@@ -416,9 +399,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !topicPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TOPIC}
@@ -426,6 +407,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             hasEditAccess={
               topicPermissions.EditAll || topicPermissions.EditCustomFields
             }
+            hasPermission={topicPermissions.ViewAll}
           />
         ),
       },
@@ -435,7 +417,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       activeTab,
       feedCount,
       topicDetails,
-      entityFieldThreadCount,
       topicPermissions,
       isEdit,
       entityName,
@@ -452,7 +433,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
             permissions={topicPermissions}

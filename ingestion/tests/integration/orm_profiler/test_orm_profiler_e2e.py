@@ -21,6 +21,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from unittest import TestCase
 
+import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
@@ -32,10 +33,11 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -172,10 +174,10 @@ class ProfilerWorkflowTest(TestCase):
         cls.session.add_all(new_user)
         cls.session.commit()
 
-        ingestion_workflow = Workflow.create(ingestion_config)
+        ingestion_workflow = MetadataWorkflow.create(ingestion_config)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
+        print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
     @classmethod
@@ -287,8 +289,8 @@ class ProfilerWorkflowTest(TestCase):
         assert profile.rowCount == 4.0
         assert profile.profileSampleType == ProfileSampleType.ROWS
 
-    def test_worflow_sample_profile(self):
-        """Test the worflow sample profile gets propagated down to the table profileSample"""
+    def test_workflow_sample_profile(self):
+        """Test the workflow sample profile gets propagated down to the table profileSample"""
         workflow_config = deepcopy(ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {
