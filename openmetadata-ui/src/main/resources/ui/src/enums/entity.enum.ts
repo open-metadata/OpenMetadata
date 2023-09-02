@@ -163,6 +163,7 @@ export enum EntityTabs {
   CONNECTION = 'connection',
   SQL = 'sql',
   STORED_PROCEDURE = 'stored_procedure',
+  CODE = 'code',
 }
 
 export enum EntityAction {
