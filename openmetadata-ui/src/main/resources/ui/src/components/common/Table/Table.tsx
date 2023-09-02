@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Skeleton, SpinProps, Table as AntdTable, TableProps } from 'antd';
+import { uniqueId } from 'lodash';
 import React, { useMemo } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
@@ -22,22 +23,20 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
 
   if (isLoading) {
     const { columns } = { ...rest };
-    const dataSource = [...Array(3)].map((_, index) => ({
-      key: `key${index}`,
+    const dataSource = [...Array(3)].map(() => ({
+      key: `key${uniqueId()}`,
     })) as T[];
     const column = columns?.map((column) => {
       return {
         ...column,
-        render: function renderPlaceholder() {
-          return (
-            <Skeleton
-              title
-              active={isLoading}
-              key={column.key}
-              paragraph={false}
-            />
-          );
-        },
+        render: () => (
+          <Skeleton
+            title
+            active={isLoading}
+            key={column.key}
+            paragraph={false}
+          />
+        ),
       };
     });
 

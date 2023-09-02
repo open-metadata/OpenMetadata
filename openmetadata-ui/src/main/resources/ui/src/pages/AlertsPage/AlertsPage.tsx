@@ -191,7 +191,7 @@ const AlertsPage = () => {
             dataSource={alerts}
             loading={loading}
             locale={{
-              emptyText: !loading && (
+              emptyText: (
                 <ErrorPlaceHolder
                   permission
                   className="p-y-md"
@@ -211,7 +211,7 @@ const AlertsPage = () => {
             }}
             pagination={false}
             rowKey="id"
-            size="middle"
+            size="small"
           />
         </Col>
         <Col span={24}>
