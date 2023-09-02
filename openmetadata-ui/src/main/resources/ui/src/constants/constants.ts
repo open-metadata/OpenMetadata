@@ -823,6 +823,7 @@ export const ENTITY_PATH: Record<string, string> = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
+  storedprocedure: 'storedProcedure',
 };
 
 export const VALIDATION_MESSAGES = {
