@@ -28,7 +28,7 @@ export type DeleteTagsType = {
   state: boolean;
 };
 
-interface SubmitProps {
+export interface SubmitProps {
   name: string;
   description: string;
   displayName: string;

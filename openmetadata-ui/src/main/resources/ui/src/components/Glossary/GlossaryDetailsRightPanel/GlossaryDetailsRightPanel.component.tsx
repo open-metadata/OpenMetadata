@@ -180,7 +180,7 @@ const GlossaryDetailsRightPanel = ({
 
       return getOwner(getEntityName(glossaryData.owner), glossaryData.owner);
     },
-    [isVersionView]
+    [isVersionView, getOwner]
   );
 
   const tags = useMemo(
@@ -234,7 +234,7 @@ const GlossaryDetailsRightPanel = ({
           </UserTeamSelectableList>
         )}
       </Col>
-      <Col span="24">
+      <Col data-testid="glossary-reviewer" span="24">
         <div
           className={`d-flex items-center ${
             selectedData.reviewers && selectedData.reviewers.length > 0

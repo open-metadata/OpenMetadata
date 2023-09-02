@@ -180,13 +180,18 @@ export const SelectableList = ({
           <div className="d-flex justify-between">
             <Button
               color="primary"
+              data-testid="clear-all-button"
               size="small"
               type="text"
               onClick={handleClearAllClick}>
               {t('label.clear-entity', { entity: t('label.all-lowercase') })}
             </Button>
             <Space className="m-l-auto text-right">
-              <Button color="primary" size="small" onClick={onCancel}>
+              <Button
+                color="primary"
+                data-testid="cancel-button"
+                size="small"
+                onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
               <Button

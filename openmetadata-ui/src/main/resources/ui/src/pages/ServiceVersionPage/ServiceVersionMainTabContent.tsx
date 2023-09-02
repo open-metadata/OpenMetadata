@@ -20,17 +20,13 @@ import Loader from 'components/Loader/Loader';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from 'utils/EntityVersionUtils';
+import { getCommonDiffsFromVersionData } from 'utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from 'utils/ServiceMainTabContentUtils';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
@@ -56,17 +52,10 @@ function ServiceVersionMainTabContent({
     [serviceCategory]
   );
 
-  const tags = useMemo(() => {
-    return getEntityVersionTags(serviceDetails, changeDescription);
-  }, [serviceDetails, changeDescription]);
-
-  const description = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DESCRIPTION,
-      serviceDetails.description
-    );
-  }, [serviceDetails, changeDescription]);
+  const { tags, description } = useMemo(
+    () => getCommonDiffsFromVersionData(serviceDetails, changeDescription),
+    [serviceDetails, changeDescription]
+  );
 
   return (
     <Row gutter={[0, 16]} wrap={false}>
