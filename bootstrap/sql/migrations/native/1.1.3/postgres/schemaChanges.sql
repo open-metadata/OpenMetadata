@@ -9,6 +9,8 @@ WHERE
 	extension  in ('table.tableProfile', 'table.columnProfile');
 ;
 
+BEGIN;
+-- Run the following SQL to update the schema in a transaction
 -- Create report data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS report_data_time_series (
     entityFQNHash VARCHAR(768),
@@ -17,16 +19,18 @@ CREATE TABLE IF NOT EXISTS report_data_time_series (
     json JSONB NOT NULL,
     timestamp BIGINT CHECK (timestamp > 0) GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
 );
-
 CREATE INDEX IF NOT EXISTS report_data_time_series_point_ts ON report_data_time_series (timestamp);
 
 INSERT INTO report_data_time_series (entityFQNHash,extension,jsonSchema,json)
+
 SELECT entityFQNHash, extension, jsonSchema, json
 FROM entity_extension_time_series WHERE extension = 'reportData.reportDataResult';
 
 DELETE FROM entity_extension_time_series
 WHERE extension = 'reportData.reportDataResult';
+COMMIT;
 
+BEGIN;
 -- Create profiler data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS profiler_data_time_series (
     entityFQNHash VARCHAR(768),
@@ -47,7 +51,9 @@ WHERE extension IN ('table.columnProfile', 'table.tableProfile', 'table.systemPr
 
 DELETE FROM entity_extension_time_series
 WHERE extension IN ('table.columnProfile', 'table.tableProfile', 'table.systemProfile');
+COMMIT;
 
+BEGIN;
 -- Create profiler data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS data_quality_data_time_series (
     entityFQNHash VARCHAR(768),
@@ -67,6 +73,7 @@ WHERE extension = 'testCase.testCaseResult';
 
 DELETE FROM entity_extension_time_series
 WHERE extension = 'testCase.testCaseResult';
+COMMIT;
 
 ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQNHash TYPE VARCHAR(768), ALTER COLUMN jsonSchema TYPE VARCHAR(50) , ALTER COLUMN extension TYPE VARCHAR(100) ,
     ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);

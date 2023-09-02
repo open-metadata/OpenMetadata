@@ -9,6 +9,7 @@ WHERE
     extension  in ('table.tableProfile', 'table.columnProfile');
 ;
 
+START TRANSACTION;
 -- Create report data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS report_data_time_series (
     entityFQNHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -16,7 +17,9 @@ CREATE TABLE IF NOT EXISTS report_data_time_series (
     jsonSchema VARCHAR(256) NOT NULL,
     json JSON NOT NULL,
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
-    INDEX report_data_time_series_point_ts (timestamp)
+    date DATE GENERATED ALWAYS AS (FROM_UNIXTIME((json ->> '$.timestamp') DIV 1000)) NOT NULL,
+    INDEX report_data_time_series_point_ts (timestamp),
+    INDEX report_data_time_series_date (date)
 );
 
 INSERT INTO report_data_time_series (entityFQNHash,extension,jsonSchema,json)
@@ -25,7 +28,9 @@ FROM entity_extension_time_series WHERE extension = 'reportData.reportDataResult
 
 DELETE FROM entity_extension_time_series
 WHERE extension = 'reportData.reportDataResult';
+COMMIT;
 
+START TRANSACTION;
 -- Create profiler data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS profiler_data_time_series (
     entityFQNHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -45,7 +50,9 @@ WHERE extension IN ('table.columnProfile', 'table.tableProfile', 'table.systemPr
 
 DELETE FROM entity_extension_time_series
 WHERE extension IN ('table.columnProfile', 'table.tableProfile', 'table.systemProfile');
+COMMIT;
 
+START TRANSACTION;
 -- Create data quality data time series table and move data from entity_extension_time_series
 CREATE TABLE IF NOT EXISTS data_quality_data_time_series (
     entityFQNHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -64,6 +71,7 @@ WHERE extension = 'testCase.testCaseResult';
 
 DELETE FROM entity_extension_time_series
 WHERE extension = 'testCase.testCaseResult';
+COMMIT;
 
 ALTER TABLE automations_workflow MODIFY COLUMN nameHash VARCHAR(256) COLLATE ascii_bin,MODIFY COLUMN workflowType VARCHAR(256) COLLATE ascii_bin, MODIFY COLUMN status VARCHAR(256) COLLATE ascii_bin;
 ALTER TABLE entity_extension MODIFY COLUMN extension VARCHAR(256) COLLATE ascii_bin;
