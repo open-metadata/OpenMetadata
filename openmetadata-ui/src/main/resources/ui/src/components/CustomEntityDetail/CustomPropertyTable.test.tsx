@@ -21,10 +21,6 @@ import {
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
-jest.mock('../../utils/CommonUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('entityName'),
-}));
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreview</p>);
 });
