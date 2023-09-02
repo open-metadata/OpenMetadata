@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { Glossary } from 'generated/entity/data/glossary';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { ServicesType } from 'interface/service.interface';
+import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { TagLabel } from '../generated/type/tagLabel';
 
 export interface TagLabelWithStatus extends TagLabel {
@@ -22,3 +28,11 @@ export interface VersionStatus {
   added?: boolean;
   removed?: boolean;
 }
+
+export type VersionEntityTypes =
+  | VersionData
+  | Glossary
+  | GlossaryTerm
+  | ServicesType
+  | Database
+  | DatabaseSchema;
