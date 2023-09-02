@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Switch, Tabs, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
@@ -21,9 +20,6 @@ import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/Activit
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Table from 'components/common/Table/Table';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import Loader from 'components/Loader/Loader';
@@ -42,7 +38,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
 import { Include } from 'generated/type/include';
 import { State, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, {
@@ -54,7 +50,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
@@ -63,32 +59,26 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
+import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
+import { getDatabaseVersionPath } from 'utils/RouterUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
   getExplorePath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { EntityReference } from '../../generated/entity/teams/user';
-import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-  getUsagePercentile,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -128,6 +118,8 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const history = useHistory();
   const isMounting = useRef(true);
+
+  const { version: currentVersion } = useMemo(() => database, [database]);
 
   const tier = getTierTags(database?.tags ?? []);
   const tags = getTagsWithoutTier(database?.tags ?? []);
@@ -259,7 +251,7 @@ const DatabaseDetails: FunctionComponent = () => {
       try {
         const response = await saveUpdatedDatabaseData(updatedDatabaseDetails);
         if (response) {
-          setDatabase(updatedDatabaseDetails);
+          setDatabase(response);
           setDescription(updatedHTML);
           getEntityFeedCount();
         } else {
@@ -383,55 +375,6 @@ const DatabaseDetails: FunctionComponent = () => {
     appState.inPageSearchText = '';
   }, []);
 
-  const tableColumn: ColumnsType<DatabaseSchema> = useMemo(
-    () => [
-      {
-        title: t('label.schema-name'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (_, record: DatabaseSchema) => (
-          <Link
-            to={
-              record.fullyQualifiedName
-                ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
-                : ''
-            }>
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', { entity: t('label.description') })}
-            </span>
-          ),
-      },
-      {
-        title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
-        width: 120,
-        render: (text: EntityReference) => getEntityName(text) || '--',
-      },
-      {
-        title: t('label.usage'),
-        dataIndex: 'usageSummary',
-        key: 'usageSummary',
-        width: 120,
-        render: (text: UsageDetails) =>
-          getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
-      },
-    ],
-    []
-  );
-
   const handleUpdateTier = useCallback(
     (newTier?: string) => {
       const tierTag = newTier
@@ -503,44 +446,23 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseTable = useMemo(() => {
-    return (
-      <Col span={24}>
-        <Table
-          bordered
-          columns={tableColumn}
-          data-testid="database-databaseSchemas"
-          dataSource={schemaData}
-          loading={schemaDataLoading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-        {Boolean(
-          !isNil(databaseSchemaPaging.after) ||
-            !isNil(databaseSchemaPaging.before)
-        ) && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={PAGE_SIZE}
-            paging={databaseSchemaPaging}
-            pagingHandler={databaseSchemaPagingHandler}
-            totalCount={databaseSchemaPaging.total}
-          />
-        )}
-      </Col>
-    );
-  }, [
-    schemaDataLoading,
-    schemaData,
-    tableColumn,
-    databaseSchemaPaging,
-    currentPage,
-    databaseSchemaPagingHandler,
-  ]);
+  const databaseTable = useMemo(
+    () =>
+      getDatabaseSchemaTable(
+        schemaData,
+        schemaDataLoading,
+        databaseSchemaPaging,
+        currentPage,
+        databaseSchemaPagingHandler
+      ),
+    [
+      schemaData,
+      schemaDataLoading,
+      databaseSchemaPaging,
+      currentPage,
+      databaseSchemaPagingHandler,
+    ]
+  );
 
   const handleToggleDelete = () => {
     setDatabase((prev) => {
@@ -576,6 +498,13 @@ const DatabaseDetails: FunctionComponent = () => {
     setShowDeletedSchemas(value);
     setCurrentPage(INITIAL_PAGING_VALUE);
   }, []);
+
+  const versionHandler = useCallback(() => {
+    currentVersion &&
+      history.push(
+        getDatabaseVersionPath(databaseFQN, toString(currentVersion))
+      );
+  }, [currentVersion, databaseFQN]);
 
   const editTagsPermission = useMemo(
     () =>
@@ -752,6 +681,7 @@ const DatabaseDetails: FunctionComponent = () => {
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreDatabase}
               onTierUpdate={handleUpdateTier}
+              onVersionClick={versionHandler}
             />
           </Col>
           <Col span={24}>

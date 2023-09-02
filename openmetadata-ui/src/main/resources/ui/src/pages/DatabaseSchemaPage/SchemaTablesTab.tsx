@@ -21,7 +21,6 @@ import TableAntd from 'components/common/Table/Table';
 import { PAGE_SIZE } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
-import { EntityLinkThreadCount } from 'generated/api/feed/threadCount';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Table } from 'generated/entity/data/table';
 import { PagingResponse } from 'Models';
@@ -35,29 +34,29 @@ interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
   tableDataLoading: boolean;
   description: string;
-  entityFieldThreadCount: EntityLinkThreadCount[];
-  editDescriptionPermission: boolean;
-  isEdit: boolean;
-  showDeletedTables: boolean;
+  editDescriptionPermission?: boolean;
+  isEdit?: boolean;
+  showDeletedTables?: boolean;
   tableData: PagingResponse<Table[]>;
   currentTablesPage: number;
   tablePaginationHandler: (
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  onCancel: () => void;
-  onDescriptionEdit: () => void;
-  onDescriptionUpdate: (updatedHTML: string) => Promise<void>;
-  onThreadLinkSelect: (link: string) => void;
-  onShowDeletedTablesChange: (value: boolean) => void;
+  onCancel?: () => void;
+  onDescriptionEdit?: () => void;
+  onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
+  onThreadLinkSelect?: (link: string) => void;
+  onShowDeletedTablesChange?: (value: boolean) => void;
+  isVersionView?: boolean;
 }
 
 function SchemaTablesTab({
   databaseSchemaDetails,
   tableDataLoading,
   description,
-  editDescriptionPermission,
-  isEdit,
+  editDescriptionPermission = false,
+  isEdit = false,
   tableData,
   currentTablesPage,
   tablePaginationHandler,
@@ -65,8 +64,9 @@ function SchemaTablesTab({
   onDescriptionEdit,
   onDescriptionUpdate,
   onThreadLinkSelect,
-  showDeletedTables,
+  showDeletedTables = false,
   onShowDeletedTablesChange,
+  isVersionView = false,
 }: SchemaTablesTabProps) {
   const { t } = useTranslation();
 
@@ -107,34 +107,46 @@ function SchemaTablesTab({
   return (
     <Row gutter={[16, 16]}>
       <Col data-testid="description-container" span={24}>
-        <DescriptionV1
-          description={description}
-          entityFqn={databaseSchemaDetails.fullyQualifiedName}
-          entityName={getEntityName(databaseSchemaDetails)}
-          entityType={EntityType.DATABASE_SCHEMA}
-          hasEditAccess={editDescriptionPermission}
-          isEdit={isEdit}
-          isReadOnly={databaseSchemaDetails.deleted}
-          onCancel={onCancel}
-          onDescriptionEdit={onDescriptionEdit}
-          onDescriptionUpdate={onDescriptionUpdate}
-          onThreadLinkSelect={onThreadLinkSelect}
-        />
+        {isVersionView ? (
+          <DescriptionV1
+            isVersionView
+            description={description}
+            entityFqn={databaseSchemaDetails.fullyQualifiedName}
+            entityType={EntityType.DATABASE_SCHEMA}
+          />
+        ) : (
+          <DescriptionV1
+            description={description}
+            entityFqn={databaseSchemaDetails.fullyQualifiedName}
+            entityName={getEntityName(databaseSchemaDetails)}
+            entityType={EntityType.DATABASE_SCHEMA}
+            hasEditAccess={editDescriptionPermission}
+            isEdit={isEdit}
+            isReadOnly={databaseSchemaDetails.deleted}
+            onCancel={onCancel}
+            onDescriptionEdit={onDescriptionEdit}
+            onDescriptionUpdate={onDescriptionUpdate}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        )}
       </Col>
-      <Col span={24}>
-        <Row justify="end">
-          <Col>
-            <Switch
-              checked={showDeletedTables}
-              data-testid="show-deleted"
-              onClick={onShowDeletedTablesChange}
-            />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
-          </Col>
-        </Row>
-      </Col>
+      {!isVersionView && (
+        <Col span={24}>
+          <Row justify="end">
+            <Col>
+              <Switch
+                checked={showDeletedTables}
+                data-testid="show-deleted"
+                onClick={onShowDeletedTablesChange}
+              />
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>{' '}
+            </Col>
+          </Row>
+        </Col>
+      )}
+
       <Col span={24}>
         <TableAntd
           bordered

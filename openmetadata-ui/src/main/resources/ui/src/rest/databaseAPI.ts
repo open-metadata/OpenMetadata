@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { Database } from '../generated/entity/data/database';
@@ -157,6 +158,41 @@ export const restoreDatabase = async (id: string) => {
   >('/databases/restore', {
     id,
   });
+
+  return response.data;
+};
+
+export const getDatabaseVersions = async (id: string) => {
+  const url = `/databases/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDatabaseVersionData = async (id: string, version: string) => {
+  const url = `/databases/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Database>(url);
+
+  return response.data;
+};
+
+export const getDatabaseSchemaVersions = async (id: string) => {
+  const url = `/databaseSchemas/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDatabaseSchemaVersionData = async (
+  id: string,
+  version: string
+) => {
+  const url = `/databaseSchemas/${id}/versions/${version}`;
+
+  const response = await APIClient.get<DatabaseSchema>(url);
 
   return response.data;
 };
