@@ -43,7 +43,7 @@ jest.mock('rest/tableAPI', () => ({
 jest.mock('utils/CommonUtils', () => ({
   getCurrentUserId: jest.fn(),
   getFeedCounts: jest.fn(),
-  getPartialNameFromTableFQN: jest.fn(),
+  getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
   getTableFQNFromColumnFQN: jest.fn(),
   refreshPage: jest.fn(),
   sortTagsCaseInsensitive: jest.fn(),
@@ -93,7 +93,7 @@ jest.mock(
   })
 );
 
-jest.mock('components/EntityLineage/EntityLineage.component', () => {
+jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
 });
 
@@ -260,6 +260,7 @@ describe('TestDetailsPageV1 component', () => {
       Promise.resolve({
         name: 'test',
         id: '123',
+        tableFqn: 'fqn',
         dataModel: { sql: 'somequery' },
       })
     );
