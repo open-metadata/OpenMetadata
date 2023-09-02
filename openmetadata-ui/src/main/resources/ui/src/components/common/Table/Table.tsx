@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Skeleton, SpinProps, Table as AntdTable, TableProps } from 'antd';
-import { uniqueId } from 'lodash';
+import { SMALL_TABLE_LOADER_SIZE } from 'constants/constants';
 import React, { useMemo } from 'react';
+import { getUniqueArray } from 'utils/CommonUtils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
 const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
@@ -21,11 +22,13 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
     [loading]
   );
 
+  const dataSource = useMemo(
+    () => getUniqueArray(SMALL_TABLE_LOADER_SIZE) as T[],
+    []
+  );
+
   if (isLoading) {
     const { columns } = { ...rest };
-    const dataSource = [...Array(3)].map(() => ({
-      key: `key${uniqueId()}`,
-    })) as T[];
     const column = columns?.map((column) => {
       return {
         ...column,

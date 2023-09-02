@@ -32,6 +32,7 @@ import {
   isString,
   isUndefined,
   toNumber,
+  uniqueId,
 } from 'lodash';
 import {
   CurrentState,
@@ -842,3 +843,8 @@ export const getEntityDetailLink = (
 
   return path;
 };
+
+export const getUniqueArray = (count: number) =>
+  [...Array(count)].map(() => ({
+    key: `key${uniqueId()}`,
+  }));
