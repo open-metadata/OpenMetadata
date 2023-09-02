@@ -14,7 +14,7 @@ Source connection handler
 """
 from typing import Optional
 
-from elasticsearch import Elasticsearch
+from elasticsearch8 import Elasticsearch
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -47,9 +47,13 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
         )
 
     if isinstance(connection.authType, ApiAuthentication):
-        api_key = (
-            connection.authType.apiKey.get_secret_value()
-        )
+        if connection.authType.apiKeyId and connection.authType.apiKey:
+            api_key = (
+                connection.authType.apiKeyId,
+                connection.authType.apiKey.get_secret_value()
+            )
+        elif connection.authType.apiKey:
+            api_key = connection.authType.apiKey.get_secret_value()
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
@@ -59,6 +63,7 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
         connection.hostPort,
         http_auth=basic_auth,
         api_key=api_key,
+        ca_certs=connection.caCert,
         **connection.connectionArguments.__root__
     )
 

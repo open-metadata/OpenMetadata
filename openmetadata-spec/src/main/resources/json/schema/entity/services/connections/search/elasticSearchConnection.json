@@ -16,10 +16,12 @@
       "title": "Basic Authentication",
       "properties": {
         "username": {
+          "title": "Username",
           "description": "Elastic Search Username for Login",
           "type": "string"
         },
         "password": {
+          "title": "Password",
           "description": "Elastic Search Password for Login",
           "type": "string",
           "format": "password"
@@ -28,20 +30,21 @@
       "type": "object"
     },
     "apiAuthentication": {
-      "title": "API Authentication",
+      "title": "API Key Authentication",
       "type": "object",
       "properties": {
-        "apiKeyId": {
-          "description": "Elastic Search API Key ID for API Authentication",
-          "type": "string"
-        },
         "apiKey": {
+          "title": "API Key",
           "description": "Elastic Search API Key for API Authentication",
           "type": "string",
           "format": "password"
-        }
-      },
-      "required": ["apiKeyId","apiKey"]
+        },
+        "apiKeyId": {
+          "title": "API Key ID",
+          "description": "Elastic Search API Key ID for API Authentication",
+          "type": "string"
+        } 
+      }
     }
   },
   "properties": {
@@ -69,7 +72,13 @@
         }
       ]
     },
+    "caCert": {
+      "title": "Client Certificate Path",
+      "description": "Path to CA Cert File",
+      "type": "string"
+    },
     "connectionTimeoutSecs": {
+      "title": "Connection Timeout in Seconds",
       "description": "Connection Timeout in Seconds",
       "type": "integer",
       "default": 30
