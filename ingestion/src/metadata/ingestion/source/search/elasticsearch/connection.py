@@ -50,14 +50,13 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
         if connection.authType.apiKeyId and connection.authType.apiKey:
             api_key = (
                 connection.authType.apiKeyId,
-                connection.authType.apiKey.get_secret_value()
+                connection.authType.apiKey.get_secret_value(),
             )
         elif connection.authType.apiKey:
             api_key = connection.authType.apiKey.get_secret_value()
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
-    
 
     return Elasticsearch(
         connection.hostPort,

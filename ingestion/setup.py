@@ -175,7 +175,7 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         "elasticsearch==7.13.1",
-        "elasticsearch8~=8.9.0"
+        "elasticsearch8~=8.9.0",
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
