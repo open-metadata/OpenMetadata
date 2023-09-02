@@ -15,10 +15,13 @@ import { AxiosError } from 'axios';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -28,6 +31,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -435,6 +439,10 @@ const StoredProcedurePage = () => {
     setThreadLink('');
   };
 
+  const onExtensionUpdate = async (updatedData: StoredProcedure) => {
+    await handleStoreProcedureUpdate(updatedData, 'extension');
+  };
+
   const tabs = useMemo(
     () => [
       {
@@ -538,6 +546,44 @@ const StoredProcedurePage = () => {
             fqn={entityFQN}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchStoredProcedureDetails}
+          />
+        ),
+      },
+      {
+        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+        key: EntityTabs.LINEAGE,
+        children: (
+          <EntityLineageComponent
+            deleted={deleted}
+            entity={storedProcedure as SourceType}
+            entityType={EntityType.STORED_PROCEDURE}
+            hasEditAccess={
+              storedProcedurePermissions.EditAll ||
+              storedProcedurePermissions.EditLineage
+            }
+          />
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={
+              storedProcedure as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.STORED_PROCEDURE}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              storedProcedurePermissions.EditAll ||
+              storedProcedurePermissions.EditCustomFields
+            }
+            hasPermission={storedProcedurePermissions.ViewAll}
           />
         ),
       },
