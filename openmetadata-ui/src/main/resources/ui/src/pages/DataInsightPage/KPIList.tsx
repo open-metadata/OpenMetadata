@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from 'components/common/Table/Table';
 import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPlaceholder';
-import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -213,22 +213,19 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   return (
     <>
       <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Table
-            bordered
-            columns={columns}
-            data-testid="kpi-table"
-            dataSource={kpiList}
-            locale={{
-              emptyText: noDataPlaceHolder,
-            }}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          columns={columns}
+          data-testid="kpi-table"
+          dataSource={kpiList}
+          loading={isLoading}
+          locale={{
+            emptyText: noDataPlaceHolder,
+          }}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
       </Col>
       {kpiList.length > PAGE_SIZE_MEDIUM && (
         <Col span={24}>

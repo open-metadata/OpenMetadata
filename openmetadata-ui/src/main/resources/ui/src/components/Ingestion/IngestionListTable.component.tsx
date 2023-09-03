@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Space, Table, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
 import { isNil } from 'lodash';
@@ -191,10 +191,7 @@ function IngestionListTable({
         columns={tableColumn}
         data-testid="ingestion-list-table"
         dataSource={ingestionData}
-        loading={{
-          spinning: isLoading,
-          indicator: <Loader size="small" />,
-        }}
+        loading={isLoading}
         locale={{
           emptyText: getErrorPlaceHolder(
             isRequiredDetailsAvailable,

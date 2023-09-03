@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Col,
-  Row,
-  Space,
-  Switch,
-  Table,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
@@ -33,8 +24,8 @@ import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageBu
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from 'components/common/Table/Table';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -494,10 +485,7 @@ function ClassificationDetails({
           columns={tableColumn}
           data-testid="table"
           dataSource={tags}
-          loading={{
-            spinning: isTagsLoading,
-            indicator: <Loader size="small" />,
-          }}
+          loading={isTagsLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
           }}

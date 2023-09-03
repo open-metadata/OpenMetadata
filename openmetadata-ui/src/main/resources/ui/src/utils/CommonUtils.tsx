@@ -842,3 +842,8 @@ export const getEntityDetailLink = (
 
   return path;
 };
+
+export const getUniqueArray = (count: number) =>
+  [...Array(count)].map((_, index) => ({
+    key: `key${index}`,
+  }));

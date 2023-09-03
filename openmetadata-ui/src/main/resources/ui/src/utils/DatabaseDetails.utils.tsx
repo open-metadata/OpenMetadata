@@ -12,11 +12,11 @@
  */
 
 import { Col, Space } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import { getDatabaseSchemaDetailsPath, PAGE_SIZE } from 'constants/constants';
 import { TabSpecificField } from 'enums/entity.enum';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
@@ -78,7 +78,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   },
 ];
 
-export const getDatabseSchemaTable = (
+export const getDatabaseSchemaTable = (
   schemaData: DatabaseSchema[],
   schemaDataLoading: boolean,
   databaseSchemaPaging: Paging,
@@ -96,10 +96,7 @@ export const getDatabseSchemaTable = (
           columns={schemaTableColumns}
           data-testid="database-databaseSchemas"
           dataSource={schemaData}
-          loading={{
-            spinning: schemaDataLoading,
-            indicator: <Loader size="small" />,
-          }}
+          loading={schemaDataLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
           }}

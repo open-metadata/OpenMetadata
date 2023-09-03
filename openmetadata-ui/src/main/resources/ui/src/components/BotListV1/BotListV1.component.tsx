@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -42,7 +43,6 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
 import PageHeader from '../header/PageHeader.component';
-import Loader from '../Loader/Loader';
 import { BotListV1Props } from './BotListV1.interfaces';
 
 const BotListV1 = ({
@@ -261,21 +261,18 @@ const BotListV1 = ({
       <Col span={24}>
         <Row>
           <Col span={24}>
-            {loading ? (
-              <Loader />
-            ) : (
-              <Table
-                bordered
-                columns={columns}
-                dataSource={searchedData}
-                locale={{
-                  emptyText: <FilterTablePlaceHolder />,
-                }}
-                pagination={false}
-                rowKey="name"
-                size="small"
-              />
-            )}
+            <Table
+              bordered
+              columns={columns}
+              dataSource={searchedData}
+              loading={loading}
+              locale={{
+                emptyText: <FilterTablePlaceHolder />,
+              }}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
           </Col>
           <Col span={24}>
             {paging.total > PAGE_SIZE_LARGE && (

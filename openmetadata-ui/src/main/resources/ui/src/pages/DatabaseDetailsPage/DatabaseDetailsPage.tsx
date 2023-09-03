@@ -59,7 +59,7 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
-import { getDatabseSchemaTable } from 'utils/DatabaseDetails.utils';
+import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
 import { getDatabaseVersionPath } from 'utils/RouterUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -448,7 +448,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const databaseTable = useMemo(
     () =>
-      getDatabseSchemaTable(
+      getDatabaseSchemaTable(
         schemaData,
         schemaDataLoading,
         databaseSchemaPaging,

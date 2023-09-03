@@ -109,8 +109,8 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(await screen.findByText('Loader')).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('skeleton-table')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).toBeInTheDocument();
     expect(
       await screen.findByTestId('user-selectable-list')
     ).toBeInTheDocument();
