@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Table as TableAntd, Typography } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
+import TableAntd from 'components/common/Table/Table';
 import { PAGE_SIZE } from 'constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Table } from 'generated/entity/data/table';
@@ -147,34 +148,36 @@ function SchemaTablesTab({
       )}
 
       <Col span={24}>
-        <Space className="w-full m-b-md" direction="vertical" size="middle">
-          <TableAntd
-            bordered
-            columns={tableColumn}
-            data-testid="databaseSchema-tables"
-            dataSource={tableData.data}
-            loading={{
-              spinning: tableDataLoading,
-              indicator: <Loader size="small" />,
-            }}
-            locale={{
-              emptyText: <ErrorPlaceHolder className="m-y-md" />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-          {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
-            <NextPrevious
-              currentPage={currentTablesPage}
-              pageSize={PAGE_SIZE}
-              paging={tableData.paging}
-              pagingHandler={tablePaginationHandler}
-              totalCount={tableData.paging.total}
-            />
-          )}
-        </Space>
+        <TableAntd
+          bordered
+          columns={tableColumn}
+          data-testid="databaseSchema-tables"
+          dataSource={tableData.data}
+          loading={tableDataLoading}
+          locale={{
+            emptyText: (
+              <ErrorPlaceHolder
+                className="mt-0-important"
+                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+              />
+            ),
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
       </Col>
+      {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
+        <Col span={24}>
+          <NextPrevious
+            currentPage={currentTablesPage}
+            pageSize={PAGE_SIZE}
+            paging={tableData.paging}
+            pagingHandler={tablePaginationHandler}
+            totalCount={tableData.paging.total}
+          />
+        </Col>
+      )}
     </Row>
   );
 }
