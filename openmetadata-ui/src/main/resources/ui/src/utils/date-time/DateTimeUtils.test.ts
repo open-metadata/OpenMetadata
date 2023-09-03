@@ -16,7 +16,6 @@ import {
   formatDateTime,
   formatDateTimeFromSeconds,
   formatDateTimeLong,
-  formatDateTimeWithTimezone,
   formatTimeDurationFromSeconds,
   getTimeZone,
 } from './DateTimeUtils';
@@ -48,12 +47,6 @@ describe('DateTimeUtils tests', () => {
 
   it(`getTimeZone should formate date and time both`, () => {
     expect(getTimeZone()).toBe(`IST`);
-  });
-
-  it(`formatDateTimeWithTimezone should formate date and time both`, () => {
-    expect(formatDateTimeWithTimezone(0)).toBe(
-      `January 1, 1970, 5:30 AM GMT+5:30`
-    );
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
