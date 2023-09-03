@@ -23,7 +23,7 @@ import {
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
 import {
-  NEW_SERVICE_DESCRIPTION,
+  COMMON_UPDATED_DESCRIPTION,
   OWNER,
   SERVICE_DETAILS_FOR_VERSION_TEST,
   TIER,
@@ -31,7 +31,7 @@ import {
 
 Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
   ([serviceType, serviceDetails]) => {
-    describe(`${serviceType} service version page should work properly`, () => {
+    describe(`${serviceType} service version page`, () => {
       const successMessageEntityName =
         serviceType === 'ML Model' ? 'Mlmodel' : serviceType;
       let serviceId;
@@ -40,7 +40,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
         cy.login();
       });
 
-      it(`Prerequisite for ${serviceType} service version page tests`, () => {
+      it(`Prerequisite for ${serviceType} service version page`, () => {
         const token = localStorage.getItem('oidcIdToken');
 
         cy.request({
@@ -97,7 +97,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
           verifyResponseStatusCode('@getVersionsList', 200);
           verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-          cy.get(`[data-testid="diff-added-${NEW_SERVICE_DESCRIPTION}"]`)
+          cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
             .scrollIntoView()
             .should('be.visible');
 

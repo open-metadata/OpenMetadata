@@ -64,7 +64,7 @@
         "type": "text"
       },
       "sourceUrl": {
-        "type": "text"
+        "type": "keyword"
       },
       "messageSchema": {
         "properties": {
