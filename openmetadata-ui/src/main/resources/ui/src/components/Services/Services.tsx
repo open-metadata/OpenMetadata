@@ -16,7 +16,6 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
 import {
   getServiceDetailsPath,
   pagingObject,
@@ -214,10 +213,6 @@ const Services = ({ serviceName }: ServicesProps) => {
     },
   ];
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
     <Row
       className="justify-center"
@@ -256,6 +251,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           columns={columns}
           dataSource={serviceDetails}
           key="fullyQualifiedName"
+          loading={isLoading}
           locale={{
             emptyText: noDataPlaceholder,
           }}

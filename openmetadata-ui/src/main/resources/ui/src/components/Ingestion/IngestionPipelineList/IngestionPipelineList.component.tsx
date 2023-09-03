@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { FilterOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Table, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import Tooltip from 'antd/es/tooltip';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import cronstrue from 'cronstrue';
 import {
@@ -244,10 +244,7 @@ export const IngestionPipelineList = ({
         <Table
           columns={tableColumn}
           dataSource={pipelines}
-          loading={{
-            spinning: loading,
-            indicator: <Loader />,
-          }}
+          loading={loading}
           pagination={false}
           rowKey="fullyQualifiedName"
           rowSelection={{
