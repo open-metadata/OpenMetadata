@@ -21,7 +21,6 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
@@ -303,7 +302,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -349,7 +348,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -388,7 +387,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -436,7 +435,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -476,7 +475,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -523,7 +522,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -563,7 +562,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(

@@ -166,7 +166,7 @@ class TestBigquerySystem(TestCase):
         profiler_workflow = ProfilerWorkflow.create(config)
         profiler_workflow.execute()
         profiler_workflow.raise_from_status()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         # get latest profile metrics
