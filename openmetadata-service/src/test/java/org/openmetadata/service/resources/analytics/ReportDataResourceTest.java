@@ -104,7 +104,6 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void delete_endpoint_200() throws HttpResponseException, ParseException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
