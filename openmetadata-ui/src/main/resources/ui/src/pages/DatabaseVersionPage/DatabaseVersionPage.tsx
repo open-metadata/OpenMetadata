@@ -50,7 +50,7 @@ import {
   getDatabaseVersionData,
   getDatabaseVersions,
 } from 'rest/databaseAPI';
-import { getDatabseSchemaTable } from 'utils/DatabaseDetails.utils';
+import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getBasicEntityInfoFromVersionData,
@@ -207,7 +207,7 @@ function DatabaseVersionPage() {
 
   const databaseTable = useMemo(
     () =>
-      getDatabseSchemaTable(
+      getDatabaseSchemaTable(
         schemaData,
         isSchemaDataLoading,
         paging,

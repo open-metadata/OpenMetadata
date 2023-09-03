@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -44,6 +45,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnTests,
   columns = [],
   dateRangeObject,
+  isLoading,
 }) => {
   const location = useLocation();
   const { t } = useTranslation();
@@ -264,6 +266,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             columns={tableColumn}
             dataSource={data}
             expandable={getTableExpandableConfig<Column>()}
+            loading={isLoading}
             locale={{
               emptyText: <FilterTablePlaceHolder />,
             }}

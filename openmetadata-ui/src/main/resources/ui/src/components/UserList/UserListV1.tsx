@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -37,7 +38,6 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import PageHeader from '../header/PageHeader.component';
-import Loader from '../Loader/Loader';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import './usersList.less';
 
@@ -252,23 +252,20 @@ const UserListV1: FC<UserListV1Props> = ({
       </Col>
 
       <Col span={24}>
-        {isDataLoading ? (
-          <Loader />
-        ) : (
-          <Table
-            bordered
-            className="user-list-table"
-            columns={columns}
-            data-testid="user-list-table"
-            dataSource={data}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          className="user-list-table"
+          columns={columns}
+          data-testid="user-list-table"
+          dataSource={data}
+          loading={isDataLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
       </Col>
       <Col span={24}>
         {paging.total > PAGE_SIZE_MEDIUM && (
