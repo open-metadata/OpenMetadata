@@ -66,6 +66,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
@@ -402,6 +403,60 @@ class MetadataRestSink(Sink):
 
         logger.debug(f"No sample data to PUT for {get_log_name(record.entity)}")
         return Either(right=record.entity)
+
+    @_run_dispatch.register
+    def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:
+        """Cleanup "`" character in columns and ingest"""
+        column_profile = record.profile.columnProfile
+        for column in column_profile:
+            column.name = column.name.replace("`", "")
+
+        record.profile.columnProfile = column_profile
+
+        table = self.metadata.ingest_profile_data(
+            table=record.table,
+            profile_request=record.profile,
+        )
+        logger.debug(
+            f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"
+        )
+
+        if record.sample_data:
+            table_data = self.metadata.ingest_table_sample_data(
+                table=record.table, sample_data=record.sample_data
+            )
+            if not table_data:
+                self.status.failed(
+                    StackTraceError(
+                        name=table.fullyQualifiedName.__root__,
+                        error="Error trying to ingest sample data for table",
+                    )
+                )
+            else:
+                logger.debug(
+                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
+                )
+
+        for column_tag_response in record.column_tags or []:
+            patched = self.metadata.patch_column_tag(
+                table=record.table,
+                column_fqn=column_tag_response.column_fqn,
+                tag_label=column_tag_response.tag_label,
+            )
+            if not patched:
+                self.status.failed(
+                    StackTraceError(
+                        name=table.fullyQualifiedName.__root__,
+                        error="Error patching tags for table",
+                    )
+                )
+            else:
+                logger.debug(
+                    f"Successfully patched tag {column_tag_response.tag_label} for"
+                    f" {record.table.fullyQualifiedName.__root__}.{column_tag_response.column_fqn}"
+                )
+
+        return Either(right=table)
 
     def close(self):
         """

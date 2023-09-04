@@ -109,9 +109,7 @@ class TableUsageStage(Stage):
                 )
             ]
 
-    def _run(  # pylint: disable=arguments-differ
-        self, record: QueryParserData, *_, **__
-    ) -> Iterable[Either[str]]:
+    def _run(self, record: QueryParserData) -> Iterable[Either[str]]:
         """
         Process the parsed data and store it in a file
         """
