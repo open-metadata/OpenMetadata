@@ -67,7 +67,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void prepare(Topic topic) {
+  public void prepare(Topic topic, boolean update) {
     MessagingService messagingService = Entity.getEntity(topic.getService(), "", ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());

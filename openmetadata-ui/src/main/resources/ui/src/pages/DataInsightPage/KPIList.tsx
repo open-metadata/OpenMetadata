@@ -11,21 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from 'components/common/Table/Table';
 import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPlaceholder';
-import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
+import { formatDateTime } from 'utils/date-time/DateTimeUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getKpiPath,
@@ -38,7 +39,6 @@ import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { formatDateTime } from '../../utils/TimeUtils';
 
 const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   const history = useHistory();
@@ -101,7 +101,7 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography.Text> {formatDateTime(startDate)}</Typography.Text>
+          <Typography.Text>{formatDateTime(startDate)}</Typography.Text>
         ),
       },
       {
@@ -111,6 +111,18 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         render: (endDate: number) => (
           <Typography.Text>{formatDateTime(endDate)}</Typography.Text>
         ),
+      },
+      {
+        title: t('label.target'),
+        dataIndex: 'targetDefinition',
+        key: 'targetDefinition',
+        render: (targetDefinition: Kpi['targetDefinition']) => {
+          const targetValue = targetDefinition?.length
+            ? `${+targetDefinition[0].value * 100}%`
+            : '-';
+
+          return <Typography.Text>{targetValue}</Typography.Text>;
+        },
       },
       {
         title: t('label.metric-type'),
@@ -201,22 +213,19 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   return (
     <>
       <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Table
-            bordered
-            columns={columns}
-            data-testid="kpi-table"
-            dataSource={kpiList}
-            locale={{
-              emptyText: noDataPlaceHolder,
-            }}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          columns={columns}
+          data-testid="kpi-table"
+          dataSource={kpiList}
+          loading={isLoading}
+          locale={{
+            emptyText: noDataPlaceHolder,
+          }}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
       </Col>
       {kpiList.length > PAGE_SIZE_MEDIUM && (
         <Col span={24}>

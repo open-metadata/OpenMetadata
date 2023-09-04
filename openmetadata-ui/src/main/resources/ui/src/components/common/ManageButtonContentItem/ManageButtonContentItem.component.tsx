@@ -36,7 +36,7 @@ export const ManageButtonItemLabel = ({
           {name}
         </Typography.Paragraph>
         <Typography.Paragraph
-          className="text-grey-muted text-xs m-b-0"
+          className="text-grey-muted text-xs m-b-0 break-word"
           data-testid={`${id}-description`}>
           {description}
         </Typography.Paragraph>

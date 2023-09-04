@@ -54,3 +54,9 @@ $$section
 
 Optional configuration to soft delete `pipelines` in OpenMetadata if the source `pipelines` are deleted. After deleting, all the associated entities like lineage, etc., with that `pipeline` will be deleted.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$

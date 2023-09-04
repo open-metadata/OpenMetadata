@@ -72,6 +72,11 @@ const SwaggerPage = withSuspenseFallback(
 const TagsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TagsPage/TagsPage'))
 );
+const ClassificationVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/ClassificationVersionPage/ClassificationVersionPage')
+  )
+);
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TopicDetails/TopicDetailsPage.component'))
 );
@@ -138,6 +143,17 @@ const EditIngestionPage = withSuspenseFallback(
 const EntityVersionPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/EntityVersionPage/EntityVersionPage.component')
+  )
+);
+const ServiceVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/ServiceVersionPage/ServiceVersionPage'))
+);
+const DatabaseVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/DatabaseVersionPage/DatabaseVersionPage'))
+);
+const DatabaseSchemaVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
   )
 );
 const ExplorePageV1 = withSuspenseFallback(
@@ -325,6 +341,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_DETAILS}
       />
+      <AdminProtectedRoute
+        exact
+        component={ClassificationVersionPage}
+        hasPermission={tagCategoryPermission}
+        path={ROUTES.TAG_VERSION}
+      />
       <Route
         exact
         component={() => <GlossaryVersionPage isGlossary />}
@@ -340,7 +362,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlossaryVersionPage}
         path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
       />
+      <Route
+        exact
+        component={DatabaseVersionPage}
+        path={ROUTES.DATABASE_VERSION}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaVersionPage}
+        path={ROUTES.SCHEMA_VERSION}
+      />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
       <Route
         exact
         component={EntityVersionPage}

@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -22,7 +23,7 @@ public class ReportDataRepository {
   public Response addReportData(ReportData reportData) {
     reportData.setId(UUID.randomUUID());
     daoCollection
-        .entityExtensionTimeSeriesDao()
+        .reportDataTimeSeriesDao()
         .insert(
             reportData.getReportDataType().value(),
             REPORT_DATA_EXTENSION,
@@ -37,10 +38,15 @@ public class ReportDataRepository {
     reportData =
         JsonUtils.readObjects(
             daoCollection
-                .entityExtensionTimeSeriesDao()
+                .reportDataTimeSeriesDao()
                 .listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
             ReportData.class);
 
     return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());
+  }
+
+  public void deleteReportDataAtDate(ReportDataType reportDataType, String date) throws IOException {
+    // We'll check if we have data to delete before we delete it
+    daoCollection.reportDataTimeSeriesDao().deleteReportDataTypeAtDate(reportDataType.value(), date);
   }
 }

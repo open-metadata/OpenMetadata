@@ -117,7 +117,7 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
 
       it(`${entityType} version page should show removed tags changes properly`, () => {
         visitEntityDetailsPage(
-          entityDetails.term,
+          entityDetails.name,
           entityDetails.serviceName,
           entityDetails.entity,
           undefined,
@@ -153,7 +153,7 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
 
       it(`${entityType} version page should show owner changes properly`, () => {
         visitEntityDetailsPage(
-          entityDetails.term,
+          entityDetails.name,
           entityDetails.serviceName,
           entityDetails.entity,
           undefined,
@@ -215,7 +215,7 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
 
       it(`${entityType} version page should show tier changes properly`, () => {
         visitEntityDetailsPage(
-          entityDetails.term,
+          entityDetails.name,
           entityDetails.serviceName,
           entityDetails.entity,
           undefined,

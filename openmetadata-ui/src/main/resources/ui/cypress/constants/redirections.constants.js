@@ -62,29 +62,29 @@ export const LEFT_PANEL_DETAILS = {
 
 export const NAVBAR_DETAILS = {
   explore: {
-    testid: '[data-testid="appbar-item-explore"]',
+    testid: '[data-testid="app-bar-item-explore"]',
     url: `${BASE_URL}/explore/tables`,
   },
   quality: {
-    testid: '[data-testid="appbar-item-data-quality"]',
+    testid: '[data-testid="app-bar-item-data-quality"]',
     url: `${BASE_URL}/data-quality`,
   },
   insights: {
-    testid: '[data-testid="appbar-item-data-insight"]',
+    testid: '[data-testid="app-bar-item-data-insight"]',
     url: `${BASE_URL}/data-insights`,
   },
   glossary: {
     testid: `[data-testid="governance"]`,
-    subMenu: `[data-testid="appbar-item-glossary"]`,
+    subMenu: `[data-testid="app-bar-item-glossary"]`,
     url: `${BASE_URL}/glossary`,
   },
   tags: {
     testid: `[data-testid="governance"]`,
-    subMenu: '[data-testid="appbar-item-tags"]',
+    subMenu: '[data-testid="app-bar-item-tags"]',
     url: `${BASE_URL}/tags/`,
   },
   settings: {
-    testid: '[data-testid="appbar-item-settings"]',
+    testid: '[data-testid="app-bar-item-settings"]',
     url: `${BASE_URL}/settings/members/teams/Organization`,
   },
   profile: {
@@ -96,7 +96,7 @@ export const NAVBAR_DETAILS = {
 
 export const SETTINGS_LEFT_PANEL = {
   settings: {
-    testid: '[data-testid="appbar-item-settings"]',
+    testid: '[data-testid="app-bar-item-settings"]',
     url: `${BASE_URL}/settings/members/teams/Organization`,
   },
   teams: {

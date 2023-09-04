@@ -76,6 +76,7 @@ function DataAssetsVersionHeader({
   ownerRef,
   onVersionClick,
   entityType,
+  serviceName,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
 
@@ -104,7 +105,7 @@ function DataAssetsVersionHeader({
                 )
               }
               name={currentVersionData?.name}
-              serviceName={currentVersionData.service?.name ?? ''}
+              serviceName={serviceName ?? ''}
             />
           </Col>
           <Col span={24}>

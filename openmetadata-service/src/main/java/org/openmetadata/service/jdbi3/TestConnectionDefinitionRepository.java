@@ -47,7 +47,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void prepare(TestConnectionDefinition entity) {
+  public void prepare(TestConnectionDefinition entity, boolean update) {
     // validate steps
     if (CommonUtil.nullOrEmpty(entity.getSteps())) {
       throw new IllegalArgumentException("Steps must not be empty");

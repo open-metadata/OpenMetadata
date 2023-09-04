@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { PagingResponse } from 'Models';
 import { CreateClassification } from '../generated/api/classification/createClassification';
 import { CreateTag } from '../generated/api/classification/createTag';
@@ -144,6 +145,25 @@ export const deleteTag = async (tagId: string) => {
       hardDelete: true,
     },
   });
+
+  return response.data;
+};
+
+export const getClassificationVersionsList = async (id: string) => {
+  const url = `${BASE_URL}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getClassificationVersionData = async (
+  id: string,
+  version: string
+) => {
+  const url = `${BASE_URL}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Classification>(url);
 
   return response.data;
 };

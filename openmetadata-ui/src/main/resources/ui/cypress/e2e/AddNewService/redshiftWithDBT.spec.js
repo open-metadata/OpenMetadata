@@ -101,7 +101,7 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
       'pipelineStatus'
     );
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
     verifyResponseStatusCode('@getSettingsPage', 200);
@@ -219,7 +219,7 @@ describe('RedShift Ingestion', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="appbar-item-tags"]')
+    cy.get('[data-testid="app-bar-item-tags"]')
       .should('exist')
       .should('be.visible')
       .click({ waitForAnimations: true });

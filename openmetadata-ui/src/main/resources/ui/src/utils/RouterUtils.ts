@@ -25,6 +25,8 @@ import {
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
+  PLACEHOLDER_ROUTE_DATABASE_FQN,
+  PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -298,7 +300,7 @@ export const getTagPath = (fqn?: string) => {
   let path = ROUTES.TAGS;
   if (fqn) {
     path = ROUTES.TAG_DETAILS;
-    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+    path = path.replace(PLACEHOLDER_TAG_NAME, getEncodedFqn(fqn));
   }
 
   return path;
@@ -468,6 +470,66 @@ export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
+  return path;
+};
+
+export const getServiceVersionPath = (
+  serviceCategory: string,
+  serviceFQN: string,
+  version: string
+) => {
+  let path = ROUTES.SERVICE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatabaseVersionPath = (
+  databaseFQN: string,
+  version: string
+) => {
+  let path = ROUTES.DATABASE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DATABASE_FQN, databaseFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatabaseSchemaVersionPath = (
+  schemaFQN: string,
+  version: string
+) => {
+  let path = ROUTES.SCHEMA_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN, schemaFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getClassificationDetailsPath = (classificationFQN: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  path = path.replace(PLACEHOLDER_TAG_NAME, classificationFQN);
+
+  return path;
+};
+
+export const getClassificationVersionsPath = (
+  classificationFQN: string,
+  version: string
+) => {
+  let path = ROUTES.TAG_VERSION;
+  path = path
+    .replace(PLACEHOLDER_TAG_NAME, classificationFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };

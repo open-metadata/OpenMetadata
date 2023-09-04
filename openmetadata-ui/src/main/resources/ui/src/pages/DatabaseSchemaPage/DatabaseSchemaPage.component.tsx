@@ -37,7 +37,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import React, {
@@ -57,8 +57,8 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
+import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
 import {
@@ -69,7 +69,6 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -103,9 +102,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
   const [threadLink, setThreadLink] = useState<string>('');
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -117,6 +113,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setShowDeletedTables(value);
     setCurrentTablesPage(INITIAL_PAGING_VALUE);
   };
+
+  const { version: currentVersion } = useMemo(
+    () => databaseSchema,
+    [databaseSchema]
+  );
 
   const { tags, tier } = useMemo(
     () => ({
@@ -172,7 +173,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
       );
       setFeedCount(response.totalCount);
-      setEntityFieldThreadCount(response.counts);
     } catch (err) {
       // Error
     }
@@ -249,7 +249,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             updatedDatabaseSchemaDetails
           );
           if (response) {
-            setDatabaseSchema(updatedDatabaseSchemaDetails);
+            setDatabaseSchema(response);
             setDescription(updatedHTML);
             getEntityFeedCount();
           } else {
@@ -404,6 +404,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [getEntityFeedCount]
   );
 
+  const handleToggleDelete = () => {
+    setDatabaseSchema((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
       await restoreDatabaseSchema(databaseSchemaId);
@@ -413,7 +423,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }),
         2000
       );
-      fetchDatabaseSchemaDetails();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -432,6 +442,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setCurrentTablesPage(activePage ?? INITIAL_PAGING_VALUE);
     },
     [tableData, getSchemaTables]
+  );
+
+  const versionHandler = useCallback(() => {
+    currentVersion &&
+      history.push(
+        getDatabaseSchemaVersionPath(
+          databaseSchemaFQN,
+          toString(currentVersion)
+        )
+      );
+  }, [currentVersion, databaseSchemaFQN]);
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    []
   );
 
   useEffect(() => {
@@ -491,7 +517,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               databaseSchemaDetails={databaseSchema}
               description={description}
               editDescriptionPermission={editDescriptionPermission}
-              entityFieldThreadCount={entityFieldThreadCount}
               isEdit={isEdit}
               showDeletedTables={showDeletedTables}
               tableData={tableData}
@@ -589,7 +614,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             ) : (
               <DataAssetsHeader
                 isRecursiveDelete
-                afterDeleteAction={handleDataAssetAfterDeleteAction}
+                afterDeleteAction={afterDeleteAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permissions={databaseSchemaPermission}
@@ -597,6 +622,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 onOwnerUpdate={handleUpdateOwner}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
+                onVersionClick={versionHandler}
               />
             )}
           </Col>

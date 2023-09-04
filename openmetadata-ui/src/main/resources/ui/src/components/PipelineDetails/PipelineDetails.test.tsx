@@ -128,6 +128,7 @@ const PipelineDetailsProps = {
   isPipelineStatusLoading: false,
   updateThreadHandler: jest.fn(),
   onExtensionUpdate: jest.fn(),
+  handleToggleDelete: jest.fn(),
 };
 
 jest.mock('../common/description/Description', () => {

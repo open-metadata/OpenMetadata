@@ -416,7 +416,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
     repository.isTestSuiteExecutable(create.getTestSuite());
-    repository.prepareInternal(test);
+    repository.prepareInternal(test, true);
     PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -621,7 +621,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @Valid CreateLogicalTestCases createLogicalTestCases) {
 
-    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null);
+    // don't get entity from cache as test result summary may be stale
+    TestSuite testSuite =
+        Entity.getEntity(Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null, false);
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);

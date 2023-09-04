@@ -32,6 +32,7 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  COUCHBASE,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
@@ -50,6 +51,7 @@ import {
   IMPALA,
   KAFKA,
   KINESIS,
+  LIGHT_DASH,
   LOGO,
   LOOKER,
   MARIADB,
@@ -212,6 +214,9 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.MongoDB:
       return MONGODB;
 
+    case DatabaseServiceType.Couchbase:
+      return COUCHBASE;
+
     case MessagingServiceType.Kafka:
       return KAFKA;
 
@@ -244,11 +249,15 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.DomoDashboard:
       return DOMO;
+
     case DashboardServiceType.Mode:
       return MODE;
 
     case DashboardServiceType.QlikSense:
       return QLIK_SENSE;
+
+    case DashboardServiceType.Lightdash:
+      return LIGHT_DASH;
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
