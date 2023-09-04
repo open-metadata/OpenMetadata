@@ -11,20 +11,18 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Table as TableAntd, Typography } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
+import TableAntd from 'components/common/Table/Table';
 import { PAGE_SIZE } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
-import { EntityLinkThreadCount } from 'generated/api/feed/threadCount';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Table } from 'generated/entity/data/table';
-import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,29 +34,29 @@ interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
   tableDataLoading: boolean;
   description: string;
-  entityFieldThreadCount: EntityLinkThreadCount[];
-  editDescriptionPermission: boolean;
-  isEdit: boolean;
-  showDeletedTables: boolean;
+  editDescriptionPermission?: boolean;
+  isEdit?: boolean;
+  showDeletedTables?: boolean;
   tableData: PagingResponse<Table[]>;
   currentTablesPage: number;
   tablePaginationHandler: (
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  onCancel: () => void;
-  onDescriptionEdit: () => void;
-  onDescriptionUpdate: (updatedHTML: string) => Promise<void>;
-  onThreadLinkSelect: (link: string) => void;
-  onShowDeletedTablesChange: (value: boolean) => void;
+  onCancel?: () => void;
+  onDescriptionEdit?: () => void;
+  onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
+  onThreadLinkSelect?: (link: string) => void;
+  onShowDeletedTablesChange?: (value: boolean) => void;
+  isVersionView?: boolean;
 }
 
 function SchemaTablesTab({
   databaseSchemaDetails,
   tableDataLoading,
   description,
-  editDescriptionPermission,
-  isEdit,
+  editDescriptionPermission = false,
+  isEdit = false,
   tableData,
   currentTablesPage,
   tablePaginationHandler,
@@ -66,8 +64,9 @@ function SchemaTablesTab({
   onDescriptionEdit,
   onDescriptionUpdate,
   onThreadLinkSelect,
-  showDeletedTables,
+  showDeletedTables = false,
   onShowDeletedTablesChange,
+  isVersionView = false,
 }: SchemaTablesTabProps) {
   const { t } = useTranslation();
 
@@ -108,58 +107,68 @@ function SchemaTablesTab({
   return (
     <Row gutter={[16, 16]}>
       <Col data-testid="description-container" span={24}>
-        <DescriptionV1
-          description={description}
-          entityFqn={databaseSchemaDetails.fullyQualifiedName}
-          entityName={getEntityName(databaseSchemaDetails)}
-          entityType={EntityType.DATABASE_SCHEMA}
-          hasEditAccess={editDescriptionPermission}
-          isEdit={isEdit}
-          isReadOnly={databaseSchemaDetails.deleted}
-          onCancel={onCancel}
-          onDescriptionEdit={onDescriptionEdit}
-          onDescriptionUpdate={onDescriptionUpdate}
-          onThreadLinkSelect={onThreadLinkSelect}
-        />
-      </Col>
-      <Col span={24}>
-        <Row justify="end">
-          <Col>
-            <Switch
-              checked={showDeletedTables}
-              data-testid="show-deleted"
-              onClick={onShowDeletedTablesChange}
-            />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        {tableDataLoading ? (
-          <Loader />
-        ) : isEmpty(tableData) && !showDeletedTables ? (
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        {isVersionView ? (
+          <DescriptionV1
+            isVersionView
+            description={description}
+            entityFqn={databaseSchemaDetails.fullyQualifiedName}
+            entityType={EntityType.DATABASE_SCHEMA}
           />
         ) : (
-          <TableAntd
-            bordered
-            columns={tableColumn}
-            data-testid="databaseSchema-tables"
-            dataSource={tableData.data}
-            locale={{
-              emptyText: <ErrorPlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
+          <DescriptionV1
+            description={description}
+            entityFqn={databaseSchemaDetails.fullyQualifiedName}
+            entityName={getEntityName(databaseSchemaDetails)}
+            entityType={EntityType.DATABASE_SCHEMA}
+            hasEditAccess={editDescriptionPermission}
+            isEdit={isEdit}
+            isReadOnly={databaseSchemaDetails.deleted}
+            onCancel={onCancel}
+            onDescriptionEdit={onDescriptionEdit}
+            onDescriptionUpdate={onDescriptionUpdate}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         )}
+      </Col>
+      {!isVersionView && (
+        <Col span={24}>
+          <Row justify="end">
+            <Col>
+              <Switch
+                checked={showDeletedTables}
+                data-testid="show-deleted"
+                onClick={onShowDeletedTablesChange}
+              />
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>{' '}
+            </Col>
+          </Row>
+        </Col>
+      )}
 
-        {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
+      <Col span={24}>
+        <TableAntd
+          bordered
+          columns={tableColumn}
+          data-testid="databaseSchema-tables"
+          dataSource={tableData.data}
+          loading={tableDataLoading}
+          locale={{
+            emptyText: (
+              <ErrorPlaceHolder
+                className="mt-0-important"
+                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+              />
+            ),
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      </Col>
+      {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
+        <Col span={24}>
           <NextPrevious
             currentPage={currentTablesPage}
             pageSize={PAGE_SIZE}
@@ -167,8 +176,8 @@ function SchemaTablesTab({
             pagingHandler={tablePaginationHandler}
             totalCount={tableData.paging.total}
           />
-        )}
-      </Col>
+        </Col>
+      )}
     </Row>
   );
 }

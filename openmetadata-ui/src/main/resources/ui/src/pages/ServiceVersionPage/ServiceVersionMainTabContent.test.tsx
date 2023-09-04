@@ -57,10 +57,6 @@ jest.mock('components/common/description/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
-
 jest.mock('components/common/next-previous/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div>NextPrevious</div>)
 );
@@ -167,13 +163,11 @@ describe('ServiceVersionMainTabContent tests', () => {
     expect(entityTable.contains(entityDescription)).toBe(true);
   });
 
-  it('Loader should be displayed if isServiceLoading is true', () => {
+  it('Loader should be displayed if isServiceLoading is true', async () => {
     render(<ServiceVersionMainTabContent {...props} isServiceLoading />);
 
-    const entityTable = screen.getByTestId('service-children-table');
-    const loader = screen.getByText('Loader');
+    const loader = await screen.findByTestId('skeleton-table');
 
-    expect(entityTable).toBeInTheDocument();
     expect(loader).toBeInTheDocument();
   });
 });
