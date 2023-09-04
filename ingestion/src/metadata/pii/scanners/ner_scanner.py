@@ -15,62 +15,16 @@ Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
 import traceback
 from collections import defaultdict
-from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
 from metadata.pii.constants import SPACY_EN_MODEL
 from metadata.pii.models import TagAndConfidence, TagType
+from metadata.pii.ner import NEREntity
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
-
-
-class NEREntity(Enum):
-    """
-    PII Entities supported by Presidio https://microsoft.github.io/presidio/supported_entities/
-    """
-
-    # Global
-    CREDIT_CARD = TagType.SENSITIVE.value
-    CRYPTO = TagType.SENSITIVE.value
-    DATE_TIME = TagType.NONSENSITIVE.value
-    EMAIL_ADDRESS = TagType.SENSITIVE.value
-    IBAN_CODE = TagType.SENSITIVE.value
-    IP_ADDRESS = TagType.SENSITIVE.value
-    NRP = TagType.NONSENSITIVE.value
-    LOCATION = TagType.NONSENSITIVE.value
-    PERSON = TagType.SENSITIVE.value
-    PHONE_NUMBER = TagType.NONSENSITIVE.value
-    MEDICAL_LICENSE = TagType.SENSITIVE.value
-    URL = TagType.NONSENSITIVE.value
-
-    # USA
-    US_BANK_NUMBER = TagType.SENSITIVE.value
-    US_DRIVER_LICENSE = TagType.SENSITIVE.value
-    US_ITIN = TagType.SENSITIVE.value
-    US_PASSPORT = TagType.SENSITIVE.value
-    US_SSN = TagType.SENSITIVE.value
-
-    # UK
-    UK_NHS = TagType.SENSITIVE.value
-
-    # Spain
-    NIF = TagType.SENSITIVE.value
-
-    # Italy
-    IT_FISCAL_CODE = TagType.SENSITIVE.value
-    IT_DRIVER_LICENSE = TagType.SENSITIVE.value
-    IT_VAT_CODE = TagType.SENSITIVE.value
-    IT_PASSPORT = TagType.SENSITIVE.value
-    IT_IDENTITY_CARD = TagType.SENSITIVE.value
-
-    # Australia
-    AU_ABN = TagType.SENSITIVE.value
-    AU_ACN = TagType.SENSITIVE.value
-    AU_TFN = TagType.SENSITIVE.value
-    AU_MEDICARE = TagType.SENSITIVE.value
 
 
 class StringAnalysis(BaseModel):

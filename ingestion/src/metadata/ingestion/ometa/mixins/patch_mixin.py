@@ -138,7 +138,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__} [{source.id}]: {exc}"
+                f"Error trying to PATCH {entity.__name__} [{source.id.__root__}]: {exc}"
             )
 
         return None

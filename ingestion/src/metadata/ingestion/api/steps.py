@@ -52,9 +52,7 @@ class Sink(ReturnStep, ABC):
     """All Sinks must inherit this base class."""
 
     @abstractmethod
-    def _run(  # pylint: disable=arguments-differ
-        self, record: Entity, *_, **__
-    ) -> Either:
+    def _run(self, record: Entity) -> Either:
         """
         Send the data somewhere, e.g., the OM API
         """
@@ -64,7 +62,7 @@ class Processor(ReturnStep, ABC):
     """All Processor must inherit this base class"""
 
     @abstractmethod
-    def _run(self, *args, **kwargs) -> Either:
+    def _run(self, record: Entity) -> Either:
         """
         Post process a given entity and return it
         or a new one
