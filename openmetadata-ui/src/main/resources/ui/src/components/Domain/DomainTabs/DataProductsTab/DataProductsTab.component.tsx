@@ -71,7 +71,7 @@ const DataProductsTab = ({ permissions, onAddDataProduct }: Props) => {
   }, [domainFqn]);
 
   if (loading) {
-    <Loader />;
+    return <Loader />;
   }
 
   if (isEmpty(dataProducts) && !loading) {
@@ -112,7 +112,7 @@ const DataProductsTab = ({ permissions, onAddDataProduct }: Props) => {
             id={dataProduct.id}
             key={'data_products_card' + dataProduct.id}
             showTags={false}
-            source={dataProduct}
+            source={{ ...dataProduct, entityType: EntityType.DATA_PRODUCT }}
           />
         ))}
       </div>

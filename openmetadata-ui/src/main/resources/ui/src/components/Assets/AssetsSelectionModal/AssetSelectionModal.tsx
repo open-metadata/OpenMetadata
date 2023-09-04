@@ -180,7 +180,7 @@ export const AssetSelectionModal = ({
         .filter(Boolean);
 
       await Promise.all(patchAPIPromises);
-      onSave && onSave();
+      onSave?.();
       onCancel();
     } catch (_) {
       // Nothing here
@@ -235,7 +235,7 @@ export const AssetSelectionModal = ({
           .filter(Boolean);
 
         await Promise.all(patchAPIPromises);
-        onSave && onSave();
+        onSave?.();
         onCancel();
       } catch (_) {
         // Nothing here

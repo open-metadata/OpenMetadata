@@ -280,7 +280,7 @@ export const ROUTES = {
   DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DOMAIN: '/add-domain',
-  ADD_DATA_PRODUCTS: '/add-data-products',
+  DATA_PRODUCT_DETAILS: `/data-product/${PLACEHOLDER_ROUTE_FQN}`,
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/add-glossary',
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,

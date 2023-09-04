@@ -20,14 +20,18 @@ import { useTranslation } from 'react-i18next';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
 
-interface props {
+interface AddSubDomainModalProps {
   open: boolean;
   data?: Domain;
   onCancel: () => void;
   onSubmit: (data: CreateDomain) => Promise<void>;
 }
 
-const AddSubDomainModal = ({ open, onSubmit, onCancel }: props) => {
+const AddSubDomainModal = ({
+  open,
+  onSubmit,
+  onCancel,
+}: AddSubDomainModalProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
 

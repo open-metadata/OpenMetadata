@@ -10,17 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tabs } from 'antd';
+import Icon, { DownOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Row,
+  Space,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
+import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
+import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import AssetsTabs, {
   AssetsTabRef,
 } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import Loader from 'components/Loader/Loader';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -33,7 +51,7 @@ import { EntityType } from 'enums/entity.enum';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { CreateDomain } from 'generated/api/domains/createDomain';
 import { Domain } from 'generated/entity/domains/domain';
-import { noop } from 'lodash';
+import { cloneDeep, noop, toString } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -44,7 +62,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addDataProducts } from 'rest/dataProductAPI';
-import { getIsErrorMatch } from 'utils/CommonUtils';
+import { getEntityDeleteMessage, getIsErrorMatch } from 'utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getDomainDetailsPath, getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -54,14 +72,21 @@ import '../domain.less';
 import { DomainTabs } from '../DomainPage.interface';
 import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
 import DocumentationTab from '../DomainTabs/DocumentationTab/DocumentationTab.component';
+import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
-interface props {
+interface DomainDetailsPageProps {
   domain: Domain;
   loading: boolean;
   onUpdate: (value: Domain) => Promise<void>;
+  onDelete: (id: string) => void;
 }
 
-const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
+const DomainDetailsPage = ({
+  domain,
+  loading,
+  onUpdate,
+  onDelete,
+}: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
@@ -73,6 +98,9 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
   );
   const [assetModalVisible, setAssetModelVisible] = useState(false);
   const [showAddDataProductModal, setShowAddDataProductModal] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -99,6 +127,10 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
       }),
     ];
   }, [domainFqn]);
+
+  const editDisplayNamePermission = useMemo(() => {
+    return domainPermission.EditAll || domainPermission.EditDisplayName;
+  }, [domainPermission]);
 
   const addButtonContent = [
     {
@@ -142,11 +174,15 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
     [domain]
   );
 
+  const handleVersionClick = async () => {
+    history.push(getDomainPath());
+  };
+
   const fetchDomainPermission = async () => {
     try {
       const response = await getEntityPermission(
         ResourceEntity.DOMAIN,
-        domain.id as string
+        domain.id
       );
       setDomainPermission(response);
     } catch (error) {
@@ -156,13 +192,85 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDomainDetailsPath(domainFqn, activeKey));
+      history.push(
+        getDomainDetailsPath(encodeURIComponent(domainFqn), activeKey)
+      );
     }
   };
 
   const onAddDataProduct = useCallback(() => {
     setShowAddDataProductModal(true);
   }, []);
+
+  const onNameSave = (obj: { name: string; displayName: string }) => {
+    const { name, displayName } = obj;
+    let updatedDetails = cloneDeep(domain);
+
+    updatedDetails = {
+      ...domain,
+      name: name?.trim() || domain.name,
+      displayName: displayName?.trim(),
+    };
+
+    onUpdate(updatedDetails);
+    setIsNameEditing(false);
+  };
+
+  const handleDelete = () => {
+    const { id } = domain;
+    onDelete(id);
+    setIsDelete(false);
+  };
+
+  const manageButtonContent: ItemType[] = [
+    ...(editDisplayNamePermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: t('label.domain'),
+                })}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                id="rename-button"
+                name={t('label.rename')}
+              />
+            ),
+            key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(domainPermission.Delete
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: t('label.domain'),
+                  }
+                )}
+                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+  ];
 
   const tabs = useMemo(() => {
     return [
@@ -254,6 +362,47 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
                 </Space>
               </Button>
             </Dropdown>
+
+            <ButtonGroup className="p-l-xs" size="small">
+              {domain && domain.version && (
+                <Button
+                  className={classNames('', {
+                    'text-primary border-primary': undefined,
+                  })}
+                  data-testid="version-button"
+                  icon={<Icon component={VersionIcon} />}
+                  onClick={handleVersionClick}>
+                  <Typography.Text
+                    className={classNames('', {
+                      'text-primary': undefined,
+                    })}>
+                    {toString(domain.version)}
+                  </Typography.Text>
+                </Button>
+              )}
+
+              <Dropdown
+                align={{ targetOffset: [-12, 0] }}
+                className="m-l-xs"
+                menu={{
+                  items: manageButtonContent,
+                }}
+                open={showActions}
+                overlayClassName="glossary-manage-dropdown-list-container"
+                overlayStyle={{ width: '350px' }}
+                placement="bottomRight"
+                trigger={['click']}
+                onOpenChange={setShowActions}>
+                <Tooltip placement="right">
+                  <Button
+                    className="glossary-manage-dropdown-button tw-px-1.5"
+                    data-testid="manage-button"
+                    onClick={() => setShowActions(true)}>
+                    <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                  </Button>
+                </Tooltip>
+              </Dropdown>
+            </ButtonGroup>
           </div>
         </Col>
 
@@ -281,6 +430,27 @@ const DomainDetailsPage = ({ domain, loading, onUpdate }: props) => {
         type={AssetsOfEntity.DOMAIN}
         onCancel={() => setAssetModelVisible(false)}
         onSave={noop}
+      />
+      {domain && (
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(domain.name, '')}
+          entityName={domain.name}
+          entityType="Glossary"
+          loadingState="success"
+          visible={isDelete}
+          onCancel={() => setIsDelete(false)}
+          onConfirm={handleDelete}
+        />
+      )}
+      <EntityNameModal
+        allowRename
+        entity={domain}
+        title={t('label.edit-entity', {
+          entity: t('label.name'),
+        })}
+        visible={isNameEditing}
+        onCancel={() => setIsNameEditing(false)}
+        onSave={onNameSave}
       />
     </>
   );

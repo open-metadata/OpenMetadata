@@ -30,7 +30,7 @@ import { generateFormFields, getField } from 'utils/formUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { DomainFormType } from '../DomainPage.interface';
 
-interface props {
+interface AddDomainFormProps {
   isFormInDialog: boolean;
   onCancel: () => void;
   onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
@@ -46,7 +46,7 @@ const AddDomainForm = ({
   onSubmit,
   formRef: form,
   type,
-}: props) => {
+}: AddDomainFormProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
 
@@ -218,10 +218,10 @@ const AddDomainForm = ({
                 className="m-b-xs"
                 data-testid="experts-container"
                 size={[8, 8]}>
-                {expertsList.map((d, index) => (
+                {expertsList.map((d) => (
                   <UserTag
                     id={d.id}
-                    key={index}
+                    key={'expert' + d.id}
                     name={getEntityName(d)}
                     size={UserTagSize.small}
                   />

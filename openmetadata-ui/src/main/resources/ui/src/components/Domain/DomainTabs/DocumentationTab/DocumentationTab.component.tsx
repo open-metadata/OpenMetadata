@@ -38,12 +38,12 @@ import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import '../../domain.less';
 
-interface props {
+interface DocumentationTabProps {
   domain: Domain;
   onUpdate: (value: Domain) => Promise<void>;
 }
 
-const DocumentationTab = ({ domain, onUpdate }: props) => {
+const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [isDescriptionEditable, setIsDescriptionEditable] =
@@ -239,8 +239,7 @@ const DocumentationTab = ({ domain, onUpdate }: props) => {
                 )}
             </div>
             <Space wrap data-testid="glossary-reviewer-name" size={6}>
-              {domain.experts &&
-                domain.experts.map((expert) => getExpert(expert))}
+              {domain.experts?.map((expert) => getExpert(expert))}
             </Space>
             <div>
               {editOwnerPermission &&

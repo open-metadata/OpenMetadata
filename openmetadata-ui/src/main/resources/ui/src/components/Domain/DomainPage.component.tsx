@@ -26,11 +26,15 @@ import { Operation } from 'generated/entity/policies/policy';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getDomainByName, getDomainList, patchDomains } from 'rest/domainAPI';
+import {
+  deleteDomain,
+  getDomainByName,
+  getDomainList,
+  patchDomains,
+} from 'rest/domainAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getDomainPath } from 'utils/RouterUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
@@ -74,7 +78,7 @@ const DomainPage = () => {
         limit: PAGE_SIZE_LARGE,
       });
       setDomains(data);
-      if (data.length > 0) {
+      if (data.length > 0 && !domainFqn) {
         history.push(getDomainPath(data[0].fullyQualifiedName));
       }
     } catch (error) {
@@ -88,10 +92,7 @@ const DomainPage = () => {
     if (activeDomain) {
       const jsonPatch = compare(activeDomain, updatedData);
       try {
-        const response = await patchDomains(
-          activeDomain.id as string,
-          jsonPatch
-        );
+        const response = await patchDomains(activeDomain.id, jsonPatch);
 
         setActiveDomain(response);
 
@@ -115,10 +116,43 @@ const DomainPage = () => {
     }
   };
 
+  const handleDomainDelete = (id: string) => {
+    deleteDomain(id)
+      .then(() => {
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: t('label.domain'),
+          })
+        );
+        setIsLoading(true);
+        // check if the domain available
+        const updatedDomains = domains.filter((item) => item.id !== id);
+        const domainPath =
+          updatedDomains.length > 0
+            ? getDomainPath(updatedDomains[0].fullyQualifiedName)
+            : getDomainPath();
+
+        history.push(domainPath);
+        fetchDomainList();
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          t('server.delete-entity-error', {
+            entity: t('label.domain'),
+          })
+        );
+      })
+      .finally(() => setIsLoading(false));
+  };
+
   const fetchDomainByName = async (fqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDomainByName(fqn, 'children,owner,parent,experts');
+      const data = await getDomainByName(
+        encodeURIComponent(fqn),
+        'children,owner,parent,experts'
+      );
       setActiveDomain(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -133,7 +167,7 @@ const DomainPage = () => {
 
   useEffect(() => {
     if (domainFqn) {
-      fetchDomainByName(getDecodedFqn(domainFqn));
+      fetchDomainByName(domainFqn);
     }
   }, [domainFqn]);
 
@@ -177,6 +211,7 @@ const DomainPage = () => {
         <DomainDetailsPage
           domain={activeDomain}
           loading={isMainContentLoading}
+          onDelete={handleDomainDelete}
           onUpdate={handleDomainUpdate}
         />
       )}

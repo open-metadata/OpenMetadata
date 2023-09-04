@@ -39,6 +39,7 @@ import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import i18next from 'i18next';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { get, isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
@@ -83,7 +84,7 @@ import {
 } from './CommonUtils';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import { getDomainPath, getGlossaryPath, getSettingPath } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import {
@@ -1238,6 +1239,17 @@ export const getEntityBreadcrumbs = (
         includeCurrent: true,
         parents: isUndefined(data.parent) ? [] : [data.parent],
       });
+    }
+
+    case EntityType.DATA_PRODUCT: {
+      const data = entity as DataProduct;
+
+      return [
+        {
+          name: getEntityName(data.domain),
+          url: getDomainPath(data.domain.fullyQualifiedName),
+        },
+      ];
     }
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:

@@ -20,14 +20,18 @@ import { useTranslation } from 'react-i18next';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
 
-interface props {
+interface AddDataProductModalProps {
   open: boolean;
   data?: Domain;
   onCancel: () => void;
   onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
 }
 
-const AddDataProductModal = ({ open, onSubmit, onCancel }: props) => {
+const AddDataProductModal = ({
+  open,
+  onSubmit,
+  onCancel,
+}: AddDataProductModalProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
 

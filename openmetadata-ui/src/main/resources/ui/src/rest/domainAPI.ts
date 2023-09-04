@@ -62,6 +62,10 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
+export const deleteDomain = (id: string) => {
+  return APIClient.delete(`/domains/${id}`);
+};
+
 export const getDomainByName = async (
   domainName: string,
   arrQueryFields: string | string[]
