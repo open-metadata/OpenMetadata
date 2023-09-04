@@ -111,7 +111,7 @@ const StoredProcedurePage = () => {
     return {
       ...storedProcedure,
       tier: getTierTags(storedProcedure?.tags ?? []),
-      tags: getTagsWithoutTier(storedProcedure?.tags || []),
+      tags: getTagsWithoutTier(storedProcedure?.tags ?? []),
       entityName: getEntityName(storedProcedure),
       entityFQN: storedProcedure?.fullyQualifiedName ?? '',
       code:

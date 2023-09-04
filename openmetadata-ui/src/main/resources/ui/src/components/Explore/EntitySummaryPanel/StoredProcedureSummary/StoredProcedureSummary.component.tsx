@@ -12,19 +12,15 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { CSMode } from 'enums/codemirror.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import {
-  StoredProcedure,
-  StoredProcedureCodeObject,
-} from 'generated/entity/data/storedProcedure';
-import { isEmpty, isObject } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { StoredProcedureCodeObject } from 'generated/entity/data/storedProcedure';
+import { isObject } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -40,27 +36,14 @@ const StoredProcedureSummary = ({
   isLoading,
 }: StoredProcedureSummaryProps) => {
   const { t } = useTranslation();
-  const [storedProcedureDetails, setStoredProcedureDetails] =
-    useState<StoredProcedure>(entityDetails);
 
   const entityInfo = useMemo(
-    () =>
-      getEntityOverview(
-        ExplorePageTabs.STORED_PROCEDURE,
-        storedProcedureDetails
-      ),
-    [storedProcedureDetails]
+    () => getEntityOverview(ExplorePageTabs.STORED_PROCEDURE, entityDetails),
+    [entityDetails]
   );
 
-  useEffect(() => {
-    if (!isEmpty(entityDetails)) {
-      setStoredProcedureDetails(entityDetails);
-    }
-  }, [entityDetails]);
-
   return (
-    <SummaryPanelSkeleton
-      loading={isLoading || isEmpty(storedProcedureDetails)}>
+    <SummaryPanelSkeleton loading={isLoading}>
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
@@ -86,12 +69,9 @@ const StoredProcedureSummary = ({
                         {info.isLink ? (
                           <Link
                             component={Typography.Link}
-                            target={info.isExternal ? '_blank' : '_self'}
+                            target="_self"
                             to={{ pathname: info.url }}>
                             {info.value}
-                            {info.isExternal ? (
-                              <IconExternalLink className="m-l-xs" width={12} />
-                            ) : null}
                           </Link>
                         ) : (
                           <Typography.Text
@@ -114,7 +94,7 @@ const StoredProcedureSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ? tags : []}
+          tags={tags ?? []}
         />
         <Divider className="m-y-xs" />
 
