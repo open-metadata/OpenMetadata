@@ -79,6 +79,7 @@ export enum EntityField {
   PARTITIONS = 'partitions',
   REPLICATION_FACTOR = 'replicationFactor',
   SOURCE_URL = 'sourceUrl',
+  MUTUALLY_EXCLUSIVE = 'mutuallyExclusive',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

@@ -37,7 +37,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import StoredProcedureTab from 'pages/StoredProcedure/StoredProcedureTab';
@@ -61,6 +61,7 @@ import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getStoredProceduresList } from 'rest/storedProceduresAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
+import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
 import {
@@ -72,7 +73,6 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -107,9 +107,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
   const [threadLink, setThreadLink] = useState<string>('');
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -137,6 +134,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       deleted: value,
     }));
   };
+  const { version: currentVersion } = useMemo(
+    () => databaseSchema,
+    [databaseSchema]
+  );
 
   const { tags, tier } = useMemo(
     () => ({
@@ -192,7 +193,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
       );
       setFeedCount(response.totalCount);
-      setEntityFieldThreadCount(response.counts);
     } catch (err) {
       // Error
     }
@@ -291,7 +291,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             updatedDatabaseSchemaDetails
           );
           if (response) {
-            setDatabaseSchema(updatedDatabaseSchemaDetails);
+            setDatabaseSchema(response);
             setDescription(updatedHTML);
             getEntityFeedCount();
           } else {
@@ -486,6 +486,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [tableData, getSchemaTables]
   );
 
+  const versionHandler = useCallback(() => {
+    currentVersion &&
+      history.push(
+        getDatabaseSchemaVersionPath(
+          databaseSchemaFQN,
+          toString(currentVersion)
+        )
+      );
+  }, [currentVersion, databaseSchemaFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
       isSoftDelete ? handleToggleDelete() : history.push('/'),
@@ -575,7 +585,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               databaseSchemaDetails={databaseSchema}
               description={description}
               editDescriptionPermission={editDescriptionPermission}
-              entityFieldThreadCount={entityFieldThreadCount}
               isEdit={isEdit}
               showDeletedTables={showDeletedTables}
               tableData={tableData}
@@ -703,6 +712,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 onOwnerUpdate={handleUpdateOwner}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
+                onVersionClick={versionHandler}
               />
             )}
           </Col>

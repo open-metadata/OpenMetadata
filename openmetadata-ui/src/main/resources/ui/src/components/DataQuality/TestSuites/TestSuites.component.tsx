@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
@@ -198,21 +198,18 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
       <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Table
-            bordered
-            columns={columns}
-            data-testid="test-suite-table"
-            dataSource={testSuites.data}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          columns={columns}
+          data-testid="test-suite-table"
+          dataSource={testSuites.data}
+          loading={isLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          size="small"
+        />
       </Col>
       <Col span={24}>
         {testSuites.paging.total > PAGE_SIZE && (
