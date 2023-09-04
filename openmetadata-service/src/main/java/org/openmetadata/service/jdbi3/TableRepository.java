@@ -127,6 +127,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
+    table.setLifeCycle(fields.contains("lifeCycle") ? getLifeCycleData(table) : table.getLifeCycle());
     table.setTableProfilerConfig(
         fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
