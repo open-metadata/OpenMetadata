@@ -13,8 +13,8 @@ Mixin class containing Query specific methods
 
 To be used by OpenMetadata class
 """
-import json
 import hashlib
+import json
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -75,7 +75,9 @@ class OMetaQueryMixin:
                 if user_fqn_list:
                     self.client.put(
                         f"{self.get_suffix(Query)}/{model_str(query.id)}/users",
-                        data=json.dumps([model_str(user_fqn) for user_fqn in user_fqn_list]),
+                        data=json.dumps(
+                            [model_str(user_fqn) for user_fqn in user_fqn_list]
+                        ),
                     )
 
     def get_entity_queries(
