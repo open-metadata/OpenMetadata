@@ -1227,7 +1227,7 @@ const navigateToService = (serviceName) => {
       cy.get('[data-testid="next"]').click();
       navigateToService(serviceName);
     } else {
-      serviceTitle.click();
+      cy.get(`[data-testid="service-name-${serviceName}"]`).click();
     }
   });
 };

@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.profiler.processor.models import ProfilerDef
 
 
@@ -67,6 +68,13 @@ class ProfilerProcessorConfig(ConfigModel):
     tableConfig: Optional[List[TableConfig]] = None
 
 
+class PatchColumnTagResponse(ConfigModel):
+    """Used to patch a tag to a column"""
+
+    column_fqn: str
+    tag_label: TagLabel
+
+
 class ProfilerResponse(ConfigModel):
     """
     ORM Profiler processor response.
@@ -78,3 +86,4 @@ class ProfilerResponse(ConfigModel):
     table: Table
     profile: CreateTableProfileRequest
     sample_data: Optional[TableData] = None
+    column_tags: Optional[List[PatchColumnTagResponse]] = None

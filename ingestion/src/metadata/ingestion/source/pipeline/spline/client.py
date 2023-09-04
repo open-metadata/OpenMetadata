@@ -12,13 +12,14 @@
 Client to interact with Spline consumer apis
 """
 import traceback
-from typing import List
+from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.pipeline.splineConnection import (
     SplineConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.pipeline.spline.models import (
+    AttributeDetail,
     ExecutionDetail,
     ExecutionEvents,
 )
@@ -57,7 +58,7 @@ class SplineClient:
                 logger.debug(traceback.format_exc())
                 logger.error(f"failed to fetch pipeline list due to: {exe}")
 
-    def get_pipelines(self) -> List[dict]:
+    def get_pipelines(self) -> Optional[ExecutionEvents]:
         """
         Method returns the executions events as pipelines
         """
@@ -71,14 +72,14 @@ class SplineClient:
             logger.debug(traceback.format_exc())
             logger.error(f"failed to fetch pipeline list due to: {exe}")
 
-    def get_pipelines_test_connection(self) -> List[dict]:
+    def get_pipelines_test_connection(self) -> Optional[ExecutionEvents]:
         """
         Method returns the executions events as pipelines
         """
         response = self.client.get("/execution-events")
         return ExecutionEvents(**response)
 
-    def get_lineage_details(self, pipeline_id: str) -> List[dict]:
+    def get_lineage_details(self, pipeline_id: str) -> Optional[ExecutionDetail]:
         """
         Method returns the executions events as pipelines
         """
@@ -86,6 +87,24 @@ class SplineClient:
             response = self.client.get(f"/lineage-detailed?execId={pipeline_id}")
             if response:
                 return ExecutionDetail(**response)
+        except Exception as exe:
+            logger.debug(traceback.format_exc())
+            logger.error(f"failed to fetch pipeline list due to: {exe}")
+
+        return None
+
+    def get_column_lineage_details(
+        self, pipeline_id: str, attribute_id: str
+    ) -> Optional[AttributeDetail]:
+        """
+        Method returns the column lineage details
+        """
+        try:
+            response = self.client.get(
+                f"/attribute-lineage-and-impact?execId={pipeline_id}&attributeId={attribute_id}"
+            )
+            if response:
+                return AttributeDetail(**response)
         except Exception as exe:
             logger.debug(traceback.format_exc())
             logger.error(f"failed to fetch pipeline list due to: {exe}")
