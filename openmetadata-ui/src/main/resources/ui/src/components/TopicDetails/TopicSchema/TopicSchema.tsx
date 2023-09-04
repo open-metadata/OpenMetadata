@@ -280,9 +280,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <Typography.Text type="secondary">
             {t('label.schema')}
           </Typography.Text>
-          {schemaTypePlaceholder ?? (
-            <Tag>{messageSchema?.schemaType ?? ''}</Tag>
-          )}
+          {schemaTypePlaceholder ?? <Tag>{messageSchema.schemaType}</Tag>}
         </Col>
       )}
       {isEmpty(messageSchema?.schemaFields) &&
