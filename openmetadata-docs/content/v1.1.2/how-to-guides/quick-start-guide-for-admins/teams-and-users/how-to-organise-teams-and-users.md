@@ -1,9 +1,11 @@
 ---
-title: Team structure in OpenMetadata
-slug: /how-to-guides/teams-and-users
+title: How to Organise Teams and Users
+slug: /how-to-guides/quick-start-guide-for-admins/teams-and-users/how-to-organise-teams-and-users
 ---
 
-# Team structure in OpenMetadata
+# How to Organise Teams and Users
+
+## Team Structure in OpenMetadata
 
 In OpenMetadata we have hierarchal team structure with `teamType` that can be `Organization`, `Business Unit`, `Division`, `Department`, and `Group` (default team type).
 
@@ -17,9 +19,35 @@ In OpenMetadata we have hierarchal team structure with `teamType` that can be `O
 
 - `Group` is the last level of the team in the hierarchy. It can have only `Users` as children and not any other teams. It can have all the team types as parents. **It can have multiple parents**.
 
-
 {% image
 src="/images/v1.1.2/how-to-guides/teams-and-users/teams-structure.png"
 alt="team-structure"
 /%}
 
+
+## How to Change the Team Type
+
+Let's say you have team `Cloud_Infra` of type `Department` and you want to change it to the type `BusinessUnit`, you can easily do that through UI.
+
+**1.** Click on the `Cloud_Infra` team name and it will take you to the `Cloud_Infra` details page.
+
+{% image
+src="/images/v1.1.2/how-to-guides/teams-and-users/cloud-infra.png"
+alt="cloud-infra"
+/%}
+
+**2.** On details page you will see the `Type - Department` with edit button.
+
+{% image
+src="/images/v1.1.2/how-to-guides/teams-and-users/team-type.png"
+alt="team-type"
+/%}
+
+**3.** Now Click on the edit button and you will get a set of options and from them select `BusinessUnit` and click on ✅ to save it.
+
+{% image
+src="/images/v1.1.2/how-to-guides/teams-and-users/select-team-type.png"
+alt="select-team-type"
+/%}
+
+**4.** Now you can see `Cloud_Infra` team type changed to `BusinessUnit` from `Department`.

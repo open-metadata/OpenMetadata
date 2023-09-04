@@ -1,13 +1,13 @@
 ---
-title: Mlflow
+title: MLflow
 slug: /connectors/ml-model/mlflow
 ---
 
-# Mlflow
+# MLflow
 
-In this section, we provide guides and references to use the Mlflow connector.
+In this section, we provide guides and references to use the MLflow connector.
 
-Configure and schedule Mlflow metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule MLflow metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -37,8 +37,8 @@ To extract metadata, OpenMetadata needs two elements:
 
 #### Connection Details
 
-- **trackingUri**: Mlflow Experiment tracking URI. E.g., http://localhost:5000
-- **registryUri**: Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments
+- **trackingUri**: MLflow Experiment tracking URI. E.g., http://localhost:5000
+- **registryUri**: MLflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments
 
 {% /extraContent %}
 
