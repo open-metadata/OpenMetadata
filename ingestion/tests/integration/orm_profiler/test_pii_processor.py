@@ -182,9 +182,7 @@ class PiiProcessorTest(TestCase):
     )
 
     metadata = OpenMetadata(server_config)
-    pii_processor = PIIProcessor(
-        config=workflow_config, metadata_config=server_config
-    )
+    pii_processor = PIIProcessor(config=workflow_config, metadata_config=server_config)
 
     @classmethod
     def setUpClass(cls) -> None:
