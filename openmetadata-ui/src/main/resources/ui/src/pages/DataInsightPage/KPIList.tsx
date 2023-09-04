@@ -234,7 +234,6 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
             pageSize={PAGE_SIZE_MEDIUM}
             paging={kpiPaging}
             pagingHandler={kpiPagingHandler}
-            totalCount={kpiPaging.total}
           />
         </Col>
       )}

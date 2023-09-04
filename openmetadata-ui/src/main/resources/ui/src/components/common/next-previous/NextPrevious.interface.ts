@@ -10,8 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Paging } from 'generated/type/paging';
 
-import { TabSpecificField } from '../enums/entity.enum';
+export type NextPreviousProps = BasicProps | (BasicProps & PagingProps);
 
-// eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.VIEW_DEFINITION}`;
+interface BasicProps {
+  paging: Paging;
+  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
+  pageSize: number;
+  currentPage: number;
+  isNumberBased?: boolean;
+}
+
+export interface PagingProps {
+  showPageSize: true;
+  pageSizeOptions?: number[];
+  onShowSizeChange: (page: number) => void;
+}

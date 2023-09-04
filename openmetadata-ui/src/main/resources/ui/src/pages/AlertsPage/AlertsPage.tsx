@@ -223,7 +223,6 @@ const AlertsPage = () => {
               pageSize={PAGE_SIZE_MEDIUM}
               paging={alertsPaging}
               pagingHandler={onPageChange}
-              totalCount={alertsPaging.total}
             />
           )}
 
