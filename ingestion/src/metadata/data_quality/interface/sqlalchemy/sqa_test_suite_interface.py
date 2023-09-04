@@ -32,7 +32,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler import Sampler
+from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
@@ -98,7 +99,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         return self._runner
 
     @property
-    def sampler(self) -> Sampler:
+    def sampler(self) -> SQASampler:
         """getter method for the Runner object
 
         Returns:
@@ -115,12 +116,12 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         """
         return self._table
 
-    def _create_sampler(self) -> Sampler:
+    def _create_sampler(self) -> SQASampler:
         """Create sampler instance"""
-        return Sampler(
-            session=self.session,
+        return sampler_factory_.create(
+            self.service_connection_config.__class__.__name__,
+            client=self.session,
             table=self.table,
-            sample_columns=self._get_sample_columns(),
             profile_sample_config=self.table_sample_config,
             partition_details=self.table_partition_config,
             profile_sample_query=self.table_sample_query,
@@ -164,7 +165,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
-                execution_date=datetime.now(tz=timezone.utc).timestamp(),
+                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()

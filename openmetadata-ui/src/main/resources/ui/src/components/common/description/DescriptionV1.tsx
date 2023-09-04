@@ -11,18 +11,24 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Tooltip, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Card, Space, Tooltip, Typography } from 'antd';
+import { ReactComponent as CommentIcon } from 'assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import classNames from 'classnames';
+import { ReactComponent as RequestIcon } from 'assets/svg/request-icon.svg';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React, { Fragment } from 'react';
+import React, { useMemo } from 'react';
+import { useHistory } from 'react-router';
+import {
+  getRequestDescriptionPath,
+  getUpdateDescriptionPath,
+  TASK_ENTITIES,
+} from 'utils/TasksUtils';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
@@ -35,9 +41,8 @@ interface Props {
   description?: string;
   isEdit?: boolean;
   isReadOnly?: boolean;
-  entityType?: string;
+  entityType: EntityType;
   entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
@@ -45,6 +50,9 @@ interface Props {
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
   wrapInCard?: boolean;
+  isVersionView?: boolean;
+  showCommentsIcon?: boolean;
+  reduceDescription?: boolean;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -56,27 +64,92 @@ const DescriptionV1 = ({
   isReadOnly = false,
   removeBlur = false,
   entityName,
-  entityFieldThreads,
+
   onThreadLinkSelect,
-  onEntityFieldSelect,
   entityType,
   entityFqn,
   wrapInCard = false,
+  isVersionView,
+  showCommentsIcon = true,
+  reduceDescription,
 }: Props) => {
-  const descriptionThread = entityFieldThreads?.[0];
+  const history = useHistory();
+
+  const handleRequestDescription = () => {
+    history.push(
+      getRequestDescriptionPath(entityType as string, entityFqn as string)
+    );
+  };
+
+  const handleUpdateDescription = () => {
+    history.push(
+      getUpdateDescriptionPath(entityType as string, entityFqn as string)
+    );
+  };
+
+  const entityLink = useMemo(
+    () => getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION),
+    [entityType, entityFqn]
+  );
 
   const editButton = () => {
-    return !isReadOnly && hasEditAccess ? (
-      <Button
-        className="cursor-pointer d-inline-flex items-center justify-center"
-        data-testid="edit-description"
-        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-        size="small"
-        type="text"
-        onClick={onDescriptionEdit}
+    const extraIcons = showCommentsIcon && (
+      <Icon
+        component={CommentIcon}
+        data-testid="description-thread"
+        style={{ color: DE_ACTIVE_COLOR }}
+        width={20}
+        onClick={() => {
+          onThreadLinkSelect?.(entityLink);
+        }}
       />
+    );
+
+    const taskAction = () => {
+      const hasDescription = Boolean(description.trim());
+
+      const isTaskEntity = TASK_ENTITIES.includes(entityType as EntityType);
+
+      if (!isTaskEntity) {
+        return null;
+      }
+
+      return (
+        <Tooltip
+          title={
+            hasDescription
+              ? t('message.request-update-description')
+              : t('message.request-description')
+          }>
+          <Icon
+            component={RequestIcon}
+            data-testid="request-description"
+            style={{ color: DE_ACTIVE_COLOR }}
+            onClick={
+              hasDescription
+                ? handleUpdateDescription
+                : handleRequestDescription
+            }
+          />
+        </Tooltip>
+      );
+    };
+
+    return !isReadOnly && hasEditAccess ? (
+      <Space className="w-full" size={12}>
+        <Icon
+          component={EditIcon}
+          data-testid="edit-description"
+          style={{ color: DE_ACTIVE_COLOR }}
+          onClick={onDescriptionEdit}
+        />
+        {taskAction()}
+        {extraIcons}
+      </Space>
     ) : (
-      <></>
+      <Space>
+        {taskAction()} {extraIcons}
+      </Space>
     );
   };
 
@@ -85,16 +158,15 @@ const DescriptionV1 = ({
       <Space
         className="schema-description d-flex"
         direction="vertical"
-        size={0}>
-        <div className="d-flex items-center">
-          <Text className="m-b-0 m-r-xss schema-heading">
-            {t('label.description')}
-          </Text>
-          {editButton()}
-        </div>
+        size={16}>
+        <Space size="middle">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {!isVersionView && editButton()}
+        </Space>
         <div>
           {description?.trim() ? (
             <RichTextEditorPreviewer
+              className={reduceDescription ? 'max-two-lines' : ''}
               enableSeeMoreVariant={!removeBlur}
               markdown={description}
             />
@@ -112,74 +184,6 @@ const DescriptionV1 = ({
             onSave={onDescriptionUpdate}
           />
         </div>
-        {!isReadOnly ? (
-          <div
-            className={classNames(
-              'tw-w-5 tw-min-w-max d-flex',
-              description?.trim() ? 'tw-pl-1' : ''
-            )}>
-            {isUndefined(descriptionThread) &&
-            onEntityFieldSelect &&
-            !description?.trim() ? (
-              <button
-                className="focus:tw-outline-none tw-ml-2 tw--mt-6"
-                data-testid="request-description"
-                onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
-                <Tooltip
-                  placement="top"
-                  title={t('message.request-description')}
-                  trigger="hover">
-                  <SVGIcons
-                    alt={t('message.request-description')}
-                    className="tw-mt-2"
-                    icon={Icons.REQUEST}
-                  />
-                </Tooltip>
-              </button>
-            ) : null}
-            {!isUndefined(descriptionThread) ? (
-              <p
-                className="link-text tw-ml-2 tw-w-8 tw-h-8 flex-none"
-                data-testid="description-thread"
-                onClick={() =>
-                  onThreadLinkSelect?.(descriptionThread.entityLink)
-                }>
-                <span className="d-flex">
-                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                  <span
-                    className="tw-ml-1"
-                    data-testid="description-thread-count">
-                    {' '}
-                    {descriptionThread.count}
-                  </span>
-                </span>
-              </p>
-            ) : (
-              <Fragment>
-                {description?.trim() && onThreadLinkSelect ? (
-                  <p
-                    className="link-text flex-none tw-ml-2"
-                    data-testid="start-description-thread"
-                    onClick={() =>
-                      onThreadLinkSelect?.(
-                        getEntityFeedLink(
-                          entityType,
-                          entityFqn,
-                          EntityField.DESCRIPTION
-                        )
-                      )
-                    }>
-                    <SVGIcons
-                      alt="comments"
-                      icon={Icons.COMMENT_PLUS}
-                      width="20px"
-                    />
-                  </p>
-                ) : null}
-              </Fragment>
-            )}
-          </div>
-        ) : null}
       </Space>
     </>
   );

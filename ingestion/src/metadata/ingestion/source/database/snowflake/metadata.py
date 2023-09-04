@@ -36,7 +36,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -57,6 +58,10 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
+    _current_database_schema,
+    get_columns,
+    get_foreign_keys,
+    get_pk_constraint,
     get_schema_columns,
     get_table_comment,
     get_table_names,
@@ -91,6 +96,12 @@ SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
     get_schema_columns
 )
 Inspector.get_table_names = get_table_names_reflection
+SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
+    _current_database_schema
+)
+SnowflakeDialect.get_pk_constraint = get_pk_constraint
+SnowflakeDialect.get_foreign_keys = get_foreign_keys
+SnowflakeDialect.get_columns = get_columns
 
 
 class SnowflakeSource(CommonDbSourceService):
@@ -266,7 +277,9 @@ class SnowflakeSource(CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         if self.source_config.includeTags:
             result = []
             try:
@@ -290,8 +303,13 @@ class SnowflakeSource(CommonDbSourceService):
                         )
                     )
                 except Exception as inner_exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to fetch tags: {inner_exc}")
+                    yield Either(
+                        left=StackTraceError(
+                            name="Tags and Classifications",
+                            error=f"Failed to fetch tags due to [{inner_exc}]",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
             for res in result:
                 row = list(res)
@@ -303,7 +321,7 @@ class SnowflakeSource(CommonDbSourceService):
                     tags=[row[1]],
                     classification_name=row[0],
                     tag_description="SNOWFLAKE TAG VALUE",
-                    classification_desciption="SNOWFLAKE TAG NAME",
+                    classification_description="SNOWFLAKE TAG NAME",
                 )
 
     def query_table_names_and_types(
@@ -317,25 +335,34 @@ class SnowflakeSource(CommonDbSourceService):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
-
-        regular_tables = [
+        table_list = [
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
-                include_temp_tables=self.service_connection.includeTempTables,
             )
-            or []
         ]
 
-        external_tables = [
-            TableNameAndType(name=table_name, type_=TableType.External)
-            for table_name in self.inspector.get_table_names(
-                schema=schema_name, external_tables=True
-            )
-            or []
-        ]
+        table_list.extend(
+            [
+                TableNameAndType(name=table_name, type_=TableType.External)
+                for table_name in self.inspector.get_table_names(
+                    schema=schema_name, external_tables=True
+                )
+            ]
+        )
 
-        return regular_tables + external_tables
+        if self.service_connection.includeTransientTables:
+            table_list.extend(
+                [
+                    TableNameAndType(name=table_name, type_=TableType.Transient)
+                    for table_name in self.inspector.get_table_names(
+                        schema=schema_name,
+                        include_transient_tables=True,
+                    )
+                ]
+            )
+
+        return table_list
 
     def _get_current_region(self) -> Optional[str]:
         try:
@@ -374,22 +401,30 @@ class SnowflakeSource(CommonDbSourceService):
 
     def get_source_url(
         self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
         Method to get the source url for snowflake
         """
-        account = self._get_current_account()
-        region_id = self._get_current_region()
-        region_name = self._clean_region_name(region_id)
-        if account and region_name:
-            tab_type = "view" if table_type == TableType.View else "table"
-            return (
-                f"https://app.snowflake.com/{region_name.lower()}/{account.lower()}/#/"
-                f"data/databases/{database_name}/schemas"
-                f"/{schema_name}/{tab_type}/{table_name}"
-            )
+        try:
+            account = self._get_current_account()
+            region_id = self._get_current_region()
+            region_name = self._clean_region_name(region_id)
+            if account and region_name:
+                tab_type = "view" if table_type == TableType.View else "table"
+                url = (
+                    f"https://app.snowflake.com/{region_name.lower()}"
+                    f"/{account.lower()}/#/data/databases/{database_name}"
+                )
+                if schema_name:
+                    url = f"{url}/schemas/{schema_name}"
+                    if table_name:
+                        url = f"{url}/{tab_type}/{table_name}"
+                return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
         return None

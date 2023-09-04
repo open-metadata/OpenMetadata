@@ -14,10 +14,60 @@
 @import url('../../styles/variables.less');
 
 .explore-page-layout {
-  .ant-switch-checked {
-    background-color: @primary-color;
-    .ant-switch-handle::before {
-      background-color: @white;
+  .page-layout-v1-vertical-scroll {
+    height: @explore-page-height;
+  }
+  .page-layout-rightpanel {
+    padding-right: 0 !important;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0 !important;
+    border-top: 0;
+  }
+}
+.filters-row {
+  border-bottom: 1px solid @border-color;
+}
+.quick-filter-dropdown-trigger-btn {
+  .ant-typography {
+    color: @text-grey-muted;
+  }
+}
+
+.explore-page {
+  .explore-data-header {
+    padding: 13px 14px;
+    color: @text-grey-muted;
+    margin-bottom: 0 !important;
+  }
+
+  .searched-data-container {
+    padding: 8px 12px;
+  }
+  .explore-page-tabs {
+    .ant-tabs-nav {
+      margin: 0 !important;
+      width: 100%;
+      height: @page-height;
+    }
+  }
+  .summary-panel-container {
+    height: @explore-page-height;
+    .ant-drawer-header {
+      border-bottom: none;
+    }
+  }
+  .sorting-dropdown-container {
+    line-height: 24px;
+  }
+}
+
+.explore-page {
+  overflow-x: hidden;
+  .custom-menu.ant-menu-root.ant-menu-inline {
+    .ant-menu-item {
+      height: 40px;
     }
   }
 }

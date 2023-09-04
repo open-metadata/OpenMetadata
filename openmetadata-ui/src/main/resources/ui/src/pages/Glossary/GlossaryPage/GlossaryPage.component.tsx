@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -49,9 +48,9 @@ import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component'
 const GlossaryPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const glossaryFqn = decodeURIComponent(glossaryName);
   const history = useHistory();
-
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
@@ -65,6 +64,7 @@ const GlossaryPage = () => {
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
+
     if (glossaryFqn) {
       return Fqn.split(glossaryFqn).length === 1;
     }
@@ -74,8 +74,38 @@ const GlossaryPage = () => {
 
   const createGlossaryPermission = useMemo(
     () =>
-      checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
-    [permissions]
+      checkPermission(
+        Operation.Create,
+        isGlossaryActive
+          ? ResourceEntity.GLOSSARY
+          : ResourceEntity.GLOSSARY_TERM,
+        permissions
+      ),
+    [permissions, isGlossaryActive]
+  );
+
+  const viewBasicGlossaryPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewBasic,
+        isGlossaryActive
+          ? ResourceEntity.GLOSSARY
+          : ResourceEntity.GLOSSARY_TERM,
+        permissions
+      ),
+    [permissions, isGlossaryActive]
+  );
+
+  const viewAllGlossaryPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewAll,
+        isGlossaryActive
+          ? ResourceEntity.GLOSSARY
+          : ResourceEntity.GLOSSARY_TERM,
+        permissions
+      ),
+    [permissions, isGlossaryActive]
   );
 
   const handleAddGlossaryClick = () => {
@@ -102,12 +132,24 @@ const GlossaryPage = () => {
     fetchGlossaryList();
   }, []);
 
+  const fetchGlossaryTermParent = async () => {
+    setIsRightPanelLoading(true);
+    try {
+      const { parent } = await getGlossaryTermByFQN(glossaryFqn, 'parent');
+      setSelectedData((data) => (data ? { ...data, parent } : undefined));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsRightPanelLoading(false);
+    }
+  };
+
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner,parent,children'
+        'relatedTerms,reviewers,tags,owner,children'
       );
       setSelectedData(response);
     } catch (error) {
@@ -123,8 +165,9 @@ const GlossaryPage = () => {
         fetchGlossaryTermDetails();
       } else {
         setSelectedData(
-          glossaries.find((glossary) => glossary.name === glossaryFqn) ||
-            glossaries[0]
+          glossaries.find(
+            (glossary) => glossary.fullyQualifiedName === glossaryFqn
+          ) || glossaries[0]
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
@@ -135,6 +178,12 @@ const GlossaryPage = () => {
       }
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
+
+  useEffect(() => {
+    if (!isGlossaryActive && viewAllGlossaryPermission) {
+      fetchGlossaryTermParent();
+    }
+  }, [glossaryFqn]);
 
   const updateGlossary = async (updatedData: Glossary) => {
     const jsonPatch = compare(selectedData as Glossary, updatedData);
@@ -156,7 +205,7 @@ const GlossaryPage = () => {
       });
 
       if (selectedData?.name !== updatedData.name) {
-        history.push(getGlossaryPath(response.name));
+        history.push(getGlossaryPath(response.fullyQualifiedName));
         fetchGlossaryList();
       }
     } catch (error) {
@@ -175,7 +224,14 @@ const GlossaryPage = () => {
           })
         );
         setIsLoading(true);
-        history.push(getGlossaryPath());
+        // check if the glossary available
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        history.push(glossaryPath);
         fetchGlossaryList();
       })
       .catch((err: AxiosError) => {
@@ -224,7 +280,7 @@ const GlossaryPage = () => {
         );
         let fqn;
         if (glossaryFqn) {
-          const fqnArr = glossaryFqn.split(FQN_SEPARATOR_CHAR);
+          const fqnArr = Fqn.split(glossaryFqn);
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
@@ -251,14 +307,23 @@ const GlossaryPage = () => {
     return <Loader />;
   }
 
+  if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   if (glossaries.length === 0 && !isLoading) {
     return (
       <ErrorPlaceHolder
+        buttonId="add-glossary"
         className="mt-0-important"
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary')}
         permission={createGlossaryPermission}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        type={
+          createGlossaryPermission
+            ? ERROR_PLACEHOLDER_TYPE.CREATE
+            : ERROR_PLACEHOLDER_TYPE.NO_DATA
+        }
         onClick={handleAddGlossaryClick}
       />
     );
@@ -266,6 +331,7 @@ const GlossaryPage = () => {
 
   return (
     <PageLayoutV1
+      className="glossary-page-layout"
       leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
       pageTitle={t('label.glossary')}
       rightPanel={
@@ -280,22 +346,18 @@ const GlossaryPage = () => {
       {isRightPanelLoading ? (
         <Loader />
       ) : (
-        <Row gutter={[16, 0]} wrap={false}>
-          <Col flex="auto">
-            <GlossaryV1
-              deleteStatus={deleteStatus}
-              isGlossaryActive={isGlossaryActive}
-              isSummaryPanelOpen={Boolean(previewAsset)}
-              isVersionsView={false}
-              selectedData={selectedData as Glossary}
-              updateGlossary={updateGlossary}
-              onAssetClick={handleAssetClick}
-              onGlossaryDelete={handleGlossaryDelete}
-              onGlossaryTermDelete={handleGlossaryTermDelete}
-              onGlossaryTermUpdate={handleGlossaryTermUpdate}
-            />
-          </Col>
-        </Row>
+        <GlossaryV1
+          deleteStatus={deleteStatus}
+          isGlossaryActive={isGlossaryActive}
+          isSummaryPanelOpen={Boolean(previewAsset)}
+          isVersionsView={false}
+          selectedData={selectedData as Glossary}
+          updateGlossary={updateGlossary}
+          onAssetClick={handleAssetClick}
+          onGlossaryDelete={handleGlossaryDelete}
+          onGlossaryTermDelete={handleGlossaryTermDelete}
+          onGlossaryTermUpdate={handleGlossaryTermUpdate}
+        />
       )}
     </PageLayoutV1>
   );

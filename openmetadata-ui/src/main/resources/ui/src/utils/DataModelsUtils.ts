@@ -10,30 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  PLACEHOLDER_ROUTE_DATA_MODEL_FQN,
-  PLACEHOLDER_ROUTE_TAB,
-  ROUTES,
-} from 'constants/constants';
 import { TabSpecificField } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import { sortTagsCaseInsensitive } from './CommonUtils';
-
-export const getDataModelsDetailPath = (dataModelFQN: string, tab?: string) => {
-  let path = tab
-    ? ROUTES.DATA_MODEL_DETAILS_WITH_TAB
-    : ROUTES.DATA_MODEL_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_DATA_MODEL_FQN, dataModelFQN);
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
 
 export const updateDataModelColumnDescription = (
   containerColumns: Column[] = [],

@@ -13,8 +13,9 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -41,7 +42,8 @@ export const getTopicVersion = async (id: string, version: string) => {
 export const getTopics = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
@@ -51,6 +53,7 @@ export const getTopics = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 
@@ -132,6 +135,12 @@ export const restoreTopic = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<Topic>
   >('/topics/restore', { id });
+
+  return response.data;
+};
+
+export const getSampleDataByTopicId = async (id: string) => {
+  const response = await APIClient.get<Topic>(`/topics/${id}/sampleData`);
 
   return response.data;
 };

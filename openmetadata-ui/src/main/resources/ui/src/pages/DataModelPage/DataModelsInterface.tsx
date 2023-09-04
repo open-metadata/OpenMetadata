@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Paging } from 'generated/type/paging';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 
 export interface DataModelTableProps {
   data: Array<ServicePageData>;
@@ -19,11 +19,4 @@ export interface DataModelTableProps {
   paging: Paging;
   currentPage: number;
   pagingHandler: (cursorValue: string | number, activePage?: number) => void;
-}
-
-export enum DATA_MODELS_DETAILS_TABS {
-  MODEL = 'model',
-  ACTIVITY = 'activityFeed',
-  SQL = 'sql',
-  LINEAGE = 'lineage',
 }

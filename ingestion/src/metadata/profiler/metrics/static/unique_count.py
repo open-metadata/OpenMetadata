@@ -18,9 +18,9 @@ from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.profiler.metrics.core import QueryMetric
+from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
-from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
@@ -55,14 +55,11 @@ class UniqueCount(QueryMetric):
             return None
 
         # Run all queries on top of the sampled data
-        col = column(self.col.name)
-        only_once = (
-            handle_array(session.query(func.count(col)), self.col, sample)
-            .group_by(col)
-            .having(func.count(col) == 1)
-        )  # Values that appear only once
-
-        only_once_cte = only_once.cte("only_once")
+        col = column(self.col.name, self.col.type)
+        unique_count_query = _unique_count_query_mapper[session.bind.dialect.name](
+            col, session, sample
+        )
+        only_once_cte = unique_count_query.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
 
     def df_fn(self, dfs=None):

@@ -10,26 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_TAB,
-  ROUTES,
-} from 'constants/constants';
+import { TabSpecificField } from 'enums/entity.enum';
 import { Column, ContainerDataModel } from 'generated/entity/data/container';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-
-export const getContainerDetailPath = (containerFQN: string, tab?: string) => {
-  let path = tab ? ROUTES.CONTAINER_DETAILS_WITH_TAB : ROUTES.CONTAINER_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_ENTITY_FQN, containerFQN);
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
 
 const getUpdatedContainerColumnTags = (
   containerColumn: Column,
@@ -110,3 +95,6 @@ export const updateContainerColumnDescription = (
     }
   });
 };
+
+export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
+${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}`;

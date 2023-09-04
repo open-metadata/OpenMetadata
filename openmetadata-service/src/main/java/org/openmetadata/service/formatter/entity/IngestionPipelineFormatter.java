@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.formatter.entity;
 
+import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
@@ -22,6 +24,7 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class IngestionPipelineFormatter implements EntityFormatter {
+  private static final String PIPELINE_STATUS_FIELD = "pipelineStatus";
 
   @Override
   public String format(
@@ -29,6 +32,14 @@ public class IngestionPipelineFormatter implements EntityFormatter {
       FieldChange fieldChange,
       EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType) {
+    if (PIPELINE_STATUS_FIELD.equals(fieldChange.getName())) {
+      return transformPipelineStatus(messageFormatter, fieldChange, entity);
+    }
+    return transformMessage(messageFormatter, fieldChange, entity, changeType);
+  }
+
+  private String transformPipelineStatus(
+      MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
     String ingestionPipelineName = entity.getName();
     PipelineStatus status = (PipelineStatus) fieldChange.getNewValue();
     if (status != null) {

@@ -61,10 +61,6 @@ export const USER_PROFILE_TABS = [
     key: UserPageTabs.ACTIVITY,
   },
   {
-    name: i18n.t('label.task-plural'),
-    key: UserPageTabs.TASKS,
-  },
-  {
     name: i18n.t('label.my-data'),
     key: UserPageTabs.MY_DATA,
   },

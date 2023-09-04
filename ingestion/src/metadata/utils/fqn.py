@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
@@ -84,6 +85,10 @@ def _build(*args) -> str:
     """
     quoted = [quote_name(name) for name in args]
     return FQN_SEPARATOR.join(quoted)
+
+
+def unquote_name(name: str) -> str:
+    return name[1:-1] if name is not None and '"' in name else name
 
 
 def quote_name(name: str) -> str:
@@ -260,6 +265,20 @@ def _(
     return _build(service_name, topic_name)
 
 
+@fqn_build_registry.add(SearchIndex)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for Search Index FQN building
+    *,
+    service_name: str,
+    search_index_name: str,
+) -> str:
+    if not service_name or not search_index_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, search_index=`{search_index_name}``"
+        )
+    return _build(service_name, search_index_name)
+
+
 @fqn_build_registry.add(Tag)
 def _(
     _: OpenMetadata,  # ES Index not necessary for Tag FQN building
@@ -377,7 +396,7 @@ def _(
     database_name: str,
     schema_name: str,
     table_name: str,
-    column_name: str,
+    column_name: Optional[str],
     test_case_name: str,
 ) -> str:
     if column_name:

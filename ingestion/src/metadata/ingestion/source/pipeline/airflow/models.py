@@ -42,6 +42,10 @@ class Task(BaseModel):
     start_date: Optional[datetime]
     end_date: Optional[datetime]
 
+    # Allow picking up data from key `inlets` and `_inlets`
+    class Config:
+        allow_population_by_field_name = True
+
 
 class TaskList(BaseModel):
     __root__: List[Task]
@@ -63,6 +67,7 @@ class AirflowDagDetails(AirflowBaseModel):
     data: AirflowDag
     max_active_runs: Optional[int]
     description: Optional[str]
-    start_date: Optional[datetime] = None
+    start_date: Optional[datetime]
     tasks: List[Task]
-    owners: Any
+    owners: Optional[Any]
+    schedule_interval: Optional[str]

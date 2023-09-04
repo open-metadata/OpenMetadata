@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import {
   getServiceDetailsPath,
   INGESTION_NAME,
@@ -26,8 +25,8 @@ import {
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_DATABASE_FQN,
+  PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -49,15 +48,10 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
-import { EntityAction, EntityType } from '../enums/entity.enum';
-import { ProfilerDashboardType } from '../enums/table.enum';
+import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
-
-export const isDashboard = (pathname: string): boolean => {
-  return pathname === ROUTES.FEEDS;
-};
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
@@ -145,22 +139,10 @@ export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(fqn));
   }
 
   return path;
-};
-
-export const getParentGlossaryPath = (fqn?: string) => {
-  if (fqn) {
-    const parts = fqn.split(FQN_SEPARATOR_CHAR);
-    if (parts.length > 1) {
-      // remove the last part to get parent FQN
-      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
-    }
-  }
-
-  return getGlossaryPath(fqn);
 };
 
 export const getGlossaryTermsPath = (
@@ -168,22 +150,6 @@ export const getGlossaryTermsPath = (
   glossaryTerm = ''
 ) => {
   let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
-  }
-
-  return path;
-};
-
-export const getAddGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm
-    ? ROUTES.ADD_GLOSSARY_TERMS_CHILD
-    : ROUTES.ADD_GLOSSARY_TERMS;
   path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
 
   if (glossaryTerm) {
@@ -312,26 +278,6 @@ export const getPath = (pathName: string) => {
   }
 };
 
-export const getProfilerDashboardWithFqnPath = (
-  dashboardType: ProfilerDashboardType,
-  entityTypeFQN: string,
-  tab?: ProfilerDashboardTab
-) => {
-  let path = tab
-    ? ROUTES.PROFILER_DASHBOARD_WITH_TAB
-    : ROUTES.PROFILER_DASHBOARD;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(entityTypeFQN));
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
 export const getAddPolicyRulePath = (fqn: string) => {
   let path = ROUTES.ADD_POLICY_RULE;
 
@@ -354,7 +300,7 @@ export const getTagPath = (fqn?: string) => {
   let path = ROUTES.TAGS;
   if (fqn) {
     path = ROUTES.TAG_DETAILS;
-    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+    path = path.replace(PLACEHOLDER_TAG_NAME, getEncodedFqn(fqn));
   }
 
   return path;
@@ -432,13 +378,7 @@ export const getLogEntityPath = (
     return '';
   }
 
-  const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
-
-  if (path === testSuitePath) {
-    return ROUTES.TEST_SUITES;
-  }
-
-  if (logEntityType === testSuitePath) {
+  if (logEntityType === PipelineType.TestSuite) {
     return getTestSuitePath(path);
   }
 
@@ -453,16 +393,6 @@ export const getLogEntityPath = (
     GlobalSettingsMenuCategory.SERVICES,
     getServiceRouteFromServiceType(logEntityType as ServiceTypes)
   );
-};
-
-export const getLineageViewPath = (entity: EntityType, fqn: string) => {
-  let path = ROUTES.LINEAGE_FULL_SCREEN_VIEW;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
-
-  return path;
 };
 
 export const getGlossaryPathWithAction = (
@@ -516,7 +446,7 @@ export const getGlossaryTermsVersionsPath = (
     ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
     : ROUTES.GLOSSARY_TERMS_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryTermsFQN)
+    .replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(glossaryTermsFQN))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   if (tab) {
@@ -530,6 +460,76 @@ export const getTestCaseDetailsPath = (testCaseFQN: string) => {
   let path = ROUTES.TEST_CASE_DETAILS;
 
   path = path.replace(PLACEHOLDER_ROUTE_TEST_CASE_FQN, testCaseFQN);
+
+  return path;
+};
+
+export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
+  let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getServiceVersionPath = (
+  serviceCategory: string,
+  serviceFQN: string,
+  version: string
+) => {
+  let path = ROUTES.SERVICE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatabaseVersionPath = (
+  databaseFQN: string,
+  version: string
+) => {
+  let path = ROUTES.DATABASE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DATABASE_FQN, databaseFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatabaseSchemaVersionPath = (
+  schemaFQN: string,
+  version: string
+) => {
+  let path = ROUTES.SCHEMA_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN, schemaFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getClassificationDetailsPath = (classificationFQN: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  path = path.replace(PLACEHOLDER_TAG_NAME, classificationFQN);
+
+  return path;
+};
+
+export const getClassificationVersionsPath = (
+  classificationFQN: string,
+  version: string
+) => {
+  let path = ROUTES.TAG_VERSION;
+  path = path
+    .replace(PLACEHOLDER_TAG_NAME, classificationFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };

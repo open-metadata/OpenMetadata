@@ -44,7 +44,7 @@ custom Airflow plugins to handle the workflow deployment.
 To run the Impala ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[hive]"
+pip3 install "openmetadata-ingestion[impala]"
 ```
 
 ## Metadata Ingestion
@@ -76,6 +76,10 @@ source:
       authOptions: <auth options>
       authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
+      # kerberosServiceName: KerberosServiceName
+      # databaseSchema: Database Schema of the data source
+      # databaseName: Optional name to give to the database in OpenMetadata.
+      # useSSL: true / false
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -129,7 +133,7 @@ workflowConfig:
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Impala during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Impala during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+
 
 #### Source Configuration - Source Config
 
@@ -138,7 +142,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 - `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
 - `includeTables`: true or false, to ingest table data. Default is true.
 - `includeViews`: true or false, to ingest views definitions.
-- `databaseFilterPattern`, `schemaFilterPattern`, `tableFilternPattern`: Note that the they support regex as include or exclude. E.g.,
+- `databaseFilterPattern`, `schemaFilterPattern`, `tableFilterPattern`: Note that the they support regex as include or exclude. E.g.,
 
 ```yaml
 tableFilterPattern:
@@ -327,6 +331,10 @@ source:
       authOptions: <auth options>
       authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
+      # kerberosServiceName: KerberosServiceName
+      # databaseSchema: Database Schema of the data source
+      # databaseName: Optional name to give to the database in OpenMetadata.
+      # useSSL: true / false
   sourceConfig:
     config:
       type: Profiler

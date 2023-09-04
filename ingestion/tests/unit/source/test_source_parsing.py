@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.supersetCon
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
+from metadata.generated.schema.entity.services.connections.database import (
+    customDatabaseConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
 )
@@ -82,9 +85,6 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 )
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
-    SampleDataConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
@@ -701,7 +701,7 @@ def test_sample_data():
         "serviceName": "sample_data",
         "serviceConnection": {
             "config": {
-                "type": "SampleData",
+                "type": "CustomDatabase",
                 "sampleDataFolder": "./examples/sample_data",
             }
         },
@@ -709,7 +709,10 @@ def test_sample_data():
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, SampleDataConnection)
+    assert isinstance(
+        config.serviceConnection.__root__.config,
+        customDatabaseConnection.CustomDatabaseConnection,
+    )
 
 
 def test_singlestore():

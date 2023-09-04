@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Col, Progress, Row, Space, Typography } from 'antd';
-import { toNumber } from 'lodash';
-
+import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import {
   KPI_WIDGET_GRAPH_BG_COLORS,
   KPI_WIDGET_GRAPH_COLORS,
 } from 'constants/DataInsight.constants';
+import { toNumber } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getKpiResultFeedback } from 'utils/DataInsightUtils';
+import { getDaysRemaining } from 'utils/date-time/DateTimeUtils';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../interface/data-insight.interface';
-import { getNumberOfDaysForTimestamp } from '../../utils/TimeUtils';
 import './kpi-latest-results.less';
 
 interface Props {
@@ -59,45 +60,68 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
 
         const currentProgress = (targetValue / targetMetValue) * 100;
 
-        const daysLeft = getNumberOfDaysForTimestamp(resultData.endDate);
+        const daysLeft = getDaysRemaining(resultData.endDate);
+
+        const isTargetMet = targetResult.targetMet;
 
         return (
           <Row key={name}>
-            <Col className="d-flex items-center" span={4}>
+            <Col className="d-flex items-center" span={24}>
               <div
                 className="kpi-days-section"
                 style={{
                   color: KPI_WIDGET_GRAPH_COLORS[index],
                   backgroundColor: KPI_WIDGET_GRAPH_BG_COLORS[index],
                 }}>
-                <Typography.Text className="days-remaining">
-                  {daysLeft}
-                </Typography.Text>
-                <Typography.Text className="days-left">
-                  {t('label.day-left', { day: 'days' })}
-                </Typography.Text>
+                {daysLeft <= 0 ? (
+                  <>
+                    <Typography.Text className="days-remaining">
+                      <CheckCircleOutlined style={{ fontSize: '20px' }} />
+                    </Typography.Text>
+                  </>
+                ) : (
+                  <>
+                    <Typography.Text className="days-remaining">
+                      {daysLeft}
+                    </Typography.Text>
+                    <Typography.Text className="days-left">
+                      {t('label.day-left', { day: 'days' })}
+                    </Typography.Text>
+                  </>
+                )}
               </div>
-            </Col>
-            <Col span={20}>
-              <div className="m-l-sm">
-                <Typography.Text>
-                  {resultData.displayName ?? name}
-                </Typography.Text>
+              <div className="m-l-sm flex-1">
+                <Space className="w-full justify-between">
+                  <Typography.Text className="text-xs">
+                    {resultData.displayName ?? name}
+                  </Typography.Text>
+                  {daysLeft <= 0 || isTargetMet ? (
+                    <Tooltip
+                      placement="bottom"
+                      title={getKpiResultFeedback(
+                        daysLeft,
+                        Boolean(isTargetMet)
+                      )}
+                      trigger="hover">
+                      <InfoCircleOutlined style={{ fontSize: '14px' }} />
+                    </Tooltip>
+                  ) : null}
+                </Space>
                 <Progress
-                  className=" data-insight-progress-bar"
                   percent={Number(currentProgress)}
                   showInfo={false}
+                  size="small"
                   strokeColor={KPI_WIDGET_GRAPH_COLORS[index]}
                 />
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
-                    <Typography.Text>
+                    <Typography.Text className="text-xs">
                       {targetPercentValue}
                       {suffix}
                     </Typography.Text>
                   </div>
                   <div>
-                    <Typography.Text>
+                    <Typography.Text className="text-xs">
                       {targetMetPercentValue}
                       {suffix}
                     </Typography.Text>

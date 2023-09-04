@@ -32,7 +32,10 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-The hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`.
+
+This parameter specifies the host and port of the MongoDB instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:27017`.
+
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:27017` as the value.
 $$
 
 $$section

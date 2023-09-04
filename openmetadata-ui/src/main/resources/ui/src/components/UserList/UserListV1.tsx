@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -37,7 +38,6 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import PageHeader from '../header/PageHeader.component';
-import Loader from '../Loader/Loader';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import './usersList.less';
 
@@ -130,7 +130,7 @@ const UserListV1: FC<UserListV1Props> = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center action-icons"
+            className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
               <Tooltip placement="bottom" title={t('label.restore')}>
@@ -181,18 +181,14 @@ const UserListV1: FC<UserListV1Props> = ({
   const errorPlaceHolder = useMemo(
     () => (
       <Row>
-        <Col className="w-full d-flex tw-justify-end">
+        <Col className="w-full d-flex justify-end">
           <span>
             <Switch
               checked={showDeletedUser}
-              size="small"
+              data-testid="show-deleted"
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">
-              {t('label.deleted-entity', {
-                entity: t('label.user-plural'),
-              })}
-            </span>
+            <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
         </Col>
         <Col className="mt-24" span={24}>
@@ -223,29 +219,24 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <span>
             <Switch
               checked={showDeletedUser}
+              data-testid="show-deleted"
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">
-              {t('label.deleted-entity', {
-                entity: t('label.user-plural'),
-              })}
-            </span>
+            <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
-          <Tooltip
-            placement="topLeft"
-            title={!isAdminUser && t('message.admin-only-action')}>
+
+          {isAdminUser && (
             <Button
               data-testid="add-user"
-              disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
               {t('label.add-entity', { entity: t('label.user') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={8}>
@@ -267,10 +258,7 @@ const UserListV1: FC<UserListV1Props> = ({
           columns={columns}
           data-testid="user-list-table"
           dataSource={data}
-          loading={{
-            spinning: isDataLoading,
-            indicator: <Loader size="small" />,
-          }}
+          loading={isDataLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
@@ -287,7 +275,6 @@ const UserListV1: FC<UserListV1Props> = ({
             pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={onPagingChange}
-            totalCount={paging.total}
           />
         )}
       </Col>

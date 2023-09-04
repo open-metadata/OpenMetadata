@@ -64,7 +64,7 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-To ingest basic metadata snowflake user must have the following priviledges:
+To ingest basic metadata snowflake user must have the following privileges:
   - `USAGE` Privilege on Warehouse
   - `USAGE` Privilege on Database
   - `USAGE` Privilege on Schema
@@ -248,7 +248,7 @@ Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By d
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+
 
 {% /extraContent %}
 

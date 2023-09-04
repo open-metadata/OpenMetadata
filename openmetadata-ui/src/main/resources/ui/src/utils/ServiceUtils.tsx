@@ -12,32 +12,16 @@
  */
 
 import { AxiosError } from 'axios';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityTabs } from 'enums/entity.enum';
+import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
-import {
-  Bucket,
-  DynamicFormFieldType,
-  ServicesData,
-  ServiceTypes,
-} from 'Models';
+import { ServiceTypes } from 'Models';
 import React from 'react';
 import { getEntityCount } from 'rest/miscAPI';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
-import {
-  addDBTIngestionGuide,
-  addLineageIngestionGuide,
-  addMetadataIngestionGuide,
-  addProfilerIngestionGuide,
-  addServiceGuide,
-  addServiceGuideWOAirflow,
-  addUsageIngestionGuide,
-} from '../constants/service-guide.constant';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -48,6 +32,7 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  COUCHBASE,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
@@ -66,6 +51,7 @@ import {
   IMPALA,
   KAFKA,
   KINESIS,
+  LIGHT_DASH,
   LOGO,
   LOOKER,
   MARIADB,
@@ -83,6 +69,7 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
+  QLIK_SENSE,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
@@ -124,9 +111,15 @@ import {
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
 import { ServicesType } from '../interface/service.interface';
-import { getEntityDeleteMessage, pluralize } from './CommonUtils';
+import {
+  getEntityDeleteMessage,
+  pluralize,
+  replaceAllSpacialCharWith_,
+} from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
+import { getEncodedFqn } from './StringsUtils';
+import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const serviceTypeLogo = (type: string) => {
@@ -221,6 +214,9 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.MongoDB:
       return MONGODB;
 
+    case DatabaseServiceType.Couchbase:
+      return COUCHBASE;
+
     case MessagingServiceType.Kafka:
       return KAFKA;
 
@@ -253,8 +249,15 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.DomoDashboard:
       return DOMO;
+
     case DashboardServiceType.Mode:
       return MODE;
+
+    case DashboardServiceType.QlikSense:
+      return QLIK_SENSE;
+
+    case DashboardServiceType.Lightdash:
+      return LIGHT_DASH;
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
@@ -326,174 +329,6 @@ export const serviceTypeLogo = (type: string) => {
   }
 };
 
-export const fromISOString = (isoValue = '') => {
-  if (isoValue) {
-    // 'P1DT 0H 0M'
-    const [d, hm] = isoValue.split('T');
-    const day = +d.replace('D', '').replace('P', '');
-    const [h, time] = hm.split('H');
-    const minute = +time.replace('M', '');
-
-    return { day, hour: +h, minute };
-  } else {
-    return {
-      day: 1,
-      hour: 0,
-      minute: 0,
-    };
-  }
-};
-
-export const getFrequencyTime = (isoDate: string): string => {
-  const { day, hour, minute } = fromISOString(isoDate);
-
-  return `${day}D-${hour}H-${minute}M`;
-};
-
-export const getServiceCategoryFromType = (type: string): ServiceTypes => {
-  let serviceCategory: ServiceTypes = 'databaseServices';
-  for (const category in serviceTypes) {
-    if (serviceTypes[category as ServiceTypes].includes(type)) {
-      serviceCategory = category as ServiceTypes;
-
-      break;
-    }
-  }
-
-  return serviceCategory;
-};
-
-// Note: This method is deprecated by "getEntityCountByType" of EntityUtils.ts
-export const getEntityCountByService = (buckets: Array<Bucket>) => {
-  const entityCounts = {
-    tableCount: 0,
-    topicCount: 0,
-    dashboardCount: 0,
-    pipelineCount: 0,
-  };
-  buckets?.forEach((bucket) => {
-    if (serviceTypes.databaseServices.includes(bucket.key)) {
-      entityCounts.tableCount += bucket.doc_count;
-    } else if (serviceTypes.messagingServices.includes(bucket.key)) {
-      entityCounts.topicCount += bucket.doc_count;
-    } else if (serviceTypes.dashboardServices.includes(bucket.key)) {
-      entityCounts.dashboardCount += bucket.doc_count;
-    } else if (serviceTypes.pipelineServices.includes(bucket.key)) {
-      entityCounts.pipelineCount += bucket.doc_count;
-    }
-  });
-
-  return entityCounts;
-};
-
-export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
-  let entityCounts = 0;
-  buckets.forEach((bucket) => {
-    entityCounts += bucket.doc_count;
-  });
-
-  return entityCounts;
-};
-
-export const getKeyValuePair = (obj: Record<string, string>) => {
-  return Object.entries(obj).map((v) => {
-    return {
-      key: v[0],
-      value: v[1],
-    };
-  });
-};
-
-export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
-  const keyValuePair: Record<string, string> = {};
-
-  arr.forEach((obj) => {
-    if (obj.key && obj.value) {
-      keyValuePair[obj.key] = obj.value;
-    }
-  });
-
-  return keyValuePair;
-};
-
-export const getHostPortDetails = (hostport: string) => {
-  let host = '',
-    port = '';
-  const newHostPort = hostport.split(':');
-
-  port = newHostPort.splice(newHostPort.length - 1, 1).join();
-  host = newHostPort.join(':');
-
-  return {
-    host,
-    port,
-  };
-};
-
-export const isRequiredDetailsAvailableForIngestion = (
-  serviceCategory: ServiceCategory,
-  data: ServicesData
-) => {
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES: {
-      const hostPort = getHostPortDetails(
-        data?.databaseConnection?.hostPort || ''
-      );
-
-      return Boolean(hostPort.host && hostPort.port);
-    }
-
-    case ServiceCategory.MESSAGING_SERVICES:
-    case ServiceCategory.PIPELINE_SERVICES:
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return false;
-
-    default:
-      return true;
-  }
-};
-
-export const servicePageTabs = (entity: string) => [
-  {
-    name: entity,
-    path: entity.toLowerCase(),
-  },
-  {
-    name: t('label.ingestion-plural'),
-    path: 'ingestions',
-  },
-  {
-    name: t('label.connection'),
-    path: 'connection',
-  },
-];
-
-export const getCurrentServiceTab = (
-  tab: string,
-  serviceName: ServiceTypes
-) => {
-  let currentTab;
-  switch (tab) {
-    case 'ingestions':
-      currentTab = 2;
-
-      break;
-
-    case 'connection':
-      currentTab = 3;
-
-      break;
-
-    case 'entity':
-    default:
-      currentTab = serviceName === ServiceCategory.METADATA_SERVICES ? 2 : 1;
-
-      break;
-  }
-
-  return currentTab;
-};
-
 export const getFormattedGuideText = (
   text: string,
   toReplace: string,
@@ -505,94 +340,6 @@ export const getFormattedGuideText = (
   return text.replace(regExp, replacement);
 };
 
-export const getServiceIngestionStepGuide = (
-  step: number,
-  isIngestion: boolean,
-  ingestionName: string,
-  serviceName: string,
-  ingestionType: IngestionPipelineType,
-  showDeployTitle: boolean,
-  isUpdated: boolean,
-  isAirflowSetup = true
-) => {
-  let guide;
-  if (isIngestion) {
-    switch (ingestionType) {
-      case IngestionPipelineType.Usage: {
-        guide = addUsageIngestionGuide.find((item) => item.step === step);
-
-        break;
-      }
-      case IngestionPipelineType.Lineage: {
-        guide = addLineageIngestionGuide.find((item) => item.step === step);
-
-        break;
-      }
-      case IngestionPipelineType.Profiler: {
-        guide = addProfilerIngestionGuide.find((item) => item.step === step);
-
-        break;
-      }
-      case IngestionPipelineType.Dbt: {
-        guide = addDBTIngestionGuide.find((item) => item.step === step);
-
-        break;
-      }
-      case IngestionPipelineType.Metadata:
-      default: {
-        guide = addMetadataIngestionGuide.find((item) => item.step === step);
-
-        break;
-      }
-    }
-  } else {
-    guide =
-      !isAirflowSetup && step === 4
-        ? addServiceGuideWOAirflow
-        : addServiceGuide.find((item) => item.step === step);
-  }
-
-  const getTitle = (title: string) => {
-    const update = showDeployTitle
-      ? title.replace(
-          t('label.added'),
-          `${t('label.updated')} & ${t('label.deployed')}`
-        )
-      : title.replace(t('label.added'), t('label.updated'));
-    const newTitle = showDeployTitle
-      ? title.replace(
-          t('label.added'),
-          `${t('label.added')} & ${t('label.deployed')}`
-        )
-      : title;
-
-    return isUpdated ? update : newTitle;
-  };
-
-  return (
-    <>
-      {guide && (
-        <>
-          <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5 overflow-wrap-anywhere">
-            {isIngestion
-              ? getFormattedGuideText(
-                  guide.description,
-                  `<${t('label.ingestion-pipeline-name')}>`,
-                  `${ingestionName}`
-                )
-              : getFormattedGuideText(
-                  guide.description,
-                  `<${t('label.service-name')}>`,
-                  serviceName
-                )}
-          </div>
-        </>
-      )}
-    </>
-  );
-};
-
 export const getIngestionName = (
   serviceName: string,
   type: IngestionPipelineType
@@ -601,10 +348,13 @@ export const getIngestionName = (
     [
       IngestionPipelineType.Profiler,
       IngestionPipelineType.Metadata,
+      IngestionPipelineType.Lineage,
       IngestionPipelineType.Dbt,
     ].includes(type)
   ) {
-    return `${serviceName}_${type}_${cryptoRandomString({
+    return `${replaceAllSpacialCharWith_(
+      serviceName
+    )}_${type}_${cryptoRandomString({
       length: 8,
       type: 'alphanumeric',
     })}`;
@@ -707,10 +457,10 @@ export const getOptionalFields = (
       const messagingService = service as MessagingService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.broker-plural')}:</label>
+        <div className="m-b-xss truncate" data-testid="additional-field">
+          <label className="m-b-0">{t('label.broker-plural')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
             {getBrokers(messagingService.connection?.config)}
           </span>
@@ -721,10 +471,10 @@ export const getOptionalFields = (
       const dashboardService = service as DashboardService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
+        <div className="m-b-xss truncate" data-testid="additional-field">
+          <label className="m-b-0">{t('label.url-uppercase')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
             {getDashboardURL(dashboardService.connection?.config)}
           </span>
@@ -735,10 +485,10 @@ export const getOptionalFields = (
       const pipelineService = service as PipelineService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
+        <div className="m-b-xss truncate" data-testid="additional-field">
+          <label className="m-b-0">{t('label.url-uppercase')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
             {pipelineService.connection?.config?.hostPort || '--'}
           </span>
@@ -751,18 +501,18 @@ export const getOptionalFields = (
 
       return (
         <>
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">{t('label.registry')}:</label>
+          <div className="m-b-xss truncate" data-testid="additional-field">
+            <label className="m-b-0">{t('label.registry')}:</label>
             <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
               {mlmodel.connection?.config?.registryUri || '--'}
             </span>
           </div>
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">{t('label.tracking')}:</label>
+          <div className="m-b-xss truncate" data-testid="additional-field">
+            <label className="m-b-0">{t('label.tracking')}:</label>
             <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
               {mlmodel.connection?.config?.trackingUri || '--'}
             </span>
@@ -909,50 +659,54 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
   }
 };
 
-export const getServicePageTabs = (
-  serviceName: ServiceTypes,
-  instanceCount: number,
-  ingestionCount: number,
-  servicePermission: OperationPermission,
-  dataModelCount: number
-) => {
-  const tabs = [];
-
-  if (serviceName !== ServiceCategory.METADATA_SERVICES) {
-    tabs.push({
-      name: getCountLabel(serviceName),
-      key: getCountLabel(serviceName).toLowerCase(),
-      count: instanceCount,
-    });
-  }
-
-  if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
-    tabs.push({
-      name: t('label.data-model'),
-      key: EntityTabs.DATA_Model,
-      count: dataModelCount,
-    });
-  }
-
-  tabs.push(
-    {
-      name: t('label.ingestion-plural'),
-      key: EntityTabs.INGESTIONS,
-      count: ingestionCount,
-    },
-    {
-      name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
-      key: EntityTabs.CONNECTION,
-    }
-  );
-
-  return tabs.filter((tab) => !tab.isHidden);
-};
-
 export const getTestConnectionName = (connectionType: string) => {
   return `test-connection-${connectionType}-${cryptoRandomString({
     length: 8,
     type: 'alphanumeric',
   })}`;
+};
+
+export const getEntityTypeFromServiceCategory = (
+  serviceCategory: ServiceTypes
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return EntityType.DASHBOARD_SERVICE;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return EntityType.MESSAGING_SERVICE;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return EntityType.PIPELINE_SERVICE;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return EntityType.MLMODEL_SERVICE;
+    case ServiceCategory.METADATA_SERVICES:
+      return EntityType.METADATA_SERVICE;
+    case ServiceCategory.STORAGE_SERVICES:
+      return EntityType.STORAGE_SERVICE;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return EntityType.DATABASE_SERVICE;
+  }
+};
+
+export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
+  switch (serviceCategory) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return getEntityLink(SearchIndex.TOPIC, fqn);
+
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return getEntityLink(SearchIndex.DASHBOARD, fqn);
+
+    case ServiceCategory.PIPELINE_SERVICES:
+      return getEntityLink(SearchIndex.PIPELINE, fqn);
+
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return getEntityLink(SearchIndex.MLMODEL, fqn);
+
+    case ServiceCategory.STORAGE_SERVICES:
+      return getEntityLink(EntityType.CONTAINER, fqn);
+
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return `/database/${getEncodedFqn(fqn)}`;
+  }
 };

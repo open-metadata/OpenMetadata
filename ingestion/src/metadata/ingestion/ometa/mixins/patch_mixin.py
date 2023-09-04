@@ -138,7 +138,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__} [{source.id}]: {exc}"
+                f"Error trying to PATCH {entity.__name__} [{source.id.__root__}]: {exc}"
             )
 
         return None
@@ -162,9 +162,17 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id
-        )
+        if isinstance(source, TestCase):
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity,
+                entity_id=source.id,
+                fields=["testDefinition", "testSuite"],
+            )
+        else:
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity, entity_id=source.id
+            )
+
         if not instance:
             return None
 

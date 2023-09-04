@@ -21,7 +21,7 @@ import pytest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 
 from .test_cli import CliBase
 
@@ -72,7 +72,7 @@ class CliDBTBase(TestCase):
                 entity=TestDefinition,
                 params={"testPlatform": TestPlatform.DBT.value},
             )
-            self.assertTrue(len(test_case_entity_list.entities) == 22)
+            self.assertTrue(len(test_case_entity_list.entities) == 26)
 
         # 5. test dbt lineage
         @pytest.mark.order(5)
@@ -107,12 +107,12 @@ class CliDBTBase(TestCase):
 
         @abstractmethod
         def assert_for_vanilla_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ) -> None:
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_dbt_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ) -> None:
             raise NotImplementedError()

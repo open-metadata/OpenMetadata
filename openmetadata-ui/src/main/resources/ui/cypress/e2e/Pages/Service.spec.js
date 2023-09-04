@@ -32,13 +32,15 @@ describe('Services page should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}`,
+      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}*`,
       'ingestionPipelines'
     );
     cy.login();
     // redirecting to services page
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Database')
@@ -61,7 +63,7 @@ describe('Services page should work properly', () => {
     cy.get(descriptionBox).clear().type(service.newDescription);
     cy.get('[data-testid="save"]').click();
     cy.get(
-      '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
+      '[data-testid="description-container"] [data-testid="viewer-container"] [data-testid="markdown-parser"] :nth-child(1) .toastui-editor-contents p'
     ).contains(service.newDescription);
     cy.get(':nth-child(1) > .link-title').click();
     cy.get('.toastui-editor-contents > p').contains(service.newDescription);
@@ -85,10 +87,10 @@ describe('Services page should work properly', () => {
       .click();
     verifyResponseStatusCode('@editOwner', 200);
 
-    cy.get('.select-owner-tabs')
+    cy.get(
+      '.ant-popover-inner-content > .ant-tabs > .ant-tabs-nav > .ant-tabs-nav-wrap'
+    )
       .contains('Users')
-      .should('exist')
-      .should('be.visible')
       .click();
 
     interceptURL(
@@ -96,16 +98,21 @@ describe('Services page should work properly', () => {
       '/api/v1/services/databaseServices/*',
       'updateService'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20isBot:false*&index=user_search_index',
+      'searchApi'
+    );
 
+    cy.get('[data-testid="owner-select-users-search-bar"]').type(service.Owner);
+    verifyResponseStatusCode('@searchApi', 200);
     cy.get('[data-testid="selectable-list"]')
       .contains(service.Owner)
       .scrollIntoView()
-      .should('be.visible')
       .click();
 
     verifyResponseStatusCode('@updateService', 200);
 
-    cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
     // Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     // need wait here
@@ -148,7 +155,7 @@ describe('Services page should work properly', () => {
     verifyResponseStatusCode('@removeOwner', 200);
 
     // Check if Owner exist
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="owner-link"]')
       .scrollIntoView()
       .should('exist')
       .contains('No Owner');

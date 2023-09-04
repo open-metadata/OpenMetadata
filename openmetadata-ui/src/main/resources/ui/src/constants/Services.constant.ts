@@ -13,7 +13,9 @@
 
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
+import lightDash from 'assets/img/service-icon-lightdash.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { EntityType } from 'enums/entity.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { StorageServiceType } from 'generated/entity/data/container';
@@ -31,6 +33,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
@@ -59,6 +62,7 @@ import powerbi from '../assets/img/service-icon-power-bi.png';
 import prefect from '../assets/img/service-icon-prefect.png';
 import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
+import qlikSense from '../assets/img/service-icon-qlik-sense.png';
 import query from '../assets/img/service-icon-query.png';
 import quicksight from '../assets/img/service-icon-quicksight.png';
 import redash from '../assets/img/service-icon-redash.png';
@@ -171,6 +175,9 @@ export const GCS = gcs;
 export const MS_AZURE = msAzure;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
+export const QLIK_SENSE = qlikSense;
+export const LIGHT_DASH = lightDash;
+export const COUCHBASE = couchbase;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -273,9 +280,37 @@ export const DEF_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden' },
 };
 
+export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
+  useSSL: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  verifyCerts: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  timeout: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  caCerts: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  useAwsCredentials: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  regionName: { 'ui:widget': 'hidden', 'ui:hideError': true },
+};
+
+export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
+  name: { 'ui:disabled': true },
+};
+
+export const INGESTION_WORKFLOW_UI_SCHEMA = {
+  type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  'ui:order': [
+    'name',
+    'databaseFilterPattern',
+    'schemaFilterPattern',
+    'tableFilterPattern',
+    'enableDebugLog',
+    '*',
+  ],
+};
+
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
   connection: {
+    ...DEF_UI_SCHEMA,
+  },
+  metastoreConnection: {
     ...DEF_UI_SCHEMA,
   },
 };
@@ -347,8 +382,11 @@ export const SERVICE_TYPE_MAP = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.Impala,
+  DatabaseServiceType.SapHana,
   PipelineServiceType.Spline,
+  DatabaseServiceType.MongoDB,
+  DashboardServiceType.QlikSense,
+  DatabaseServiceType.Couchbase,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -379,4 +417,16 @@ export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
   'scheme',
+];
+
+export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
+
+export const SERVICE_TYPES = [
+  EntityType.DATABASE_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.STORAGE_SERVICE,
 ];

@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
 
@@ -57,7 +57,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             region=self.service_connection.usageLocation,
-            filters=self.filters,
+            filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,
         )
 

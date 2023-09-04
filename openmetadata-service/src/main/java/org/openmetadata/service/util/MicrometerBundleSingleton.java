@@ -19,20 +19,15 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
 public class MicrometerBundleSingleton {
-  private static MicrometerBundle INSTANCE;
+  private static final MicrometerBundle instance = new MicrometerBundle();
   public static Timer webAnalyticEvents;
-  public static PrometheusMeterRegistry prometheusMeterRegistry;
+  // We'll use this registry to add monitoring around Ingestion Pipelines
+  public static PrometheusMeterRegistry prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
 
   private MicrometerBundleSingleton() {}
 
   public static MicrometerBundle getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new MicrometerBundle();
-      // We'll use this registry to add monitoring around Ingestion Pipelines
-      prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
-    }
-
-    return INSTANCE;
+    return instance;
   }
 
   public static Timer latencyTimer(EventMonitorConfiguration configuration) {

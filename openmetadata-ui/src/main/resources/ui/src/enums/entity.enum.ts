@@ -12,9 +12,9 @@
  */
 
 export enum EntityType {
-  DATASET = 'dataset',
   TABLE = 'table',
   TOPIC = 'topic',
+  CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
@@ -45,6 +45,10 @@ export enum EntityType {
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   SUBSCRIPTION = 'subscription',
+  USER_NAME = 'username',
+  CHART = 'chart',
+  SAMPLE_DATA = 'sampleData',
+  STORED_PROCEDURE = 'storedProcedure',
 }
 
 export enum AssetsType {
@@ -96,6 +100,9 @@ export enum TabSpecificField {
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
   EXECUTIONS = 'executions',
+  SCHEDULE_INTERVAL = 'scheduleInterval',
+  TESTSUITE = 'testSuite',
+  VIEW_DEFINITION = 'viewDefinition',
 }
 
 export enum FqnPart {
@@ -105,6 +112,7 @@ export enum FqnPart {
   Table,
   Column,
   NestedColumn,
+  Topic,
 }
 
 export enum EntityInfo {
@@ -138,6 +146,7 @@ export enum EntityTabs {
   PROFILER = 'profiler',
   LINEAGE = 'lineage',
   DBT = 'dbt',
+  VIEW_DEFINITION = 'view_definition',
   CUSTOM_PROPERTIES = 'custom_properties',
   MODEL = 'model',
   FEATURES = 'features',
@@ -152,6 +161,9 @@ export enum EntityTabs {
   DATA_Model = 'data-model',
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
+  SQL = 'sql',
+  STORED_PROCEDURE = 'stored_procedure',
+  CODE = 'code',
 }
 
 export enum EntityAction {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import IconFlatFolder from 'assets/svg/folder.svg';
 import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
@@ -24,14 +23,8 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconNoDataFoundPlaceHolder from '../assets/img/no-data-placeholder.svg';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
-import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAdmin from '../assets/svg/admin.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
-import IconAnnouncementsBasicPrimary from '../assets/svg/announcements-basic-primary.svg';
-import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
-import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
-import IconAnnouncementsYellow from '../assets/svg/announcements-yellow.svg';
-import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownLight from '../assets/svg/arrow-down-light.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
@@ -73,12 +66,10 @@ import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExitFullScreen from '../assets/svg/exit-full-screen.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
-import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
-import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
-import IconForeignKey from '../assets/svg/foriegnKey.svg';
+import IconForeignKey from '../assets/svg/foreign-key.svg';
 import IconFullScreen from '../assets/svg/full-screen.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconHidePassword from '../assets/svg/hide-password.svg';
@@ -145,7 +136,7 @@ import IconDown from '../assets/svg/icon-down.svg';
 import IcEditPrimary from '../assets/svg/icon-edit-primary.svg';
 import IconInfoSecondary from '../assets/svg/icon-info.svg';
 import IconKey from '../assets/svg/icon-key.svg';
-import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconNotNull from '../assets/svg/icon-not-null.svg';
 import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
 import IconTestSuite from '../assets/svg/icon-test-suite.svg';
@@ -176,8 +167,6 @@ import IconPolicies from '../assets/svg/policies.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
-import IconReaction from '../assets/svg/Reaction.svg';
-import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
@@ -193,7 +182,7 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
-import IconTaskColor from '../assets/svg/Task-ic.svg';
+import IconTaskColor from '../assets/svg/task-ic.svg';
 import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
@@ -296,8 +285,6 @@ export const Icons = {
   CONFIG: 'icon-config',
   SLACK: 'slack',
   SLACK_GREY: 'slack-grey',
-  EXTERNAL_LINK: 'external-link',
-  EXTERNAL_LINK_WHITE: 'external-link-white',
   EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
@@ -341,11 +328,6 @@ export const Icons = {
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ARROW_RIGHT: 'icon-arrow-right',
-  ANNOUNCEMENT: 'icon-announcement',
-  ANNOUNCEMENT_BLACK: 'icon-announcement-black',
-  ANNOUNCEMENT_PRIMARY: 'icon-announcement-primary',
-  ANNOUNCEMENT_YELLOW: 'icon-announcement-yellow',
-  ANNOUNCEMENT_BASIC_PRIMARY: 'icon-announcement-basic-primary',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -752,14 +734,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconSlackGrey;
 
       break;
-    case Icons.EXTERNAL_LINK:
-      IconComponent = IconExternalLink;
-
-      break;
-    case Icons.EXTERNAL_LINK_WHITE:
-      IconComponent = IconExternalLinkWhite;
-
-      break;
     case Icons.EXTERNAL_LINK_GREY:
       IconComponent = IconExternalLinkGrey;
 
@@ -930,26 +904,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconArrowRightPrimary;
 
       break;
-    case Icons.ANNOUNCEMENT:
-      IconComponent = IconAnnouncements;
-
-      break;
-    case Icons.ANNOUNCEMENT_YELLOW:
-      IconComponent = IconAnnouncementsYellow;
-
-      break;
-    case Icons.ANNOUNCEMENT_BLACK:
-      IconComponent = IconAnnouncementsBlack;
-
-      break;
-    case Icons.ANNOUNCEMENT_PRIMARY:
-      IconComponent = IconAnnouncementsPrimary;
-
-      break;
-    case Icons.ANNOUNCEMENT_BASIC_PRIMARY:
-      IconComponent = IconAnnouncementsBasicPrimary;
-
-      break;
     case Icons.REQUEST:
       IconComponent = IconRequest;
 
@@ -1026,19 +980,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconDeployIngestion;
 
       break;
-    case Icons.ADD_REACTION:
-      IconComponent = IconAddReaction;
 
-      break;
-    case Icons.ADD_REPLY:
-      IconComponent = IconReplyFeed;
-
-      break;
-
-    case Icons.REACTION:
-      IconComponent = IconReaction;
-
-      break;
     case Icons.FEED_DELETE:
       IconComponent = IconFeedDelete;
 
@@ -1206,10 +1148,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.CONTAINER:
       IconComponent = IconContainer;
-
-      break;
-    case Icons.FLAT_FOLDER:
-      IconComponent = IconFlatFolder;
 
       break;
     case Icons.FLAT_DOC:

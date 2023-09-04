@@ -25,9 +25,7 @@ from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     ProfileSampleType,
 )
-from metadata.ingestion.source.database.datalake.models import (
-    DatalakeTableSchemaWrapper,
-)
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.logger import test_suite_logger
 

@@ -20,6 +20,7 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Glossary } from 'generated/entity/data/glossary';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -29,7 +30,6 @@ import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
-import { FilterObject } from './AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 export type UrlParams = {
   searchQuery: string;
@@ -66,9 +66,6 @@ export interface ExploreProps {
   onChangeAdvancedSearchQuickFilters: (
     queryFilter: QueryFilterInterface | undefined
   ) => void;
-
-  facetFilters?: FilterObject;
-  onChangeFacetFilters: (filter: FilterObject) => void;
 
   searchIndex: ExploreSearchIndex;
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
@@ -124,14 +121,18 @@ export type EntityUnion =
   | Database
   | Glossary
   | Tag
-  | DashboardDataModel;
+  | DashboardDataModel
+  | StoredProcedure;
 
 export type EntityWithServices =
   | Topic
   | Dashboard
   | Pipeline
   | Mlmodel
-  | Container;
+  | Container
+  | DashboardDataModel
+  | Database
+  | DatabaseSchema;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];

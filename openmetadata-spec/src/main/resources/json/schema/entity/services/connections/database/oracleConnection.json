@@ -41,6 +41,18 @@
         }
       },
       "required": ["oracleServiceName"]
+    },
+    "OracleTNSConnection": {
+      "title": "Oracle TNS Connection",
+      "type":"object",
+      "properties": {
+        "oracleTNSConnection": {
+          "title": "Oracle TNS Connection String",
+          "description": "Pass the full constructed TNS string, e.g., (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).",
+          "type": "string"
+        }
+      },
+      "required": ["oracleTNSConnection"]
     }
   },
   "properties": {
@@ -82,6 +94,9 @@
         },
         {
           "$ref": "#/definitions/OracleServiceName"
+        },
+        {
+          "$ref": "#/definitions/OracleTNSConnection"
         }
       ]
     },
@@ -108,6 +123,12 @@
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
     "supportsDBTExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
     },
@@ -121,5 +142,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "oracleConnectionType"]
+  "required": ["username", "oracleConnectionType"]
 }

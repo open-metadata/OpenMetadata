@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import Table from 'components/common/Table/Table';
 import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
 import { ALERTS_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
@@ -167,29 +167,6 @@ const AlertsPage = () => {
     []
   );
 
-  if (loading) {
-    return <Loader />;
-  }
-
-  if (isEmpty(alerts)) {
-    return (
-      <ErrorPlaceHolder
-        permission
-        doc={ALERTS_DOCS}
-        heading={t('label.alert')}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={() =>
-          history.push(
-            getSettingPath(
-              GlobalSettingsMenuCategory.NOTIFICATIONS,
-              GlobalSettingOptions.ADD_ALERTS
-            )
-          )
-        }
-      />
-    );
-  }
-
   return (
     <>
       <Row gutter={[16, 16]}>
@@ -212,9 +189,29 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
+            loading={loading}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  permission
+                  className="p-y-md"
+                  doc={ALERTS_DOCS}
+                  heading={t('label.alert')}
+                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                  onClick={() =>
+                    history.push(
+                      getSettingPath(
+                        GlobalSettingsMenuCategory.NOTIFICATIONS,
+                        GlobalSettingOptions.ADD_ALERTS
+                      )
+                    )
+                  }
+                />
+              ),
+            }}
             pagination={false}
             rowKey="id"
-            size="middle"
+            size="small"
           />
         </Col>
         <Col span={24}>
@@ -226,7 +223,6 @@ const AlertsPage = () => {
               pageSize={PAGE_SIZE_MEDIUM}
               paging={alertsPaging}
               pagingHandler={onPageChange}
-              totalCount={alertsPaging.total}
             />
           )}
 

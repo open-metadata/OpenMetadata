@@ -14,7 +14,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 You can check the latest release [here](/releases/all-releases).
 
 
-## 1.1 Release - June 22nd, 2023
+## 1.1 Release - June 29th, 2023
 
 {% tilesContainer %}
 
@@ -22,7 +22,7 @@ You can check the latest release [here](/releases/all-releases).
 - We will be adding support for NoSQL DB entities and Services with APIs
 - Support for Long Entity Names such as S3 paths
 - Import/Export support at all entities
-- Tag Propgation using Import/Export
+- Tag Propagation using Import/Export
 - Thumbs up & down to capture popularity of the Entities
 {% /tile %}
 
@@ -36,9 +36,9 @@ You can check the latest release [here](/releases/all-releases).
 {% /tile %}
 
 {% tile title="Alerts & Notifications" %}
-- Durable queue to store ChangeEvents guranteeing at-least-once semantics
+- Durable queue to store ChangeEvents guaranteeing  at-least-once semantics
 - Live BulkActions on ElasticSearch to handle Tag category deletion, owner chagne propagation etc..
-- Support to get notificaitons via email when a user is mentioned 
+- Support to get notifications  via email when a user is mentioned 
 {% /tile %}
 
 {% tile title="Search" %}
@@ -65,7 +65,7 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Data Insights" %}
 - Data Insight UI improvements
-- Data Insight report to show most unsused data assets
+- Data Insight report to show most unused  data assets
 {% /tile %}
 
 {% tile title="Lineage" %}

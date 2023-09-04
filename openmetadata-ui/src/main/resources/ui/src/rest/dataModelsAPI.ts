@@ -15,6 +15,8 @@ import { Operation } from 'fast-json-patch';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { EntityReference } from 'generated/type/entityReference';
+import { Include } from 'generated/type/include';
+import { RestoreRequestType } from 'Models';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
@@ -41,10 +43,16 @@ export const getDataModelDetails = async (
 
 export const getDataModelsByName = async (
   name: string,
-  fields: string | string[]
+  fields: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<DashboardDataModel>(
-    `${URL}/name/${name}?fields=${fields}`
+    `${URL}/name/${name}?fields=${fields}`,
+    {
+      params: {
+        include,
+      },
+    }
   );
 
   return response.data;
@@ -107,6 +115,15 @@ export const getDataModelVersion = async (id: string, version: string) => {
   const url = `${URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);
+
+  return response.data;
+};
+
+export const restoreDataModel = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<DashboardDataModel>
+  >('/dashboard/datamodels/restore', { id });
 
   return response.data;
 };

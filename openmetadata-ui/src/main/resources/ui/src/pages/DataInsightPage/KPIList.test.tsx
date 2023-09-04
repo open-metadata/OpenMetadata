@@ -53,10 +53,6 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../utils/TimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('7 Dec 2022, 00:00'),
-}));
-
 jest.mock('rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
@@ -65,7 +61,7 @@ jest.mock('rest/KpiAPI', () => ({
 
 describe('KPI list component', () => {
   it('Should render the kpi list', async () => {
-    render(<KPIList />, { wrapper: MemoryRouter });
+    render(<KPIList viewKPIPermission />, { wrapper: MemoryRouter });
 
     const container = await screen.findByTestId('kpi-table');
     const descriptionKPI = await screen.findByText('Description KPI');
@@ -80,7 +76,7 @@ describe('KPI list component', () => {
   it('Action button should work', async () => {
     const KPI = KPI_DATA[0];
 
-    render(<KPIList />, { wrapper: MemoryRouter });
+    render(<KPIList viewKPIPermission />, { wrapper: MemoryRouter });
 
     const editButton = await screen.findByTestId(
       `edit-action-${KPI.displayName}`

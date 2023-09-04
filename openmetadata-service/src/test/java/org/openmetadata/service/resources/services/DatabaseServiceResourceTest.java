@@ -19,14 +19,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidEnumValue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,6 +58,7 @@ import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -62,7 +67,6 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService, CreateDatabaseService> {
@@ -260,13 +264,24 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     DatabaseService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(stored.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
+  }
+
+  @Test
+  void get_listDatabaseServicesWithInvalidEnumValue_400(TestInfo test) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "invalid-enum-value");
+
+    assertResponse(
+        () -> listEntities(queryParams, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidEnumValue(Include.class, "include"));
+
+    assertResponse(() -> listEntities(queryParams, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidEnumValue(Include.class));
   }
 
   public DatabaseService putTestConnectionResult(
@@ -389,8 +404,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedMysqlConnection.getConnectionArguments(), actualMysqlConnection.getConnectionArguments());
     if (maskedPasswords) {
       assertEquals(
-          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
-          PasswordEntityMasker.PASSWORD_MASK);
+          PasswordEntityMasker.PASSWORD_MASK,
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword());
     } else {
       assertEquals(
           JsonUtils.convertValue(expectedMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
@@ -425,7 +440,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         expectedRedshiftConnection.getConnectionArguments(), actualRedshiftConnection.getConnectionArguments());
     assertEquals(expectedRedshiftConnection.getConnectionOptions(), actualRedshiftConnection.getConnectionOptions());
     if (maskedPasswords) {
-      assertEquals(actualRedshiftConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
+      assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualRedshiftConnection.getPassword());
     } else {
       assertEquals(expectedRedshiftConnection.getPassword(), actualRedshiftConnection.getPassword());
     }
@@ -443,7 +458,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         expectedSnowflakeConnection.getConnectionArguments(), actualSnowflakeConnection.getConnectionArguments());
     assertEquals(expectedSnowflakeConnection.getConnectionOptions(), actualSnowflakeConnection.getConnectionOptions());
     if (maskedPasswords) {
-      assertEquals(actualSnowflakeConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
+      assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualSnowflakeConnection.getPassword());
     } else {
       assertEquals(expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
     }

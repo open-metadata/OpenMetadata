@@ -63,7 +63,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "metrics")
 public class MetricsResource extends EntityResource<Metrics, MetricsRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
-  static final String FIELDS = "owner,usageSummary";
+  static final String FIELDS = "owner,usageSummary,domain";
 
   public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
     super(Metrics.class, new MetricsRepository(dao), authorizer);
@@ -73,11 +73,6 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  @Override
-  public Metrics addHref(UriInfo uriInfo, Metrics entity) {
-    return entity;
   }
 
   public static class MetricsList extends ResultList<Metrics> {
@@ -109,8 +104,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           String before,
       @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     ListFilter filter = new ListFilter();
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -147,6 +141,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Override
   @POST
   @Operation(
       operationId = "createMetric",
@@ -159,12 +154,12 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.create(uriInfo, securityContext, metrics);
   }
 
+  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateMetric",
@@ -178,7 +173,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.createOrUpdate(uriInfo, securityContext, metrics);
   }

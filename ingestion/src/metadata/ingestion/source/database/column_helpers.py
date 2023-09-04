@@ -30,4 +30,4 @@ def truncate_column_name(col_name: str):
     To allow ingestion of tables we set name to truncate to 128 characters if its longer
     and use displayName to have the raw column name
     """
-    return col_name[:128]
+    return col_name[:256]

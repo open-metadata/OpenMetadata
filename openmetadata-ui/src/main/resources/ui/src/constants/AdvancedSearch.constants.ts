@@ -21,42 +21,52 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { getAdvancedFieldDefaultOptions } from 'rest/miscAPI';
+import { getAggregateFieldOptions } from 'rest/miscAPI';
 import { suggestQuery } from 'rest/searchAPI';
+import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
 
 const BaseConfig = AntdConfig as BasicConfig;
 
+export const SUFFIX_WILDCARD = '.*';
+
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.displayName',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
     key: 'tags.tagFQN',
   },
   {
+    label: t('label.tier'),
+    key: 'tier.tagFQN',
+  },
+  {
     label: t('label.service'),
-    key: 'service.name',
+    key: 'service.name.keyword',
+  },
+  {
+    label: t('label.service-type'),
+    key: 'serviceType',
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
-    label: t('label.column'),
-    key: 'columns.name',
+    label: t('label.database'),
+    key: 'database.name.keyword',
   },
-
   {
     label: t('label.schema'),
-    key: 'databaseSchema.name',
+    key: 'databaseSchema.name.keyword',
   },
   {
-    label: t('label.database'),
-    key: 'database.name',
+    label: t('label.column'),
+    key: 'columns.name.keyword',
   },
 ];
 
@@ -88,14 +98,29 @@ export const TOPIC_DROPDOWN_ITEMS = [
 export const CONTAINER_DROPDOWN_ITEMS = [
   {
     label: t('label.column'),
-    key: 'dataModel.columns.name',
+    key: 'dataModel.columns.name.keyword',
   },
 ];
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.displayName',
+    key: 'owner.displayName.keyword',
+  },
+  {
+    label: t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: t('label.glossary-plural'),
+    key: 'glossary.name.keyword',
+  },
+];
+
+export const TAG_DROPDOWN_ITEMS = [
+  {
+    label: t('label.classification'),
+    key: 'classification.name.keyword',
   },
 ];
 
@@ -186,9 +211,11 @@ export const autocomplete: (args: {
         };
       });
     } else {
-      return getAdvancedFieldDefaultOptions(
+      return getAggregateFieldOptions(
         entitySearchIndex,
-        entityField
+        entityField,
+        '',
+        JSON.stringify(getCombinedQueryFilterObject())
       ).then((response) => {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;

@@ -65,7 +65,7 @@ class Row:
         start_time,
         query_text,
     ):
-        self.query_id = query_id
-        self.query_type = query_type
-        self.start_time = start_time
-        self.query_text = query_text
+        self.QUERY_ID = query_id
+        self.QUERY_TYPE = query_type
+        self.START_TIME = start_time
+        self.QUERY_TEXT = query_text

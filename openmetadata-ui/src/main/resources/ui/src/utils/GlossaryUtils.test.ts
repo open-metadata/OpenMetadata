@@ -12,7 +12,9 @@
  */
 import {
   MOCKED_GLOSSARY_TERMS,
+  MOCKED_GLOSSARY_TERMS_1,
   MOCKED_GLOSSARY_TERMS_TREE,
+  MOCKED_GLOSSARY_TERMS_TREE_1,
 } from 'mocks/Glossary.mock';
 import {
   buildTree,
@@ -55,6 +57,12 @@ describe('Glossary Utils', () => {
   it('should build the tree correctly', () => {
     expect(buildTree(MOCKED_GLOSSARY_TERMS)).toEqual(
       MOCKED_GLOSSARY_TERMS_TREE
+    );
+  });
+
+  it('should build the tree correctly when the terms with empty children are received as initial items in array', () => {
+    expect(buildTree(MOCKED_GLOSSARY_TERMS_1)).toEqual(
+      MOCKED_GLOSSARY_TERMS_TREE_1
     );
   });
 

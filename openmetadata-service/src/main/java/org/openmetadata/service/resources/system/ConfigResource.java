@@ -102,7 +102,7 @@ public class ConfigResource {
                     schema = @Schema(implementation = AuthenticationConfiguration.class)))
       })
   public LogoConfiguration getCustomLogoConfig() {
-    return SettingsCache.getInstance().getSetting(SettingsType.CUSTOM_LOGO_CONFIGURATION, LogoConfiguration.class);
+    return SettingsCache.getSetting(SettingsType.CUSTOM_LOGO_CONFIGURATION, LogoConfiguration.class);
   }
 
   @GET

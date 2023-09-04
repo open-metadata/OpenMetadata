@@ -11,10 +11,75 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 .roles-container {
   display: flex;
   justify-content: space-between;
   margin-bottom: 1rem;
   flex-direction: column;
   align-items: flex-start;
+}
+
+.user-page-tabs {
+  margin-top: 10px;
+  .ant-tabs-nav {
+    margin: 0 !important;
+    padding: 0 20px;
+  }
+}
+
+.user-layout {
+  .ant-col {
+    padding-top: 0;
+  }
+
+  .user-profile-container {
+    padding: 30px 0;
+    height: 270px;
+    background: @user-profile-background;
+
+    .profile-image-container {
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid @white;
+    }
+
+    .ant-card {
+      background: none;
+    }
+  }
+
+  .user-page-layout {
+    .user-layout-scroll {
+      height: @users-page-tabs-height;
+      overflow-y: scroll;
+    }
+
+    .user-page-layout-right-panel {
+      padding-right: 0 !important;
+      background-color: @white;
+      border: 1px solid @border-color;
+      border-radius: 0;
+      padding-left: 0 !important;
+      border-top: 0;
+    }
+  }
+
+  .activity-feed-tab {
+    .center-container {
+      height: @users-page-tabs-height;
+    }
+    .right-container {
+      height: @users-page-tabs-height;
+    }
+  }
+  .summary-panel-container {
+    height: @users-page-tabs-height;
+  }
+  .explore-search-card {
+    margin: 0 12px;
+  }
 }

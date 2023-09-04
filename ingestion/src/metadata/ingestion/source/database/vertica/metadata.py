@@ -31,7 +31,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.vertica.queries import (
@@ -90,7 +90,7 @@ def get_columns(
     )
 
     pk_columns = [x[0] for x in connection.execute(spk)]
-    columns = []
+    columns = {}
     for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
@@ -108,8 +108,9 @@ def get_columns(
             comment,
         )
         column_info.update({"primary_key": primary_key})
-        columns.append(column_info)
-    return columns
+        if columns.get(name) is None or comment:
+            columns[name] = column_info
+    return columns.values()
 
 
 def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements

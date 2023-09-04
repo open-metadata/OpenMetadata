@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import { Select, Space, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
+import { TagSource } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
-import { getAllTagsForOptions } from 'utils/TagsUtils';
+import { EntityTags } from 'Models';
+import React from 'react';
+import { fetchTagsElasticSearch } from 'utils/TagsUtils';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import Fqn from '../../../utils/Fqn';
-import { showErrorToast } from '../../../utils/ToastUtils';
 
 export interface TagSuggestionProps {
   onChange?: (newTags: TagLabel[]) => void;
@@ -30,107 +26,27 @@ export interface TagSuggestionProps {
 }
 
 const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
-  const [tagList, setTagList] = useState<Array<TagOption>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [_, setTags] = useState<Array<EntityTags>>(value || []);
-  const [defaultActiveItem, setDefaultActive] = useState<string[]>([]);
-
-  const tagOptions = useMemo(() => {
-    const newTags = tagList
-      .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
-      .map((tag) => {
-        const parts = Fqn.split(tag.fqn);
-        const lastPartOfTag = parts.slice(-1).join(FQN_SEPARATOR_CHAR);
-        parts.pop();
-
-        return {
-          label: tag.fqn,
-          displayName: (
-            <Space className="w-full" direction="vertical" size={0}>
-              <Typography.Paragraph
-                ellipsis
-                className="text-grey-muted m-0 p-0">
-                {parts.join(FQN_SEPARATOR_CHAR)}
-              </Typography.Paragraph>
-              <Typography.Text ellipsis>{lastPartOfTag}</Typography.Text>
-            </Space>
-          ),
-          value: tag.fqn,
-        };
-      });
-
-    return newTags;
-  }, [tagList]);
-
-  const fetchTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsForOptions();
-      setTagList(
-        tags.map((tag) => {
-          return {
-            fqn: tag.fullyQualifiedName ?? tag.name,
-            source: 'Classification',
-          };
-        })
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsTagLoading(false);
+  const handleTagSelection = (newValue: string[]) => {
+    let newTags: EntityTags = [];
+    if (!isEmpty(newValue)) {
+      newTags = newValue.map((t) => ({
+        tagFQN: t,
+        source: TagSource.Classification,
+      }));
     }
-  };
-
-  const handleTagSelection = (selectedTag: string[]) => {
-    let newTags = [];
-    if (!isEmpty(selectedTag)) {
-      newTags = selectedTag.map((t) => {
-        return {
-          tagFQN: t,
-          source: tagList.find((tag) => tag.fqn === t)?.source,
-        } as EntityTags;
-      });
-    }
-    setTags(newTags);
     onChange && onChange(newTags);
   };
 
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
-  useEffect(() => {
-    setTags(value || []);
-    setDefaultActive(value?.map((item) => item.tagFQN) || []);
-  }, [value]);
-
-  if (isTagLoading) {
-    return <Loader size="small" />;
-  }
-
   return (
-    <Select
-      className="w-full"
-      data-testid="tag-selector"
-      defaultValue={defaultActiveItem}
+    <AsyncSelectList
+      defaultValue={value?.map((item) => item.tagFQN) || []}
+      fetchOptions={fetchTagsElasticSearch}
       mode="multiple"
-      optionLabelProp="label"
       placeholder={t('label.select-field', {
         field: t('label.tag-plural'),
       })}
-      onChange={handleTagSelection}>
-      {tagOptions.map(({ label, value, displayName }) => (
-        <Select.Option key={label} value={value}>
-          <Tooltip
-            destroyTooltipOnHide
-            placement="topLeft"
-            title={label}
-            trigger="hover">
-            {displayName}
-          </Tooltip>
-        </Select.Option>
-      ))}
-    </Select>
+      onChange={(value) => handleTagSelection(value as string[])}
+    />
   );
 };
 

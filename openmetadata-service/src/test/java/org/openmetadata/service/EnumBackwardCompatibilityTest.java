@@ -34,7 +34,9 @@ class EnumBackwardCompatibilityTest {
   /** */
   @Test
   void testRelationshipEnumBackwardCompatible() {
-    assertEquals(19, Relationship.values().length);
+    assertEquals(20, Relationship.values().length);
+    assertEquals(19, Relationship.EXPERT.ordinal());
+    assertEquals(18, Relationship.VOTED.ordinal());
     assertEquals(17, Relationship.REACTED_TO.ordinal());
     assertEquals(16, Relationship.REVIEWS.ordinal());
   }
@@ -76,10 +78,10 @@ class EnumBackwardCompatibilityTest {
   @Test
   void testAccessCardinality() {
     // Don't change the ordinal values of the Access
-    assertEquals(Access.DENY.ordinal(), 0);
-    assertEquals(Access.ALLOW.ordinal(), 1);
-    assertEquals(Access.CONDITIONAL_DENY.ordinal(), 2);
-    assertEquals(Access.CONDITIONAL_ALLOW.ordinal(), 3);
-    assertEquals(Access.NOT_ALLOW.ordinal(), 4);
+    assertEquals(0, Access.DENY.ordinal());
+    assertEquals(1, Access.ALLOW.ordinal());
+    assertEquals(2, Access.CONDITIONAL_DENY.ordinal());
+    assertEquals(3, Access.CONDITIONAL_ALLOW.ordinal());
+    assertEquals(4, Access.NOT_ALLOW.ordinal());
   }
 }

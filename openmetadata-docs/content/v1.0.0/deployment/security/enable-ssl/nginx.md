@@ -39,6 +39,8 @@ server {
         server_name sandbox.open-metadata.org;
         location / {
           proxy_pass http://127.0.0.1:8585;
+          proxy_set_header Host  sandbox.open-metadata.org;
+          proxy_set_header X-Forwarded-For sandbox.open-metadata.org;
         }
 }
 ```

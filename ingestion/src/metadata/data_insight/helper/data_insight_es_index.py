@@ -18,6 +18,7 @@ import enum
 class DataInsightEsIndex(enum.Enum):
     """Data Insight ES Indexes"""
 
+    # pylint: disable=invalid-name
     EntityReportData = "entity_report_data_index"
     WebAnalyticUserActivityReportData = "web_analytic_user_activity_report_data_index"
     WebAnalyticEntityViewReportData = "web_analytic_entity_view_report_data_index"

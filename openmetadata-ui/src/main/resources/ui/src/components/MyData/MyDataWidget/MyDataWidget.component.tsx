@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Col, Row, Typography } from 'antd';
 import AppState from 'AppState';
 import EntityListSkeleton from 'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { getUserPath } from 'constants/constants';
+import { getUserPath, ROUTES } from 'constants/constants';
 import { AssetsType } from 'enums/entity.enum';
 import { EntityReference } from 'generated/entity/data/table';
 import { observer } from 'mobx-react';
@@ -21,6 +21,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getUserById } from 'rest/userAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from 'utils/TableUtils';
 
@@ -60,67 +61,72 @@ const MyDataWidgetInternal = () => {
   }, [currentUserDetails]);
 
   return (
-    <Card
-      className="card-widget"
-      loading={isLoading}
-      title={
-        <div className="d-flex justify-between p-y-sm">
-          <Typography.Text className="font-medium">
-            {t('label.my-data')}
-          </Typography.Text>
-          {data.length ? (
-            <Link
-              data-testid="view-all-link"
-              to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
-              <span className="tw-text-info font-normal text-xs">
-                {t('label.view-all')}{' '}
-                <span data-testid="my-data-total-count">
-                  {`(${data.length})`}
+    <Card className="card-widget" loading={isLoading}>
+      <Row>
+        <Col span={24}>
+          <div className="d-flex justify-between m-b-xs">
+            <Typography.Text className="font-medium">
+              {t('label.my-data')}
+            </Typography.Text>
+            {data.length ? (
+              <Link
+                data-testid="view-all-link"
+                to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
+                <span className="text-grey-muted font-normal text-xs">
+                  {t('label.view-all')}{' '}
+                  <span data-testid="my-data-total-count">
+                    {`(${data.length})`}
+                  </span>
                 </span>
-              </span>
-            </Link>
-          ) : null}
-        </div>
-      }>
+              </Link>
+            ) : null}
+          </div>
+        </Col>
+      </Row>
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>
         <>
           <div className="entity-list-body">
-            {data.length
-              ? data.map((item, index) => {
-                  return (
-                    <div
-                      className="right-panel-list-item flex items-center justify-between"
-                      data-testid={`Recently Viewed-${getEntityName(item)}`}
-                      key={index}>
-                      <div className="d-flex items-center">
-                        <Link
-                          className=""
-                          to={getEntityLink(
-                            item.type || '',
-                            item.fullyQualifiedName as string
-                          )}>
-                          <Button
-                            className="entity-button d-flex p-xss"
-                            icon={
-                              <div className="entity-button-icon m-r-xs">
-                                {getEntityIcon(item.type || '')}
-                              </div>
-                            }
-                            type="text">
-                            <Typography.Text
-                              className="text-left font-thin"
-                              ellipsis={{ tooltip: true }}>
-                              {getEntityName(item)}
-                            </Typography.Text>
-                          </Button>
-                        </Link>
-                      </div>
+            {data.length ? (
+              data.map((item, index) => {
+                return (
+                  <div
+                    className="right-panel-list-item flex items-center justify-between"
+                    data-testid={`Recently Viewed-${getEntityName(item)}`}
+                    key={index}>
+                    <div className="d-flex items-center">
+                      <Link
+                        className=""
+                        to={getEntityLink(
+                          item.type || '',
+                          item.fullyQualifiedName as string
+                        )}>
+                        <Button
+                          className="entity-button flex-center p-0 m--ml-1"
+                          icon={
+                            <div className="entity-button-icon m-r-xs">
+                              {getEntityIcon(item.type || '')}
+                            </div>
+                          }
+                          type="text">
+                          <Typography.Text
+                            className="text-left text-xs"
+                            ellipsis={{ tooltip: true }}>
+                            {getEntityName(item)}
+                          </Typography.Text>
+                        </Button>
+                      </Link>
                     </div>
-                  );
-                })
-              : t('server.no-owned-entities')}
+                  </div>
+                );
+              })
+            ) : (
+              <Transi18next
+                i18nKey="message.no-owned-data"
+                renderElement={<Link to={ROUTES.EXPLORE} />}
+              />
+            )}
           </div>
         </>
       </EntityListSkeleton>

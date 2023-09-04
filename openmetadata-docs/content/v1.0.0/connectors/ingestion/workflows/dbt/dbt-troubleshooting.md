@@ -65,7 +65,43 @@ Below is a sample manifest.json node for reference:
 ```
 
 ### 2. Lineage not getting displayed from dbt
-Follow to docs [here](/connectors/ingestion/workflows/dbt/ingest-dbt-lineage) to see if necessary details are present in the manifest.json file.
 
-Search for the following string `Processing DBT lineage for` in the dbt workflow logs and see if any errors are causing the lineage creation to fail.
+For dbt lineage to happen we need to have the tables (models) involved previously ingested in OM. The process would be as follows:
+- We have a dbt project that creates tables `A -> B -> C`
+- We run the metadata ingestion in our database service so that `A` , `B` and `C` are ingested in OpenMetadata.
+- We run the dbt ingestion in the same service so that 2 things would happen:
+  - We will add all the dbt-related metadata to the tables such as the model definition and descriptions.
+  - We will draw the lineage `A -> B -> C` that comes from the model dependency in the `manifest.json`
 
+If lineage is not appearing:
+- Make sure that all the tables are ingested in OpenMetadata.
+- Follow to docs [here](/connectors/ingestion/workflows/dbt/ingest-dbt-lineage) to see if necessary details are present in the manifest.json file.
+- Search for the following string `Processing DBT lineage for` in the dbt workflow logs and see if any errors are causing the lineage creation to fail.
+
+### 3. An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
+
+You might see this error when you have placed your dbt artifacts in S3 without the correct policies.
+
+If we have the artifacts on the bucket `MyBucket`, the user running the ingestion should have, at least, the permissions
+from the following policy:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::MyBucket",
+                "arn:aws:s3:::MyBucket/*"
+            ]
+        }
+    ]
+}
+```
+
+Note that it's not enough to point the resource to `arn:aws:s3:::MyBucket`. We need its contents as well!

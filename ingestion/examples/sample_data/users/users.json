@@ -19,12 +19,12 @@
             "teamType": "Group"
         },
         {
-            "name": "aaron_singh2",
+            "name": "aaron.singh2",
             "displayName": "Aaron Singh",
             "version": 0.1,
             "updatedAt": 1635220874198,
             "updatedBy": "anonymous",
-            "email": "aaron_singh2@gmail.com",
+            "email": "aaron.singh2@gmail.com",
             "href": "http://localhost:8585/api/v1/users/b43c075f-4e0b-48aa-9789-7acc857670ff",
             "timezone": "PST",
             "isAdmin": false,
@@ -34,12 +34,12 @@
             "teamType": "Group"
         },
         {
-            "name": "aaron_warren5",
+            "name": "aaron.warren5",
             "displayName": "Aaron Warren",
             "version": 0.1,
             "updatedAt": 1635220873586,
             "updatedBy": "anonymous",
-            "email": "aaron_warren5@gmail.com",
+            "email": "aaron.warren5@gmail.com",
             "href": "http://localhost:8585/api/v1/users/21e34b59-3850-4b30-a165-e3a95042e2b5",
             "timezone": "PST",
             "isAdmin": false,
@@ -49,12 +49,12 @@
             "teamType": "Group"
         },
         {
-            "name": "adam_matthews2",
+            "name": "adam.matthews2",
             "displayName": "Adam Matthews",
             "version": 0.1,
             "updatedAt": 1635220873796,
             "updatedBy": "anonymous",
-            "email": "adam_matthews2@gmail.com",
+            "email": "adam.matthews2@gmail.com",
             "href": "http://localhost:8585/api/v1/users/0fa2136e-1227-454e-940c-fa2a7abd2e4d",
             "timezone": "PST",
             "isAdmin": false,

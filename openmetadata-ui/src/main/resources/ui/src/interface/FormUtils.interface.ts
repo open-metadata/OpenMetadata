@@ -28,6 +28,7 @@ export enum FieldTypes {
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
   SELECT = 'select',
+  ASYNC_SELECT_LIST = 'async_select_list',
   NUMBER = 'number',
   SLIDER_INPUT = 'slider_input',
   DESCRIPTION = 'description',

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, PopoverProps } from 'antd';
+import { Button, PopoverProps, Tooltip } from 'antd';
 import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
 import { useClipboard } from 'hooks/useClipBoard';
 import React, { FunctionComponent } from 'react';
@@ -38,26 +38,24 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
   );
 
   return (
-    <Popover
+    <Tooltip
       destroyTooltipOnHide
-      content={
-        <span
-          className="tw-text-grey-body tw-text-xs tw-font-medium tw-italic"
-          data-testid="copy-success">
+      open={hasCopied}
+      placement={position}
+      title={
+        <span className="text-xs font-medium" data-testid="copy-success">
           {t('message.copied-to-clipboard')}
         </span>
       }
-      open={hasCopied}
-      placement={position}
       trigger="click">
       <Button
-        className="tw-h-8 tw-ml-4 tw-relative"
+        className="h-8 m-l-md relative"
         data-testid="copy-secret"
         icon={<CopyIcon data-testid="copy-icon" width="16" />}
         type="text"
         onClick={onCopyToClipBoard}
       />
-    </Popover>
+    </Tooltip>
   );
 };
 

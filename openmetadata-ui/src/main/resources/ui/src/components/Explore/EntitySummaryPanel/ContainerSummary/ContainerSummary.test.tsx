@@ -97,7 +97,7 @@ describe('ContainerSummary component tests', () => {
       render(<ContainerSummary entityDetails={mockEntityDetails} />);
     });
 
-    const numberOfObjects = screen.getByTestId('label.number-of-object-value');
+    const numberOfObjects = screen.getByTestId('label.object-plural-value');
     const serviceType = screen.getByTestId('label.service-type-value');
     const colsLength = screen.getByTestId('label.column-plural-value');
     const summaryList = screen.getByTestId('SummaryList');

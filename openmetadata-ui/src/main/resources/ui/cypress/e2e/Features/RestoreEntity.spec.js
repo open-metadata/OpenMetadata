@@ -26,12 +26,12 @@ describe('Restore entity functionality should work properly', () => {
     cy.login();
     interceptURL(
       'GET',
-      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=true&query_filter=*&sort_field=_score&sort_order=desc',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=true&query_filter=*&sort_field=updatedAt&sort_order=desc',
       'showDeletedTables'
     );
     interceptURL(
       'GET',
-      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=updatedAt&sort_order=desc',
       'nonDeletedTables'
     );
   });
@@ -43,37 +43,34 @@ describe('Restore entity functionality should work properly', () => {
       ENTITY_TABLE.entity
     );
 
-    cy.get('[data-testid="manage-button"]').should('exist').click();
+    cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-testid="delete-button-title"]').should('exist').click();
+    cy.get('[data-testid="delete-button-title"]').click();
 
-    cy.get('.ant-modal-header')
-      .should('be.visible')
-      .contains(`Delete ${ENTITY_TABLE.displayName}`);
+    cy.get('.ant-modal-header').should(
+      'contain',
+      `Delete ${ENTITY_TABLE.displayName}`
+    );
 
-    cy.get('[data-testid="soft-delete-option"]').should('exist').click();
+    cy.get('[data-testid="soft-delete-option"]').click();
 
     cy.get('[data-testid="confirm-button"]').should('be.disabled');
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('exist')
-      .type(DELETE_TERM);
+    cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 
     interceptURL(
       'DELETE',
       'api/v1/tables/*?hardDelete=false&recursive=false',
       'softDeleteTable'
     );
-    cy.get('[data-testid="confirm-button"]')
-      .should('be.visible')
-      .should('not.be.disabled')
-      .click();
+    cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
+    cy.get('[data-testid="confirm-button"]').click();
     verifyResponseStatusCode('@softDeleteTable', 200);
 
-    toastNotification('Table deleted successfully!');
+    toastNotification('Table deleted successfully!', false);
   });
 
   it('Check Soft Deleted entity table', () => {
-    cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
 
     verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').should('exist').click();
@@ -81,29 +78,29 @@ describe('Restore entity functionality should work properly', () => {
 
     cy.get('[data-testid="entity-header-display-name"]')
       .contains('raw_product_catalog')
-      .should('exist')
       .click();
 
-    cy.get('[data-testid="entity-header-display-name"]')
-      .should('be.visible')
-      .contains(ENTITY_TABLE.displayName);
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      ENTITY_TABLE.displayName
+    );
 
-    cy.get('[data-testid="deleted-badge"]').should('exist');
+    cy.get('[data-testid="deleted-badge"]')
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it("Check Soft Deleted table in it's Schema", () => {
-    cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
     verifyResponseStatusCode('@nonDeletedTables', 200);
-    cy.get('[data-testid="show-deleted"]').should('exist').click();
+    cy.get('[data-testid="show-deleted"]').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
     cy.get('[data-testid="entity-header-display-name"]')
       .contains('raw_product_catalog')
-      .should('exist')
       .click();
 
     cy.get('[data-testid="entity-header-display-name"]')
-      .should('be.visible')
       .contains(ENTITY_TABLE.displayName)
       .click();
 
@@ -111,64 +108,61 @@ describe('Restore entity functionality should work properly', () => {
 
     cy.get('[data-testid="breadcrumb"]')
       .scrollIntoView()
-      .should('be.visible')
       .contains(ENTITY_TABLE.schemaName)
       .click();
 
-    cy.get('[data-testid="manage-button"]').should('exist').click();
-
-    cy.get('[data-testid="deleted-table-menu-item-label"]')
-      .should('exist')
-      .contains('Show Deleted Table');
-
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*&index=table_search_index&from=0&size=10&deleted=true&sort_field=name.keyword&sort_order=asc',
+      '/api/v1/tables?databaseSchema=sample_data.ecommerce_db.shopify&include=deleted',
       'queryDeletedTables'
     );
-    cy.get('[data-testid="deleted-table-menu-item-switch')
-      .should('exist')
-      .click();
-    verifyResponseStatusCode('@queryDeletedTables', 200);
-    cy.get('[data-testid="table"] [data-testid="count"]')
-      .should('exist')
-      .contains('1');
 
-    cy.get('.ant-table-row > :nth-child(1)')
-      .should('exist')
-      .contains(ENTITY_TABLE.displayName);
+    cy.get('[data-testid="show-deleted"]').click();
+
+    verifyResponseStatusCode('@queryDeletedTables', 200);
+
+    cy.get('[data-testid="table"] [data-testid="count"]').should(
+      'contain',
+      '1'
+    );
+
+    cy.get('.ant-table-row > :nth-child(1)').should(
+      'contain',
+      ENTITY_TABLE.displayName
+    );
   });
 
   it('Restore Soft Deleted table', () => {
-    cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
     verifyResponseStatusCode('@nonDeletedTables', 200);
-    cy.get('[data-testid="show-deleted"]').should('exist').click();
+    cy.get('[data-testid="show-deleted"]').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
     cy.get('[data-testid="entity-header-display-name"]')
       .contains('raw_product_catalog')
-      .should('exist')
       .click();
 
-    cy.get('[data-testid="entity-header-display-name"]')
-      .should('be.visible')
-      .contains(ENTITY_TABLE.displayName);
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      ENTITY_TABLE.displayName
+    );
 
-    cy.get('[data-testid="deleted-badge"]').should('exist');
+    cy.get('[data-testid="deleted-badge"]')
+      .scrollIntoView()
+      .should('be.visible');
 
-    cy.get('[data-testid="manage-button"]').should('exist').click();
+    cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-testid="restore-button"]').should('be.visible').click();
+    cy.get('[data-testid="restore-button"]').click();
 
-    cy.get('.ant-modal-header').should('be.visible').contains('Restore table');
+    cy.get('.ant-modal-header').should('contain', 'Restore table');
 
-    cy.get('[data-testid="restore-modal-body"]')
-      .should('be.visible')
-      .contains(
-        `Are you sure you want to restore ${ENTITY_TABLE.displayName}?`
-      );
+    cy.get('[data-testid="restore-modal-body"]').should(
+      'contain',
+      `Are you sure you want to restore ${ENTITY_TABLE.displayName}?`
+    );
 
-    cy.get('.ant-btn-primary').should('be.visible').contains('Restore').click();
+    cy.get('.ant-btn-primary').contains('Restore').click();
 
     cy.wait(500);
 

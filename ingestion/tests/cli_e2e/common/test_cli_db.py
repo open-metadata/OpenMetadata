@@ -19,10 +19,8 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.data.table import SystemProfile
-from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.api.status import Status
+from metadata.workflow.metadata import MetadataWorkflow
 
 from ..base.test_cli import PATH_TO_RESOURCES
 from ..base.test_cli_db import CliDBBase
@@ -35,7 +33,9 @@ class CliCommonDB:
         @classmethod
         def setUpClass(cls) -> None:
             connector = cls.get_connector_name()
-            workflow: Workflow = cls.get_workflow(connector, cls.get_test_type())
+            workflow: MetadataWorkflow = cls.get_workflow(
+                connector, cls.get_test_type()
+            )
             cls.engine = workflow.source.engine
             cls.openmetadata = workflow.source.metadata
             cls.config_file_path = str(
@@ -49,7 +49,7 @@ class CliCommonDB:
             self.engine.dispose()
 
         def assert_for_vanilla_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ) -> None:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
@@ -60,7 +60,7 @@ class CliCommonDB:
             self.assertTrue(len(sink_status.records) > self.expected_tables())
 
         def assert_for_table_with_profiler(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(
@@ -82,7 +82,7 @@ class CliCommonDB:
                 )
 
         def assert_for_table_with_profiler_time_partition(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(sink_status.failures) == 0)
@@ -123,12 +123,12 @@ class CliCommonDB:
                     self.assertTrue(len(json.loads(sample_data.json()).get("rows")) > 0)
 
         def assert_for_delete_table_is_marked_as_deleted(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ):
             self.assertEqual(self.retrieve_table(self.fqn_deleted_table()), None)
 
         def assert_filtered_schemas_includes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ):
             self.assertTrue((len(source_status.failures) == 0))
             self.assertTrue(
@@ -139,7 +139,7 @@ class CliCommonDB:
             )
 
         def assert_filtered_schemas_excludes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ):
             self.assertTrue((len(source_status.failures) == 0))
             self.assertTrue(
@@ -150,7 +150,7 @@ class CliCommonDB:
             )
 
         def assert_filtered_tables_includes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ):
             self.assertTrue((len(source_status.failures) == 0))
             self.assertTrue(
@@ -158,16 +158,14 @@ class CliCommonDB:
             )
 
         def assert_filtered_tables_excludes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ):
             self.assertTrue((len(source_status.failures) == 0))
             self.assertTrue(
                 (len(source_status.filtered) == self.expected_filtered_table_excludes())
             )
 
-        def assert_filtered_mix(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
+        def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             self.assertTrue((len(source_status.failures) == 0))
             self.assertTrue(
                 (len(source_status.filtered) == self.expected_filtered_mix())

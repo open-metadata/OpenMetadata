@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 from unittest.mock import patch
 
-from looker_sdk.error import SDKError
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
@@ -42,11 +41,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
@@ -100,7 +100,9 @@ MOCK_DASHBOARD_ELEMENTS = [
         body_text="Some body text",
         note_text="Some note",
         type="line",
-        query=Query(model="model", view="view"),
+        query=Query(
+            model="model", view="view", share_url="https://my-looker.com/hello"
+        ),
     )
 ]
 
@@ -281,7 +283,7 @@ class LookerUnitTest(TestCase):
             )
 
             self.assertEqual(
-                next(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD)),
+                next(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD)).right,
                 create_dashboard_request,
             )
 
@@ -344,12 +346,17 @@ class LookerUnitTest(TestCase):
             OpenMetadata, "get_by_name", return_value=table
         ):
             self.assertEqual(
-                self.looker.build_lineage_request(source, db_service_name, to_entity),
+                self.looker.build_lineage_request(
+                    source, db_service_name, to_entity
+                ).right,
                 AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(id=table.id.__root__, type="table"),
                         toEntity=EntityReference(
                             id=to_entity.id.__root__, type="dashboard"
+                        ),
+                        lineageDetails=LineageDetails(
+                            source=LineageSource.DashboardLineage
                         ),
                     )
                 ),
@@ -365,12 +372,12 @@ class LookerUnitTest(TestCase):
             displayName="chart_title1",
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
-            sourceUrl="https://my-looker.com/dashboard_elements/chart_id1",
+            sourceUrl="https://my-looker.com/hello",
             service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
         self.assertEqual(
-            next(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)),
+            next(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)).right,
             create_chart_request,
         )
 
@@ -400,7 +407,7 @@ class LookerUnitTest(TestCase):
         MOCK_LOOKER_DASHBOARD.view_count = 10
 
         self.assertEqual(
-            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)),
+            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
             DashboardUsage(
                 dashboard=self.looker.context.dashboard,
                 usage=UsageRequest(date=self.looker.today, count=10),
@@ -434,7 +441,7 @@ class LookerUnitTest(TestCase):
             ),
         )
         self.assertEqual(
-            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)),
+            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
             DashboardUsage(
                 dashboard=self.looker.context.dashboard,
                 usage=UsageRequest(date=self.looker.today, count=10),
@@ -453,7 +460,7 @@ class LookerUnitTest(TestCase):
             ),
         )
         self.assertEqual(
-            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)),
+            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
             DashboardUsage(
                 dashboard=self.looker.context.dashboard,
                 usage=UsageRequest(date=self.looker.today, count=5),
@@ -474,5 +481,9 @@ class LookerUnitTest(TestCase):
         )
 
         self.assertEqual(
-            len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
+            len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 1
+        )
+
+        self.assertIsNotNone(
+            list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
         )

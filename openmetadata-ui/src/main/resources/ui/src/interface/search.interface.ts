@@ -14,6 +14,8 @@
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Query } from 'generated/entity/data/query';
+import { TestCase } from 'generated/tests/testCase';
+import { TestSuite } from 'generated/tests/testSuite';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -82,6 +84,11 @@ export interface TagClassSearchSource extends SearchSourceBase, Tag {
 
 export interface GlossarySearchSource extends SearchSourceBase, GlossaryTerm {} // extends EntityInterface
 export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
+export interface TestCaseSearchSource
+  extends SearchSourceBase,
+    Exclude<TestCase, 'testSuite'> {
+  testSuites: TestSuite[];
+} // extends EntityInterface
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -95,7 +102,8 @@ export type ExploreSearchSource =
   | UserSearchSource
   | TeamSearchSource
   | TagClassSearchSource
-  | DashboardDataModelSearchSource;
+  | DashboardDataModelSearchSource
+  | TestCaseSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
@@ -109,6 +117,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TAG]: TagClassSearchSource;
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
+  [SearchIndex.TEST_CASE]: TestCaseSearchSource;
 };
 
 export type SearchRequest<
@@ -133,6 +142,7 @@ export type SearchRequest<
   sortOrder?: string;
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
+  filters?: string;
 } & (
   | {
       fetchSource: true;

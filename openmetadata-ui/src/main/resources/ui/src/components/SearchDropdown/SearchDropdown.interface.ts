@@ -19,6 +19,7 @@ export interface SearchDropdownProps {
   selectedKeys: SearchDropdownOption[];
   highlight?: boolean;
   showProfilePicture?: boolean;
+  fixedOrderOptions?: boolean;
   onChange: (values: SearchDropdownOption[], searchKey: string) => void;
   onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
@@ -27,4 +28,5 @@ export interface SearchDropdownProps {
 export interface SearchDropdownOption {
   key: string;
   label: string;
+  count?: number;
 }

@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Popover, Space, Tabs, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/data/table';
@@ -254,6 +253,7 @@ export const UserTeamSelectableList = ({
                 <SelectableList
                   customTagRenderer={TeamListItemRenderer}
                   fetchOptions={fetchTeamOptions}
+                  searchBarDataTestId="owner-select-teams-search-bar"
                   searchPlaceholder={t('label.search-for-type', {
                     type: t('label.team'),
                   })}
@@ -274,6 +274,7 @@ export const UserTeamSelectableList = ({
               children: (
                 <SelectableList
                   fetchOptions={fetchUserOptions}
+                  searchBarDataTestId="owner-select-users-search-bar"
                   searchPlaceholder={t('label.search-for-type', {
                     type: t('label.user'),
                   })}
@@ -294,23 +295,18 @@ export const UserTeamSelectableList = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}>
-      {children ? (
-        children
-      ) : (
-        <Tooltip
-          placement="topRight"
-          title={hasPermission ? 'Update Owner' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            className="flex-center p-0"
-            data-testid="edit-owner"
-            disabled={!hasPermission}
-            icon={<EditIcon width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setPopupVisible(true)}
-          />
-        </Tooltip>
-      )}
+      {children
+        ? children
+        : hasPermission && (
+            <Button
+              className="flex-center p-0"
+              data-testid="edit-owner"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setPopupVisible(true)}
+            />
+          )}
     </Popover>
   );
 };

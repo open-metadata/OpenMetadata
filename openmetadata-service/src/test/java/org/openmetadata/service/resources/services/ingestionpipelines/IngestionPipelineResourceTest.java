@@ -644,7 +644,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId),
             PipelineStatus.class,
             ADMIN_AUTH_HEADERS);
-    assertEquals(pipelineStatus.getPipelineState(), PipelineStatusType.RUNNING);
+    assertEquals(PipelineStatusType.RUNNING, pipelineStatus.getPipelineState());
 
     // Update it
     TestUtils.put(
@@ -658,7 +658,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId),
             PipelineStatus.class,
             ADMIN_AUTH_HEADERS);
-    assertEquals(pipelineStatus.getPipelineState(), PipelineStatusType.SUCCESS);
+    assertEquals(PipelineStatusType.SUCCESS, pipelineStatus.getPipelineState());
 
     // DELETE all status from the pipeline
     TestUtils.delete(getDeletePipelineStatus(ingestionPipeline.getId().toString()), ADMIN_AUTH_HEADERS);

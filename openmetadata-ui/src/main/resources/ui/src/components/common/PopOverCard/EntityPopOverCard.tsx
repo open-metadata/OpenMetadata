@@ -14,6 +14,8 @@
 import { Popover } from 'antd';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from 'components/Loader/Loader';
+import { Include } from 'generated/type/include';
 import React, {
   FC,
   HTMLAttributes,
@@ -26,12 +28,15 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from 'rest/databaseAPI';
-import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
+import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getContainerByFQN } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
@@ -43,32 +48,11 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 }
 
 const PopoverContent: React.FC<{
-  entityData: EntityUnion;
   entityFQN: string;
   entityType: string;
-}> = ({ entityData, entityFQN, entityType }) => {
-  const name = entityData.name;
-  const displayName = getEntityName(entityData);
-
-  return (
-    <ExploreSearchCard
-      id="tabledatacard"
-      source={{
-        name,
-        displayName,
-        id: entityData.id ?? '',
-        description: entityData.description ?? '',
-        fullyQualifiedName: entityFQN,
-        tags: (entityData as Table).tags,
-        entityType: entityType,
-        serviceType: (entityData as Table).serviceType,
-      }}
-    />
-  );
-};
-
-const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+}> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
+  const [loading, setLoading] = useState(false);
 
   const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
@@ -76,7 +60,6 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     };
 
     const fields = 'tags,owner';
-
     let promise: Promise<EntityUnion> | null = null;
 
     switch (entityType) {
@@ -84,11 +67,19 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
         promise = getTableDetailsByFQN(entityFQN, fields);
 
         break;
+      case EntityType.TEST_CASE:
+        promise = getTableDetailsByFQN(
+          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
+          fields
+        );
+
+        break;
       case EntityType.TOPIC:
         promise = getTopicByFqn(entityFQN, fields);
 
         break;
       case EntityType.DASHBOARD:
+      case EntityType.CHART:
         promise = getDashboardByFqn(entityFQN, fields);
 
         break;
@@ -101,15 +92,28 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
 
         break;
       case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseDetailsByFQN(entityFQN, 'owner', Include.All);
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseSchemaDetailsByFQN(
+          entityFQN,
+          'owner',
+          'include=all'
+        );
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(entityFQN, 'owner');
+        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), 'owner');
+
+        break;
+      case EntityType.GLOSSARY:
+        promise = getGlossariesByName(entityFQN, 'owner');
+
+        break;
+
+      case EntityType.CONTAINER:
+        promise = getContainerByFQN(entityFQN, 'owner', Include.All);
 
         break;
 
@@ -118,22 +122,25 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     }
 
     if (promise) {
+      setLoading(true);
       promise
         .then((res) => {
           setEntityDetails(res);
-
           setEntityData(res);
         })
         .catch(() => {
           // do nothing
+        })
+        .finally(() => {
+          setLoading(false);
         });
     }
   }, [entityType, entityFQN]);
 
   const onMouseOver = () => {
-    const entitydetails = AppState.entityData[entityFQN];
-    if (entitydetails) {
-      setEntityData(entitydetails);
+    const entityData = AppState.entityData[entityFQN];
+    if (entityData) {
+      setEntityData(entityData);
     } else {
       getData();
     }
@@ -141,16 +148,38 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
 
   useEffect(() => {
     onMouseOver();
-  }, [getData, entityFQN]);
+  }, [entityFQN]);
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return (
+    <ExploreSearchCard
+      id="tabledatacard"
+      showTags={false}
+      source={{
+        ...entityData,
+        name: entityData.name,
+        displayName: getEntityName(entityData),
+        id: entityData.id ?? '',
+        description: entityData.description ?? '',
+        fullyQualifiedName: getDecodedFqn(entityFQN),
+        tags: (entityData as Table).tags,
+        entityType: entityType,
+        serviceType: (entityData as Table).serviceType,
+      }}
+    />
+  );
+};
+
+const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+  return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, -10] }}
       content={
         <PopoverContent
-          entityData={entityData}
-          entityFQN={entityFQN}
+          entityFQN={getEncodedFqn(entityFQN)}
           entityType={entityType}
         />
       }

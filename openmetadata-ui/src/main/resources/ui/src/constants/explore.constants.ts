@@ -17,7 +17,7 @@ import i18n from 'utils/i18next/LocalUtil';
 import { SearchIndex } from '../enums/search.enum';
 import { Icons } from '../utils/SvgUtils';
 
-export const INITIAL_SORT_FIELD = '_score';
+export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
 
 export const initialFilterQS = 'initialFilter';

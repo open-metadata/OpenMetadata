@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ReactionOperation } from 'enums/reactions.enum';
 import { Operation } from 'fast-json-patch';
@@ -19,6 +20,7 @@ import {
   Thread,
   ThreadType,
 } from 'generated/entity/feed/thread';
+import { Paging } from 'generated/type/paging';
 
 export interface ActivityFeedProviderContextType {
   loading: boolean;
@@ -27,6 +29,9 @@ export interface ActivityFeedProviderContextType {
   selectedThread: Thread | undefined;
   isDrawerOpen: boolean;
   focusReplyEditor: boolean;
+  entityPaging: Paging;
+  setActiveThread: (thread?: Thread) => void;
+  userId: string;
   deleteFeed: (
     threadId: string,
     postId: string,
@@ -43,7 +48,9 @@ export interface ActivityFeedProviderContextType {
   getFeedData: (
     filterType?: FeedFilter,
     after?: string,
-    type?: ThreadType
+    type?: ThreadType,
+    entityType?: EntityType,
+    fqn?: string
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;

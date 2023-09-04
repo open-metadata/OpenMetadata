@@ -52,14 +52,14 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onConfirmation,
   updateThreadHandler,
   onReply,
-  taskDetails,
+  task,
   announcementDetails,
   editAnnouncementPermission,
   showUserAvatar = true,
 }) => {
-  const entityType = getEntityType(entityLink as string);
-  const entityFQN = getEntityFQN(entityLink as string);
-  const entityField = getEntityField(entityLink as string);
+  const entityType = getEntityType(entityLink ?? '');
+  const entityFQN = getEntityFQN(entityLink ?? '');
+  const entityField = getEntityField(entityLink ?? '');
 
   const currentUser = AppState.getCurrentUserDetails();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -166,9 +166,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       <div
         className={classNames(
           className,
-          'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-2 tw-mb-1 tw-rounded',
+          'bg-grey-1-hover m--x-sm p-x-sm m--t-xss py-2 m-b-xss rounded-4',
           {
-            'tw-bg-gray-100': visible,
+            'bg-grey-1-hover': visible,
           }
         )}
         ref={containerRef}>
@@ -198,7 +198,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           placement="topRight"
           trigger="hover"
           onOpenChange={handleVisibleChange}>
-          <Space align="start" className="w-full">
+          <Space align="start" className="w-full" size={16}>
             {showUserAvatar && (
               <UserPopOverCard userName={feedDetail.from}>
                 <span className="cursor-pointer" data-testid="authorAvatar">
@@ -207,21 +207,19 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               </UserPopOverCard>
             )}
 
-            <div className="tw-flex tw-flex-col tw-flex-1">
+            <div>
               <FeedCardHeader
-                className="tw-pl-2"
                 createdBy={feedDetail.from}
-                entityFQN={entityFQN as string}
-                entityField={entityField as string}
-                entityType={entityType as string}
+                entityFQN={entityFQN}
+                entityField={entityField ?? ''}
+                entityType={entityType}
                 feedType={feedType}
                 isEntityFeed={isEntityFeed}
-                taskDetails={taskDetails}
+                task={task}
                 timeStamp={feedDetail.postTs}
               />
               <FeedCardBody
                 announcementDetails={announcementDetails}
-                className="tw-pl-2 tw-break-all"
                 isEditPost={isEditPost}
                 isThread={isThread}
                 message={feedDetail.message}
@@ -234,7 +232,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           </Space>
           {isFooterVisible && (
             <FeedCardFooter
-              className="tw-mt-2"
               isFooterVisible={isFooterVisible}
               lastReplyTimeStamp={lastReplyTimeStamp}
               repliedUsers={repliedUsers}

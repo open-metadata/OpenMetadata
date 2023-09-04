@@ -95,6 +95,9 @@
       "href": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "keyword"
+      },
       "columns": {
         "properties": {
           "name": {

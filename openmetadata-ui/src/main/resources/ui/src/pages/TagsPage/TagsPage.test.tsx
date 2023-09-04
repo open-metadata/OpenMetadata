@@ -25,9 +25,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
 import {
-  deleteClassification,
   deleteTag,
   getAllClassifications,
   updateClassification,
@@ -227,8 +225,6 @@ jest.mock('../../utils/TagsUtils', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_TAGS_CATEGORY })),
   getTaglist: jest.fn().mockReturnValue(['tag 1', 'tag 2']),
-  getTagOptionsFromFQN: jest.fn().mockReturnValue([]),
-  tagsNameValidator: jest.fn().mockImplementation(() => Promise.resolve(true)),
   getDeleteIcon: jest.fn().mockImplementation(() => <div>Icon</div>),
   getUsageCountLink: jest
     .fn()
@@ -344,29 +340,6 @@ describe('Test TagsPage page', () => {
     const FormModal = await screen.findAllByTestId('modal-container');
 
     expect(FormModal[0]).toBeInTheDocument();
-  });
-
-  it('OnClick of delete category, confirmation modal should display', async () => {
-    const { container } = render(<TagsPage />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
-
-    const deleteBtn = screen.getByTestId('delete-classification-or-tag');
-
-    expect(deleteBtn).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(deleteBtn);
-    });
-
-    expect(screen.getByTestId('confirmation-modal')).toBeInTheDocument();
-
-    screen.debug(container);
-
-    fireEvent.click(deleteBtn);
-
-    expect(screen.getByTestId('confirmation-modal')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('confirm-modal'));
   });
 
   it('OnClick of delete tag, confirmation modal should display', async () => {
@@ -581,62 +554,6 @@ describe('Test TagsPage page', () => {
   });
 
   describe('Render Sad Paths', () => {
-    it.skip('Show error message on failing of deleteClassification API', async () => {
-      (deleteClassification as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: { data: 'error!' } })
-      );
-      const { container } = render(<TagsPage />);
-
-      await act(async () => {
-        const deleteBtn = await findByTestId(
-          container,
-          'delete-classification-or-tag'
-        );
-
-        expect(deleteBtn).toBeInTheDocument();
-
-        fireEvent.click(deleteBtn);
-
-        expect(
-          await findByTestId(container, 'confirmation-modal')
-        ).toBeInTheDocument();
-
-        fireEvent.click(await findByTestId(container, 'confirm-modal'));
-
-        expect(
-          queryByTitle(container, 'confirmation-modal')
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    it('Show error message on resolve of deleteClassification API, without response', async () => {
-      (deleteClassification as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({ data: '' })
-      );
-      const { container } = render(<TagsPage />, { wrapper: MemoryRouter });
-
-      await act(async () => {
-        const deleteBtn = await findByTestId(
-          container,
-          'delete-classification-or-tag'
-        );
-
-        expect(deleteBtn).toBeInTheDocument();
-
-        fireEvent.click(deleteBtn);
-
-        expect(
-          await findByTestId(container, 'confirmation-modal')
-        ).toBeInTheDocument();
-
-        fireEvent.click(await findByTestId(container, 'confirm-modal'));
-
-        expect(
-          queryByTitle(container, 'confirmation-modal')
-        ).not.toBeInTheDocument();
-      });
-    });
-
     it.skip('Show error message on failing of deleteTag API', async () => {
       (deleteTag as jest.Mock).mockImplementationOnce(() =>
         Promise.reject({ response: { data: 'error!' } })

@@ -15,9 +15,11 @@ import base64
 import json
 import os
 import tempfile
-from typing import Dict
+from typing import Dict, List, Optional
 
 from cryptography.hazmat.primitives import serialization
+from google import auth
+from google.auth import impersonated_credentials
 
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GCPCredentials,
@@ -31,6 +33,11 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
+
+GOOGLE_CLOUD_SCOPES = [
+    "https://www.googleapis.com/auth/cloud-platform",
+    "https://www.googleapis.com/auth/drive",
+]
 
 
 class InvalidGcpConfigException(Exception):
@@ -67,8 +74,15 @@ def create_credential_tmp_file(credentials: dict) -> str:
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
         temp_file.write(cred_json.encode())
+        # Get the path of the temporary file
+        temp_file_path = temp_file.name
 
-        return temp_file.name
+        # The temporary file will be automatically closed when exiting the "with" block,
+        # but we can explicitly close it here to free up resources immediately.
+        temp_file.close()
+
+        # Return the path of the temporary file
+        return temp_file_path
 
 
 def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str, str]:
@@ -121,6 +135,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
                 "Overriding default projectid, using the current environment permissions authenticated via gcloud SDK."
             )
             return
+
         credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
@@ -139,3 +154,39 @@ def generate_http_basic_token(username, password):
     """
     token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
     return token
+
+
+def get_gcp_default_credentials(
+    quota_project_id: Optional[str] = None,
+    scopes: Optional[List[str]] = None,
+) -> auth.credentials.Credentials:
+    """Get the default credentials
+
+    Args:
+        quota_project_id: quota project ID
+        scopes: Google Cloud sscopes
+    """
+    scopes = scopes or GOOGLE_CLOUD_SCOPES
+    credentials, _ = auth.default(quota_project_id=quota_project_id, scopes=scopes)
+    return credentials
+
+
+def get_gcp_impersonate_credentials(
+    impersonate_service_account: str,
+    quoted_project_id: Optional[str] = None,
+    scopes: Optional[List[str]] = None,
+    lifetime: Optional[int] = 3600,
+) -> impersonated_credentials.Credentials:
+    """Get the credentials to impersonate"""
+    scopes = scopes or GOOGLE_CLOUD_SCOPES
+    source_credentials, _ = auth.default()
+    if quoted_project_id:
+        source_credentials, quoted_project_id = auth.default(
+            quota_project_id=quoted_project_id
+        )
+    return impersonated_credentials.Credentials(
+        source_credentials=source_credentials,
+        target_principal=impersonate_service_account,
+        target_scopes=scopes,
+        lifetime=lifetime,
+    )

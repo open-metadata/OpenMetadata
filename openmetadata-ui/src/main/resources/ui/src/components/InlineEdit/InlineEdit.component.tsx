@@ -12,6 +12,7 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { InlineEditProps } from './InlineEdit.interface';
 
@@ -20,10 +21,11 @@ const InlineEdit = ({
   onCancel,
   onSave,
   direction,
+  className,
 }: InlineEditProps) => {
   return (
     <Space
-      className="w-full"
+      className={classNames(className, 'w-full')}
       data-testid="inline-edit-container"
       direction={direction}>
       {children}

@@ -22,19 +22,7 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
     }),
     step: 1,
   },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.dbt-lowercase'),
-    }),
-    step: 2,
-  },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.metadata-to-es-config-optional'),
-    }),
-    step: 3,
-  },
-  { name: i18next.t('label.schedule-interval'), step: 4 },
+  { name: i18next.t('label.schedule-interval'), step: 2 },
 ];
 
 export const INITIAL_FILTER_PATTERN: FilterPattern = {
@@ -59,3 +47,5 @@ export const PIPELINE_TYPE_LOCALIZATION = {
 };
 
 export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';
+
+export const DEFAULT_PARSING_TIMEOUT_LIMIT = 300;

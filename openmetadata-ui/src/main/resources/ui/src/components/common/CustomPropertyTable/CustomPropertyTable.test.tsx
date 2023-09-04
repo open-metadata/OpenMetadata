@@ -39,10 +39,6 @@ const mockCustomProperties = [
   },
 ];
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  isEven: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -67,6 +63,24 @@ jest.mock('rest/metadataTypeAPI', () => ({
   ),
 }));
 
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
+}));
+
 const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
 
@@ -75,9 +89,21 @@ const mockProp = {
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
   hasEditAccess: true,
+  hasPermission: true,
 };
 
 describe('Test CustomProperty Table Component', () => {
+  it("Should render permission placeholder if doesn't have permission", async () => {
+    await act(async () => {
+      render(<CustomPropertyTable {...mockProp} hasPermission={false} />);
+    });
+    const permissionPlaceholder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
+
+    expect(permissionPlaceholder).toBeInTheDocument();
+  });
+
   it('Should render table component', async () => {
     await act(async () => {
       render(<CustomPropertyTable {...mockProp} />);
@@ -86,8 +112,8 @@ describe('Test CustomProperty Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await screen.findByText('Name');
-    const propertyValue = await screen.findByText('Value');
+    const propertyName = await screen.findByText('label.name');
+    const propertyValue = await screen.findByText('label.value');
     const rows = await screen.findAllByRole('row');
 
     expect(propertyName).toBeInTheDocument();
@@ -114,7 +140,7 @@ describe('Test CustomProperty Table Component', () => {
     render(<CustomPropertyTable {...mockProp} />);
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
 
     const noDataPlaceHolder = await screen.findByText(
       'ErrorPlaceHolder.component'

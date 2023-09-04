@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ThreadType } from 'generated/api/feed/createThread';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 
 export interface ModelTabProps {
   data: Column[];
+  entityFqn: string;
   isReadOnly: boolean;
   hasEditTagsPermission: boolean;
   hasEditDescriptionPermission: boolean;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (updatedDataModel: Column[]) => Promise<void>;
 }

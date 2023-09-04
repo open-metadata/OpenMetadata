@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Typography } from 'antd';
+import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagButton from 'components/TagButton/TagButton.component';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
@@ -74,39 +74,31 @@ function GlossaryTermSummary({
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="reviewer-header">
               {t('label.reviewer-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>
             {reviewers.length > 0 ? (
-              <div className="d-flex flex-wrap">
+              <Space wrap size={[8, 8]}>
                 {reviewers.map((assignee) => (
-                  <>
-                    <span
-                      className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
-                      key={assignee.fullyQualifiedName}>
-                      <ProfilePicture
-                        id=""
-                        name={assignee.name || ''}
-                        width="20"
-                      />
-                      <span className="tw-self-center tw-ml-2">
-                        {assignee?.displayName || assignee?.name}
-                      </span>
-                    </span>
-                  </>
+                  <OwnerLabel
+                    key={assignee.fullyQualifiedName}
+                    owner={assignee}
+                  />
                 ))}
-              </div>
+              </Space>
             ) : (
               <Typography.Text
                 className="text-grey-body"
                 data-testid="no-reviewer-header">
-                {t('label.no-reviewer')}
+                {t('label.no-entity', {
+                  entity: t('label.children-lowercase'),
+                })}
               </Typography.Text>
             )}
           </Col>
@@ -117,7 +109,7 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="synonyms-header">
               {t('label.synonym-plural')}
             </Typography.Text>
@@ -148,13 +140,16 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="children-header">
               {t('label.children')}
             </Typography.Text>
           </Col>
           <Col span={24}>
             <SummaryList
+              emptyPlaceholderText={t('label.no-entity', {
+                entity: t('label.children-lowercase'),
+              })}
               entityType={SummaryEntityType.COLUMN}
               formattedEntityData={formattedColumnsData}
             />

@@ -67,7 +67,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   };
 
   return (
-    <Row className="import-glossary" gutter={[16, 8]}>
+    <Row className="import-glossary p-x-md" gutter={[16, 8]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbList} />
       </Col>

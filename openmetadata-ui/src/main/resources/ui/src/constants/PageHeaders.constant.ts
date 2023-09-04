@@ -55,7 +55,7 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.page-sub-header-for-databases'),
   },
   MESSAGING_SERVICES: {
-    header: i18n.t('label.messaging-plural'),
+    header: i18n.t('label.messaging'),
     subHeader: i18n.t('message.page-sub-header-for-messagings'),
   },
   DASHBOARD_SERVICES: {
@@ -116,6 +116,12 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.container-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
       entity: i18n.t('label.container-plural'),
+    }),
+  },
+  STORED_PROCEDURE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.stored-procedure'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.label.stored-procedure'),
     }),
   },
   BOTS: {

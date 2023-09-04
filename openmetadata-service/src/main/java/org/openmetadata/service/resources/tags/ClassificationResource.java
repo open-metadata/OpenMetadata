@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -114,6 +113,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter Disabled Classifications") @QueryParam("disabled") String disabled,
       @Parameter(description = "Limit the number classifications returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -131,8 +131,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -165,8 +164,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -201,8 +199,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -221,8 +218,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -250,8 +246,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               description = "classification version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -271,8 +266,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create) {
     Classification category = getClassification(create, securityContext);
     return create(uriInfo, securityContext, category);
   }
@@ -283,8 +277,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
       summary = "Update a classification",
       description = "Update an existing category identify by category name")
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create) {
     Classification category = getClassification(create, securityContext);
     return createOrUpdate(uriInfo, securityContext, category);
   }
@@ -309,8 +302,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -331,8 +323,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -354,8 +345,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the classification", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -372,14 +362,8 @@ public class ClassificationResource extends EntityResource<Classification, Class
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Response restore(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  public Classification addHref(UriInfo uriInfo, Classification category) {
-    return category;
   }
 
   public static Classification getClassification(CreateClassification create, SecurityContext securityContext) {

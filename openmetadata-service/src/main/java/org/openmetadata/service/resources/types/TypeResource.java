@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -94,7 +93,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
     List<Type> types = JsonUtils.getTypes();
@@ -163,8 +162,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           String before,
       @Parameter(description = "Returns list of types after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     ListFilter filter = new ListFilter(Include.ALL).addQueryParam("category", categoryParam);
     return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
@@ -196,8 +194,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -228,8 +225,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -248,8 +244,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -276,8 +271,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               description = "type version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -293,8 +287,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Type.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, type);
   }
@@ -319,8 +312,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -336,7 +328,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, type);
   }
@@ -354,8 +346,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, true);
   }
 
@@ -372,8 +363,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the type", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the type", schema = @Schema(type = "string")) @PathParam("name") String name) {
     return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
@@ -393,8 +383,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid CustomProperty property)
-      throws IOException {
+      @Valid CustomProperty property) {
     // TODO fix this is the typeID correct? Why are we not doing this by name?
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -404,7 +393,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return response.toResponse();
   }
 
-  private Type getType(CreateType create, String user) throws IOException {
+  private Type getType(CreateType create, String user) {
     return copy(new Type(), create, user)
         .withFullyQualifiedName(create.getName())
         .withCategory(create.getCategory())

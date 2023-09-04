@@ -73,16 +73,26 @@ const props = {
   hasTagEditAccess: true,
   isReadOnly: false,
   onUpdate: jest.fn(),
+  entityFqn: 's3_storage_sample.departments',
+  entityFieldThreads: [
+    {
+      entityLink:
+        '<#E::container::s3_storage_sample.departments.finance.expenditures::dataModel::columns::department_id::description>',
+      count: 2,
+      entityField: 'dataModel::columns::department_id::description',
+    },
+  ],
+  onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('../../../utils/TagsUtils', () => ({
-  getClassifications: jest.fn().mockReturnValue([]),
-  getTaglist: jest.fn().mockReturnValue([]),
+jest.mock('utils/TagsUtils', () => ({
+  getAllTagsList: jest.fn(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn().mockReturnValue([]),
-  getGlossaryTermlist: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn(() => Promise.resolve([])),
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('utils/TableTags/TableTags.utils', () => ({
@@ -119,6 +129,14 @@ jest.mock('components/TableTags/TableTags.component', () =>
     .fn()
     .mockImplementation(() => (
       <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
+);
+
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
     ))
 );
 

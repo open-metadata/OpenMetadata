@@ -64,14 +64,25 @@ and we'll treat this as independent sets of lineage
 """
 import logging
 import traceback
+from enum import Enum
 from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel
 
 logger = logging.getLogger("airflow.task")
 
-INLETS_ATTR = "_inlets"
-OUTLETS_ATTR = "_outlets"
+
+class XLetsMode(Enum):
+    INLETS = "inlets"
+    OUTLETS = "outlets"
+
+
+class XLetsAttr(Enum):
+    INLETS = "inlets"
+    PRIVATE_INLETS = "_inlets"
+
+    OUTLETS = "outlets"
+    PRIVATE_OUTLETS = "_outlets"
 
 
 class XLets(BaseModel):
@@ -88,6 +99,10 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
     Parse airflow xlets for V1
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
+
+    [{'__var': {'tables': ['sample_data.ecommerce_db.shopify.fact_order']},
+        '__type': 'dict'}]
+
     """
     # This branch is for lineage parser op
     if isinstance(xlet, list) and len(xlet) and isinstance(xlet[0], dict):
@@ -103,7 +118,7 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
 
 
 def get_xlets_from_operator(
-    operator: "BaseOperator", xlet_mode: str = INLETS_ATTR
+    operator: "BaseOperator", xlet_mode: XLetsMode
 ) -> Optional[Dict[str, List[str]]]:
     """
     Given an Airflow DAG Task, obtain the tables
@@ -116,7 +131,25 @@ def get_xlets_from_operator(
     :param xlet_mode: get inlet or outlet
     :return: list of tables FQN
     """
-    xlet = getattr(operator, xlet_mode) if hasattr(operator, xlet_mode) else []
+    attribute = None
+    if xlet_mode == XLetsMode.INLETS:
+        attribute = (
+            XLetsAttr.INLETS.value
+            if hasattr(operator, XLetsAttr.INLETS.value)
+            else XLetsAttr.PRIVATE_INLETS.value
+        )
+
+    if xlet_mode == XLetsMode.OUTLETS:
+        attribute = (
+            XLetsAttr.OUTLETS.value
+            if hasattr(operator, XLetsAttr.OUTLETS.value)
+            else XLetsAttr.PRIVATE_OUTLETS.value
+        )
+
+    if attribute is None:
+        raise ValueError(f"Missing attribute for {xlet_mode.value}")
+
+    xlet = getattr(operator, attribute) or []
     xlet_data = parse_xlets(xlet)
 
     if not xlet_data:
@@ -142,14 +175,14 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
             _inlets.update(
                 get_xlets_from_operator(
                     operator=task,
-                    xlet_mode=INLETS_ATTR if hasattr(task, INLETS_ATTR) else "inlets",
+                    xlet_mode=XLetsMode.INLETS,
                 )
                 or []
             )
             _outlets.update(
                 get_xlets_from_operator(
                     operator=task,
-                    xlet_mode=OUTLETS_ATTR if hasattr(task, INLETS_ATTR) else "outlets",
+                    xlet_mode=XLetsMode.OUTLETS,
                 )
                 or []
             )

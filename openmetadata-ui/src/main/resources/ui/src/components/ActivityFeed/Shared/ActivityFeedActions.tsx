@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Popover, Space } from 'antd';
 import AppState from 'AppState';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconEdit } from 'assets/svg/ic-edit.svg';
+import { ReactComponent as IconReaction } from 'assets/svg/ic-reaction.svg';
+import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import Reaction from 'components/Reactions/Reaction';
 import { REACTION_LIST } from 'constants/reactions.constant';
 import { ReactionOperation } from 'enums/reactions.enum';
@@ -25,11 +28,10 @@ import {
 import { uniqueId } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
-import { ReactComponent as RightIcon } from '/assets/svg/arrow-right-light.svg';
+import './activity-feed-actions.less';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
+import { ReactComponent as IconReply } from '/assets/svg/ic-reply.svg';
 
 interface ActivityFeedActionsProps {
   post: Post;
@@ -53,7 +55,6 @@ const ActivityFeedActions = ({
   const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const {
-    isDrawerOpen,
     deleteFeed,
     showDrawer,
     hideDrawer,
@@ -110,9 +111,8 @@ const ActivityFeedActions = ({
   });
 
   const onReply = () => {
-    if (!isDrawerOpen) {
-      showDrawer(feed);
-    }
+    showDrawer(feed);
+
     updateEditorFocus(true);
   };
 
@@ -121,7 +121,7 @@ const ActivityFeedActions = ({
       return false;
     } else if (feed.type === ThreadType.Task && !isPost) {
       return false;
-    } else if (isAuthor || currentUser?.isAdmin) {
+    } else if (isAuthor) {
       return true;
     }
 
@@ -129,19 +129,19 @@ const ActivityFeedActions = ({
   }, [post, feed, currentUser]);
 
   const deleteCheck = useMemo(() => {
-    return isAuthor || currentUser?.isAdmin;
+    if (feed.type === ThreadType.Task && !isPost) {
+      return false;
+    } else if (isAuthor || currentUser?.isAdmin) {
+      return true;
+    }
+
+    return false;
   }, [post, feed, isAuthor, currentUser]);
 
   return (
     <>
-      <div className="feed-actions">
-        <Button
-          className="d-flex justify-center items-center expand-button"
-          icon={<RightIcon className="rotate-inverse" />}
-          size="small"
-        />
-
-        <div className="action-buttons">
+      <Space className="feed-actions" data-testid="feed-actions" size={12}>
+        {feed.type !== ThreadType.Task && !isPost && (
           <Popover
             destroyTooltipOnHide
             align={{ targetOffset: [0, -10] }}
@@ -153,68 +153,54 @@ const ActivityFeedActions = ({
             trigger="click"
             zIndex={9999}
             onOpenChange={handleVisibleChange}>
-            <Button
+            <Icon
               className="toolbar-button"
+              component={IconReaction}
               data-testid="add-reactions"
-              size="small"
-              type="text"
-              onClick={(e) => e.stopPropagation()}>
-              <SVGIcons
-                alt="add-reaction"
-                icon={Icons.REACTION}
-                title={t('label.add-entity', {
-                  entity: t('label.reaction-lowercase-plural'),
-                })}
-                width="16px"
-              />
-            </Button>
+              style={{ fontSize: '16px' }}
+            />
           </Popover>
+        )}
 
-          {!isPost && (
-            <Button
-              className="toolbar-button"
-              data-testid="add-reply"
-              size="small"
-              type="text"
-              onClick={onReply}>
-              <SVGIcons
-                alt="add-reply"
-                icon={Icons.ADD_REPLY}
-                title={t('label.reply')}
-                width="16px"
-              />
-            </Button>
-          )}
+        {!isPost && (
+          <Icon
+            className="toolbar-button"
+            component={IconReply}
+            data-testid="add-reply"
+            style={{ fontSize: '16px' }}
+            onClick={onReply}
+          />
+        )}
 
-          {editCheck && (
-            <Button
-              className="toolbar-button"
-              data-testid="edit-message"
-              icon={<EditIcon width={14} />}
-              size="small"
-              title={t('label.edit')}
-              type="text"
-              onClick={onEditPost}
-            />
-          )}
+        {editCheck && (
+          <Icon
+            className="toolbar-button"
+            component={IconEdit}
+            data-testid="edit-message"
+            style={{ fontSize: '16px' }}
+            onClick={onEditPost}
+          />
+        )}
 
-          {deleteCheck && (
-            <Button
-              className="toolbar-button"
-              data-testid="delete-message"
-              icon={<DeleteIcon width={14} />}
-              size="small"
-              title={t('label.delete')}
-              type="text"
-              onClick={() => setShowDeleteDialog(true)}
-            />
-          )}
-        </div>
-      </div>
-      <DeleteConfirmationModal
+        {deleteCheck && (
+          <Icon
+            className="toolbar-button"
+            component={DeleteIcon}
+            data-testid="delete-message"
+            style={{ fontSize: '16px' }}
+            onClick={() => setShowDeleteDialog(true)}
+          />
+        )}
+        {/* </div> */}
+      </Space>
+      <ConfirmationModal
+        bodyText={t('message.confirm-delete-message')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.delete')}
+        header={t('message.delete-message-question-mark')}
         visible={showDeleteDialog}
-        onDelete={handleDelete}
-        onDiscard={() => setShowDeleteDialog(false)}
+        onCancel={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
       />
     </>
   );

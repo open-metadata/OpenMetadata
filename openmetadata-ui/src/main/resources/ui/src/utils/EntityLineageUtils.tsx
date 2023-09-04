@@ -14,13 +14,12 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
-import CustomNode from 'components/EntityLineage/CustomNode.component';
+import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
+import CustomNodeV1 from 'components/Entity/EntityLineage/CustomNodeV1.component';
 import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
-  Edge as InterfaceEdge,
   EdgeData,
   EdgeTypeEnum,
   EntityReferenceChild,
@@ -31,9 +30,7 @@ import {
   NodeIndexMap,
   SelectedEdge,
   SelectedNode,
-} from 'components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
-import LoadMoreNode from 'components/EntityLineage/LoadMoreNode.component';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
@@ -65,15 +62,15 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
-  SECONDARY_COLOR,
+  INFO_COLOR,
 } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
@@ -101,9 +98,7 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getEntityName } from './EntityUtils';
-import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -118,11 +113,12 @@ export const getHeaderLabel = (
   return (
     <Fragment>
       {isMainNode ? (
-        <span
-          className="tw-break-words description-text tw-self-center tw-font-medium"
-          data-testid="lineage-entity">
+        <Typography.Text
+          className="description-text text-left text-md font-medium w-68"
+          data-testid="lineage-entity"
+          ellipsis={{ tooltip: true }}>
           {name || prepareLabel(type, fqn, false)}
-        </span>
+        </Typography.Text>
       ) : (
         <Typography.Title
           ellipsis
@@ -340,27 +336,20 @@ export const getLineageData = (
         type === EntityLineageNodeType.LOAD_MORE || !isEditMode
           ? type
           : EntityLineageNodeType.DEFAULT,
-      className: 'leaf-node',
+      className: '',
       data: {
-        label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={lineageLeafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={node}
-            type={type}
-            onNodeExpand={onNodeExpand}
-            onSelect={onSelect}
-          />
-        ),
         entityType: node.type,
+        lineageLeafNodes: lineageLeafNodes,
         removeNodeHandler,
         isEditMode,
         isExpanded,
         columns: cols,
         handleColumnClick,
+        onNodeExpand,
         node,
+        isNodeLoading,
+        loadNodeHandler,
+        onSelect,
       },
       position: {
         x: x,
@@ -385,23 +374,12 @@ export const getLineageData = (
       sourcePosition: 'right',
       targetPosition: 'left',
       type: mainNodeType,
-      className: `leaf-node core`,
+      className: `core`,
       data: {
-        label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={lineageLeafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={mainNode}
-            type={mainNodeType}
-            onNodeExpand={onNodeExpand}
-            onSelect={onSelect}
-          />
-        ),
         isEditMode,
         removeNodeHandler,
         handleColumnClick,
+        onNodeExpand,
         columns: mainCols,
         isExpanded,
         node: mainNode,
@@ -415,45 +393,9 @@ export const getLineageData = (
   return { node: lineageData, edge: lineageEdgesV1 };
 };
 
-export const getDataLabel = (
-  displayName?: string,
-  fqn = '',
-  isTextOnly = false,
-  type?: string
-) => {
-  const databaseName = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
-  const schemaName = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
-
-  let label = '';
-  if (displayName) {
-    label = displayName;
-  } else {
-    label = prepareLabel(type as string, fqn);
-  }
-
-  if (isTextOnly) {
-    return label;
-  } else {
-    return (
-      <span
-        className="tw-break-words tw-self-center w-72"
-        data-testid="lineage-entity">
-        {type === 'table' && databaseName && schemaName ? (
-          <span className="d-block text-xs custom-lineage-heading">
-            {databaseName}
-            {FQN_SEPARATOR_CHAR}
-            {schemaName}
-          </span>
-        ) : null}
-        <span className="text-base">{label}</span>
-      </span>
-    );
-  }
-};
-
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+    <div className="m-t-md m-l-md global-border rounded-4 flex-center p-8 font-medium">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>
@@ -558,21 +500,6 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
   });
 
   return uniqueElements;
-};
-
-/**
- *
- * @param onClick - callback
- * @returns - Button element with attach callback
- */
-export const getNodeRemoveButton = (onClick: () => void) => {
-  return (
-    <button
-      className="tw-absolute tw--top-3.5 tw--right-3 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-      onClick={() => onClick()}>
-      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-    </button>
-  );
 };
 
 export const getSelectedEdgeArr = (
@@ -1132,7 +1059,7 @@ export const getEdgeStyle = (value: boolean) => {
   return {
     opacity: value ? 1 : 0.25,
     strokeWidth: value ? 2 : 1,
-    stroke: value ? SECONDARY_COLOR : undefined,
+    stroke: value ? INFO_COLOR : undefined,
   };
 };
 
@@ -1307,10 +1234,10 @@ export const removeDuplicates = (arr: EntityLineageEdge[]) => {
 };
 
 export const nodeTypes = {
-  output: CustomNode,
-  input: CustomNode,
-  default: CustomNode,
-  'load-more': LoadMoreNode,
+  output: CustomNodeV1,
+  input: CustomNodeV1,
+  default: CustomNodeV1,
+  'load-more': CustomNodeV1,
 };
 
 export const customEdges = { buttonedge: CustomEdge };
@@ -1347,7 +1274,7 @@ export const findNodeById = (
   return undefined;
 };
 
-export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
+export const addLineageHandler = async (edge: AddLineage): Promise<void> => {
   try {
     await addLineage(edge);
   } catch (err) {
@@ -1384,7 +1311,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
 
 export const getParamByEntityType = (entityType: EntityType): string => {
   switch (entityType) {
-    case EntityType.DATASET:
     case EntityType.TABLE:
       return 'datasetFQN';
     case EntityType.TOPIC:
@@ -1401,6 +1327,8 @@ export const getParamByEntityType = (entityType: EntityType): string => {
       return 'databaseSchemaFQN';
     case EntityType.DASHBOARD_DATA_MODEL:
       return 'dashboardDataModelFQN';
+    case EntityType.STORED_PROCEDURE:
+      return 'storedProcedureFQN';
     default:
       return 'entityFQN';
   }

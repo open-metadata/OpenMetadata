@@ -12,7 +12,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a entity to which the query belong",
+      "description": "Name of an entity to which the query belongs to",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
@@ -66,7 +66,7 @@
     },
     "followers": {
       "description": "Followers of this Query.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes" : {
       "$ref": "../../type/votes.json"
@@ -93,12 +93,7 @@
     },
     "queryUsedIn": {
       "description": "Entities that are using this query",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
-    },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["name","query"],

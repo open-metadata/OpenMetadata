@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 import {
   addUser,
   deleteSoftDeletedUser,
@@ -33,20 +34,12 @@ describe('Users flow should work properly', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL(
-      'GET',
-      '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15',
-      'getUsers'
-    );
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    interceptURL('GET', '/api/v1/users?fields=*', 'getUsers');
+    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   });
 
   it('Add new User', () => {
@@ -55,20 +48,6 @@ describe('Users flow should work properly', () => {
 
     addUser(userName, userEmail);
     verifyResponseStatusCode('@getUsers', 200);
-
-    // Validate if user is added in the User tab
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=**&from=0&size=*&index=*',
-      'searchUser'
-    );
-
-    cy.get('[data-testid="searchbar"]')
-      .should('exist')
-      .should('be.visible')
-      .type(userName);
-    verifyResponseStatusCode('@searchUser', 200);
-    cy.get('.ant-table-tbody ').should('contain', userName);
   });
 
   it('Soft delete user', () => {
@@ -96,8 +75,6 @@ describe('Users flow should work properly', () => {
       .type(searchBotText);
 
     verifyResponseStatusCode('@searchUser', 200);
-
-    cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
   });
 });
 
@@ -105,7 +82,7 @@ describe('Admin flow should work properly', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .should('be.visible')
       .click();

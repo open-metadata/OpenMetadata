@@ -104,19 +104,23 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
           </div>
         ))}
         {!isEmpty(advancedProperties) && (
-          <Collapse ghost className="advanced-properties-collapse">
-            <Panel header={t('label.advanced-configuration')} key="1">
-              {advancedProperties.map((element, index) => (
-                <div
-                  className={classNames('property-wrapper', {
-                    'additional-fields': schema.additionalProperties,
-                  })}
-                  key={`${element.content.key}-${index}`}>
-                  {element.content}
-                </div>
-              ))}
-            </Panel>
-          </Collapse>
+          <>
+            <Collapse
+              className="advanced-properties-collapse"
+              expandIconPosition="end">
+              <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
+                {advancedProperties.map((element, index) => (
+                  <div
+                    className={classNames('property-wrapper', {
+                      'additional-fields': schema.additionalProperties,
+                    })}
+                    key={`${element.content.key}-${index}`}>
+                    {element.content}
+                  </div>
+                ))}
+              </Panel>
+            </Collapse>
+          </>
         )}
       </Fragment>
     );

@@ -18,6 +18,7 @@ import athenaConnection from '../jsons/connectionSchemas/connections/database/at
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
+import couchbaseConnection from '../jsons/connectionSchemas/connections/database/couchbaseConnection.json';
 import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
 import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
 import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
@@ -34,6 +35,7 @@ import mongoDBConnection from '../jsons/connectionSchemas/connections/database/m
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import oracleConnection from '../jsons/connectionSchemas/connections/database/oracleConnection.json';
+import pinotConnection from '../jsons/connectionSchemas/connections/database/pinotDBConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
@@ -199,8 +201,18 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.Couchbase: {
+      schema = couchbaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.PinotDB: {
+      schema = pinotConnection;
+
+      break;
+    }
     default: {
-      schema = mysqlConnection;
+      schema = {};
 
       break;
     }

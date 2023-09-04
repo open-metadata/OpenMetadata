@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { ReactComponent as EditIconComponent } from 'assets/svg/edit-new.svg';
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
@@ -22,6 +23,8 @@ import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
+  versionDataKeys?: string[];
+  isVersionView?: boolean;
   propertyName: string;
   propertyType: EntityReference;
   extension: Table['extension'];
@@ -39,6 +42,8 @@ const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
 );
 
 export const PropertyValue: FC<Props> = ({
+  isVersionView,
+  versionDataKeys,
   propertyName,
   extension,
   propertyType,
@@ -103,6 +108,16 @@ export const PropertyValue: FC<Props> = ({
   };
 
   const getPropertyValue = () => {
+    if (isVersionView) {
+      const isKeyAdded = versionDataKeys?.includes(propertyName);
+
+      return (
+        <RichTextEditorPreviewer
+          className={isKeyAdded ? 'diff-added' : ''}
+          markdown={String(value) || ''}
+        />
+      );
+    }
     switch (propertyType.name) {
       case 'markdown':
         return <RichTextEditorPreviewer markdown={value || ''} />;
@@ -110,7 +125,11 @@ export const PropertyValue: FC<Props> = ({
       case 'string':
       case 'integer':
       default:
-        return <span data-testid="value">{value}</span>;
+        return (
+          <Typography.Text className="break-all" data-testid="value">
+            {value}
+          </Typography.Text>
+        );
     }
   };
 

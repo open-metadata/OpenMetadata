@@ -58,9 +58,28 @@ export enum PanelTab {
 export enum EntityField {
   DESCRIPTION = 'description',
   COLUMNS = 'columns',
+  SCHEMA_FIELDS = 'schemaFields',
   TAGS = 'tags',
   TASKS = 'tasks',
   ML_FEATURES = 'mlFeatures',
+  SCHEMA_TEXT = 'schemaText',
+  OWNER = 'owner',
+  REVIEWERS = 'reviewers',
+  SYNONYMS = 'synonyms',
+  RELATEDTERMS = 'relatedTerms',
+  REFERENCES = 'references',
+  EXTENSION = 'extension',
+  DISPLAYNAME = 'displayName',
+  NAME = 'name',
+  MESSAGE_SCHEMA = 'messageSchema',
+  CHARTS = 'charts',
+  DATA_MODEL = 'dataModel',
+  CONSTRAINT = 'constraint',
+  TABLE_CONSTRAINTS = 'tableConstraints',
+  PARTITIONS = 'partitions',
+  REPLICATION_FACTOR = 'replicationFactor',
+  SOURCE_URL = 'sourceUrl',
+  MUTUALLY_EXCLUSIVE = 'mutuallyExclusive',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Button, Popover, Space, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
 import { t } from 'i18next';
 import { isFunction, isUndefined } from 'lodash';
 import React, { FC, Fragment } from 'react';
@@ -21,7 +21,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
+import { ReactComponent as IconTaskColor } from '../../../assets/svg/task-ic.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -55,6 +55,7 @@ const Description: FC<DescriptionProps> = ({
   entityType,
   entityFqn,
   entityFieldTasks,
+  reduceDescription,
 }) => {
   const history = useHistory();
 
@@ -100,22 +101,18 @@ const Description: FC<DescriptionProps> = ({
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
         }>
-        <Popover
-          destroyTooltipOnHide
-          content={
+        <Tooltip
+          placement="right"
+          title={
             hasDescription
               ? t('message.request-update-description')
               : t('message.request-description')
-          }
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
+          }>
           <IconRequest
-            height={16}
             name={t('message.request-description')}
-            width={16}
+            {...ICON_DIMENSION}
           />
-        </Popover>
+        </Tooltip>
       </Button>
     ) : null;
   };
@@ -132,7 +129,7 @@ const Description: FC<DescriptionProps> = ({
         type="text"
         onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
         <Space align="center" className="h-full" size={2}>
-          <IconComments height={16} name="tasks" width={16} />
+          <IconComments {...ICON_DIMENSION} name="tasks" />
           <Typography.Text data-testid="description-thread-count">
             {descriptionThread.count}
           </Typography.Text>
@@ -144,7 +141,7 @@ const Description: FC<DescriptionProps> = ({
           <Button
             className="w-7 h-7 link-text p-0 flex-center"
             data-testid="start-description-thread"
-            icon={<IconCommentPlus height={16} name="comments" width={16} />}
+            icon={<IconCommentPlus {...ICON_DIMENSION} name="comments" />}
             type="text"
             onClick={() =>
               onThreadLinkSelect?.(
@@ -168,7 +165,7 @@ const Description: FC<DescriptionProps> = ({
         type="text"
         onClick={() => onThreadLinkSelect?.(tasks.entityLink, ThreadType.Task)}>
         <Space align="center" className="h-full" size={2}>
-          <IconTaskColor height={16} name="tasks" width={16} />
+          <IconTaskColor {...ICON_DIMENSION} name="tasks" />
           <Typography.Text data-testid="description-tasks-count">
             {tasks.count}
           </Typography.Text>
@@ -181,9 +178,9 @@ const Description: FC<DescriptionProps> = ({
       <Space align="end" size={0}>
         {hasEditAccess && (
           <Button
-            className="w-7 h-7 p-0 flex-center text-primary"
+            className="w-7 h-7 p-0 flex-center"
             data-testid="edit-description"
-            icon={<IconEdit height={16} width={16} />}
+            icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
             type="text"
             onClick={handleUpdate}
           />
@@ -201,15 +198,16 @@ const Description: FC<DescriptionProps> = ({
   };
 
   return (
-    <div className={`schema-description tw-relative ${className}`}>
+    <div className={`schema-description relative ${className}`}>
       <Space align="end" className="description-inner-main-container" size={4}>
-        <div className="tw-relative">
+        <div className="relative">
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-relative "
+            className="description h-full relative overflow-y-scroll"
             data-testid="description"
             id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
+                className={reduceDescription ? 'max-two-lines' : ''}
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
               />
@@ -221,19 +219,19 @@ const Description: FC<DescriptionProps> = ({
               </span>
             )}
           </div>
-          <ModalWithMarkdownEditor
-            header={header || t('label.edit-description-for', { entityName })}
-            placeholder={t('label.enter-entity', {
-              entity: t('label.description'),
-            })}
-            value={description}
-            visible={Boolean(isEdit)}
-            onCancel={onCancel}
-            onSave={handleSave}
-          />
         </div>
         <DescriptionActions />
       </Space>
+      <ModalWithMarkdownEditor
+        header={header || t('label.edit-description-for', { entityName })}
+        placeholder={t('label.enter-entity', {
+          entity: t('label.description'),
+        })}
+        value={description}
+        visible={Boolean(isEdit)}
+        onCancel={onCancel}
+        onSave={handleSave}
+      />
     </div>
   );
 };

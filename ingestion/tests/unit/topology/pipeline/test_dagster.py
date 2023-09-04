@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -42,6 +42,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
+from metadata.ingestion.source.pipeline.dagster.models import GraphOrError
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
@@ -76,7 +77,6 @@ EXPECTED_CREATED_PIPELINES = [
         name="graph5164c131c3524a271e7ecce49766d50a479b5ff4",
         displayName="story_recommender_job",
         description=None,
-        sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
         startDate=None,
@@ -86,46 +86,51 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="s3__recommender__recommender_model",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=["s3__recommender__user_story_matrix"],
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__recommender_model"
+                ),
             ),
             Task(
                 name="s3__recommender__user_story_matrix",
                 displayName="s3__recommender__user_story_matrix",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=["snowflake__recommender__comment_stories"],
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__user_story_matrix"
+                ),
             ),
             Task(
                 name="snowflake__recommender__comment_stories",
                 displayName="snowflake__recommender__comment_stories",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
-                downstreamTasks=[],
+                downstreamTasks=None,
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__comment_stories"
+                ),
             ),
             Task(
                 name="snowflake__recommender__component_top_stories",
                 displayName="snowflake__recommender__component_top_stories",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -135,13 +140,15 @@ EXPECTED_CREATED_PIPELINES = [
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__component_top_stories"
+                ),
             ),
             Task(
                 name="snowflake__recommender__user_top_recommended_stories",
                 displayName="snowflake__recommender__user_top_recommended_stories",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -151,6 +158,9 @@ EXPECTED_CREATED_PIPELINES = [
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__user_top_recommended_stories"
+                ),
             ),
         ],
         tags=[
@@ -166,6 +176,9 @@ EXPECTED_CREATED_PIPELINES = [
         owner=None,
         service="dagster_source_test",
         extension=None,
+        sourceUrl=SourceUrl(
+            __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/"
+        ),
     ),
 ]
 MOCK_CONNECTION_URI_PATH = (
@@ -268,15 +281,15 @@ class DagsterUnitTest(TestCase):
 
     def test_pipeline_name(self):
         assert (
-            self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
+            self.dagster.get_pipeline_name(GraphOrError(**EXPECTED_DAGSTER_DETAILS))
             in EXPTECTED_PIPELINE_NAME
         )
 
-    @patch("metadata.ingestion.source.pipeline.dagster.metadata.DagsterSource.get_jobs")
+    @patch("metadata.ingestion.source.pipeline.dagster.client.DagsterClient.get_jobs")
     @patch("metadata.utils.tag_utils.get_tag_label")
     def test_yield_pipeline(self, get_tag_label, get_jobs):
-        results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
-        get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
+        results = self.dagster.yield_pipeline(GraphOrError(**EXPECTED_DAGSTER_DETAILS))
+        get_jobs.return_value = GraphOrError(**EXPECTED_DAGSTER_DETAILS)
         get_tag_label.return_value = TagLabel(
             tagFQN="DagsterTags.hacker_new_repository",
             labelType=LabelType.Automated.value,
@@ -285,7 +298,7 @@ class DagsterUnitTest(TestCase):
         )
         pipelines_list = []
         for result in results:
-            pipelines_list.append(result)
+            pipelines_list.append(result.right)
 
         for _, (expected, original) in enumerate(
             zip(EXPECTED_CREATED_PIPELINES, pipelines_list)
