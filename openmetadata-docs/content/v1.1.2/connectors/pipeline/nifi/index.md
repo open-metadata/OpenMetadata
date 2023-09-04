@@ -1,13 +1,13 @@
 ---
-title: Nifi
+title: NiFi
 slug: /connectors/pipeline/nifi
 ---
 
-# Nifi
+# NiFi
 
-In this section, we provide guides and references to use the Nifi connector.
+In this section, we provide guides and references to use the NiFi connector.
 
-Configure and schedule Nifi metadata workflows from the OpenMetadata UI:
+Configure and schedule NiFi metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -21,11 +21,11 @@ To deploy OpenMetadata, check the Deployment guides.
 {% /inlineCallout %}
 
 ### Metadata
-OpenMetadata supports 2 types of connection for the Nifi connector:
-- **basic authentication**: use username/password to authenticate to Nifi. 
+OpenMetadata supports 2 types of connection for the NiFi connector:
+- **basic authentication**: use username/password to authenticate to NiFi. 
 - **client certificate authentication**: use CA, client certificate and client key files to authenticate.
 
-The user should be able to send request to the Nifi API and access the `Resources` endpoint.
+The user should be able to send request to the NiFi API and access the `Resources` endpoint.
 
 ## Metadata Ingestion
 

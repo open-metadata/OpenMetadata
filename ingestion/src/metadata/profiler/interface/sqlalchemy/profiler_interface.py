@@ -423,14 +423,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             except Exception as exc:
                 error = f"{column if column is not None else runner.table.__tablename__} metric_type.value: {exc}"
                 logger.error(error)
-                self.processor_status.failed_profiler(error, traceback.format_exc())
+                self.status.failed_profiler(error, traceback.format_exc())
                 row = None
 
             if column is not None:
                 column = column.name
-                self.processor_status.scanned(f"{table.__tablename__}.{column}")
+                self.status.scanned(f"{table.__tablename__}.{column}")
             else:
-                self.processor_status.scanned(table.__tablename__)
+                self.status.scanned(table.__tablename__)
 
             return row, column, metric_type.value
 
