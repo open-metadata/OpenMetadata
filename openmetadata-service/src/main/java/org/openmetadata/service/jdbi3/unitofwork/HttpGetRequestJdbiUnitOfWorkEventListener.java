@@ -17,8 +17,9 @@ class HttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListener 
   public void onEvent(RequestEvent event) {
     RequestEvent.Type type = event.getType();
     LOG.debug("Handling GET Request Event {} {}", type, Thread.currentThread().getId());
-
-    if (type == RequestEvent.Type.FINISHED) {
+    if (type == RequestEvent.Type.RESOURCE_METHOD_START) {
+      transactionAspect.begin(true);
+    }else if (type == RequestEvent.Type.FINISHED) {
       transactionAspect.terminateHandle();
     }
   }

@@ -363,6 +363,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createTag",
