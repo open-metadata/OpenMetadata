@@ -59,7 +59,7 @@ export const formatDate = (date?: number) => {
  */
 export const formatDateTimeLong = (timestamp: number, format?: string) =>
   DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || "ccc d'th' MMMM, yyyy,hh:mm a"
+    format || "ccc d'th' MMMM, yyyy, hh:mm a"
   );
 
 /**

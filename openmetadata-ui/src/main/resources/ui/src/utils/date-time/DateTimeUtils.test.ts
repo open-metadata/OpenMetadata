@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Settings } from 'luxon';
 import {
   customFormatDateTime,
   formatDate,
@@ -17,20 +18,28 @@ import {
   formatDateTimeFromSeconds,
   formatDateTimeLong,
   formatTimeDurationFromSeconds,
-  getTimeZone,
 } from './DateTimeUtils';
 
-// jest.mock('luxon', () => ({
-//   ...jest.requireActual('luxon'),
-//   DateTime: {
-//     ...jest.requireActual('luxon').DateTime,
-//     now: jest.fn().mockImplementation(() => 0),
-//   },
-// }));
+const systemLocale = Settings.defaultLocale;
+const systemZoneName = Settings.defaultZone;
 
 describe('DateTimeUtils tests', () => {
+  beforeAll(() => {
+    // Explicitly set locale and time zone to make sure date time manipulations and literal
+    // results are consistent regardless of where tests are run
+    Settings.defaultLocale = 'en-US';
+    Settings.defaultZone = 'UTC';
+    Date;
+  });
+
+  afterAll(() => {
+    // Restore locale and time zone
+    Settings.defaultLocale = systemLocale;
+    Settings.defaultZone = systemZoneName;
+  });
+
   it(`formatDateTime should formate date and time both`, () => {
-    expect(formatDateTime(0)).toBe(`Jan 1, 1970, 5:30 AM`);
+    expect(formatDateTime(0)).toBe(`Jan 1, 1970, 12:00 AM`);
   });
 
   it(`formatDate should formate date and time both`, () => {
@@ -38,15 +47,11 @@ describe('DateTimeUtils tests', () => {
   });
 
   it(`formatDateTimeFromSeconds should formate date and time both`, () => {
-    expect(formatDateTimeFromSeconds(0)).toBe(`Jan 1, 1970, 5:30 AM`);
+    expect(formatDateTimeFromSeconds(0)).toBe(`Jan 1, 1970, 12:00 AM`);
   });
 
   it(`formatDateShort should formate date and time both`, () => {
-    expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970,05:30 AM`);
-  });
-
-  it(`getTimeZone should formate date and time both`, () => {
-    expect(getTimeZone()).toBe(`IST`);
+    expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970, 12:00 AM`);
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
