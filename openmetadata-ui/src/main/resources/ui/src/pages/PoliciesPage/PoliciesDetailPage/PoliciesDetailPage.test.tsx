@@ -57,17 +57,9 @@ jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
+jest.mock('hooks/authHooks', () => ({
+  useAuth: jest.fn().mockReturnValue({
+    isAdminUser: true,
   }),
 }));
 
@@ -78,18 +70,6 @@ jest.mock('../../../constants/HelperTextUtil', () => ({
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue(''),
-}));
-
-jest.mock('../../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {
-    Create: true,
-    Delete: true,
-    ViewAll: true,
-    EditAll: true,
-    EditDescription: true,
-    EditDisplayName: true,
-    EditCustomFields: true,
-  },
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({

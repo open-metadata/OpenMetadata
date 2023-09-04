@@ -32,13 +32,9 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
+import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,7 +55,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAddPolicyRulePath,
   getEditPolicyRulePath,
@@ -76,9 +71,9 @@ type Attribute = 'roles' | 'teams';
 
 const PoliciesDetailPage = () => {
   const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -86,10 +81,6 @@ const PoliciesDetailPage = () => {
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
-
-  const [policyPermission, setPolicyPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -109,21 +100,6 @@ const PoliciesDetailPage = () => {
     ],
     [policy]
   );
-
-  const fetchPolicyPermission = async () => {
-    setLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.POLICY,
-        fqn
-      );
-      setPolicyPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchPolicy = async () => {
     setLoading(true);
@@ -256,7 +232,7 @@ const PoliciesDetailPage = () => {
     (rule: Rule) => {
       return (
         <Dropdown
-          disabled={!policyPermission.EditAll}
+          disabled={!isAdminUser}
           overlay={
             <Menu
               items={[
@@ -309,13 +285,13 @@ const PoliciesDetailPage = () => {
           trigger={['click']}>
           <Tooltip
             title={
-              policyPermission.EditAll
+              isAdminUser
                 ? t('label.manage-rule')
                 : t('message.no-permission-for-action')
             }>
             <Button
               data-testid={`manage-button-${rule.name}`}
-              disabled={!policyPermission.EditAll}
+              disabled={!isAdminUser}
               icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
               size="small"
               type="text"
@@ -327,18 +303,14 @@ const PoliciesDetailPage = () => {
         </Dropdown>
       );
     },
-    [policy, policyPermission]
+    [policy, isAdminUser]
   );
 
   useEffect(() => {
-    fetchPolicyPermission();
-  }, [fqn]);
-
-  useEffect(() => {
-    if (policyPermission.ViewAll || policyPermission.ViewBasic) {
+    if (isAdminUser) {
       fetchPolicy();
     }
-  }, [policyPermission, fqn]);
+  }, [isAdminUser, fqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -347,7 +319,7 @@ const PoliciesDetailPage = () => {
   return (
     <div data-testid="policy-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {policyPermission.ViewAll || policyPermission.ViewBasic ? (
+      {isAdminUser ? (
         <>
           {isEmpty(policy) ? (
             <ErrorPlaceHolder>
@@ -380,9 +352,7 @@ const PoliciesDetailPage = () => {
                 entityFqn={policy.fullyQualifiedName}
                 entityName={getEntityName(policy)}
                 entityType={EntityType.POLICY}
-                hasEditAccess={
-                  policyPermission.EditAll || policyPermission.EditDescription
-                }
+                hasEditAccess={Boolean(isAdminUser)}
                 isEdit={editDescription}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
@@ -399,7 +369,7 @@ const PoliciesDetailPage = () => {
                       direction="vertical">
                       <Tooltip
                         title={
-                          policyPermission.EditAll
+                          isAdminUser
                             ? t('label.add-entity', {
                                 entity: t('label.rule'),
                               })
@@ -407,7 +377,7 @@ const PoliciesDetailPage = () => {
                         }>
                         <Button
                           data-testid="add-rule"
-                          disabled={!policyPermission.EditAll}
+                          disabled={!isAdminUser}
                           type="primary"
                           onClick={() =>
                             history.push(getAddPolicyRulePath(fqn))
@@ -514,7 +484,7 @@ const PoliciesDetailPage = () => {
                 </TabPane>
                 <TabPane key="roles" tab={t('label.role-plural')}>
                   <PoliciesDetailsList
-                    hasAccess={policyPermission.EditAll}
+                    hasAccess={Boolean(isAdminUser)}
                     list={policy.roles ?? []}
                     type="role"
                     onDelete={(record) =>
@@ -524,7 +494,7 @@ const PoliciesDetailPage = () => {
                 </TabPane>
                 <TabPane key="teams" tab={t('label.team-plural')}>
                   <PoliciesDetailsList
-                    hasAccess={policyPermission.EditAll}
+                    hasAccess={Boolean(isAdminUser)}
                     list={policy.teams ?? []}
                     type="team"
                     onDelete={(record) =>

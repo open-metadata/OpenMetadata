@@ -175,10 +175,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={RolesListPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.ROLE,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
@@ -201,10 +198,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={PoliciesListPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.POLICY,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES

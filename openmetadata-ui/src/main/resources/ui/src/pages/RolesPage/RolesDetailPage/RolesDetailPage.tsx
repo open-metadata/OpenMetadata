@@ -17,13 +17,9 @@ import Description from 'components/common/description/Description';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
+import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +35,6 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
@@ -57,8 +52,8 @@ interface AddAttribute {
 
 const RolesDetailPage = () => {
   const history = useHistory();
+  const { isAdminUser } = useAuth();
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useParams<{ fqn: string }>();
 
   const [role, setRole] = useState<Role>({} as Role);
@@ -69,10 +64,6 @@ const RolesDetailPage = () => {
     useState<{ attribute: Attribute; record: EntityReference }>();
 
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
-
-  const [rolePermission, setRolePermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -92,18 +83,6 @@ const RolesDetailPage = () => {
     ],
     [role]
   );
-
-  const fetchRolePermission = async () => {
-    setLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(ResourceEntity.ROLE, fqn);
-      setRolePermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchRole = async () => {
     setLoading(true);
@@ -238,14 +217,10 @@ const RolesDetailPage = () => {
   };
 
   useEffect(() => {
-    fetchRolePermission();
-  }, [fqn]);
-
-  useEffect(() => {
-    if (rolePermission.ViewAll || rolePermission.ViewBasic) {
+    if (isAdminUser) {
       fetchRole();
     }
-  }, [rolePermission, fqn]);
+  }, [isAdminUser, fqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -254,7 +229,7 @@ const RolesDetailPage = () => {
   return (
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {rolePermission.ViewAll || rolePermission.ViewBasic ? (
+      {isAdminUser ? (
         <>
           {isEmpty(role) ? (
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
@@ -288,9 +263,7 @@ const RolesDetailPage = () => {
                 entityFqn={role.fullyQualifiedName}
                 entityName={getEntityName(role)}
                 entityType={EntityType.ROLE}
-                hasEditAccess={
-                  rolePermission.EditAll || rolePermission.EditDescription
-                }
+                hasEditAccess={Boolean(isAdminUser)}
                 isEdit={editDescription}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
@@ -302,7 +275,7 @@ const RolesDetailPage = () => {
                   <Space className="w-full" direction="vertical">
                     <Tooltip
                       title={
-                        rolePermission.EditAll
+                        isAdminUser
                           ? t('label.add-entity', {
                               entity: t('label.policy'),
                             })
@@ -310,7 +283,7 @@ const RolesDetailPage = () => {
                       }>
                       <Button
                         data-testid="add-policy"
-                        disabled={!rolePermission.EditAll}
+                        disabled={!isAdminUser}
                         type="primary"
                         onClick={() =>
                           setAddAttribute({
@@ -324,7 +297,7 @@ const RolesDetailPage = () => {
                       </Button>
                     </Tooltip>
                     <RolesDetailPageList
-                      hasAccess={rolePermission.EditAll}
+                      hasAccess={Boolean(isAdminUser)}
                       list={role.policies ?? []}
                       type="policy"
                       onDelete={(record) =>
@@ -335,7 +308,7 @@ const RolesDetailPage = () => {
                 </TabPane>
                 <TabPane key="teams" tab={t('label.team-plural')}>
                   <RolesDetailPageList
-                    hasAccess={rolePermission.EditAll}
+                    hasAccess={Boolean(isAdminUser)}
                     list={role.teams ?? []}
                     type="team"
                     onDelete={(record) =>
@@ -345,7 +318,7 @@ const RolesDetailPage = () => {
                 </TabPane>
                 <TabPane key="users" tab={t('label.user-plural')}>
                   <RolesDetailPageList
-                    hasAccess={rolePermission.EditAll}
+                    hasAccess={Boolean(isAdminUser)}
                     list={role.users ?? []}
                     type="user"
                     onDelete={(record) =>
