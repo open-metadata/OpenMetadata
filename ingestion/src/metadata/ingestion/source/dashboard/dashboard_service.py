@@ -44,7 +44,8 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
@@ -418,6 +419,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         toEntity=EntityReference(
                             id=to_entity.id.__root__,
                             type=LINEAGE_MAP[type(to_entity)],
+                        ),
+                        lineageDetails=LineageDetails(
+                            source=LineageSource.DashboardLineage
                         ),
                     )
                 )
