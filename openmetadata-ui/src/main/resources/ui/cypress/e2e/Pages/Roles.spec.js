@@ -61,7 +61,9 @@ describe('Roles page should work properly', () => {
 
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Roles')

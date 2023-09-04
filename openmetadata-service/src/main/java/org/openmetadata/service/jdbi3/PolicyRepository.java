@@ -72,7 +72,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void prepare(Policy policy) {
+  public void prepare(Policy policy, boolean update) {
     validateRules(policy);
   }
 
@@ -92,7 +92,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  protected void preDelete(Policy entity) {
+  protected void preDelete(Policy entity, String updateBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));

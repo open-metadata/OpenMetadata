@@ -23,6 +23,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -43,9 +46,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import delete_entity_from_source
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -161,14 +166,18 @@ class DatabaseServiceSource(
     context = create_source_context(topology)
 
     def prepare(self):
-        pass
+        """By default, there is no preparation needed"""
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
-    def yield_create_request_database_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=DatabaseService, config=config
+    def yield_create_request_database_service(
+        self, config: WorkflowSource
+    ) -> Iterable[Either[CreateDatabaseServiceRequest]]:
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=DatabaseService, config=config
+            )
         )
 
     @abstractmethod
@@ -193,7 +202,9 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -204,7 +215,7 @@ class DatabaseServiceSource(
     @abstractmethod
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -213,14 +224,16 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each schema
         """
 
     def yield_tag_details(
         self, schema_name: str
-    ) -> Iterable[OMetaTagAndClassification]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each schema
         """
@@ -228,7 +241,7 @@ class DatabaseServiceSource(
             yield from self.yield_tag(schema_name) or []
 
     @abstractmethod
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
         From topology.
         Parses view definition to get lineage information
@@ -245,7 +258,7 @@ class DatabaseServiceSource(
     @abstractmethod
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[CreateTableRequest]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
@@ -326,9 +339,8 @@ class DatabaseServiceSource(
         )
 
         self.database_source_state.add(table_fqn)
-        self.status.scanned(table_fqn)
 
-    def fetch_all_schema_and_delete_tables(self):
+    def fetch_all_schema_and_delete_tables(self) -> Iterable[Either[DeleteEntity]]:
         """
         Fetch all schemas and delete tables
         """

@@ -29,7 +29,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -123,7 +124,7 @@ class MetabaseSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: MetabaseDashboardDetails
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -151,17 +152,20 @@ class MetabaseSource(DashboardServiceSource):
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error creating dashboard [{dashboard_details.name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=f"Error creating dashboard [{dashboard_details.name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def yield_dashboard_chart(
         self, dashboard_details: MetabaseDashboardDetails
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method
 
         Args:
@@ -184,24 +188,30 @@ class MetabaseSource(DashboardServiceSource):
                 ):
                     self.status.filter(chart_details.name, "Chart Pattern not allowed")
                     continue
-                yield CreateChartRequest(
-                    name=chart_details.id,
-                    displayName=chart_details.name,
-                    description=chart_details.description,
-                    chartType=get_standard_chart_type(chart_details.display).value,
-                    sourceUrl=chart_url,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                yield Either(
+                    right=CreateChartRequest(
+                        name=chart_details.id,
+                        displayName=chart_details.name,
+                        description=chart_details.description,
+                        chartType=get_standard_chart_type(chart_details.display).value,
+                        sourceUrl=chart_url,
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    )
                 )
-                self.status.scanned(chart_details.name)
             except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name="Chart",
+                        error=f"Error creating chart [{chart}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: MetabaseDashboardDetails,
         db_service_name: Optional[str],
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method
 
         Args:
@@ -240,12 +250,17 @@ class MetabaseSource(DashboardServiceSource):
                     ) or []
 
             except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.error(f"Error creating chart [{chart}]: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name="Lineage",
+                        error=f"Error adding lineage: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def _yield_lineage_from_query(
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
-    ) -> Optional[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         database = self.client.get_database(chart_details.database_id)
 
         query = None
@@ -291,7 +306,7 @@ class MetabaseSource(DashboardServiceSource):
 
     def _yield_lineage_from_api(
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
-    ) -> Optional[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
 
         if table is None or table.display_name is None:

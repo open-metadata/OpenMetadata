@@ -15,8 +15,6 @@ Domo Pipeline source to extract metadata
 import traceback
 from typing import Dict, Iterable, Optional
 
-from pydantic import ValidationError
-
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -34,7 +32,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.domoPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri
@@ -73,7 +72,9 @@ class DomopipelineSource(PipelineServiceSource):
         for result in results:
             yield result
 
-    def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
+    def yield_pipeline(
+        self, pipeline_details
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         try:
             pipeline_name = pipeline_details["id"]
             source_url = self.get_source_url(pipeline_id=pipeline_name)
@@ -93,29 +94,30 @@ class DomopipelineSource(PipelineServiceSource):
                 startDate=pipeline_details.get("created"),
                 sourceUrl=source_url,
             )
-            yield pipeline_request
+            yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
 
         except KeyError as err:
-            logger.error(
-                f"Error extracting data from {pipeline_details.get('name', 'unknown')} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.get("name", "unknown"),
+                    error=f"Error extracting data from {pipeline_details.get('name', 'unknown')} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
-        except ValidationError as err:
-            logger.error(
-                f"Error building pydantic model for {pipeline_details.get('name', 'unknown')} - {err}"
-            )
-            logger.debug(traceback.format_exc())
         except Exception as err:
-            logger.error(
-                f"Wild error ingesting pipeline {pipeline_details.get('name', 'unknown')} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.get("name", "unknown"),
+                    error=f"Wild error ingesting pipeline {pipeline_details.get('name', 'unknown')} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
 
     def yield_pipeline_lineage_details(
         self, pipeline_details
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        return
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Lineage not implemented"""
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
         pipeline_id = pipeline_details.get("id")
@@ -123,8 +125,7 @@ class DomopipelineSource(PipelineServiceSource):
             logger.debug(
                 f"Could not extract ID from {pipeline_details} while getting status."
             )
-            return None
-
+            return
         runs = self.connection.get_runs(pipeline_id)
         try:
             for run in runs or []:
@@ -149,19 +150,20 @@ class DomopipelineSource(PipelineServiceSource):
                     timestamp=end_time,
                 )
 
-                yield OMetaPipelineStatus(
-                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                    pipeline_status=pipeline_status,
+                yield Either(
+                    right=OMetaPipelineStatus(
+                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                        pipeline_status=pipeline_status,
+                    )
                 )
-        except KeyError as err:
-            logger.error(f"Error extracting status data for {pipeline_id} - {err}")
-            logger.debug(traceback.format_exc())
-
         except Exception as err:
-            logger.error(f"Wild error extracting status for {pipeline_id} - {err}")
-            logger.debug(traceback.format_exc())
-
-        return None
+            yield Either(
+                left=StackTraceError(
+                    name=self.context.pipeline.fullyQualifiedName.__root__,
+                    error=f"Error extracting status for {pipeline_id} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_source_url(
         self,

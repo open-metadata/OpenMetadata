@@ -71,7 +71,7 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
-  public void prepare(T service) {
+  public void prepare(T service, boolean update) {
     /* Nothing to do */
     service
         .getConnection()

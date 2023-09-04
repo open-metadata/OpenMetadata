@@ -14,10 +14,13 @@ Module centralising logger configs
 
 import logging
 from enum import Enum
+from functools import singledispatch
 from types import DynamicClassAttribute
 from typing import Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.delete_entity import DeleteEntity
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
@@ -157,29 +160,44 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
     logging.getLogger(METADATA_LOGGER).setLevel(level)
 
 
-def get_add_lineage_log_str(add_lineage: AddLineageRequest) -> str:
-    """
-    Given a LineageRequest, parse its contents to return
-    a string that we can log
-    """
-
-    # id and type will always be informed
-    id_ = add_lineage.edge.fromEntity.id.__root__
-    type_ = add_lineage.edge.fromEntity.type
-
-    # name can be informed or not
-    name_str = (
-        f"name: {add_lineage.edge.fromEntity.name}, "
-        if add_lineage.edge.fromEntity.name
-        else ""
-    )
-
-    return f"{type_} [{name_str}id: {id_}]"
-
-
 def log_ansi_encoded_string(
     color: Optional[ANSI] = None, bold: bool = False, message: str = ""
 ):
     utils_logger().info(
         f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
     )
+
+
+@singledispatch
+def get_log_name(record: Entity) -> str:
+    try:
+        return f"{type(record).__name__} [{record.name.__root__}]"
+    except Exception:
+        return str(record)
+
+
+@get_log_name.register
+def _(record: AddLineageRequest) -> str:
+    """
+    Given a LineageRequest, parse its contents to return
+    a string that we can log
+    """
+
+    # id and type will always be informed
+    id_ = record.edge.fromEntity.id.__root__
+    type_ = record.edge.fromEntity.type
+
+    # name can be informed or not
+    name_str = (
+        f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
+    )
+
+    return f"{type_} [{name_str}id: {id_}]"
+
+
+@get_log_name.register
+def _(record: DeleteEntity) -> str:
+    """
+    Capture information about the deleted Entity
+    """
+    return f"{type(record.entity).__name__} [{record.entity.name.__root__}]"

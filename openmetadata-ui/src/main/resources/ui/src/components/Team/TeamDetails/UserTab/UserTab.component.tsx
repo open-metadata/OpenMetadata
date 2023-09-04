@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
@@ -22,9 +22,9 @@ import FilterTablePlaceHolder from 'components/common/error-with-placeholder/Fil
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import Table from 'components/common/Table/Table';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import Loader from 'components/Loader/Loader';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { commonUserDetailColumns } from 'components/Users/Users.util';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
@@ -249,35 +249,31 @@ export const UserTab = ({
           </Col>
         </Row>
       </Col>
-
-      {isLoading > 0 ? (
-        <Loader />
-      ) : (
-        <Col span={24}>
-          <Table
-            bordered
-            className="teams-list-table"
-            columns={columns}
-            dataSource={sortedUser}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="name"
-            size="small"
+      <Col span={24}>
+        <Table
+          bordered
+          className="teams-list-table"
+          columns={columns}
+          dataSource={sortedUser}
+          loading={isLoading > 0}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
+        {paging.total > PAGE_SIZE_MEDIUM && (
+          <NextPrevious
+            currentPage={currentPage}
+            isNumberBased={Boolean(searchText)}
+            pageSize={PAGE_SIZE_MEDIUM}
+            paging={paging}
+            pagingHandler={onChangePaging}
+            totalCount={paging.total}
           />
-          {paging.total > PAGE_SIZE_MEDIUM && (
-            <NextPrevious
-              currentPage={currentPage}
-              isNumberBased={Boolean(searchText)}
-              pageSize={PAGE_SIZE_MEDIUM}
-              paging={paging}
-              pagingHandler={onChangePaging}
-              totalCount={paging.total}
-            />
-          )}
-        </Col>
-      )}
+        )}
+      </Col>
 
       <ConfirmationModal
         bodyText={t('message.are-you-sure-want-to-text', {

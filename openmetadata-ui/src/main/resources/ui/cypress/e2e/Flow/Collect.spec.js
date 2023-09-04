@@ -17,29 +17,29 @@ describe('Collect end point should work properly', () => {
   const PAGES = {
     setting: {
       name: 'Settings',
-      mainMenuId: `[data-testid="appbar-item-settings"]`,
+      mainMenuId: `[data-testid="app-bar-item-settings"]`,
     },
     explore: {
       name: 'Explore',
-      mainMenuId: `[data-testid="appbar-item-explore"]`,
+      mainMenuId: `[data-testid="app-bar-item-explore"]`,
     },
     dataQuality: {
       name: 'Quality',
-      mainMenuId: `[data-testid="appbar-item-data-quality"]`,
+      mainMenuId: `[data-testid="app-bar-item-data-quality"]`,
     },
     insight: {
       name: 'Insights',
-      mainMenuId: `[data-testid="appbar-item-data-insight"]`,
+      mainMenuId: `[data-testid="app-bar-item-data-insight"]`,
     },
     glossary: {
       name: 'Glossary',
       mainMenuId: `[data-testid="governance"]`,
-      subMenu: `[data-testid="appbar-item-glossary"]`,
+      subMenu: `[data-testid="app-bar-item-glossary"]`,
     },
     tag: {
       name: 'Tags',
       mainMenuId: `[data-testid="governance"]`,
-      subMenu: `[data-testid="appbar-item-tags"]`,
+      subMenu: `[data-testid="app-bar-item-tags"]`,
     },
   };
 
@@ -66,7 +66,7 @@ describe('Collect end point should work properly', () => {
       if (page.subMenu) {
         // adding manual wait to open dropdown in UI
         cy.wait(500);
-        cy.get(page.subMenu).should('be.visible').click();
+        cy.get(page.subMenu).should('be.visible').click({ force: true });
       }
       assertCollectEndPoint();
     });

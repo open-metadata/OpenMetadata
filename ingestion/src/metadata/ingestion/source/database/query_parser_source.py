@@ -9,13 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Usage Souce Module
+Query Parser Source module. Parent class for Lineage & Usage workflows
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Iterator, Optional, Union
+from typing import Iterator
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -23,7 +22,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.helpers import get_start_and_end
@@ -32,12 +31,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
+class QueryParserSource(Source, ABC):
     """
     Core class to be inherited for sources that
     parse query logs, be it for usage or lineage.
 
-    It leaves the implementation of the `next_record`
+    It leaves the implementation of the `_iter`
     from the Source to its children, while providing
     some utilities to be overwritten when necessary
     """
@@ -63,35 +62,22 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         self.engine = get_connection(self.service_connection) if get_engine else None
 
     def prepare(self):
-        """
-        By default, there's nothing to prepare
-        """
+        """By default, there's nothing to prepare"""
 
     @abstractmethod
-    def get_table_query(self) -> Optional[Iterator[TableQuery]]:
-        """
-        Overwrite to load table queries from log files
-        """
+    def get_table_query(self) -> Iterator[TableQuery]:
+        """Overwrite to load table queries from log files"""
 
     @staticmethod
     def get_database_name(data: dict) -> str:
-        """
-        Method to get database name
-        """
         return data.get("database_name")
 
     @staticmethod
     def get_schema_name(data: dict) -> str:
-        """
-        Method to get schema name
-        """
         return data.get("schema_name")
 
     @staticmethod
     def get_aborted_status(data: dict) -> bool:
-        """
-        Method to get aborted status of query
-        """
         return data.get("aborted", False)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
@@ -113,9 +99,7 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         return self.filters
 
     def close(self):
-        """
-        By default, there is nothing to close
-        """
+        """By default, there is nothing to close"""
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
