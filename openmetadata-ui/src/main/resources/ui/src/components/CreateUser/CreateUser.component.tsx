@@ -21,7 +21,6 @@ import {
   Space,
   Switch,
 } from 'antd';
-import { useWatch } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import { AuthProvider } from 'generated/settings/settings';
 import { isEmpty, isUndefined, map, trim } from 'lodash';
@@ -82,9 +81,9 @@ const CreateUser = ({
     }));
   }, [roles]);
 
-  const generatedPassword = useWatch('generatedPassword', form);
-  const passwordGenerator = useWatch('passwordGenerator', form);
-  const password = useWatch('password', form);
+  const generatedPassword = Form.useWatch('generatedPassword', form);
+  const passwordGenerator = Form.useWatch('passwordGenerator', form);
+  const password = Form.useWatch('password', form);
 
   const generateRandomPassword = async () => {
     setIsPasswordGenerating(true);
