@@ -18,6 +18,7 @@ import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Table from 'components/common/Table/Table';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
+import { PRIMERY_COLOR } from 'constants/constants';
 import cronstrue from 'cronstrue';
 import {
   IngestionPipeline,
@@ -87,53 +88,47 @@ export const IngestionPipelineList = ({
   };
 
   const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
-    () =>
-      pipelines
-        ? [
-            {
-              title: t('label.name'),
-              dataIndex: 'name',
-              key: 'name',
-              width: 500,
-              render: renderNameField,
-            },
-            {
-              title: t('label.type'),
-              dataIndex: 'pipelineType',
-              key: 'pipelineType',
-              filterDropdown: ColumnFilter,
-              filterIcon: (filtered: boolean) => (
-                <FilterOutlined
-                  style={{ color: filtered ? '#0968da' : undefined }}
-                />
-              ),
-              filters: map(PipelineType, (value) => ({
-                text: startCase(value),
-                value,
-              })),
-              filtered: !isNil(pipelineTypeFilter),
-              filteredValue: pipelineTypeFilter,
-            },
-            {
-              title: t('label.schedule'),
-              dataIndex: 'schedule',
-              key: 'schedule',
-              render: renderScheduleField,
-            },
-            {
-              title: t('label.recent-run-plural'),
-              dataIndex: 'recentRuns',
-              key: 'recentRuns',
-              width: 180,
-              render: (_, record) => (
-                <IngestionRecentRuns
-                  classNames="align-middle"
-                  ingestion={record}
-                />
-              ),
-            },
-          ]
-        : [],
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+        width: 500,
+        render: renderNameField,
+      },
+      {
+        title: t('label.type'),
+        dataIndex: 'pipelineType',
+        key: 'pipelineType',
+        filterDropdown: ColumnFilter,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        filters: map(PipelineType, (value) => ({
+          text: startCase(value),
+          value,
+        })),
+        filtered: !isNil(pipelineTypeFilter),
+        filteredValue: pipelineTypeFilter,
+      },
+      {
+        title: t('label.schedule'),
+        dataIndex: 'schedule',
+        key: 'schedule',
+        render: renderScheduleField,
+      },
+      {
+        title: t('label.recent-run-plural'),
+        dataIndex: 'recentRuns',
+        key: 'recentRuns',
+        width: 180,
+        render: (_, record) => (
+          <IngestionRecentRuns classNames="align-middle" ingestion={record} />
+        ),
+      },
+    ],
     [renderScheduleField, renderNameField]
   );
 
@@ -217,9 +212,10 @@ export const IngestionPipelineList = ({
     _pagination,
     filters
   ) => {
-    setPipelineTypeFilter(filters.pipelineType as PipelineType[]);
+    const pipelineType = filters.pipelineType as PipelineType[];
+    setPipelineTypeFilter(pipelineType);
     fetchPipelines({
-      pipelineType: filters.pipelineType as PipelineType[],
+      pipelineType,
       limit: pageSize,
     });
   };
