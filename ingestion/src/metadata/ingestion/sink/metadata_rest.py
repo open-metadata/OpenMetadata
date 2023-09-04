@@ -414,7 +414,7 @@ class MetadataRestSink(Sink):
             entity=record.entity, life_cycle_data=record.life_cycle_properties
         )
         return Either(right=record)
-    
+
     @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:
         """Cleanup "`" character in columns and ingest"""
