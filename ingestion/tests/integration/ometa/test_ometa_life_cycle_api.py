@@ -213,7 +213,7 @@ class OMetaLifeCycleTest(TestCase):
         )
         self.assertEqual(res, self.life_cycle)
 
-    def test_get_api_for_life_cycle(self):
+    def test_life_cycle_get_methods(self):
         """
         We can fetch a Table by name/id and pass the field for lifeCycle
         """
