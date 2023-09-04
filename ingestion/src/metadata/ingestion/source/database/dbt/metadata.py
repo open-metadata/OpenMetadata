@@ -50,7 +50,8 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -615,6 +616,9 @@ class DbtSource(DbtServiceSource):
                                 id=to_entity.id.__root__,
                                 type="table",
                             ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.DbtLineage
+                            ),
                         )
                     )
 
@@ -656,6 +660,7 @@ class DbtSource(DbtServiceSource):
                 schema_name=source_elements[2],
                 dialect=dialect,
                 timeout_seconds=self.source_config.parsingTimeoutLimit,
+                lineage_source=LineageSource.DbtLineage,
             )
             for lineage_request in lineages or []:
                 yield lineage_request

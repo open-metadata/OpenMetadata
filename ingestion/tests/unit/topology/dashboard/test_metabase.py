@@ -34,7 +34,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -151,6 +152,7 @@ EXPECTED_LINEAGE = AddLineageRequest(
             id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
             type="dashboard",
         ),
+        lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
     )
 )
 
