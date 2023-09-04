@@ -43,10 +43,16 @@ def return_azure_storage_options(config_source: AzureConfig) -> Dict[str, str]:
 
 
 class ADLSReader(Reader):
+    """ADLS Reader
+    Class to read from buckets with prefix as paths
+    """
+
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True,**__) -> bytes:
+    def read(
+        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
+    ) -> bytes:
         try:
             container_client = self.client.get_container_client(bucket_name)
             return container_client.get_blob_client(path).download_blob().readall()

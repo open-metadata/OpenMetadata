@@ -89,6 +89,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             file_fqn=DatalakeTableSchemaWrapper(
                 key=self.table_entity.name.__root__,
                 bucket_name=self.table_entity.databaseSchema.name,
+                file_extension=self.table_entity.fileFormat,
             ),
             is_profiler=True,
         )

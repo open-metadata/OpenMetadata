@@ -256,7 +256,7 @@ class DatalakeSource(DatabaseServiceSource):
             metadata_config_response = self.reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
                 bucket_name=bucket_name,
-                verbose=False
+                verbose=False,
             )
             content = json.loads(metadata_config_response)
             metadata_entry = StorageContainerConfig.parse_obj(content)
@@ -307,14 +307,15 @@ class DatalakeSource(DatabaseServiceSource):
                     table_name = self.standardize_table_name(bucket_name, file.name)
                     if self.filter_dl_table(table_name):
                         continue
-                    if not get_file_format_type(
-                        key_name=file.name,
-                    ):
+                    file_extension = get_file_format_type(
+                        key_name=file.name, metadata_entry=metadata_entry
+                    )
+                    if not file_extension:
                         logger.debug(
                             f"Object filtered due to unsupported file type: {file.name}"
                         )
                         continue
-                    yield file.name, TableType.Regular
+                    yield table_name, TableType.Regular, file_extension
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]

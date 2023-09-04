@@ -22,10 +22,16 @@ logger = ingestion_logger()
 
 
 class GCSReader(Reader):
+    """GCS Reader
+    Class to read from buckets with prefix as paths
+    """
+
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True,**__) -> bytes:
+    def read(
+        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
+    ) -> bytes:
         try:
             return (
                 self.client.get_bucket(bucket_name).get_blob(path).download_as_string()

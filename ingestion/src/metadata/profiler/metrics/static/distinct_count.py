@@ -17,6 +17,7 @@ Distinct Count Metric definition
 
 from sqlalchemy import column, distinct, func
 
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.count import CountFn
 from metadata.utils.logger import profiler_logger
@@ -41,15 +42,30 @@ class DistinctCount(StaticMetric):
 
     @_label
     def fn(self):
+        """
+        Distinct Count metric for Sqlalchemy connectors
+        """
         return func.count(distinct(CountFn(column(self.col.name, self.col.type))))
 
     def df_fn(self, dfs=None):
+        """
+        Distinct Count metric for Datalake
+        """
         from collections import Counter  # pylint: disable=import-outside-toplevel
 
         try:
             counter = Counter()
             for df in dfs:
-                counter.update(df[self.col.name].dropna().to_list())
+                col_type = df[self.col.name].dtypes.name
+                if (
+                    col_type == "object"
+                    and self.col.type in [DataType.ARRAY, DataType.JSON]
+                    and any(df[self.col.name].values)
+                ):
+                    df_col_value = df[self.col.name].dropna().to_list()[0]
+                else:
+                    df_col_value = df[self.col.name].dropna().to_list()
+                counter.update(df_col_value)
             return len(counter.keys())
         except Exception as err:
             logger.debug(

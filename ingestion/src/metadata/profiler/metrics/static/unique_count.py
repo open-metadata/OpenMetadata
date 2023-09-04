@@ -17,6 +17,7 @@ from typing import Optional
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
 from metadata.profiler.orm.registry import NOT_COMPUTE
@@ -71,7 +72,16 @@ class UniqueCount(QueryMetric):
         try:
             counter = Counter()
             for df in dfs:
-                counter.update(df[self.col.name].dropna().to_list())
+                col_type = df[self.col.name].dtypes.name
+                if (
+                    col_type == "object"
+                    and self.col.type in [DataType.ARRAY, DataType.JSON]
+                    and any(df[self.col.name].values)
+                ):
+                    df_col_value = df[self.col.name].dropna().to_list()[0]
+                else:
+                    df_col_value = df[self.col.name].dropna().to_list()
+                counter.update(df_col_value)
             return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(

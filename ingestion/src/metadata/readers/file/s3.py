@@ -22,10 +22,16 @@ logger = ingestion_logger()
 
 
 class S3Reader(Reader):
+    """S3 Reader
+    Class to read from buckets with prefix as paths
+    """
+
     def __init__(self, client):
         self.client = client
 
-    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True,**__) -> bytes:
+    def read(
+        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
+    ) -> bytes:
         try:
             return self.client.get_object(Bucket=bucket_name, Key=path)["Body"].read()
         except Exception as err:

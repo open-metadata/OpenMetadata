@@ -32,12 +32,14 @@ logger = utils_logger()
 
 DATALAKE_DATA_TYPES = {
     **dict.fromkeys(["int64", "INT", "int32"], DataType.INT.value),
-    "object": DataType.STRING.value,
+    "object": DataType.JSON.value,
+    "list": DataType.ARRAY.value,
     **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT.value),
     "bool": DataType.BOOLEAN.value,
     **dict.fromkeys(
         ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME.value
     ),
+    "str": DataType.STRING.value,
 }
 
 
@@ -178,14 +180,17 @@ def _parse_complex_column(
         # use String as default type
         data_type = DataType.STRING.value
         if hasattr(data_frame[column], "dtypes"):
-            data_type = DATALAKE_DATA_TYPES.get(
-                data_frame[column].dtypes.name, DataType.STRING.value
-            )
+            data_type = fetch_col_types(data_frame, column_name=column)
+
         leaf_column = Column(
             name=col_hierarchy[-1],
             dataType=data_type,
             dataTypeDisplay=data_type,
+            arrayDataType=DataType.UNKNOWN
+            if data_type == DataType.ARRAY.value
+            else None,
         )
+
         parent_col.children.append(leaf_column)
 
         # finally add the top level node in the column list
@@ -230,6 +235,9 @@ def get_columns(data_frame: "DataFrame"):
                         "name": truncate_column_name(column),
                         "displayName": column,
                     }
+                    if data_type == DataType.ARRAY.value:
+                        parsed_string["arrayDataType"] = DataType.UNKNOWN
+
                     cols.append(Column(**parsed_string))
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -241,8 +249,18 @@ def get_columns(data_frame: "DataFrame"):
 
 
 def fetch_col_types(data_frame, column_name):
+    """fetch_col_types: Fetch Column Type for the c
+
+    Args:
+        data_frame (DataFrame)
+        column_name (string)
+    """
+    data_type = None
+    if data_frame[column_name].dtypes.name == "object":
+        # we check further what is the type of the rows / values
+        data_type = type(data_frame[column_name].dropna().values[0]).__name__
     data_type = DATALAKE_DATA_TYPES.get(
-        data_frame[column_name].dtypes.name, DataType.STRING.value
+        data_type or data_frame[column_name].dtypes.name, DataType.STRING.value
     )
     if data_type == DataType.FLOAT.value:
         try:
