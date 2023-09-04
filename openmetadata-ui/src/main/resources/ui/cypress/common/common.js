@@ -1100,8 +1100,17 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
-export const addOwner = (ownerName, entity, isGlossaryPage) => {
-  cy.get('[data-testid="edit-owner"]').click();
+export const addOwner = (
+  ownerName,
+  entity,
+  isGlossaryPage,
+  isOwnerEmpty = false
+) => {
+  if (isGlossaryPage && isOwnerEmpty) {
+    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
+  } else {
+    cy.get('[data-testid="edit-owner"]').click();
+  }
 
   interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
   cy.get('.ant-tabs [id*=tab-users]').click();

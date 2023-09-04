@@ -1690,7 +1690,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
         AggregationBuilders.dateHistogram(DataInsightChartRepository.TIMESTAMP)
             .field(DataInsightChartRepository.TIMESTAMP)
-            .calendarInterval(DateHistogramInterval.minutes(1));
+            .calendarInterval(DateHistogramInterval.DAY);
 
     TermsAggregationBuilder termsAggregationBuilder;
     SumAggregationBuilder sumAggregationBuilder;

@@ -492,7 +492,7 @@ public class MigrationUtil {
               .getDao()
               .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
         } catch (Exception ex) {
-          LOG.warn("TestSuite %s exists".format(nativeTestSuiteFqn));
+          LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
         }
         // add relationship between executable TestSuite with Table
         testSuiteRepository.addRelationship(

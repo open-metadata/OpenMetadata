@@ -69,19 +69,21 @@ const CreateErrorPlaceHolder = ({
             />
           </Typography.Paragraph>
 
-          <Tooltip
-            placement="top"
-            title={!permission && t('message.admin-only-action')}>
-            <Button
-              ghost
-              className="p-x-lg"
-              data-testid={buttonId ?? 'add-placeholder-button'}
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={onClick}>
-              {t('label.add')}
-            </Button>
-          </Tooltip>
+          {onClick && (
+            <Tooltip
+              placement="top"
+              title={!permission && t('message.admin-only-action')}>
+              <Button
+                ghost
+                className="p-x-lg"
+                data-testid={buttonId ?? 'add-placeholder-button'}
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={onClick}>
+                {t('label.add')}
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </Space>
     </div>
