@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Modal, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Description from 'components/common/description/Description';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -19,7 +19,6 @@ import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb
 import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,7 +51,6 @@ interface AddAttribute {
 
 const RolesDetailPage = () => {
   const history = useHistory();
-  const { isAdminUser } = useAuth();
   const { t } = useTranslation();
   const { fqn } = useParams<{ fqn: string }>();
 
@@ -217,10 +215,8 @@ const RolesDetailPage = () => {
   };
 
   useEffect(() => {
-    if (isAdminUser) {
-      fetchRole();
-    }
-  }, [isAdminUser, fqn]);
+    fetchRole();
+  }, [fqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -229,110 +225,99 @@ const RolesDetailPage = () => {
   return (
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {isAdminUser ? (
-        <>
-          {isEmpty(role) ? (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <div className="text-center">
-                <p>
-                  {t('message.no-entity-found-for-name', {
-                    entity: t('label.role'),
-                    name: fqn,
-                  })}
-                </p>
-                <Button
-                  ghost
-                  className="m-t-sm"
-                  type="primary"
-                  onClick={() => history.push(rolesPath)}>
-                  {t('label.go-back')}
-                </Button>
-              </div>
-            </ErrorPlaceHolder>
-          ) : (
-            <div className="roles-detail" data-testid="role-details">
-              <Typography.Title
-                className="m-b-0 m-t-xs"
-                data-testid="heading"
-                level={5}>
-                {getEntityName(role)}
-              </Typography.Title>
-              <Description
-                className="m-b-md"
-                description={role.description || ''}
-                entityFqn={role.fullyQualifiedName}
-                entityName={getEntityName(role)}
-                entityType={EntityType.ROLE}
-                hasEditAccess={Boolean(isAdminUser)}
-                isEdit={editDescription}
-                onCancel={() => setEditDescription(false)}
-                onDescriptionEdit={() => setEditDescription(true)}
-                onDescriptionUpdate={handleDescriptionUpdate}
-              />
 
-              <Tabs data-testid="tabs" defaultActiveKey="policies">
-                <TabPane key="policies" tab={t('label.policy-plural')}>
-                  <Space className="w-full" direction="vertical">
-                    <Tooltip
-                      title={
-                        isAdminUser
-                          ? t('label.add-entity', {
-                              entity: t('label.policy'),
-                            })
-                          : t('message.no-permission-for-action')
-                      }>
-                      <Button
-                        data-testid="add-policy"
-                        disabled={!isAdminUser}
-                        type="primary"
-                        onClick={() =>
-                          setAddAttribute({
-                            type: EntityType.POLICY,
-                            selectedData: role.policies || [],
-                          })
-                        }>
-                        {t('label.add-entity', {
-                          entity: t('label.policy'),
-                        })}
-                      </Button>
-                    </Tooltip>
-                    <RolesDetailPageList
-                      hasAccess={Boolean(isAdminUser)}
-                      list={role.policies ?? []}
-                      type="policy"
-                      onDelete={(record) =>
-                        setEntity({ record, attribute: 'policies' })
-                      }
-                    />
-                  </Space>
-                </TabPane>
-                <TabPane key="teams" tab={t('label.team-plural')}>
-                  <RolesDetailPageList
-                    hasAccess={Boolean(isAdminUser)}
-                    list={role.teams ?? []}
-                    type="team"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'teams' })
-                    }
-                  />
-                </TabPane>
-                <TabPane key="users" tab={t('label.user-plural')}>
-                  <RolesDetailPageList
-                    hasAccess={Boolean(isAdminUser)}
-                    list={role.users ?? []}
-                    type="user"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'users' })
-                    }
-                  />
-                </TabPane>
-              </Tabs>
+      <>
+        {isEmpty(role) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <div className="text-center">
+              <p>
+                {t('message.no-entity-found-for-name', {
+                  entity: t('label.role'),
+                  name: fqn,
+                })}
+              </p>
+              <Button
+                ghost
+                className="m-t-sm"
+                type="primary"
+                onClick={() => history.push(rolesPath)}>
+                {t('label.go-back')}
+              </Button>
             </div>
-          )}
-        </>
-      ) : (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-      )}
+          </ErrorPlaceHolder>
+        ) : (
+          <div className="roles-detail" data-testid="role-details">
+            <Typography.Title
+              className="m-b-0 m-t-xs"
+              data-testid="heading"
+              level={5}>
+              {getEntityName(role)}
+            </Typography.Title>
+            <Description
+              hasEditAccess
+              className="m-b-md"
+              description={role.description || ''}
+              entityFqn={role.fullyQualifiedName}
+              entityName={getEntityName(role)}
+              entityType={EntityType.ROLE}
+              isEdit={editDescription}
+              onCancel={() => setEditDescription(false)}
+              onDescriptionEdit={() => setEditDescription(true)}
+              onDescriptionUpdate={handleDescriptionUpdate}
+            />
+
+            <Tabs data-testid="tabs" defaultActiveKey="policies">
+              <TabPane key="policies" tab={t('label.policy-plural')}>
+                <Space className="w-full" direction="vertical">
+                  <Button
+                    data-testid="add-policy"
+                    type="primary"
+                    onClick={() =>
+                      setAddAttribute({
+                        type: EntityType.POLICY,
+                        selectedData: role.policies || [],
+                      })
+                    }>
+                    {t('label.add-entity', {
+                      entity: t('label.policy'),
+                    })}
+                  </Button>
+
+                  <RolesDetailPageList
+                    hasAccess
+                    list={role.policies ?? []}
+                    type="policy"
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'policies' })
+                    }
+                  />
+                </Space>
+              </TabPane>
+              <TabPane key="teams" tab={t('label.team-plural')}>
+                <RolesDetailPageList
+                  hasAccess
+                  list={role.teams ?? []}
+                  type="team"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'teams' })
+                  }
+                />
+              </TabPane>
+              <TabPane key="users" tab={t('label.user-plural')}>
+                <RolesDetailPageList
+                  hasAccess
+                  list={role.users ?? []}
+                  type="user"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'users' })
+                  }
+                />
+              </TabPane>
+            </Tabs>
+          </div>
+        )}
+      </>
+
       {selectedEntity && (
         <Modal
           centered

@@ -57,12 +57,6 @@ jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
-jest.mock('hooks/authHooks', () => ({
-  useAuth: jest.fn().mockReturnValue({
-    isAdminUser: true,
-  }),
-}));
-
 jest.mock('../../../constants/HelperTextUtil', () => ({
   NO_PERMISSION_FOR_ACTION: '',
   NO_PERMISSION_TO_VIEW: '',

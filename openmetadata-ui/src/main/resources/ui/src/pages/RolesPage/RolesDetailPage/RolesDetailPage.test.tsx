@@ -60,12 +60,6 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('hooks/authHooks', () => ({
-  useAuth: jest.fn().mockReturnValue({
-    isAdminUser: true,
-  }),
-}));
-
 describe('Test Roles Details Page', () => {
   it('Should render the detail component', async () => {
     render(<RolesDetailPage />);
