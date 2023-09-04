@@ -103,14 +103,10 @@ else
 fi
 
 execute() {
-  local command="$1"
-  local debug="$2"
-  local force="$3"
-
   if [ "${debug}" = true ]; then
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
   fi
-  echo "The -force value is ${force} and the debug value is ${debug} and command used is ${command}"
+  echo "The -force value is ${force} and the debug value is ${debug} and command used is ${opt}"
   ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${FLYWAY_SQL_ROOT_DIR} -n ${NATIVE_SQL_ROOT_DIR} --${1} -force ${force}  -${debug}
 }
 
