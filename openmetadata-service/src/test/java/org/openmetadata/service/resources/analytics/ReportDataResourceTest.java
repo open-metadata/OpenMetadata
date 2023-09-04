@@ -11,6 +11,7 @@ import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -104,7 +105,6 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void delete_endpoint_200() throws HttpResponseException, ParseException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
@@ -117,7 +117,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withEntityCount(11);
     ReportData reportData1 =
         new ReportData()
-            .withTimestamp(TestUtils.dateToTimestamp("2022-10-15"))
+            .withTimestamp(new Date(122, 9, 15, 10, 10, 10).getTime())
             .withReportDataType(ReportData.ReportDataType.ENTITY_REPORT_DATA)
             .withData(entityReportData);
 
@@ -129,7 +129,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withLastSession(TestUtils.dateToTimestamp("2022-10-13"));
     ReportData reportData2 =
         new ReportData()
-            .withTimestamp(TestUtils.dateToTimestamp("2022-10-15"))
+            .withTimestamp(new Date(122, 9, 15, 10, 10, 10).getTime())
             .withReportDataType(ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)
             .withData(webAnalyticUserActivityReportData);
 
@@ -142,24 +142,24 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     // check we have our data
     ResultList<ReportData> entityReportDataList =
-        getReportData("2022-10-15", "2022-10-15", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+        getReportData("2022-10-15", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
     ResultList<ReportData> webAnalyticsReportDataList =
         getReportData(
             "2022-10-15",
-            "2022-10-15",
+            "2022-10-16",
             ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
     assertNotEquals(0, entityReportDataList.getData().size());
     assertNotEquals(0, webAnalyticsReportDataList.getData().size());
 
-    // delete the entity report data and check that it as been deleted
-    deleteReportData(ReportData.ReportDataType.ENTITY_REPORT_DATA.value(), "2022-10-14", ADMIN_AUTH_HEADERS);
+    // delete the entity report data and check that it has been deleted
+    deleteReportData(ReportData.ReportDataType.ENTITY_REPORT_DATA.value(), "2022-10-15", ADMIN_AUTH_HEADERS);
     entityReportDataList =
-        getReportData("2022-10-14", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+        getReportData("2022-10-15", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
     assertEquals(0, entityReportDataList.getData().size());
     webAnalyticsReportDataList =
         getReportData(
-            "2022-10-14",
+            "2022-10-15",
             "2022-10-16",
             ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
