@@ -298,24 +298,6 @@ class PiiProcessorTest(TestCase):
         )
         cls.table_entity = cls.metadata.create_or_update(data=created_table)
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-table-patch"
-            ).id.__root__
-        )
-
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-
     def test_ner_scanner_process(self):
         """
         test function for ner Scanner
