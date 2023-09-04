@@ -252,6 +252,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   }
 
   @POST
+  @JdbiUnitOfWork
   @Operation(
       operationId = "createClassification",
       summary = "Create a classification",

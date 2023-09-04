@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -45,11 +46,14 @@ public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
   private NotificationHandler notificationHandler;
 
+  private ChangeEventRepository changeEventRepository;
+
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
     this.mapper = new ObjectMapper();
     this.notificationHandler = new NotificationHandler(jdbi.onDemand(CollectionDAO.class));
+    this.changeEventRepository = new ChangeEventRepository(dao);
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -77,7 +81,8 @@ public class ChangeEventHandler implements EventHandler {
             changeEvent = copyChangeEvent(changeEvent);
             changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
           }
-          dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+
+          changeEventRepository.insert(changeEvent);
 
           // Add a new thread to the entity for every change event
           // for the event to appear in activity feeds
