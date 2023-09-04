@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,8 +12,8 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
-import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -22,7 +22,7 @@ export interface StoredProcedureVersionProp {
   version: string;
   currentVersionData: VersionData;
   isVersionLoading: boolean;
-  owner: Table['owner'];
+  owner: StoredProcedure['owner'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   storedProcedureFQN: string;
