@@ -21,6 +21,7 @@ from metadata.generated.schema.type.entityLineage import (
     EntitiesEdge,
     LineageDetails,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.lineage.models import Dialect
@@ -223,6 +224,7 @@ def _build_table_lineage(
     to_table_raw_name: str,
     query: str,
     column_lineage_map: dict,
+    lineage_source: LineageSource = LineageSource.QueryLineage,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Prepare the lineage request generator
@@ -234,7 +236,7 @@ def _build_table_lineage(
         from_table_raw_name=str(from_table_raw_name),
         column_lineage_map=column_lineage_map,
     )
-    lineage_details = LineageDetails(sqlQuery=query)
+    lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
     if col_lineage:
         lineage_details.columnsLineage = col_lineage
     if from_entity and to_entity:
@@ -265,6 +267,7 @@ def _create_lineage_by_table_name(
     schema_name: Optional[str],
     query: str,
     column_lineage_map: dict,
+    lineage_source: LineageSource = LineageSource.QueryLineage,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
@@ -296,6 +299,7 @@ def _create_lineage_by_table_name(
                     from_table_raw_name=from_table,
                     query=query,
                     column_lineage_map=column_lineage_map,
+                    lineage_source=lineage_source,
                 )
 
     except Exception as exc:
@@ -347,6 +351,7 @@ def get_lineage_by_query(
     query: str,
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
+    lineage_source: LineageSource = LineageSource.QueryLineage,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -372,6 +377,7 @@ def get_lineage_by_query(
                     schema_name=schema_name,
                     query=query,
                     column_lineage_map=column_lineage,
+                    lineage_source=lineage_source,
                 )
             for target_table in lineage_parser.target_tables:
                 yield from _create_lineage_by_table_name(
@@ -383,6 +389,7 @@ def get_lineage_by_query(
                     schema_name=schema_name,
                     query=query,
                     column_lineage_map=column_lineage,
+                    lineage_source=lineage_source,
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
@@ -396,6 +403,7 @@ def get_lineage_by_query(
                         schema_name=schema_name,
                         query=query,
                         column_lineage_map=column_lineage,
+                        lineage_source=lineage_source,
                     )
     except Exception as exc:
         yield Either(
@@ -416,6 +424,7 @@ def get_lineage_via_table_entity(
     query: str,
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
+    lineage_source: LineageSource = LineageSource.QueryLineage,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
@@ -435,6 +444,7 @@ def get_lineage_via_table_entity(
                 schema_name=schema_name,
                 query=query,
                 column_lineage_map=column_lineage,
+                lineage_source=lineage_source,
             ) or []
     except Exception as exc:  # pylint: disable=broad-except
         Either(

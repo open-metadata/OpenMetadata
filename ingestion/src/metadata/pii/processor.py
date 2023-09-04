@@ -12,39 +12,77 @@
 """
 Processor util to fetch pii sensitive columns
 """
-from typing import Optional
+import traceback
+from typing import Optional, cast
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.data.table import Column, TableData
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.column_name_scanner import ColumnNameScanner
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.steps import Processor
+from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.pii.constants import PII
-from metadata.pii.ner_scanner import NERScanner
+from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
+from metadata.pii.scanners.ner_scanner import NERScanner
+from metadata.profiler.api.models import PatchColumnTagResponse, ProfilerResponse
 from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
-class PIIProcessor:
+class PIIProcessor(Processor):
     """
     A scanner that uses Spacy NER for entity recognition
     """
 
-    def __init__(self, metadata: OpenMetadata):
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata_config: OpenMetadataConnection,
+    ):
+        super().__init__()
+        self.config = config
+        self.metadata_config = metadata_config
+        self.metadata = create_ometa_client(self.metadata_config)
 
-        self.metadata = metadata
+        # Init and type the source config
+        self.source_config: DatabaseServiceProfilerPipeline = cast(
+            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
+        )  # Used to satisfy type checked
+
         self.ner_scanner = NERScanner()
+        self.confidence_threshold = self.source_config.confidence
 
-    def patch_column_tag(
-        self, tag_type: str, table_entity: Table, column_fqn: str
-    ) -> None:
+    @classmethod
+    def create(
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection
+    ) -> "Step":
+        config = parse_workflow_config_gracefully(config_dict)
+        return cls(config=config, metadata_config=metadata_config)
+
+    def close(self) -> None:
+        """Nothing to close"""
+
+    def build_column_tag(
+        self, tag_type: str, column_fqn: str
+    ) -> PatchColumnTagResponse:
         """
         Build the tag and run the PATCH
         """
@@ -60,54 +98,84 @@ class PIIProcessor:
             state=State.Suggested,
             labelType=LabelType.Automated,
         )
-        self.metadata.patch_column_tag(
-            table=table_entity,
-            column_fqn=column_fqn,
-            tag_label=tag_label,
+
+        return PatchColumnTagResponse(column_fqn=column_fqn, tag_label=tag_label)
+
+    def process_column(
+        self,
+        idx: int,
+        column: Column,
+        table_data: Optional[TableData],
+        confidence_threshold: float,
+    ) -> Optional[PatchColumnTagResponse]:
+        """
+        Tag a column with PII if we find it using our scanners
+        """
+
+        # First, check if the column we are about to process
+        # already has PII tags or not
+        column_has_pii_tag = any(
+            (PII in tag.tagFQN.__root__ for tag in column.tags or [])
         )
 
-    def process(
+        # If it has PII tags, we skip the processing
+        # for the column
+        if column_has_pii_tag is True:
+            return None
+
+        # Scan by column name. If no results there, check the sample data, if any
+        tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
+            self.ner_scanner.scan([row[idx] for row in table_data.rows])
+            if table_data
+            else None
+        )
+
+        if (
+            tag_and_confidence
+            and tag_and_confidence.tag
+            and tag_and_confidence.confidence >= confidence_threshold / 100
+        ):
+            return self.build_column_tag(
+                tag_type=tag_and_confidence.tag.value,
+                column_fqn=column.fullyQualifiedName.__root__,
+            )
+
+        return None
+
+    def _run(
         self,
-        table_data: Optional[TableData],
-        table_entity: Table,
-        confidence_threshold: float,
-    ):
+        record: ProfilerResponse,
+    ) -> Either[ProfilerResponse]:
         """
         Main entrypoint for the scanner.
 
         Adds PII tagging based on the column names
         and TableData
         """
-        for idx, column in enumerate(table_entity.columns):
 
+        # We don't always need to process
+        if not self.source_config.processPiiSensitive:
+            return Either(right=record)
+
+        column_tags = []
+        for idx, column in enumerate(record.table.columns):
             try:
-                # First, check if the column we are about to process
-                # already has PII tags or not
-                column_has_pii_tag = any(
-                    (PII in tag.tagFQN.__root__ for tag in column.tags or [])
+                col_tag = self.process_column(
+                    idx=idx,
+                    column=column,
+                    table_data=record.sample_data,
+                    confidence_threshold=self.confidence_threshold,
                 )
-
-                # If it has PII tags, we skip the processing
-                # for the column
-                if column_has_pii_tag is True:
-                    continue
-
-                # Scan by column name. If no results there, check the sample data, if any
-                tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
-                    self.ner_scanner.scan([row[idx] for row in table_data.rows])
-                    if table_data
-                    else None
-                )
-
-                if (
-                    tag_and_confidence
-                    and tag_and_confidence.tag
-                    and tag_and_confidence.confidence >= confidence_threshold / 100
-                ):
-                    self.patch_column_tag(
-                        tag_type=tag_and_confidence.tag.value,
-                        table_entity=table_entity,
-                        column_fqn=column.fullyQualifiedName.__root__,
-                    )
+                if col_tag:
+                    column_tags.append(col_tag)
             except Exception as err:
-                logger.warning(f"Error computing PII tags for [{column}] - [{err}]")
+                self.status.failed(
+                    StackTraceError(
+                        name=record.table.fullyQualifiedName.__root__,
+                        error=f"Error computing PII tags for [{column}] - [{err}]",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
+
+        record.column_tags = column_tags
+        return Either(right=record)

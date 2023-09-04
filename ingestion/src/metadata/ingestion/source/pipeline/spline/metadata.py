@@ -32,6 +32,7 @@ from metadata.generated.schema.type.entityLineage import (
     EntitiesEdge,
     LineageDetails,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -241,6 +242,7 @@ class SplineSource(PipelineServiceSource):
                                         )
                                         for target_column, source_columns in target_to_sources_map.items()
                                     ],
+                                    source=LineageSource.PipelineLineage,
                                 ),
                                 fromEntity=EntityReference(
                                     id=from_table.id, type="table"

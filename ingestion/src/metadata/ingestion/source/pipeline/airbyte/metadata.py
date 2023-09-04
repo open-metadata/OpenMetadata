@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -218,7 +219,8 @@ class AirbyteSource(PipelineServiceSource):
             lineage_details = LineageDetails(
                 pipeline=EntityReference(
                     id=self.context.pipeline.id.__root__, type="pipeline"
-                )
+                ),
+                source=LineageSource.PipelineLineage,
             )
 
             yield Either(

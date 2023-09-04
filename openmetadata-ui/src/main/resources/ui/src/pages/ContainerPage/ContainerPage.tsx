@@ -575,11 +575,10 @@ const ContainerPage = () => {
         children: (
           <Row className="p-md" gutter={[0, 16]}>
             <Col span={24}>
-              {isChildrenLoading ? (
-                <Loader />
-              ) : (
-                <ContainerChildren childrenList={containerChildrenData} />
-              )}
+              <ContainerChildren
+                childrenList={containerChildrenData}
+                isLoading={isChildrenLoading}
+              />
             </Col>
           </Row>
         ),

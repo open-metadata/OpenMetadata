@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import Table from 'components/common/Table/Table';
 import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -130,17 +131,17 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isEmpty(mostViewedEntities) ? (
-        <EmptyGraphPlaceholder />
-      ) : (
-        <Table
-          className="data-insight-table-wrapper"
-          columns={columns}
-          dataSource={mostViewedEntities}
-          pagination={false}
-          size="small"
-        />
-      )}
+      <Table
+        className="data-insight-table-wrapper"
+        columns={columns}
+        dataSource={mostViewedEntities}
+        loading={isLoading}
+        locale={{
+          emptyText: <EmptyGraphPlaceholder />,
+        }}
+        pagination={false}
+        size="small"
+      />
     </Card>
   );
 };

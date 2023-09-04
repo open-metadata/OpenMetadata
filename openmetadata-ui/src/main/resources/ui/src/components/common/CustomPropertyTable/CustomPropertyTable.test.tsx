@@ -76,6 +76,10 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
     }),
   }),
 }));
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
+}));
 
 const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
@@ -136,7 +140,7 @@ describe('Test CustomProperty Table Component', () => {
     render(<CustomPropertyTable {...mockProp} />);
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
 
     const noDataPlaceHolder = await screen.findByText(
       'ErrorPlaceHolder.component'
