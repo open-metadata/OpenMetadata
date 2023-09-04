@@ -28,10 +28,12 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from 'rest/databaseAPI';
+import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getContainerByFQN } from 'rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
@@ -114,6 +116,16 @@ const PopoverContent: React.FC<{
 
       case EntityType.CONTAINER:
         promise = getContainerByFQN(entityFQN, 'owner', Include.All);
+
+        break;
+
+      case EntityType.DASHBOARD_DATA_MODEL:
+        promise = getDataModelDetailsByFQN(entityFQN, fields);
+
+        break;
+
+      case EntityType.STORED_PROCEDURE:
+        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
 
         break;
 

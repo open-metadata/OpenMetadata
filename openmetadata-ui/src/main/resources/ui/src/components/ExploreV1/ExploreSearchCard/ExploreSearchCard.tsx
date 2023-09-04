@@ -19,7 +19,7 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { EntityType } from 'enums/entity.enum';
 import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/type/entityLineage';
-import { isString, startCase, uniqueId } from 'lodash';
+import { isEmpty, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -119,6 +119,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
                   <TitleBreadcrumb
+                    loading={breadcrumbs.every((item) => isEmpty(item.name))}
                     titleLinks={breadcrumbs}
                     widthDeductions={780}
                   />
