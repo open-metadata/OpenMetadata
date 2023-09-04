@@ -74,16 +74,6 @@ export const getEntityAPIfromSource = (
   }
 };
 
-export const handleDataAssetAfterDeleteAction = (isSoftDelete?: boolean) => {
-  if (isSoftDelete) {
-    setTimeout(() => {
-      history.go(0);
-    }, 1000);
-  } else {
-    history.push('/');
-  }
-};
-
 export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
   const commonAssets: Record<string, SearchIndex> = {
     [EntityType.TABLE]: SearchIndex.TABLE,

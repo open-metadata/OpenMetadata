@@ -10,12 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
+import { PAGE_SIZE_LARGE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import React from 'react';
+import { EntityType } from 'enums/entity.enum';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
+import { getDataProductList } from 'rest/dataProductAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 
 interface Props {
   onAddDataProduct: () => void;
@@ -24,17 +38,85 @@ interface Props {
 
 const DataProductsTab = ({ permissions, onAddDataProduct }: Props) => {
   const { t } = useTranslation();
+  const { fqn: domainFqn } = useParams<{ fqn: string }>();
+  const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
+  const [selectedCard, setSelectedCard] = useState<DataProduct>();
+  const [loading, setLoading] = useState(true);
 
-  return (
-    <div className="m-t-xlg">
+  const fetchDataProductsList = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data } = await getDataProductList({
+        fields: 'domain,owner,experts',
+        domain: domainFqn,
+        limit: PAGE_SIZE_LARGE,
+      });
+      setDataProducts(data);
+      if (data.length > 0) {
+        setSelectedCard(data[0]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  }, [domainFqn]);
+
+  const updateSelectedCard = useCallback((dataProductCard: SourceType) => {
+    setSelectedCard(dataProductCard as DataProduct);
+  }, []);
+
+  useEffect(() => {
+    fetchDataProductsList();
+  }, [domainFqn]);
+
+  if (loading) {
+    <Loader />;
+  }
+
+  if (isEmpty(dataProducts) && !loading) {
+    return (
       <ErrorPlaceHolder
+        className="m-t-xlg"
         doc={GLOSSARIES_DOCS}
         heading={t('label.data-product')}
         permission={permissions.Create}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={onAddDataProduct}
       />
-    </div>
+    );
+  }
+
+  return (
+    <PageLayoutV1
+      className="domain-page-layout"
+      pageTitle={t('label.domain')}
+      rightPanel={
+        selectedCard && (
+          <EntitySummaryPanel
+            entityDetails={{
+              details: { ...selectedCard, entityType: EntityType.DATA_PRODUCT },
+            }}
+            handleClosePanel={() => setSelectedCard(undefined)}
+          />
+        )
+      }>
+      <div className="p-x-md">
+        {dataProducts.map((dataProduct) => (
+          <ExploreSearchCard
+            className={classNames(
+              'm-b-sm cursor-pointer',
+              selectedCard?.id === dataProduct.id ? 'highlight-card' : ''
+            )}
+            handleSummaryPanelDisplay={updateSelectedCard}
+            id={dataProduct.id}
+            key={'data_products_card' + dataProduct.id}
+            showTags={false}
+            source={dataProduct}
+          />
+        ))}
+      </div>
+    </PageLayoutV1>
   );
 };
 

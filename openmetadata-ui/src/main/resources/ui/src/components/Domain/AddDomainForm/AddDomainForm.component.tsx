@@ -215,7 +215,7 @@ const AddDomainForm = ({
             {Boolean(expertsList.length) && (
               <Space
                 wrap
-                className="m-y-xs"
+                className="m-b-xs"
                 data-testid="experts-container"
                 size={[8, 8]}>
                 {expertsList.map((d, index) => (

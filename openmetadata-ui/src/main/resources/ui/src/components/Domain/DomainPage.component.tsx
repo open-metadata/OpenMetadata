@@ -11,13 +11,9 @@
  *  limitations under the License.
  */
 
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
-
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
@@ -27,13 +23,17 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { Domain } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getDomainByName, getDomainList, patchDomains } from 'rest/domainAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getDomainPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
+import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 
 const DomainPage = () => {
   const { t } = useTranslation();
@@ -74,6 +74,9 @@ const DomainPage = () => {
         limit: PAGE_SIZE_LARGE,
       });
       setDomains(data);
+      if (data.length > 0) {
+        history.push(getDomainPath(data[0].fullyQualifiedName));
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -167,9 +170,9 @@ const DomainPage = () => {
 
   return (
     <PageLayoutV1
-      className="glossary-page-layout"
+      className="domain-parent-page-layout"
       leftPanel={<DomainsLeftPanel domains={domains} />}
-      pageTitle={t('label.glossary')}>
+      pageTitle={t('label.domain')}>
       {activeDomain && (
         <DomainDetailsPage
           domain={activeDomain}

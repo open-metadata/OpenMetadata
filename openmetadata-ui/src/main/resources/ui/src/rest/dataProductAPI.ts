@@ -15,10 +15,21 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Include } from 'generated/type/include';
+import { PagingResponse } from 'Models';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/dataProducts';
+
+type Params = {
+  fields?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+  include?: Include;
+  domain?: string;
+};
 
 export const addDataProducts = async (data: CreateDataProduct) => {
   const response = await APIClient.post<
@@ -43,15 +54,26 @@ export const patchDataProduct = async (id: string, patch: Operation[]) => {
 };
 
 export const getDataProductByName = async (
-  domainName: string,
+  dataProductName: string,
   arrQueryFields: string | string[]
 ) => {
   const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${domainName}`,
+    `${BASE_URL}/name/${dataProductName}`,
     arrQueryFields
   );
 
   const response = await APIClient.get<DataProduct>(url);
+
+  return response.data;
+};
+
+export const getDataProductList = async (params?: Params) => {
+  const response = await APIClient.get<PagingResponse<DataProduct[]>>(
+    BASE_URL,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

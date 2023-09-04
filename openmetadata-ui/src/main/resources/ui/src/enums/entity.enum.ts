@@ -48,7 +48,8 @@ export enum EntityType {
   USER_NAME = 'username',
   CHART = 'chart',
   DOMAIN = 'domain',
-  SAMPLE_DATA = 'sampleData'
+  DATA_PRODUCT = 'dataProduct',
+  SAMPLE_DATA = 'sampleData',
 }
 
 export enum AssetsType {

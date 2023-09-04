@@ -26,6 +26,7 @@ import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Table } from 'generated/entity/data/table';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -37,6 +38,7 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Topic } from '../../../generated/entity/data/topic';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
+import DataProductSummary from './DataProductSummary/DataProductSummary.component';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import './EntitySummaryPanel.style.less';
 import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
@@ -120,6 +122,9 @@ export default function EntitySummaryPanel({
 
       case EntityType.TAG:
         return <TagsSummary entityDetails={entity as Tag} />;
+
+      case EntityType.DATA_PRODUCT:
+        return <DataProductSummary entityDetails={entity as DataProduct} />;
 
       default:
         return null;

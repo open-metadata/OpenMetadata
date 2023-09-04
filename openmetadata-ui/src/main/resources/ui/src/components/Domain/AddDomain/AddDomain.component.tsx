@@ -16,6 +16,8 @@ import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { ERROR_MESSAGE } from 'constants/constants';
+import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
+import { CreateDomain } from 'generated/api/domains/createDomain';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -24,10 +26,8 @@ import { getIsErrorMatch } from 'utils/CommonUtils';
 import { getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
-
-import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
-import { CreateDomain } from 'generated/api/domains/createDomain';
 import { DomainFormType } from '../DomainPage.interface';
+import './add-domain.less';
 
 const AddDomain = () => {
   const { t } = useTranslation();
@@ -97,7 +97,7 @@ const AddDomain = () => {
     <ResizablePanels
       firstPanel={{
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div className="max-width-md w-9/10 domain-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
