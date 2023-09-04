@@ -20,7 +20,7 @@ import { PAGE_SIZE } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { isEmpty } from 'lodash';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -29,15 +29,13 @@ import { getEntityLink } from 'utils/TableUtils';
 import { StoredProcedureTabProps } from './storedProcedure.interface';
 
 const StoredProcedureTab = ({
-  data,
-  isLoading,
-  paging,
-  showDeletedStoredProcedure,
+  storedProcedure,
   pagingHandler,
-  currentPage,
+  fetchStoredProcedure,
   onShowDeletedStoreProcedureChange,
 }: StoredProcedureTabProps) => {
   const { t } = useTranslation();
+  const { data, isLoading, deleted, paging, currentPage } = storedProcedure;
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => [
@@ -73,11 +71,15 @@ const StoredProcedureTab = ({
     []
   );
 
+  useEffect(() => {
+    fetchStoredProcedure();
+  }, [deleted]);
+
   return (
     <Row className="p-lg" data-testid="stored-procedure-table" gutter={[0, 16]}>
       <Col className="d-flex justify-end" span={24}>
         <Switch
-          checked={showDeletedStoredProcedure}
+          checked={deleted}
           data-testid="show-deleted-stored-procedure"
           onClick={onShowDeletedStoreProcedureChange}
         />

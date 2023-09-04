@@ -522,12 +522,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   useEffect(() => {
-    if (activeTab === EntityTabs.STORED_PROCEDURE) {
-      fetchStoreProcedureDetails();
-    }
-  }, [activeTab, storedProcedure.deleted]);
-
-  useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [databaseSchemaFQN]);
 
@@ -660,12 +654,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       key: EntityTabs.STORED_PROCEDURE,
       children: (
         <StoredProcedureTab
-          currentPage={storedProcedure.currentPage}
-          data={storedProcedure.data}
-          isLoading={storedProcedure.isLoading}
-          paging={storedProcedure.paging}
+          fetchStoredProcedure={fetchStoreProcedureDetails}
           pagingHandler={storedProcedurePagingHandler}
-          showDeletedStoredProcedure={storedProcedure.deleted}
+          storedProcedure={storedProcedure}
           onShowDeletedStoreProcedureChange={handleShowDeletedStoredProcedure}
         />
       ),
