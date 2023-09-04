@@ -374,16 +374,16 @@ site_menu:
     url: /connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / Run Externally
     url: /connectors/dashboard/powerbi/yaml
-  - category: Connectors / Dashboard / QuickSight
-    url: /connectors/dashboard/quicksight
-  - category: Connectors / Dashboard / QuickSight / Run Externally
-    url: /connectors/dashboard/quicksight/yaml
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
     url: /connectors/dashboard/qliksense/yaml
   - category: Connectors / Dashboard / Qlik Sense / Export Certificates
     url: /connectors/dashboard/qliksense/certificates
+  - category: Connectors / Dashboard / QuickSight
+    url: /connectors/dashboard/quicksight
+  - category: Connectors / Dashboard / QuickSight / Run Externally
+    url: /connectors/dashboard/quicksight/yaml
   - category: Connectors / Dashboard / Redash
     url: /connectors/dashboard/redash
   - category: Connectors / Dashboard / Redash / Run Externally
@@ -456,9 +456,9 @@ site_menu:
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Run Externally
     url: /connectors/pipeline/glue-pipeline/yaml
-  - category: Connectors / Pipeline / Nifi
+  - category: Connectors / Pipeline / NiFi
     url: /connectors/pipeline/nifi
-  - category: Connectors / Pipeline / Nifi / Run Externally
+  - category: Connectors / Pipeline / NiFi / Run Externally
     url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
@@ -571,16 +571,22 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+  - category: How to Guides / Quick Start Guide for Admins
+    url: /how-to-guides/quick-start-guide-for-admins
+  - category: How to Guides / Quick Start Guide for Admins / How to Ingest Metadata
+    url: /how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata
+  - category: How to Guides / Quick Start Guide for Admins / How to Ingest Metadata / How to Delete a Service Connection 
+    url: /how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata/delete-service-connection
+  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users
+  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Organise Teams and Users
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/how-to-organise-teams-and-users
   - category: How to Guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
   - category: How to Guides / Feature configurations
     url: /how-to-guides/feature-configurations
   - category: How to Guides / Feature configurations / Bots
     url: /how-to-guides/feature-configurations/bots
-  - category: How to Guides / Teams and Users
-    url: /how-to-guides/teams-and-users
-  - category: How to Guides / Teams and Users / How to Organise Teams and Users
-    url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
   - category: How to Guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
   - category: How to Guides / How to add Custom Logo
