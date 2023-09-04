@@ -281,7 +281,6 @@ const BotListV1 = ({
                 pageSize={PAGE_SIZE_LARGE}
                 paging={paging}
                 pagingHandler={handlePageChange}
-                totalCount={paging.total}
               />
             )}
           </Col>
