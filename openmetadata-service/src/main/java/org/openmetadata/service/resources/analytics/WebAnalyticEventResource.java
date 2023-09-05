@@ -47,6 +47,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -138,6 +139,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   }
 
   @POST
+  @JdbiUnitOfWork
   @Operation(
       operationId = "createWebAnalyticEventType",
       summary = "Create a web analytic event type",
@@ -157,6 +159,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   }
 
   @PUT
+  @JdbiUnitOfWork
   @Operation(
       operationId = "createOrUpdateWebAnalyticEventType",
       summary = "Update a web analytic event type",
@@ -234,6 +237,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
 
   @DELETE
   @Path("/{id}")
+  @JdbiUnitOfWork
   @Operation(
       operationId = "deleteWebAnalyticEventTypeById",
       summary = "Delete a web analytic event type by Id",
@@ -256,6 +260,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
 
   @DELETE
   @Path("/name/{fqn}")
+  @JdbiUnitOfWork
   @Operation(
       operationId = "deleteWebAnalyticEventTypeByName",
       summary = "Delete a web analytic event type by fully qualified name",
@@ -279,6 +284,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
 
   @PUT
   @Path("/restore")
+  @JdbiUnitOfWork
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted web analytic event",
@@ -380,6 +386,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
 
   @PUT
   @Path("/collect")
+  @JdbiUnitOfWork
   @Operation(
       operationId = "addWebAnalyticEventData",
       summary = "Add web analytic event data",
@@ -400,6 +407,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
 
   @DELETE
   @Path("/{name}/{timestamp}/collect")
+  @JdbiUnitOfWork
   @Operation(
       operationId = "deleteWebAnalyticEventData",
       summary = "Delete web analytic event data before a timestamp",
