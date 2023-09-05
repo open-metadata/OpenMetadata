@@ -12,7 +12,7 @@
 Tableau source module
 """
 import traceback
-from typing import Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -215,7 +215,7 @@ class TableauSource(DashboardServiceSource):
                 name=dashboard_details.id,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
-                project=dashboard_details.project.name,
+                project=self.get_project_name(dashboard_details=dashboard_details),
                 charts=[
                     fqn.build(
                         self.metadata,
@@ -460,3 +460,16 @@ class TableauSource(DashboardServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
+
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+        """
+        Get the project / workspace / folder / collection name of the dashboard
+        """
+        try:
+            return dashboard_details.project.name
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching project name for {dashboard_details.id}: {exc}"
+            )
+        return None

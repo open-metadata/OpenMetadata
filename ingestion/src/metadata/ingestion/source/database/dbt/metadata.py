@@ -606,19 +606,21 @@ class DbtSource(DbtServiceSource):
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
-                    yield AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__,
-                                type="table",
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__,
-                                type="table",
-                            ),
-                            lineageDetails=LineageDetails(
-                                source=LineageSource.DbtLineage
-                            ),
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id.__root__,
+                                    type="table",
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_entity.id.__root__,
+                                    type="table",
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DbtLineage
+                                ),
+                            )
                         )
                     )
 
