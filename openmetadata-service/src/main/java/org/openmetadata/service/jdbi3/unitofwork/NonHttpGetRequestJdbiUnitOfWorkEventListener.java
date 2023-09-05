@@ -40,6 +40,7 @@ class NonHttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListen
     String httpMethod = event.getContainerRequest().getMethod();
     if (httpMethod.equals(HttpMethod.POST)
         || httpMethod.equals(HttpMethod.PUT)
+        || httpMethod.equals(HttpMethod.PATCH)
         || httpMethod.equals(HttpMethod.DELETE)) {
       return true;
     }
