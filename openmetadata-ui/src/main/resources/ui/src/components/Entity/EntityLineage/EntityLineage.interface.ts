@@ -16,7 +16,7 @@ import { EntityType } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/container';
 import { EntityReference } from 'generated/entity/type';
 import { EntityLineage } from 'generated/type/entityLineage';
-import { LoadingState } from 'Models';
+import { EntityTags, LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
 import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
 
@@ -129,6 +129,7 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   lineageConfig: LineageConfig;
   onOptionSelect: (value?: string) => void;
   onLineageConfigUpdate: (config: LineageConfig) => void;
+  onSelectedTagsUpdate: (tags: EntityTags[]) => void;
 }
 
 export type LineagePos = 'from' | 'to';

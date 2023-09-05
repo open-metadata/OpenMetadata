@@ -25,6 +25,7 @@ const mockOnExpandColumnClick = jest.fn();
 const mockHandleFullScreenViewClick = jest.fn();
 const mockOnExitFullScreenViewClick = jest.fn();
 const mockOnZoomHandler = jest.fn();
+const mockOnSelectedTagsUpdate = jest.fn();
 const mockZoomValue = 1;
 
 jest.mock('reactflow', () => ({
@@ -40,7 +41,7 @@ jest.mock('reactflow', () => ({
   }),
   MarkerType: () => ({
     Arrow: 'arrow',
-    ArrowClosed: 'arrowclosed',
+    ArrowClosed: 'arrow',
   }),
 }));
 
@@ -54,6 +55,7 @@ const customProps = {
   handleFullScreenViewClick: mockHandleFullScreenViewClick,
   onExitFullScreenViewClick: mockOnExitFullScreenViewClick,
   onZoomHandler: mockOnZoomHandler,
+  onSelectedTagsUpdate: mockOnSelectedTagsUpdate,
   zoomValue: mockZoomValue,
   deleted: false,
   hasEditAccess: true,

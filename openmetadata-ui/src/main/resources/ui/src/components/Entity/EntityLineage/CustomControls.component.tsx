@@ -26,6 +26,8 @@ import {
   ZOOM_SLIDER_STEP,
   ZOOM_TRANSITION_DURATION,
 } from 'constants/Lineage.constants';
+import { isEqual, sortBy, uniqWith } from 'lodash';
+import { EntityTags } from 'Models';
 import React, {
   FC,
   memo,
@@ -39,7 +41,16 @@ import { useReactFlow } from 'reactflow';
 import { getLoadingStatusValue } from 'utils/EntityLineageUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
-import { ControlProps, LineageConfig } from './EntityLineage.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { TagSource } from '../../../generated/type/tagLabel';
+import LineageTagsContainer from '../../LineageTag/LineageTagsContainer/LineageTagsContainer';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import { fetchEntityDetails } from './EntityLineage.component';
+import {
+  ControlProps,
+  LineageConfig,
+  SelectedNode,
+} from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
@@ -65,11 +76,13 @@ const CustomControls: FC<ControlProps> = ({
   lineageConfig,
   onOptionSelect,
   onLineageConfigUpdate,
+  onSelectedTagsUpdate,
 }: ControlProps) => {
   const { t } = useTranslation();
   const { fitView, zoomTo } = useReactFlow();
   const [zoom, setZoom] = useState<number>(zoomValue);
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
+  const [selectedTags, setSelectedTags] = useState<EntityTags[]>();
 
   const onZoomHandler = useCallback(
     (zoomLevel: number) => {
@@ -131,6 +144,56 @@ const CustomControls: FC<ControlProps> = ({
     [lineageData]
   );
 
+  // ------------------
+
+  type EntityDetails = {
+    [key: string]: any;
+  };
+
+  const getNodesTags = async (nodes: SelectedNode[]) => {
+    const nodesTags: EntityTags[] = [];
+
+    for (const node of nodes) {
+      const entity = (await fetchEntityDetails(node)) as EntityDetails;
+      for (const tag of entity.tags) {
+        nodesTags.push({
+          tagFQN: tag.tagFQN,
+          description: tag.description,
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        } as EntityTags);
+      }
+    }
+
+    const uniqueTags = uniqWith(nodesTags, (a, b) => isEqual(a, b));
+    const sortedUniqueTags = sortBy(uniqueTags, ['tagFQN']);
+    setSelectedTags(sortedUniqueTags);
+  };
+
+  useEffect(() => {
+    const currentNodes: SelectedNode[] = [];
+    if (lineageData.nodes !== undefined) {
+      for (const node of lineageData.nodes) {
+        currentNodes.push({
+          name: node.name || '',
+          type: node.type,
+          fqn: node.fullyQualifiedName || '',
+          entityId: node.id,
+        });
+      }
+    }
+    getNodesTags(currentNodes);
+  }, [lineageData]);
+
+  const handleTagSelection = async (tags: EntityTags[]) => {
+    const sortedUniqueTags = sortBy(tags, ['tagFQN']);
+    setSelectedTags(sortedUniqueTags);
+    onSelectedTagsUpdate(sortedUniqueTags as EntityTags[]);
+  };
+
+  // ----------
+
   const editIcon = useMemo(() => {
     return (
       <span className="anticon">
@@ -157,7 +220,7 @@ const CustomControls: FC<ControlProps> = ({
         className={classNames('z-10 w-full', className)}
         gutter={[8, 8]}
         style={style}>
-        <Col span={12}>
+        <Col span={8}>
           <Select
             allowClear
             showSearch
@@ -173,8 +236,8 @@ const CustomControls: FC<ControlProps> = ({
             onChange={onOptionSelect}
           />
         </Col>
-        <Col span={12}>
-          <Space className="justify-end w-full" size={16}>
+        <Col span={8}>
+          <Space className="justify-end w-full" size={12}>
             <Button
               ghost
               className="expand-btn"
@@ -304,6 +367,20 @@ const CustomControls: FC<ControlProps> = ({
                 onClick={onEditLinageClick}
               />
             )}
+          </Space>
+        </Col>
+
+        <Col span={6}>
+          <Space className="justify-center w-full" size={6}>
+            <LineageTagsContainer
+              permission
+              displayType={DisplayType.POPOVER}
+              entityFqn=""
+              entityType={EntityType.CLASSIFICATION}
+              selectedTags={selectedTags as EntityTags[]}
+              tagType={TagSource.Classification}
+              onSelectionChange={handleTagSelection}
+            />
           </Space>
         </Col>
       </Row>

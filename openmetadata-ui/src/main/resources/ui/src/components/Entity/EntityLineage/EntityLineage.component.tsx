@@ -37,8 +37,9 @@ import {
   LineageDetails,
 } from 'generated/type/entityLineage';
 import { withLoader } from 'hoc/withLoader';
+import { t } from 'i18next';
 import { debounce, isEmpty, isNil, isUndefined, union, uniqueId } from 'lodash';
-import { LoadingState } from 'Models';
+import { EntityTags, LoadingState } from 'Models';
 import Qs from 'qs';
 import React, {
   DragEvent,
@@ -64,10 +65,10 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
-import { getDataModelDetails } from 'rest/dataModelsAPI';
+import { getDataModelDetails, getDataModelsByName } from 'rest/dataModelsAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
-import { getTableDetails } from 'rest/tableAPI';
+import { getTableDetails, getTableDetailsByFQN } from 'rest/tableAPI';
 import {
   addLineageHandler,
   createNewEdge,
@@ -116,6 +117,12 @@ import {
 import { getEntityReferenceFromPipeline } from 'utils/PipelineServiceUtils';
 import SVGIcons from 'utils/SvgUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getContainerByName } from '../../../rest/storageAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from './AddPipeLineModal';
@@ -140,6 +147,69 @@ import {
 } from './EntityLineage.interface';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
+
+type EntityDetails = {
+  [key: string]: any;
+};
+
+export const fetchEntityDetails = async (selectedNode: SelectedNode) => {
+  let response = {};
+  const encodedFqn = getEncodedFqn(selectedNode.fqn);
+  const commonFields = ['tags'];
+
+  try {
+    switch (selectedNode.type) {
+      case EntityType.TABLE: {
+        response = await getTableDetailsByFQN(encodedFqn, [...commonFields]);
+
+        break;
+      }
+      case EntityType.PIPELINE: {
+        response = await getPipelineByFqn(encodedFqn, [...commonFields]);
+
+        break;
+      }
+      case EntityType.TOPIC: {
+        response = await getTopicByFqn(encodedFqn ?? '', commonFields);
+
+        break;
+      }
+      case EntityType.DASHBOARD: {
+        response = await getDashboardByFqn(encodedFqn, [...commonFields]);
+
+        break;
+      }
+      case EntityType.MLMODEL: {
+        response = await getMlModelByFQN(encodedFqn, [...commonFields]);
+
+        break;
+      }
+      case EntityType.CONTAINER: {
+        response = await getContainerByName(encodedFqn, commonFields);
+
+        break;
+      }
+
+      case EntityType.DASHBOARD_DATA_MODEL: {
+        response = await getDataModelsByName(encodedFqn, commonFields);
+
+        break;
+      }
+      default:
+        break;
+    }
+
+    return response;
+  } catch (error) {
+    showErrorToast(
+      t('server.error-selected-node-name-details', {
+        selectedNodeName: selectedNode?.name,
+      })
+    );
+
+    return null;
+  }
+};
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   deleted,
@@ -195,6 +265,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const [paginationData, setPaginationData] = useState({});
   const [entityLineage, setEntityLineage] = useState<EntityLineage>();
   const [updatedLineageData, setUpdatedLineageData] = useState<EntityLineage>();
+  const [intactLineageData, setIntactLineageData] = useState<EntityLineage>();
   const [childMap, setChildMap] = useState<EntityReferenceChild>();
   const [isLineageLoading, setIsLineageLoading] = useState(false);
   const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
@@ -243,6 +314,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         setPaginationData({});
         setEntityLineage(mockDatasetData.entityLineage);
         setUpdatedLineageData(mockDatasetData.entityLineage);
+        setIntactLineageData(mockDatasetData.entityLineage);
       } else {
         setIsLineageLoading(true);
         try {
@@ -256,6 +328,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             setPaginationData({});
             setEntityLineage(res);
             setUpdatedLineageData(res);
+            setIntactLineageData(res);
           } else {
             showErrorToast(
               t('server.entity-fetch-error', {
@@ -294,6 +367,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           const newLineageData = getEntityLineage(entityLineage, res, pos);
           setEntityLineage(newLineageData);
           setUpdatedLineageData(newLineageData);
+          setIntactLineageData(newLineageData);
         }
       } catch (err) {
         setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
@@ -1521,6 +1595,54 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setZoomValue(value);
   }, 150);
 
+  // --------------
+
+  const filterTaggedNodes = async (selectedTags: EntityTags[]) => {
+    const taggedNodesIds: string[] = [];
+    if (selectedTags.length === 0) {
+      setEntityLineage(intactLineageData);
+      setUpdatedLineageData(intactLineageData);
+
+      return;
+    }
+
+    const currentNodes: SelectedNode[] = [];
+    if (intactLineageData?.nodes !== undefined) {
+      for (const node of intactLineageData?.nodes) {
+        currentNodes.push({
+          name: node.name || '',
+          type: node.type,
+          fqn: node.fullyQualifiedName || '',
+          entityId: node.id,
+        });
+      }
+    }
+
+    for (const node of currentNodes) {
+      const entity = (await fetchEntityDetails(node)) as EntityDetails;
+      for (const tag of entity.tags) {
+        for (const selectedTag of selectedTags) {
+          if (tag.tagFQN.includes(selectedTag.tagFQN)) {
+            taggedNodesIds.push(entity.id);
+          }
+        }
+      }
+    }
+
+    const taggedNodes = (intactLineageData?.nodes as any[]).filter((v) =>
+      taggedNodesIds.includes(v.id)
+    );
+    const res = { ...(intactLineageData as EntityLineage), nodes: taggedNodes };
+
+    setEntityLineage(res);
+    setUpdatedLineageData(res);
+  };
+  const handleSelectedTagsUpdate = async (selectedTags: EntityTags[]) => {
+    if (selectedTags) {
+      await filterTaggedNodes(selectedTags);
+    }
+  };
+
   const initLineageChildMaps = (
     lineageData: EntityLineage,
     childMapObj: EntityReferenceChild | undefined,
@@ -1565,6 +1687,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       return;
     }
     setEntityLineage({
+      ...updatedLineageData,
+      nodes: getNewNodes(updatedLineageData),
+    });
+    setIntactLineageData({
       ...updatedLineageData,
       nodes: getNewNodes(updatedLineageData),
     });
@@ -1678,6 +1804,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   onExpandColumnClick={handleExpandColumnClick}
                   onLineageConfigUpdate={handleLineageConfigUpdate}
                   onOptionSelect={handleOptionSelect}
+                  onSelectedTagsUpdate={handleSelectedTagsUpdate}
                 />
               )}
               <Background gap={12} size={1} />
