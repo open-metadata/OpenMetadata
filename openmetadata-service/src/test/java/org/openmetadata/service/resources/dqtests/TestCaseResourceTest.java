@@ -435,7 +435,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         1,
         logicalTestSummary
             .getTotal()); // check the deletion of the test case from the executable test suite cascaded to the logical
-                          // test suite
+    // test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     assertEquals(
