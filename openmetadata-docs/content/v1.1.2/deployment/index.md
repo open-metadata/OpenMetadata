@@ -6,7 +6,7 @@ slug: /deployment
 # Deploy OpenMetadata in Production
 
 {%note%}
-Are you looking to do POC? It won't get easier than following our [Quickstart](/quickstart) guide!
+Are you looking to do POC? It won't get easier than following our [Quickstart](/quick-start) guide!
 {%/note%}
 
 

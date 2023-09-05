@@ -34,7 +34,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -151,6 +152,7 @@ EXPECTED_LINEAGE = AddLineageRequest(
             id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
             type="dashboard",
         ),
+        lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
     )
 )
 
@@ -167,6 +169,7 @@ EXPECTED_DASHBOARD = [
         sourceUrl="http://metabase.com/dashboard/1-test-db",
         charts=[],
         service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        project="Test Collection",
     )
 ]
 
@@ -225,6 +228,7 @@ class MetabaseUnitTest(TestCase):
         )
         self.metabase.client = SimpleNamespace()
         self.metabase.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.metabase.context.__dict__["project_name"] = "Test Collection"
 
     def test_dashboard_name(self):
         assert (

@@ -53,6 +53,7 @@ export interface ColumnProfileTableProps {
   hasEditAccess: boolean;
   columnTests: TestCase[];
   dateRangeObject: DateRangeObject;
+  isLoading?: boolean;
 }
 
 export interface ProfilerProgressWidgetProps {

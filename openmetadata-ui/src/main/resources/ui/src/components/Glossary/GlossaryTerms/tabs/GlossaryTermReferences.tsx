@@ -118,7 +118,7 @@ const GlossaryTermReferences = ({
           key={ref.name}>
           <Tooltip placement="bottomLeft" title={ref.name}>
             <a
-              data-testid="owner-link"
+              data-testid={`reference-link-${ref.name}`}
               href={ref?.endpoint}
               rel="noopener noreferrer"
               target="_blank">

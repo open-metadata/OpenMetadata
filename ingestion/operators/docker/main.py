@@ -21,9 +21,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
 from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow
 from metadata.workflow.workflow_output_handler import print_status
 

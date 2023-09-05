@@ -11,26 +11,22 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from 'utils/EntityVersionUtils';
+import { getCommonDiffsFromVersionData } from 'utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from 'utils/ServiceMainTabContentUtils';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
@@ -56,17 +52,10 @@ function ServiceVersionMainTabContent({
     [serviceCategory]
   );
 
-  const tags = useMemo(() => {
-    return getEntityVersionTags(serviceDetails, changeDescription);
-  }, [serviceDetails, changeDescription]);
-
-  const description = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DESCRIPTION,
-      serviceDetails.description
-    );
-  }, [serviceDetails, changeDescription]);
+  const { tags, description } = useMemo(
+    () => getCommonDiffsFromVersionData(serviceDetails, changeDescription),
+    [serviceDetails, changeDescription]
+  );
 
   return (
     <Row gutter={[0, 16]} wrap={false}>
@@ -89,10 +78,7 @@ function ServiceVersionMainTabContent({
                 columns={tableColumn}
                 data-testid="service-children-table"
                 dataSource={data}
-                loading={{
-                  spinning: isServiceLoading,
-                  indicator: <Loader size="small" />,
-                }}
+                loading={isServiceLoading}
                 locale={{
                   emptyText: <ErrorPlaceHolder className="m-y-md" />,
                 }}
@@ -109,7 +95,6 @@ function ServiceVersionMainTabContent({
                     pageSize={PAGE_SIZE}
                     paging={paging}
                     pagingHandler={pagingHandler}
-                    totalCount={paging.total}
                   />
                 )}
             </Space>

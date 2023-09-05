@@ -15,6 +15,7 @@ import { uuid } from '../common/common';
 import { SERVICE_CATEGORIES } from './service.constants';
 
 export const OWNER = 'Amber Green';
+export const REVIEWER = 'Amanda York';
 export const TIER = 'Tier1';
 
 const TABLE_NAME = `cypress_version_table-${uuid()}`;
@@ -784,9 +785,9 @@ const STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST = {
   },
 };
 
-export const NEW_SERVICE_DESCRIPTION = 'Description for newly added service';
+export const COMMON_UPDATED_DESCRIPTION = 'Description for newly added service';
 
-const SERVICE_PATCH_PAYLOAD = [
+export const COMMON_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/tags/0',
@@ -810,7 +811,7 @@ const SERVICE_PATCH_PAYLOAD = [
   {
     op: 'add',
     path: '/description',
-    value: NEW_SERVICE_DESCRIPTION,
+    value: COMMON_UPDATED_DESCRIPTION,
   },
 ];
 
@@ -819,42 +820,168 @@ export const SERVICE_DETAILS_FOR_VERSION_TEST = {
     serviceName: DATABASE_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
     entityCreationDetails: DATABASE_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.databases',
   },
   Messaging: {
     serviceName: MESSAGING_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
     entityCreationDetails: MESSAGING_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.messaging',
   },
   Dashboard: {
     serviceName: DASHBOARD_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
     entityCreationDetails: DASHBOARD_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.dashboards',
   },
   Pipeline: {
     serviceName: PIPELINE_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
     entityCreationDetails: PIPELINE_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.pipelines',
   },
   'ML Model': {
     serviceName: ML_MODEL_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
     entityCreationDetails: ML_MODEL_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.mlModels',
   },
   Storage: {
     serviceName: STORAGE_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
     entityCreationDetails: STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: SERVICE_PATCH_PAYLOAD,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.storages',
   },
 };
+
+export const DATABASE_DETAILS_FOR_VERSION_TEST = {
+  name: `0-cy-database-${uuid()}`,
+  service: DATABASE_SERVICE_NAME,
+};
+
+export const DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST = {
+  name: `0-cy-database-schema-${uuid()}`,
+  database: `${DATABASE_SERVICE_NAME}.${DATABASE_DETAILS_FOR_VERSION_TEST.name}`,
+};
+
+export const NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME = `cy-version-classification-${uuid()}`;
+export const NEW_SYSTEM_CLASSIFICATION_FOR_VERSION_TEST_NAME = `cy-version-classification-${uuid()}`;
+
+export const NEW_CLASSIFICATION_FOR_VERSION_TEST = {
+  name: NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME,
+  displayName: NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME,
+  provider: 'system',
+  description: ``,
+};
+
+export const NEW_CLASSIFICATION_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/description',
+    value: COMMON_UPDATED_DESCRIPTION,
+  },
+  {
+    op: 'replace',
+    path: '/mutuallyExclusive',
+    value: true,
+  },
+];
+
+export const GLOSSARY_NAME_FOR_VERSION_TEST = `cy-glossary-version-${uuid()}`;
+export const GLOSSARY_TERM_NAME_FOR_VERSION_TEST1 = `cy-glossary-term-version-${uuid()}`;
+export const GLOSSARY_TERM_NAME_FOR_VERSION_TEST2 = `cy-glossary-term-version-${uuid()}`;
+
+export const GLOSSARY_FOR_VERSION_TEST = {
+  name: GLOSSARY_NAME_FOR_VERSION_TEST,
+  displayName: GLOSSARY_NAME_FOR_VERSION_TEST,
+  description: '',
+};
+
+export const GLOSSARY_TERM_FOR_VERSION_TEST1 = {
+  name: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
+  displayName: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
+  glossary: GLOSSARY_NAME_FOR_VERSION_TEST,
+  description: '',
+};
+
+export const GLOSSARY_TERM_FOR_VERSION_TEST2 = {
+  name: GLOSSARY_TERM_NAME_FOR_VERSION_TEST2,
+  displayName: GLOSSARY_TERM_NAME_FOR_VERSION_TEST2,
+  glossary: GLOSSARY_NAME_FOR_VERSION_TEST,
+  description: '',
+};
+
+export const GLOSSARY_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/tags/1',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PII.Sensitive',
+    },
+  },
+  {
+    op: 'replace',
+    path: '/description',
+    value: COMMON_UPDATED_DESCRIPTION,
+  },
+];
+
+export const GLOSSARY_TERM_PATCH_PAYLOAD2 = [
+  {
+    op: 'add',
+    path: '/synonyms/0',
+    value: 'test-synonym',
+  },
+  {
+    op: 'add',
+    path: '/references/0',
+    value: {
+      name: 'reference1',
+      endpoint: 'https://example.com',
+    },
+  },
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/tags/1',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PII.Sensitive',
+    },
+  },
+  {
+    op: 'replace',
+    path: '/description',
+    value: COMMON_UPDATED_DESCRIPTION,
+  },
+];
