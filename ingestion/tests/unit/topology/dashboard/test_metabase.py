@@ -169,6 +169,7 @@ EXPECTED_DASHBOARD = [
         sourceUrl="http://metabase.com/dashboard/1-test-db",
         charts=[],
         service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        project="Test Collection",
     )
 ]
 
@@ -227,6 +228,7 @@ class MetabaseUnitTest(TestCase):
         )
         self.metabase.client = SimpleNamespace()
         self.metabase.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.metabase.context.__dict__["project_name"] = "Test Collection"
 
     def test_dashboard_name(self):
         assert (

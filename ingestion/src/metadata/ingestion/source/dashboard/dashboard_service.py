@@ -63,7 +63,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_dashboard
+from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -447,6 +447,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
             try:
                 dashboard_details = self.get_dashboard_details(dashboard)
+                self.context.project_name = (  # pylint: disable=assignment-from-none
+                    self.get_project_name(dashboard_details=dashboard_details)
+                )
+                if self.context.project_name and filter_by_project(
+                    self.source_config.projectFilterPattern,
+                    self.context.project_name,
+                ):
+                    self.status.filter(
+                        self.context.project_name,
+                        "Project / Workspace Filtered Out",
+                    )
+                    continue
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -501,3 +513,14 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return None
 
         return database_schema_name
+
+    def get_project_name(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details: Any
+    ) -> Optional[str]:
+        """
+        Get the project / workspace / folder / collection name of the dashboard
+        """
+        logger.debug(
+            f"Projects are not supported for {self.service_connection.type.name}"
+        )
+        return None
