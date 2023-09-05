@@ -120,6 +120,14 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     try {
       searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
+    } catch (DocumentMissingException ex) {
+      LOG.error("Missing Document", ex);
+      SearchEventPublisher.updateElasticSearchFailureStatus(
+          contextInfo,
+          EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+          String.format(
+              "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+              ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
     } catch (ElasticsearchException e) {
       LOG.error("failed to update ES doc");
       LOG.debug(e.getMessage());
