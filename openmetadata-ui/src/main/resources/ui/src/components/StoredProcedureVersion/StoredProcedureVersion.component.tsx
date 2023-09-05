@@ -35,7 +35,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { StoredProcedureVersionProp } from './StoreProcedure.interface';
+import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
 const StoredProcedureVersion = ({
   version,
   currentVersionData,

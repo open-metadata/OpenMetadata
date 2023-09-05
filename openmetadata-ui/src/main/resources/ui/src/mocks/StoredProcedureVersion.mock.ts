@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { StoredProcedureVersionProp } from 'components/StoredProcedureVersion/StoreProcedure.interface';
+import { StoredProcedureVersionProp } from 'components/StoredProcedureVersion/StoredProcedureVersion.interface';
 import { DatabaseServiceType, TableType } from 'generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import {
