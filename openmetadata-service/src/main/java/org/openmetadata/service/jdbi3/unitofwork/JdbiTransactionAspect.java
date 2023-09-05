@@ -17,6 +17,7 @@ public class JdbiTransactionAspect {
       Handle handle = handleManager.get();
       handle.getConnection().setAutoCommit(autoCommit);
       handle.getConfig(Handles.class).setForceEndTransactions(false);
+      // handle.setTransactionIsolationLevel(TransactionIsolationLevel.READ_COMMITTED);
       handle.begin();
       LOG.debug(
           "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
@@ -39,8 +40,8 @@ public class JdbiTransactionAspect {
       return;
     }
     try {
-      // handle.getConnection().commit();
-      handle.commit();
+      handle.getConnection().commit();
+      // handle.commit();
       LOG.debug(
           "Performing commit Thread Id [{}] has handle id [{}] Transaction {} Level {}",
           Thread.currentThread().getId(),
@@ -61,8 +62,8 @@ public class JdbiTransactionAspect {
       return;
     }
     try {
-      // handle.getConnection().rollback();
-      handle.rollback();
+      handle.getConnection().rollback();
+      // handle.rollback();
       LOG.debug(
           "Performed rollback on Thread Id [{}] has handle id [{}] Transaction {} Level {}",
           Thread.currentThread().getId(),

@@ -205,10 +205,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
-    authorizer.init(catalogConfig, jdbi);
+    authorizer.init(catalogConfig, daoObject);
 
     // authenticationHandler Handles auth related activities
-    authenticatorHandler.init(catalogConfig, jdbi);
+    authenticatorHandler.init(catalogConfig, daoObject);
 
     webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
     FilterRegistration.Dynamic micrometerFilter =

@@ -39,7 +39,7 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
   private Object handleInvocation(Method method, Object[] args)
       throws IllegalAccessException, InvocationTargetException {
     Handle handle = handleManager.get();
-    LOG.info(
+    LOG.debug(
         "{}.{} [{}] Thread Id [{}] with handle id [{}]",
         method.getDeclaringClass().getSimpleName(),
         method.getName(),
