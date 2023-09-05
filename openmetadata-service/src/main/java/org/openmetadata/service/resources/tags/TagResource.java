@@ -365,7 +365,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @JdbiUnitOfWork
   @POST
-  @JdbiUnitOfWork
   @Operation(
       operationId = "createTag",
       summary = "Create a tag",

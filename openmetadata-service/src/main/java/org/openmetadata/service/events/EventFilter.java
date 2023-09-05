@@ -21,8 +21,8 @@ import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.ParallelStreamUtil;
 
@@ -34,13 +34,16 @@ public class EventFilter implements ContainerResponseFilter {
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
-  public EventFilter(OpenMetadataApplicationConfig config, CollectionDAO daoObject) {
+  private Jdbi jdbi;
+
+  public EventFilter(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
-    registerEventHandlers(config, daoObject);
+    this.jdbi = jdbi;
+    registerEventHandlers(config, jdbi);
   }
 
-  private void registerEventHandlers(OpenMetadataApplicationConfig config, CollectionDAO daoObject) {
+  private void registerEventHandlers(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     try {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
@@ -48,7 +51,7 @@ public class EventFilter implements ContainerResponseFilter {
         @SuppressWarnings("unchecked")
         EventHandler eventHandler =
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
-        eventHandler.init(config, daoObject);
+        eventHandler.init(config, jdbi);
         eventHandlers.add(eventHandler);
         LOG.info("Added event handler {}", eventHandlerClassName);
       }
@@ -64,13 +67,15 @@ public class EventFilter implements ContainerResponseFilter {
     if ((responseCode < 200 || responseCode > 299) || (!AUDITABLE_METHODS.contains(method))) {
       return;
     }
+
     eventHandlers
         .parallelStream()
         .forEach(
             eventHandler -> {
               UriInfo uriInfo = requestContext.getUriInfo();
               if (JwtFilter.EXCLUDED_ENDPOINTS.stream().noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
-                ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool);
+                ParallelStreamUtil.runAsync(
+                    () -> eventHandler.process(requestContext, responseContext, jdbi), forkJoinPool);
               }
             });
   }

@@ -15,13 +15,13 @@ package org.openmetadata.service.events;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 
 public interface EventHandler {
-  void init(OpenMetadataApplicationConfig config, CollectionDAO daoObject);
+  void init(OpenMetadataApplicationConfig config, Jdbi jdbi);
 
-  Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext);
+  Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext, Jdbi jdbi);
 
   void close();
 }

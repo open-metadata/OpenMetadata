@@ -794,6 +794,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @JdbiUnitOfWork
   @DELETE
   @Path("/{fqn}/{entityType}/{timestamp}/profile")
   @Operation(

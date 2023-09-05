@@ -195,7 +195,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerResources(catalogConfig, environment, jdbi, jdbiUnitOfWorkProvider, daoObject);
 
     // Register Event Handler
-    registerEventFilter(catalogConfig, environment, daoObject);
+    registerEventFilter(catalogConfig, environment, jdbi);
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
     registerEventPublisher(catalogConfig, daoObject);
@@ -406,10 +406,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerEventFilter(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment, CollectionDAO daoObject) {
+  private void registerEventFilter(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
-      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, daoObject);
+      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
       ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
       environment.jersey().register(reindexingJobs);

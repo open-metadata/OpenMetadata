@@ -17,7 +17,6 @@ public class JdbiTransactionAspect {
       Handle handle = handleManager.get();
       handle.getConnection().setAutoCommit(autoCommit);
       handle.getConfig(Handles.class).setForceEndTransactions(false);
-      // handle.setTransactionIsolationLevel(TransactionIsolationLevel.READ_COMMITTED);
       handle.begin();
       LOG.debug(
           "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
