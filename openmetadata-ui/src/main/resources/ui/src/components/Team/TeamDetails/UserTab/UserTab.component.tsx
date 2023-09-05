@@ -270,7 +270,6 @@ export const UserTab = ({
             pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={onChangePaging}
-            totalCount={paging.total}
           />
         )}
       </Col>

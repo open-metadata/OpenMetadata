@@ -102,19 +102,13 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.role-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.ROLE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.roles',
           icon: <RolesIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.policy-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.POLICY,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.policies',
           icon: <PoliciesIcon className="side-panel-icons" />,
         },

@@ -30,6 +30,10 @@
       "description": "Regex exclude or include data models that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
     "dbServiceNames": {
       "title": "Database Service Names List",
       "description": "List of Database Service Names for creation of lineage",
