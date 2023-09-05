@@ -254,6 +254,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return createOrUpdate(uriInfo, securityContext, domain);
   }
 
+  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(

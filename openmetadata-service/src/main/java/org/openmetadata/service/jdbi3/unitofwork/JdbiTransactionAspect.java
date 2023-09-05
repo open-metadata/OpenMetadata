@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3.unitofwork;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Handles;
-import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 
 @Slf4j
 public class JdbiTransactionAspect {
@@ -18,7 +17,6 @@ public class JdbiTransactionAspect {
       Handle handle = handleManager.get();
       handle.getConnection().setAutoCommit(autoCommit);
       handle.getConfig(Handles.class).setForceEndTransactions(false);
-      handle.setTransactionIsolationLevel(TransactionIsolationLevel.READ_COMMITTED);
       handle.begin();
       LOG.debug(
           "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
@@ -41,7 +39,8 @@ public class JdbiTransactionAspect {
       return;
     }
     try {
-      handle.getConnection().commit();
+      // handle.getConnection().commit();
+      handle.commit();
       LOG.debug(
           "Performing commit Thread Id [{}] has handle id [{}] Transaction {} Level {}",
           Thread.currentThread().getId(),
@@ -62,8 +61,9 @@ public class JdbiTransactionAspect {
       return;
     }
     try {
-      handle.getConnection().rollback();
-      LOG.info(
+      // handle.getConnection().rollback();
+      handle.rollback();
+      LOG.debug(
           "Performed rollback on Thread Id [{}] has handle id [{}] Transaction {} Level {}",
           Thread.currentThread().getId(),
           handle.hashCode(),
