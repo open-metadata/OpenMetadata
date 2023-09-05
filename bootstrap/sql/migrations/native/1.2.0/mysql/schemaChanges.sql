@@ -72,4 +72,4 @@ CREATE TABLE IF NOT EXISTS stored_procedure_entity (
     UNIQUE (fqnHash)
 );
 
-ALTER TABLE entity_realtion ADD INDEX from_entity_type_index(fromId, fromEntity), ADD INDEX to_entity_type_index(toId, toEntity);
+ALTER TABLE entity_realtionship ADD INDEX from_entity_type_index(fromId, fromEntity), ADD INDEX to_entity_type_index(toId, toEntity);
