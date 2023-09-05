@@ -14,7 +14,7 @@ Test Column Name Scanner
 from unittest import TestCase
 
 from metadata.pii.models import TagType
-from metadata.pii.ner_scanner import NERScanner
+from metadata.pii.scanners.ner_scanner import NERScanner
 
 
 class NERScannerTest(TestCase):

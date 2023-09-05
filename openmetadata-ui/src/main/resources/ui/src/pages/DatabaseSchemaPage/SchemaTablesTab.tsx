@@ -174,7 +174,6 @@ function SchemaTablesTab({
             pageSize={PAGE_SIZE}
             paging={tableData.paging}
             pagingHandler={tablePaginationHandler}
-            totalCount={tableData.paging.total}
           />
         </Col>
       )}

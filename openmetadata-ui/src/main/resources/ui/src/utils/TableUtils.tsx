@@ -53,6 +53,7 @@ import {
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
+  getStoredProcedureDetailsPath,
   getTableDetailsPath,
   getTableTabPath,
   getTagsDetailsPath,
@@ -248,6 +249,9 @@ export const getEntityLink = (
 
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
+
+    case EntityType.STORED_PROCEDURE:
+      return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(

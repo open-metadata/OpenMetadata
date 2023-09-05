@@ -50,6 +50,7 @@ export enum EntityType {
   DOMAIN = 'domain',
   DATA_PRODUCT = 'dataProduct',
   SAMPLE_DATA = 'sampleData',
+  STORED_PROCEDURE = 'storedProcedure',
 }
 
 export enum AssetsType {
@@ -163,6 +164,8 @@ export enum EntityTabs {
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
   SQL = 'sql',
+  STORED_PROCEDURE = 'stored_procedure',
+  CODE = 'code',
 }
 
 export enum EntityAction {
