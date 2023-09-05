@@ -271,13 +271,13 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             name = f"{column if column is not None else table}"
             error = f"{name} metric_type.value: {exc}"
             logger.error(error)
-            self.processor_status.failed_profiler(error, traceback.format_exc())
+            self.status.failed_profiler(error, traceback.format_exc())
             row = None
         if column is not None:
             column = column.name
-            self.processor_status.scanned(f"{table.name.__root__}.{column}")
+            self.status.scanned(f"{table.name.__root__}.{column}")
         else:
-            self.processor_status.scanned(table.name.__root__)
+            self.status.scanned(table.name.__root__)
         return row, column, metric_type.value
 
     def fetch_sample_data(self, table) -> TableData:
@@ -354,7 +354,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                         profile_results["columns"][column].update(
                             {
                                 "name": column,
-                                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                                "timestamp": int(
+                                    datetime.now(tz=timezone.utc).timestamp() * 1000
+                                ),
                                 **profile,
                             }
                         )

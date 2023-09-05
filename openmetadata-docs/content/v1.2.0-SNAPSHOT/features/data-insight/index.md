@@ -4,12 +4,15 @@ slug: /features/data-insight
 ---
 
 # Data Insights
+
 Platform adoption is an important element for teams implementing OpenMetadata. With the data insights feature organization can drive the adoption of OpenMetadata by monitoring its usage and setting up company wide KPIs.
 
 ## Data Insight Reports
+
 OpenMetadata offers a suite of reports providing platform analytics around specific areas.
 
 ### Data Assets
+
 The Data Assets reports display important metrics around your data assets in OpenMetadata.
 
 **Total Data Assets**  
@@ -49,6 +52,7 @@ This chart represents a broken down view of data assets by Tiers. Data Assets wi
  /%}
 
 ### App Analytics
+
 The App Analytics report provides important metrics around the usage of OpenMetadata.
 
 **Most Viewed Data Assets**  
@@ -69,7 +73,7 @@ This chart shows the total number of page views by asset type. This allows you t
     caption="Page Views by Assets"
  /%}
 
-**Daily active users on the platform**    
+**Daily active users on the platform**  
 This chart shows the number of daily active users on your platform. Active users are users with at least one session. This report allows to understand the platform usage and see how your organization leverage OpenMetadata.
 
 {% image
@@ -78,7 +82,7 @@ This chart shows the number of daily active users on your platform. Active users
     caption="Daily Active Users"
  /%}
 
-**Most Active Users**    
+**Most Active Users**  
 This chart shows the top 10 most active users. These users are your power users in your organization. They can be turned into evangelist to promote OpenMetadata inside your company.
 
 {% image
@@ -88,41 +92,28 @@ This chart shows the top 10 most active users. These users are your power users 
  /%}
 
 ### Setting up Data Insight Workflow
+
 **Step 1**  
-Navigate to `settings > Metadata > OpenMetadata Service`.
+Navigate to `settings > Data Insight`.
 
 {% image
-    src="/images/v1.2.0/features/data-insight/metadata-nav.png"
-    alt="Metadata Service Page"
-    caption="Metadata Service Page"
+    src="/images/v1.2.0/features/data-insight/data-insight-page.png"
+    alt="Data Insight Page"
+    caption="Data Insight Page"
  /%}
 
-On the `OpenMetadata Service` click on `Add Ingestion > Add Data Insight Ingestion`
-
-{% image
-    src="/images/v1.2.0/features/data-insight/data-insight-add-ingestion.png"
-    alt="Add Data Insight Ingestion"
-    caption="Add Data Insight Ingestion"
- /%}
+By default there will be data insight pipeline created for you, so can either create new one or edit the existing one.
 
 **Step 2**  
 Pick a name for your ingestion workflow or leave it as is.
 
 {% image
-    src="/images/v1.2.0/features/data-insight/data-insight-ingestion-name.png"
+    src="/images/v1.2.0/features/data-insight/add-data-insight-pipeline.png"
     alt="Data Insight Ingestion Name"
     caption="Data Insight Ingestion Name"
  /%}
 
-Add any elasticsearch configuration relevant to your setup. Note that if you are deploying OpenMetadata with no custom elasticsearch deployment you can skip this configuration step.
-
-{% image
-    src="/images/v1.2.0/features/data-insight/data-insight-ingestion-es-config.png"
-    alt="Data Insight Ingestion ES Config"
-    caption="Data Insight Ingestion ES Config"
- /%}
-
-Choose a schedule exection time for your workflow. The schedule time is displayed in UTC. We recommend to run this workflow overnight or when activity on the platform is at its lowest to ensure accurate data.
+Choose a schedule execution time for your workflow. The schedule time is displayed in UTC. We recommend to run this workflow overnight or when activity on the platform is at its lowest to ensure accurate data.
 
 {% image
     src="/images/v1.2.0/features/data-insight/data-insight-ingestion-schedule.png"
@@ -134,7 +125,8 @@ Choose a schedule exection time for your workflow. The schedule time is displaye
 Navigate to the `Insights` page. You should see your data insights reports. Note that if you have just deployed OpenMetadata, `App Analytic` data might not be present. `App Analytic` data are fetched from the previous day (UTC).
 
 ## Data Insight KPIs
-While data insights reports gives an analytical view of OpenMetadata platform, KPIs are here to drive platform adoption. 
+
+While data insights reports gives an analytical view of OpenMetadata platform, KPIs are here to drive platform adoption.
 
 {% image
     src="/images/v1.2.0/features/data-insight/data-insight-kpi.png"
@@ -145,13 +137,15 @@ While data insights reports gives an analytical view of OpenMetadata platform, K
 ### KPIs Categories
 
 **Completed Description**  
-Available as an absolute or relative (percentage) value, this KPI measures the description coverage of your data assets in OpenMetadata. 
+Available as an absolute or relative (percentage) value, this KPI measures the description coverage of your data assets in OpenMetadata.
 
 **Completed Ownership**  
 Available as an absolute or relative (percentage) value, this KPI measures the ownershi[] coverage of your data assets in OpenMetadata.
 
 ### Adding KPIs
+
 On the `Insights` page, click on `Add KPI`. This will open the KPI configuration page where the following required configuration elements need to be set:
+
 - `Name`: name of your KPI
 - `Select a chart`: this links the KPI to one of the chart present in the data insight reports
 - `Select a metric type`: you can choose between `PERCENTAGE` or `NUMBER`. The former will be a relative value while the latter an absolute value
@@ -163,7 +157,7 @@ On the `Insights` page, click on `Add KPI`. This will open the KPI configuration
     caption="KPI Configuration"
  /%}
 
-# Run Data Insights using the Airflow SDK 
+# Run Data Insights using the Airflow SDK
 
 ### 1. Define the YAML Config
 
@@ -188,7 +182,7 @@ sink:
 workflowConfig:
   loggerLevel: DEBUG
   openMetadataServerConfig:
-    hostPort: "<OpenMetadata host and port>"
+    hostPort: '<OpenMetadata host and port>'
     authProvider: openmetadata
     securityConfig:
       jwtToken: '{bot_jwt_token}'
@@ -197,7 +191,6 @@ workflowConfig:
 #### Source Configuration - Source Config
 
 - To send the metadata to OpenMetadata, it needs to be specified as `type: MetadataToElasticSearch`.
-
 
 #### processor Configuration
 
@@ -301,7 +294,7 @@ sink:
 workflowConfig:
   loggerLevel: DEBUG
   openMetadataServerConfig:
-    hostPort: "<OpenMetadata host and port>"
+    hostPort: '<OpenMetadata host and port>'
     authProvider: openmetadata
     securityConfig:
       jwtToken: '{bot_jwt_token}'
@@ -310,7 +303,6 @@ workflowConfig:
 #### Source Configuration - Source Config
 
 - To send the metadata to OpenMetadata, it needs to be specified as `type: MetadataToElasticSearch`.
-
 
 #### processor Configuration
 
@@ -342,8 +334,7 @@ First, we will need to save the YAML file. Afterward, and with all requirements 
 metadata insight -c <path-to-yaml>
 ```
 
-
-# Run Elasticsearch Reindex using the Airflow SDK 
+# Run Elasticsearch Reindex using the Airflow SDK
 
 ### 1. Define the YAML Config
 

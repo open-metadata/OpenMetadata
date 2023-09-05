@@ -4,7 +4,6 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
 import org.flywaydb.core.api.configuration.Configuration;
@@ -148,7 +147,11 @@ public class MigrationFile implements Comparable<MigrationFile> {
   }
 
   private String getVersionPackageName() {
-    return "v" + Arrays.toString(versionNumbers);
+    StringBuilder arrayAsString = new StringBuilder();
+    for (int i = 0; i < versionNumbers.length; i++) {
+      arrayAsString.append(versionNumbers[i]);
+    }
+    return "v" + arrayAsString;
   }
 
   private boolean checkIfQueryPreviouslyRan(String query) {

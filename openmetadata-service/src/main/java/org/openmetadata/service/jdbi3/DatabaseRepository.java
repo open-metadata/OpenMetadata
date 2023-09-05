@@ -40,7 +40,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void prepare(Database database) {
+  public void prepare(Database database, boolean update) {
     populateService(database);
   }
 

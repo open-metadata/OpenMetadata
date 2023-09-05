@@ -798,7 +798,7 @@ public class FeedRepository {
   }
 
   private Thread populateAssignees(Thread thread) {
-    if (thread.getType().equals(ThreadType.Task)) {
+    if (thread != null && ThreadType.Task.equals(thread.getType())) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
       for (EntityReference ref : assignees) {
         try {

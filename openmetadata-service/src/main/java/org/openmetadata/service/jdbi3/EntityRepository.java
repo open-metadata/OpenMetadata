@@ -205,8 +205,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearchIndex = false;
-
-  EntityRepository(
+  
+  protected EntityRepository(
       String collectionPath,
       String entityType,
       Class<T> entityClass,
@@ -285,9 +285,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * At the end of this operation, entity is expected to be valid and fully constructed with all the fields that will be
    * sent as payload in the POST, PUT, and PATCH operations response.
    *
-   * @see TableRepository#prepare(Table) for an example implementation
+   * @see TableRepository#prepare(Table, boolean) for an example implementation
    */
-  public abstract void prepare(T entity);
+  public abstract void prepare(T entity, boolean update);
 
   /**
    * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the entity and
@@ -658,16 +658,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T createInternal(T entity) {
-    prepareInternal(entity);
+    prepareInternal(entity, false);
     return createNewEntity(entity);
   }
 
-  public void prepareInternal(T entity) {
+  public void prepareInternal(T entity, boolean update) {
     if (supportsTags) {
       entity.setTags(addDerivedTags(entity.getTags()));
       checkMutuallyExclusive(entity.getTags());
     }
-    prepare(entity);
+    prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity);
     // Domain is already validated
@@ -787,7 +787,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    prepareInternal(updated);
+    prepareInternal(updated, true);
     populateOwner(updated.getOwner());
     restorePatchAttributes(original, updated);
 
@@ -891,7 +891,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
-  protected void preDelete(T entity) {
+  protected void preDelete(T entity, String deletedBy) {
     // Override this method to perform any operation required after deletion.
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
@@ -923,11 +923,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private DeleteResponse<T> delete(String updatedBy, T original, boolean recursive, boolean hardDelete) {
+  private DeleteResponse<T> delete(String deletedBy, T original, boolean recursive, boolean hardDelete) {
     checkSystemEntityDeletion(original);
-    preDelete(original);
+    preDelete(original, deletedBy);
     setFieldsInternal(original, putFields);
-    deleteChildren(original.getId(), recursive, hardDelete, updatedBy);
+    deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
 
     String changeType;
     T updated = get(null, original.getId(), putFields, ALL, false);
@@ -935,7 +935,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     //    setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from
     // ES.
     if (supportsSoftDelete && !hardDelete) {
-      updated.setUpdatedBy(updatedBy);
+      updated.setUpdatedBy(deletedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
@@ -1117,31 +1117,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
   }
 
-  protected void storeTimeSeriesWithOperation(
-      String fqn,
-      String extension,
-      String jsonSchema,
-      String entityJson,
-      Long timestamp,
-      String operation,
-      boolean update) {
-    if (update) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .updateExtensionByOperation(fqn, extension, entityJson, timestamp, operation);
-    } else {
-      daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
-    }
-  }
-
   public String getExtensionAtTimestamp(String fqn, String extension, Long timestamp) {
     return daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqn, extension, timestamp);
-  }
-
-  public String getExtensionAtTimestampWithOperation(String fqn, String extension, Long timestamp, String operation) {
-    return daoCollection
-        .entityExtensionTimeSeriesDao()
-        .getExtensionAtTimestampWithOperation(fqn, extension, timestamp, operation);
   }
 
   public String getLatestExtensionFromTimeseries(String fqn, String extension) {
@@ -1594,25 +1571,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
-  public T inheritOwner(T entity, Fields fields, EntityInterface parent) {
+  public void inheritOwner(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_OWNER) && entity.getOwner() == null) {
       entity.setOwner(parent.getOwner());
     }
-    return entity;
   }
 
-  public T inheritExperts(T entity, Fields fields, EntityInterface parent) {
+  public void inheritExperts(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts())) {
       entity.setExperts(parent.getExperts());
     }
-    return entity;
   }
 
-  public T inheritReviewers(T entity, Fields fields, EntityInterface parent) {
+  public void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(entity.getReviewers())) {
       entity.setReviewers(parent.getReviewers());
     }
-    return entity;
   }
 
   protected void populateOwner(EntityReference owner) {

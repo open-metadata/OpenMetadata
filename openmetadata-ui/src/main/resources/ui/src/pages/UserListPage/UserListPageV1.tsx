@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
 import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +43,7 @@ const UserListPageV1 = () => {
   const [isAdminPage, setIsAdminPage] = useState<boolean | undefined>(
     tab === GlobalSettingOptions.ADMINS || undefined
   );
-  const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
+
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [showDeletedUser, setShowDeletedUser] = useState<boolean>(false);
   const [userList, setUserList] = useState<User[]>([]);
@@ -54,7 +53,6 @@ const UserListPageV1 = () => {
 
   const initialSetup = () => {
     setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
-    setIsPageLoading(true);
     setIsDataLoading(true);
     setShowDeletedUser(false);
     setSearchValue('');
@@ -92,7 +90,6 @@ const UserListPageV1 = () => {
       );
     }
     setIsDataLoading(false);
-    setIsPageLoading(false);
   };
 
   const handleFetch = () => {
@@ -210,19 +207,14 @@ const UserListPageV1 = () => {
         const userSearchTerm = searchParameter.get('user') || '';
         setSearchValue(userSearchTerm);
         getSearchedUsers(userSearchTerm, 1);
-        setIsPageLoading(false);
+        setIsDataLoading(false);
       } else {
         fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);
       }
     } else {
-      setIsPageLoading(false);
       setIsDataLoading(false);
     }
   }, [tab]);
-
-  if (isPageLoading) {
-    return <Loader />;
-  }
 
   return (
     <UserListV1

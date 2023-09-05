@@ -48,7 +48,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public void prepare(DatabaseSchema schema) {
+  public void prepare(DatabaseSchema schema, boolean update) {
     populateDatabase(schema);
   }
 

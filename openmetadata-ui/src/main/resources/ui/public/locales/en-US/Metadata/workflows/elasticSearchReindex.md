@@ -29,3 +29,9 @@ $$section
 
 This option if enabled, will delete the existing indexes and create them again.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$

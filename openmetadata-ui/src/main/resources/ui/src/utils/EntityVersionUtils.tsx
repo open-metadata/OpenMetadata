@@ -24,8 +24,8 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { EntityType } from 'enums/entity.enum';
+import { Column as DataModelColumn } from 'generated/entity/data/dashboardDataModel';
 import { Field } from 'generated/entity/data/topic';
 import { EntityReference } from 'generated/entity/type';
 import { t } from 'i18next';
@@ -42,7 +42,6 @@ import {
   uniqBy,
   uniqueId,
 } from 'lodash';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { Link } from 'react-router-dom';
@@ -54,10 +53,13 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getEntityName } from './EntityUtils';
-import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { getEntityBreadcrumbs, getEntityName } from './EntityUtils';
+import {
+  TagLabelWithStatus,
+  VersionEntityTypes,
+} from './EntityVersionUtils.interface';
 import { isValidJSONString } from './StringsUtils';
-import { getTagsWithoutTier } from './TableUtils';
+import { getTagsWithoutTier, getTierTags } from './TableUtils';
 
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
   diffObject?.added?.name ??
@@ -216,7 +218,7 @@ export const getTagsDiff = (
 };
 
 export const getEntityVersionTags = (
-  currentVersionData: VersionData | Glossary | GlossaryTerm,
+  currentVersionData: VersionEntityTypes,
   changeDescription: ChangeDescription
 ) => {
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
@@ -652,7 +654,7 @@ export const getAllChangedEntityNames = (
 };
 
 export function getColumnsDataWithVersionChanges<
-  A extends TableColumn | ContainerColumn
+  A extends TableColumn | ContainerColumn | DataModelColumn
 >(
   changeDescription: ChangeDescription,
   colList?: A[],
@@ -740,3 +742,59 @@ export const getConstraintChanges = (
 
   return { addedConstraintDiffs, deletedConstraintDiffs };
 };
+
+const getMutuallyExclusiveDiffLabel = (value: boolean) => {
+  if (value) {
+    return t('label.yes');
+  } else {
+    return t('label.no');
+  }
+};
+
+export const getMutuallyExclusiveDiff = (
+  changeDescription: ChangeDescription,
+  field: string,
+  fallbackText?: string
+) => {
+  const fieldDiff = getDiffByFieldName(field, changeDescription, true);
+  const oldField = getChangedEntityOldValue(fieldDiff);
+  const newField = getChangedEntityNewValue(fieldDiff);
+
+  const oldDisplayField = getMutuallyExclusiveDiffLabel(oldField);
+  const newDisplayField = getMutuallyExclusiveDiffLabel(newField);
+
+  return getTextDiff(
+    toString(oldDisplayField) ?? '',
+    toString(newDisplayField),
+    toString(fallbackText)
+  );
+};
+
+export const getBasicEntityInfoFromVersionData = (
+  currentVersionData: VersionEntityTypes,
+  entityType: EntityType
+) => ({
+  tier: getTierTags(currentVersionData.tags ?? []),
+  owner: currentVersionData.owner,
+  breadcrumbLinks: getEntityBreadcrumbs(currentVersionData, entityType),
+  changeDescription:
+    currentVersionData.changeDescription ?? ({} as ChangeDescription),
+  deleted: Boolean(currentVersionData.deleted),
+});
+
+export const getCommonDiffsFromVersionData = (
+  currentVersionData: VersionEntityTypes,
+  changeDescription: ChangeDescription
+) => ({
+  tags: getEntityVersionTags(currentVersionData, changeDescription),
+  displayName: getEntityVersionByField(
+    changeDescription,
+    EntityField.DISPLAYNAME,
+    currentVersionData.displayName
+  ),
+  description: getEntityVersionByField(
+    changeDescription,
+    EntityField.DESCRIPTION,
+    currentVersionData.description
+  ),
+});

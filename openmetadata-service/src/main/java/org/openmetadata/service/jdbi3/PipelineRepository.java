@@ -182,7 +182,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void prepare(Pipeline pipeline) {
+  public void prepare(Pipeline pipeline, boolean update) {
     populateService(pipeline);
     if (pipeline.getTasks() != null) {
       pipeline.getTasks().forEach(task -> checkMutuallyExclusive(task.getTags()));

@@ -27,6 +27,7 @@ import React, {
   FunctionComponent,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,12 +89,14 @@ import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
@@ -127,11 +130,11 @@ const EntityVersionPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
-  const [isVersionLoading, setIsVersionLoading] = useState<boolean>(false);
+  const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
   const [slashedEntityName, setSlashedEntityName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -207,11 +210,11 @@ const EntityVersionPage: FunctionComponent = () => {
 
   const fetchResourcePermission = useCallback(
     async (resourceEntity: ResourceEntity) => {
-      if (!isEmpty(currentVersionData)) {
+      if (!isEmpty(entityFQN)) {
         try {
           const permission = await getEntityPermissionByFqn(
             resourceEntity,
-            currentVersionData.id ?? ''
+            entityFQN
           );
 
           setEntityPermissions(permission);
@@ -220,7 +223,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
       }
     },
-    [currentVersionData.id, getEntityPermissionByFqn, setEntityPermissions]
+    [entityFQN, getEntityPermissionByFqn, setEntityPermissions]
   );
 
   const fetchEntityPermissions = useCallback(async () => {
@@ -228,37 +231,37 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       switch (entityType) {
         case EntityType.TABLE: {
-          fetchResourcePermission(ResourceEntity.TABLE);
+          await fetchResourcePermission(ResourceEntity.TABLE);
 
           break;
         }
         case EntityType.TOPIC: {
-          fetchResourcePermission(ResourceEntity.TOPIC);
+          await fetchResourcePermission(ResourceEntity.TOPIC);
 
           break;
         }
         case EntityType.DASHBOARD: {
-          fetchResourcePermission(ResourceEntity.DASHBOARD);
+          await fetchResourcePermission(ResourceEntity.DASHBOARD);
 
           break;
         }
         case EntityType.PIPELINE: {
-          fetchResourcePermission(ResourceEntity.PIPELINE);
+          await fetchResourcePermission(ResourceEntity.PIPELINE);
 
           break;
         }
         case EntityType.MLMODEL: {
-          fetchResourcePermission(ResourceEntity.ML_MODEL);
+          await fetchResourcePermission(ResourceEntity.ML_MODEL);
 
           break;
         }
         case EntityType.CONTAINER: {
-          fetchResourcePermission(ResourceEntity.CONTAINER);
+          await fetchResourcePermission(ResourceEntity.CONTAINER);
 
           break;
         }
         case EntityType.DASHBOARD_DATA_MODEL: {
-          fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
+          await fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
 
           break;
         }
@@ -270,6 +273,11 @@ const EntityVersionPage: FunctionComponent = () => {
       setIsLoading(false);
     }
   }, [entityType, fetchResourcePermission]);
+
+  const viewVersionPermission = useMemo(
+    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
+    [entityPermissions]
+  );
 
   const fetchEntityVersions = useCallback(async () => {
     setIsLoading(true);
@@ -390,132 +398,140 @@ const EntityVersionPage: FunctionComponent = () => {
         default:
           break;
       }
-    } catch (err) {
-      // Error
     } finally {
       setIsLoading(false);
     }
-  }, [entityType, entityFQN]);
+  }, [entityType, entityFQN, viewVersionPermission]);
 
   const fetchCurrentVersion = useCallback(
     async (id: string) => {
       setIsVersionLoading(true);
       try {
-        switch (entityType) {
-          case EntityType.TABLE: {
-            const currentVersion = await getTableVersion(id, version);
+        if (viewVersionPermission) {
+          switch (entityType) {
+            case EntityType.TABLE: {
+              const currentVersion = await getTableVersion(id, version);
 
-            const { owner, tags = [] } = currentVersion;
+              const { owner, tags = [] } = currentVersion;
 
-            setEntityState(
-              tags,
-              owner,
-              currentVersion,
-              getEntityBreadcrumbs(currentVersion, EntityType.TABLE)
-            );
-
-            break;
-          }
-
-          case EntityType.TOPIC: {
-            const currentVersion = await getTopicVersion(id, version);
-
-            const { owner, tags = [] } = currentVersion;
-
-            setEntityState(
-              tags,
-              owner,
-              currentVersion,
-              getEntityBreadcrumbs(currentVersion, EntityType.TOPIC)
-            );
-
-            break;
-          }
-          case EntityType.DASHBOARD: {
-            const currentVersion = await getDashboardVersion(id, version);
-
-            const { owner, tags = [] } = currentVersion;
-
-            setEntityState(
-              tags,
-              owner,
-              currentVersion,
-              getEntityBreadcrumbs(currentVersion, EntityType.DASHBOARD)
-            );
-
-            break;
-          }
-          case EntityType.PIPELINE: {
-            const currentVersion = await getPipelineVersion(id, version);
-
-            const { owner, tags = [] } = currentVersion;
-
-            setEntityState(
-              tags,
-              owner,
-              currentVersion,
-              getEntityBreadcrumbs(currentVersion, EntityType.PIPELINE)
-            );
-
-            break;
-          }
-
-          case EntityType.MLMODEL: {
-            const currentVersion = await getMlModelVersion(id, version);
-
-            const { owner, tags = [] } = currentVersion;
-            setEntityState(
-              tags,
-              owner,
-              currentVersion,
-              getEntityBreadcrumbs(currentVersion, EntityType.MLMODEL)
-            );
-
-            break;
-          }
-          case EntityType.CONTAINER: {
-            const currentVersion = await getContainerVersion(id, version);
-            const { owner, tags = [] } = currentVersion;
-
-            setEntityState(
-              tags,
-              owner,
-              currentVersion,
-              getEntityBreadcrumbs(currentVersion, EntityType.CONTAINER)
-            );
-
-            break;
-          }
-
-          case EntityType.DASHBOARD_DATA_MODEL: {
-            const currentVersion = await getDataModelVersion(id, version);
-
-            const { owner, tags = [] } = currentVersion;
-
-            setEntityState(
-              tags,
-              owner,
-              currentVersion,
-              getEntityBreadcrumbs(
+              setEntityState(
+                tags,
+                owner,
                 currentVersion,
-                EntityType.DASHBOARD_DATA_MODEL
-              )
-            );
+                getEntityBreadcrumbs(currentVersion, EntityType.TABLE)
+              );
 
-            break;
+              break;
+            }
+
+            case EntityType.TOPIC: {
+              const currentVersion = await getTopicVersion(id, version);
+
+              const { owner, tags = [] } = currentVersion;
+
+              setEntityState(
+                tags,
+                owner,
+                currentVersion,
+                getEntityBreadcrumbs(currentVersion, EntityType.TOPIC)
+              );
+
+              break;
+            }
+            case EntityType.DASHBOARD: {
+              const currentVersion = await getDashboardVersion(id, version);
+
+              const { owner, tags = [] } = currentVersion;
+
+              setEntityState(
+                tags,
+                owner,
+                currentVersion,
+                getEntityBreadcrumbs(currentVersion, EntityType.DASHBOARD)
+              );
+
+              break;
+            }
+            case EntityType.PIPELINE: {
+              const currentVersion = await getPipelineVersion(id, version);
+
+              const { owner, tags = [] } = currentVersion;
+
+              setEntityState(
+                tags,
+                owner,
+                currentVersion,
+                getEntityBreadcrumbs(currentVersion, EntityType.PIPELINE)
+              );
+
+              break;
+            }
+
+            case EntityType.MLMODEL: {
+              const currentVersion = await getMlModelVersion(id, version);
+
+              const { owner, tags = [] } = currentVersion;
+              setEntityState(
+                tags,
+                owner,
+                currentVersion,
+                getEntityBreadcrumbs(currentVersion, EntityType.MLMODEL)
+              );
+
+              break;
+            }
+            case EntityType.CONTAINER: {
+              const currentVersion = await getContainerVersion(id, version);
+              const { owner, tags = [] } = currentVersion;
+
+              setEntityState(
+                tags,
+                owner,
+                currentVersion,
+                getEntityBreadcrumbs(currentVersion, EntityType.CONTAINER)
+              );
+
+              break;
+            }
+
+            case EntityType.DASHBOARD_DATA_MODEL: {
+              const currentVersion = await getDataModelVersion(id, version);
+
+              const { owner, tags = [] } = currentVersion;
+
+              setEntityState(
+                tags,
+                owner,
+                currentVersion,
+                getEntityBreadcrumbs(
+                  currentVersion,
+                  EntityType.DASHBOARD_DATA_MODEL
+                )
+              );
+
+              break;
+            }
+
+            default:
+              break;
           }
-
-          default:
-            break;
         }
       } finally {
         setIsVersionLoading(false);
       }
     },
-    [entityType, version, setEntityState]
+    [entityType, version, setEntityState, viewVersionPermission]
   );
 
   const versionComponent = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
+
+    if (!viewVersionPermission) {
+      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    }
+
     switch (entityType) {
       case EntityType.TABLE: {
         return (
@@ -635,7 +651,6 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData}
             dataModelFQN={entityFQN}
             deleted={currentVersionData.deleted}
-            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDataModelName={slashedEntityName}
@@ -654,14 +669,14 @@ const EntityVersionPage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    if (currentVersionData) {
-      fetchEntityPermissions();
-    }
-  }, [currentVersionData]);
+    fetchEntityPermissions();
+  }, [entityFQN]);
 
   useEffect(() => {
-    fetchEntityVersions();
-  }, [entityFQN]);
+    if (viewVersionPermission) {
+      fetchEntityVersions();
+    }
+  }, [entityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (entityId) {
@@ -675,7 +690,7 @@ const EntityVersionPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(currentVersionData),
       })}>
-      {isLoading ? <Loader /> : versionComponent()}
+      {versionComponent()}
     </PageLayoutV1>
   );
 };

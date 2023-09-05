@@ -22,6 +22,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
   DELETE_TERM,
   GLOSSARY_INVALID_NAMES,
@@ -59,36 +60,6 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
     verifyResponseStatusCode('@waitForTermPermission', 200);
   }
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
-};
-
-const deleteGlossary = (glossary) => {
-  cy.get('.ant-menu-item').contains(glossary).click();
-  cy.get('[data-testid="manage-button"]').should('be.visible').click();
-  cy.get('[data-testid="delete-button"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="delete-confirmation-modal"]')
-    .should('exist')
-    .then(() => {
-      cy.get('[role="dialog"]').should('be.visible');
-      cy.get('[data-testid="modal-header"]').should('be.visible');
-    });
-  cy.get('[data-testid="modal-header"]')
-    .should('be.visible')
-    .should('contain', `Delete ${glossary}`);
-  cy.get('[data-testid="confirmation-text-input"]')
-    .should('be.visible')
-    .type(DELETE_TERM);
-  interceptURL('DELETE', '/api/v1/glossaries/*', 'getGlossary');
-  cy.get('[data-testid="confirm-button"]')
-    .should('be.visible')
-    .should('not.disabled')
-    .click();
-  verifyResponseStatusCode('@getGlossary', 200);
-
-  toastNotification('Glossary deleted successfully!');
 };
 
 const checkDisplayName = (displayName) => {
@@ -394,10 +365,10 @@ describe('Glossary page should work properly', () => {
       .and('be.visible')
       .then(($el) => {
         cy.wrap($el)
-          .find('[data-testid="appbar-item-glossary"]')
+          .find('[data-testid="app-bar-item-glossary"]')
           .should('exist')
           .and('be.visible')
-          .click();
+          .click({ force: true });
       });
   });
 
@@ -786,7 +757,7 @@ describe('Glossary page should work properly', () => {
       .should('contain', term3);
 
     cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="appbar-item-glossary"]').click();
+    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
     cy.get('.ant-menu-item').contains(NEW_GLOSSARY_1.name).click();
 
@@ -859,7 +830,7 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
 
     cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="appbar-item-glossary"]').click();
+    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 

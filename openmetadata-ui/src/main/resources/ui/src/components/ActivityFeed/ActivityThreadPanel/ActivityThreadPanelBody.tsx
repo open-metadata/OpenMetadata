@@ -208,7 +208,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCancel && onCancel();
+        onCancel?.();
       }
     };
     document.addEventListener('keydown', escapeKeyHandler);
@@ -241,7 +241,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 ? t('label.conversation-plural')
                 : t('label.task-plural')
             }
-            onCancel={() => onCancel && onCancel()}
+            onCancel={() => onCancel?.()}
             onShowNewConversation={
               threads.length > 0 && isUndefined(selectedThread)
                 ? onShowNewConversation
@@ -293,7 +293,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     />
                   </Space>
                 )}
-                {!isThreadLoading && (
+                {(isAnnouncementType || isTaskType) && (
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
@@ -303,11 +303,11 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                           ? t('message.no-closed-task')
                           : t('message.no-open-task')}
                       </Typography.Paragraph>
-                    ) : isAnnouncementType ? (
+                    ) : (
                       <Typography.Paragraph data-testid="announcement-error">
                         {t('message.no-announcement-message')}
                       </Typography.Paragraph>
-                    ) : null}
+                    )}
                   </ErrorPlaceHolder>
                 )}
               </>

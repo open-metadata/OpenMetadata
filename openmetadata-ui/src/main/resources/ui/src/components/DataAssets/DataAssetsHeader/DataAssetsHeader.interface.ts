@@ -21,6 +21,7 @@ import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardService } from 'generated/entity/services/dashboardService';
@@ -43,6 +44,7 @@ export type DataAssetsType =
   | Container
   | Database
   | DashboardDataModel
+  | StoredProcedure
   | DatabaseSchema
   | DatabaseService
   | MessagingService
@@ -90,6 +92,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetMlmodel
   | DataAssetContainer
   | DataAssetDashboardDataModel
+  | DataAssetStoredProcedure
   | DataAssetDatabase
   | DataAssetDatabaseSchema
   | DataAssetDatabaseService
@@ -133,6 +136,11 @@ export interface DataAssetContainer {
 export interface DataAssetDashboardDataModel {
   dataAsset: DashboardDataModel;
   entityType: EntityType.DASHBOARD_DATA_MODEL;
+}
+
+export interface DataAssetStoredProcedure {
+  dataAsset: StoredProcedure;
+  entityType: EntityType.STORED_PROCEDURE;
 }
 
 export interface DataAssetDatabase {

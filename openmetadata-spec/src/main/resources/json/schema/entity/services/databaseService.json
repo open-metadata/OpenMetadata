@@ -47,7 +47,8 @@
         "CustomDatabase",
         "Dbt",
         "SapHana",
-        "MongoDB"
+        "MongoDB",
+        "Couchbase"
       ],
       "javaEnums": [
         {
@@ -148,6 +149,9 @@
         },
         {
           "name": "MongoDB"
+        },
+        {
+          "name": "Couchbase"
         }
       ]
     },
@@ -253,6 +257,9 @@
             },
             {
               "$ref": "./connections/database/mongoDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/couchbaseConnection.json"
             }
           ]
         }

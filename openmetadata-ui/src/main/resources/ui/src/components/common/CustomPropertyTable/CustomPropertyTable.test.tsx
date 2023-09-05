@@ -76,6 +76,10 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
     }),
   }),
 }));
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
+}));
 
 const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
@@ -85,9 +89,21 @@ const mockProp = {
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
   hasEditAccess: true,
+  hasPermission: true,
 };
 
 describe('Test CustomProperty Table Component', () => {
+  it("Should render permission placeholder if doesn't have permission", async () => {
+    await act(async () => {
+      render(<CustomPropertyTable {...mockProp} hasPermission={false} />);
+    });
+    const permissionPlaceholder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
+
+    expect(permissionPlaceholder).toBeInTheDocument();
+  });
+
   it('Should render table component', async () => {
     await act(async () => {
       render(<CustomPropertyTable {...mockProp} />);
@@ -124,7 +140,7 @@ describe('Test CustomProperty Table Component', () => {
     render(<CustomPropertyTable {...mockProp} />);
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
 
     const noDataPlaceHolder = await screen.findByText(
       'ErrorPlaceHolder.component'

@@ -55,6 +55,7 @@ import {
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
+  getStoredProcedureDetailPath,
   getTableTabPath,
   getTeamAndUserDetailsPath,
   getTopicDetailsPath,
@@ -838,7 +839,17 @@ export const getEntityDetailLink = (
       path = getUserPath(fqn, tab, subTab);
 
       break;
+
+    case EntityType.STORED_PROCEDURE:
+      path = getStoredProcedureDetailPath(fqn, tab, subTab);
+
+      break;
   }
 
   return path;
 };
+
+export const getUniqueArray = (count: number) =>
+  [...Array(count)].map((_, index) => ({
+    key: `key${index}`,
+  }));

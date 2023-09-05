@@ -378,7 +378,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     org.elasticsearch.action.search.SearchRequest searchRequest =
         new org.elasticsearch.action.search.SearchRequest("SearchAlias");
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.termQuery("sourceUrl", sourceUrl));
+    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
@@ -1090,7 +1090,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
         AggregationBuilders.dateHistogram(DataInsightChartRepository.TIMESTAMP)
             .field(DataInsightChartRepository.TIMESTAMP)
-            .calendarInterval(DateHistogramInterval.minutes(1));
+            .calendarInterval(DateHistogramInterval.DAY);
 
     TermsAggregationBuilder termsAggregationBuilder;
     SumAggregationBuilder sumAggregationBuilder;

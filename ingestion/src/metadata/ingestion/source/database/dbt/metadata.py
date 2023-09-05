@@ -50,8 +50,10 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -232,7 +234,7 @@ class DbtSource(DbtServiceSource):
 
     def yield_dbt_tags(
         self, dbt_objects: DbtObjects
-    ) -> Iterable[OMetaTagAndClassification]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Create and yield tags from DBT
         """
@@ -265,9 +267,12 @@ class DbtSource(DbtServiceSource):
                         if column_tags:
                             dbt_tags_list.extend(column_tags)
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unable to process DBT tags for node: f{key} - {exc}"
+                    yield Either(
+                        left=StackTraceError(
+                            name=key,
+                            error=f"Unable to process DBT tags for node: f{key} - {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
                     )
             try:
                 # Create all the tags added
@@ -287,17 +292,22 @@ class DbtSource(DbtServiceSource):
                     ],
                     classification_name=self.tag_classification_name,
                     tag_description="dbt Tags",
-                    classification_desciption="dbt classification",
+                    classification_description="dbt classification",
                 )
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception creating DBT tags: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name="Tags and Classification",
+                        error=f"Unexpected exception creating DBT tags: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def add_dbt_tests(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
     ) -> None:
         """
-        Method to append dbt test cases for later procssing
+        Method to append dbt test cases for later processing
         """
         self.context.dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
         self.context.dbt_tests[key][
@@ -313,7 +323,9 @@ class DbtSource(DbtServiceSource):
         )
 
     # pylint: disable=too-many-locals, too-many-branches
-    def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[DataModelLink]:
+    def yield_data_models(
+        self, dbt_objects: DbtObjects
+    ) -> Iterable[Either[DataModelLink]]:
         """
         Yield the data models
         """
@@ -441,18 +453,22 @@ class DbtSource(DbtServiceSource):
                                 tags=dbt_table_tags_list,
                             ),
                         )
-                        yield data_model_link
+                        yield Either(right=data_model_link)
                         self.context.data_model_links.append(data_model_link)
                     else:
                         logger.warning(
                             f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                            f"Please check if the table exists and is ingested in OpenMetadata"
-                            f"Also name, database, schema of the manifest node matches with the table present in OpenMetadata"  # pylint: disable=line-too-long
+                            "Please check if the table exists and is ingested in OpenMetadata"
+                            "Also name, database, schema of the manifest node matches with the table present "
+                            "in OpenMetadata"
                         )
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unexpected exception parsing DBT node:{model_name} - {exc}"
+                    yield Either(
+                        left=StackTraceError(
+                            name=key,
+                            error=f"Unexpected exception parsing DBT node due to {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
                     )
 
     def parse_upstream_nodes(self, manifest_entities, dbt_node):
@@ -569,7 +585,7 @@ class DbtSource(DbtServiceSource):
 
     def create_dbt_lineage(
         self, data_model_link: DataModelLink
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from upstream nodes
         """
@@ -600,6 +616,9 @@ class DbtSource(DbtServiceSource):
                                 id=to_entity.id.__root__,
                                 type="table",
                             ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.DbtLineage
+                            ),
                         )
                     )
 
@@ -611,7 +630,7 @@ class DbtSource(DbtServiceSource):
 
     def create_dbt_query_lineage(
         self, data_model_link: DataModelLink
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from queries
         """
@@ -641,14 +660,21 @@ class DbtSource(DbtServiceSource):
                 schema_name=source_elements[2],
                 dialect=dialect,
                 timeout_seconds=self.source_config.parsingTimeoutLimit,
+                lineage_source=LineageSource.DbtLineage,
             )
             for lineage_request in lineages or []:
                 yield lineage_request
 
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to parse the query {data_model_link.datamodel.sql.__root__} to capture lineage: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name=data_model_link.datamodel.sql.__root__,
+                    error=(
+                        f"Failed to parse the query {data_model_link.datamodel.sql.__root__}"
+                        f" to capture lineage: {exc}"
+                    ),
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
@@ -702,7 +728,7 @@ class DbtSource(DbtServiceSource):
 
     def create_dbt_tests_definition(
         self, dbt_test: dict
-    ) -> Iterable[CreateTestDefinitionRequest]:
+    ) -> Iterable[Either[CreateTestDefinitionRequest]]:
         """
         A Method to add DBT test definitions
         """
@@ -723,22 +749,31 @@ class DbtSource(DbtServiceSource):
                         and manifest_node.column_name
                     ):
                         entity_type = EntityType.COLUMN
-                    yield CreateTestDefinitionRequest(
-                        name=manifest_node.name,
-                        description=manifest_node.description,
-                        entityType=entity_type,
-                        testPlatforms=[TestPlatform.DBT],
-                        parameterDefinition=create_test_case_parameter_definitions(
-                            manifest_node
-                        ),
-                        displayName=None,
-                        owner=None,
+                    yield Either(
+                        right=CreateTestDefinitionRequest(
+                            name=manifest_node.name,
+                            description=manifest_node.description,
+                            entityType=entity_type,
+                            testPlatforms=[TestPlatform.DBT],
+                            parameterDefinition=create_test_case_parameter_definitions(
+                                manifest_node
+                            ),
+                            displayName=None,
+                            owner=None,
+                        )
                     )
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to parse the node to capture tests {err}")
+            yield Either(
+                left=StackTraceError(
+                    name="Test Definition",
+                    error=f"Failed to parse the node to capture tests {err}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def create_dbt_test_case(self, dbt_test: dict) -> Iterable[CreateTestCaseRequest]:
+    def create_dbt_test_case(
+        self, dbt_test: dict
+    ) -> Iterable[Either[CreateTestCaseRequest]]:
         """
         After test suite and test definitions have been processed, add the tests cases info
         """
@@ -751,22 +786,27 @@ class DbtSource(DbtServiceSource):
                     test_suite = check_or_create_test_suite(
                         self.metadata, entity_link_str
                     )
-                    yield CreateTestCaseRequest(
-                        name=manifest_node.name,
-                        description=manifest_node.description,
-                        testDefinition=FullyQualifiedEntityName(
-                            __root__=manifest_node.name
-                        ),
-                        entityLink=entity_link_str,
-                        testSuite=test_suite.fullyQualifiedName,
-                        parameterValues=create_test_case_parameter_values(dbt_test),
-                        displayName=None,
-                        owner=None,
+                    yield Either(
+                        right=CreateTestCaseRequest(
+                            name=manifest_node.name,
+                            description=manifest_node.description,
+                            testDefinition=FullyQualifiedEntityName(
+                                __root__=manifest_node.name
+                            ),
+                            entityLink=entity_link_str,
+                            testSuite=test_suite.fullyQualifiedName,
+                            parameterValues=create_test_case_parameter_values(dbt_test),
+                            displayName=None,
+                            owner=None,
+                        )
                     )
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to parse the node {manifest_node.name} to capture tests {err}"
+            yield Either(
+                left=StackTraceError(
+                    name="Test Cases",
+                    error=f"Failed to parse the node to capture tests {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     # pylint: disable=too-many-locals

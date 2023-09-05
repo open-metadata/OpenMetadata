@@ -62,11 +62,12 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
-import KPILatestResults from './KPILatestResults';
+import KPILatestResultsV1 from './KPILatestResultsV1';
 
 interface Props {
   chartFilter: ChartFilter;
   kpiList: Array<Kpi>;
+  isKpiLoading: boolean;
   viewKPIPermission: boolean;
   createKPIPermission: boolean;
 }
@@ -76,6 +77,7 @@ const KPIChart: FC<Props> = ({
   kpiList,
   viewKPIPermission,
   createKPIPermission,
+  isKpiLoading,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -196,7 +198,7 @@ const KPIChart: FC<Props> = ({
       className="data-insight-card"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}
+      loading={isLoading || isKpiLoading}
       title={
         <PageHeader
           data={{
@@ -210,7 +212,10 @@ const KPIChart: FC<Props> = ({
           {graphData.length ? (
             <>
               <Col span={DI_STRUCTURE.leftContainerSpan}>
-                <ResponsiveContainer debounce={1} minHeight={400}>
+                <ResponsiveContainer
+                  debounce={1}
+                  id="kpi-chart"
+                  minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
                       stroke={GRAPH_BACKGROUND_COLOR}
@@ -259,7 +264,9 @@ const KPIChart: FC<Props> = ({
               </Col>
               {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
                 <Col span={DI_STRUCTURE.rightContainerSpan}>
-                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
+                  <KPILatestResultsV1
+                    kpiLatestResultsRecord={kpiLatestResults}
+                  />
                 </Col>
               )}
             </>

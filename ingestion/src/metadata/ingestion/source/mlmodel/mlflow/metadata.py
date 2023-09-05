@@ -35,7 +35,8 @@ from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnect
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.helpers import clean_uri
@@ -88,7 +89,13 @@ class MlflowSource(MlModelServiceSource):
                 None,
             )
             if not latest_version:
-                self.status.failed(model.name, "Invalid version")
+                self.status.failed(
+                    StackTraceError(
+                        name=model.name,
+                        error="Invalid Version",
+                        stack_trace=f"Cannot find latest version from version list {model.latest_versions}",
+                    )
+                )
                 continue
 
             yield model, latest_version
@@ -99,13 +106,9 @@ class MlflowSource(MlModelServiceSource):
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model_and_version: Tuple[RegisteredModel, ModelVersion]
-    ) -> Iterable[CreateMlModelRequest]:
-        """
-        Prepare the Request model
-        """
+    ) -> Iterable[Either[CreateMlModelRequest]]:
+        """Prepare the Request model"""
         model, latest_version = model_and_version
-        self.status.scanned(model.name)
-
         run = self.client.get_run(latest_version.run_id)
 
         source_url = (
@@ -125,7 +128,7 @@ class MlflowSource(MlModelServiceSource):
             service=self.context.mlmodel_service.fullyQualifiedName,
             sourceUrl=source_url,
         )
-        yield mlmodel_request
+        yield Either(right=mlmodel_request)
         self.register_record(mlmodel_request=mlmodel_request)
 
     def _get_hyper_params(  # pylint: disable=arguments-differ

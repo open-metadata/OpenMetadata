@@ -127,3 +127,9 @@ $$section
 
 Specify the timeout limit for parsing the view definition sql queries to perform the lineage analysis.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Table } from 'antd';
+import { Col } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import { getDataModelDetailsPath, PAGE_SIZE } from 'constants/constants';
 import { isUndefined } from 'lodash';
 import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
@@ -43,9 +43,13 @@ const DataModelTable = ({
         key: 'displayName',
         width: 350,
         render: (_, record: ServicePageData) => {
+          const dataModelDisplayName = getEntityName(record);
+
           return (
-            <Link to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
-              {getEntityName(record)}
+            <Link
+              data-testid={`data-model-${dataModelDisplayName}`}
+              to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
+              {dataModelDisplayName}
             </Link>
           );
         },
@@ -77,10 +81,7 @@ const DataModelTable = ({
         columns={tableColumn}
         data-testid="data-models-table"
         dataSource={data}
-        loading={{
-          spinning: isLoading,
-          indicator: <Loader size="small" />,
-        }}
+        loading={isLoading}
         locale={{
           emptyText: <ErrorPlaceHolder className="m-y-md" />,
         }}
@@ -94,7 +95,6 @@ const DataModelTable = ({
           pageSize={PAGE_SIZE}
           paging={paging}
           pagingHandler={pagingHandler}
-          totalCount={paging.total}
         />
       )}
     </Col>

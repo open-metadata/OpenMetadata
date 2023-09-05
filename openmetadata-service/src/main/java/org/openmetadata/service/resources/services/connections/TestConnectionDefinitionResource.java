@@ -61,7 +61,7 @@ public class TestConnectionDefinitionResource
         repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
 
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      repository.prepareInternal(testConnectionDefinition);
+      repository.prepareInternal(testConnectionDefinition, true);
       testConnectionDefinition.setId(UUID.randomUUID());
       testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
       testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
