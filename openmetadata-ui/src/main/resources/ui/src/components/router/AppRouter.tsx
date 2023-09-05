@@ -14,7 +14,7 @@
 import AppContainer from 'components/AppContainer/AppContainer';
 import { CustomEventTypes } from 'generated/analytics/webAnalyticEventData';
 import { AuthProvider } from 'generated/settings/settings';
-import AccountActivationConfirmation from 'pages/signup/account-activation-confirmation.component';
+import AccountActivationConfirmation from 'pages/SignUp/account-activation-confirmation.component';
 import React, { useCallback, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
@@ -41,7 +41,7 @@ const ResetPassword = withSuspenseFallback(
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('pages/signup/BasicSignup.component'))
+  React.lazy(() => import('pages/SignUp/BasicSignup.component'))
 );
 
 const AppRouter = () => {
