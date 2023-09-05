@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -26,6 +27,8 @@ import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
+
+  private static final String QUERY_USERS_FIELD = "users";
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn";
   private static final String QUERY_UPDATE_FIELDS = "users,votes,queryUsedIn";
 
@@ -114,6 +117,24 @@ public class QueryRepository extends EntityRepository<Query> {
     for (EntityReference entityRef : listOrEmpty(deleteQueryUsedIn)) {
       deleteRelationship(entityRef.getId(), entityRef.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
     }
+  }
+
+  public RestUtil.PutResponse<?> AddQueryUser(
+      UriInfo uriInfo, String updatedBy, UUID queryId, List<String> userFqnList) {
+    Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_USERS_FIELD, Include.NON_DELETED);
+    List<EntityReference> oldValue = query.getUsers();
+
+    for (String userFqn : userFqnList) {
+      User user = Entity.getEntityByName(USER, userFqn, "", Include.NON_DELETED);
+      EntityReference entityRef = user.getEntityReference();
+      addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.USES);
+    }
+    // Populate Fields
+    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USERS_FIELD));
+    Entity.withHref(uriInfo, query.getUsers());
+    ChangeEvent changeEvent =
+        getQueryChangeEvent(updatedBy, QUERY_USERS_FIELD, oldValue, query.getUsers(), withHref(uriInfo, query));
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> addQueryUsage(
