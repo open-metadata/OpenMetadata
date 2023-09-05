@@ -343,26 +343,48 @@ const SchemaTable = ({
         accessor: 'name',
         width: 180,
         fixed: 'left',
-        render: (name: Column['name'], record: Column) => (
-          <div className="d-flex flex-column gap-2  hover-icon-group">
-            <Space
-              align="start"
-              className="w-max-90 vertical-align-inherit"
-              size={2}>
-              {prepareConstraintIcon({
-                columnName: name,
-                columnConstraint: record.constraint,
-                tableConstraints,
-              })}
-              <span className="break-word">{getEntityName(record)}</span>
-            </Space>
-            <Icon
-              className="hover-cell-icon text-left"
-              component={IconEdit}
-              onClick={() => handleEditDisplayNameClick(record)}
-            />
-          </div>
-        ),
+        render: (name: Column['name'], record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <div className="d-flex flex-column gap-2  hover-icon-group">
+              <Space
+                align="center"
+                className="w-max-90 vertical-align-inherit"
+                size={2}>
+                {prepareConstraintIcon({
+                  columnName: name,
+                  columnConstraint: record.constraint,
+                  tableConstraints,
+                })}
+                <div>
+                  {/* If we do not have displayName name only be shown in the bold from the below code */}
+                  {!isEmpty(displayName) ? (
+                    <Typography.Text
+                      className="m-b-0 d-block text-grey-muted"
+                      data-testid="column-name">
+                      {name}
+                    </Typography.Text>
+                  ) : null}
+
+                  {/* It will render displayName fallback to name */}
+                  <Typography.Text
+                    className="m-b-0 d-block"
+                    data-testid="column-display-name"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(record)}
+                  </Typography.Text>
+                </div>
+                {/* <span className="break-word">{}</span> */}
+              </Space>
+              <Icon
+                className="hover-cell-icon text-left"
+                component={IconEdit}
+                onClick={() => handleEditDisplayNameClick(record)}
+              />
+            </div>
+          );
+        },
       },
       {
         title: t('label.type'),
