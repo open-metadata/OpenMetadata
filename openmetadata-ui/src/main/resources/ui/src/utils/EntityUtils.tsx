@@ -96,7 +96,12 @@ import {
 } from './CommonUtils';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
-import { getDomainPath, getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import {
@@ -1038,6 +1043,8 @@ export const getEntityLinkFromType = (
       return getContainerDetailPath(fullyQualifiedName);
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
+    case EntityType.DATA_PRODUCT:
+      return getDataProductsDetailsPath(getEncodedFqn(fullyQualifiedName));
     default:
       return '';
   }

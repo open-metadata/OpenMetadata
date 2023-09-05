@@ -156,6 +156,13 @@ export const getDomainDetailsPath = (fqn: string, tab?: string) => {
   return path;
 };
 
+export const getDataProductsDetailsPath = (fqn: string) => {
+  let path = ROUTES.DATA_PRODUCT_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
+
+  return path;
+};
+
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {

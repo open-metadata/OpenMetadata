@@ -70,7 +70,9 @@ import Fqn from '../../../utils/Fqn';
 import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
 import '../domain.less';
 import { DomainTabs } from '../DomainPage.interface';
-import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
+import DataProductsTab, {
+  DataProductsTabRef,
+} from '../DomainTabs/DataProductsTab/DataProductsTab.component';
 import DocumentationTab from '../DomainTabs/DocumentationTab/DocumentationTab.component';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
@@ -93,6 +95,7 @@ const DomainDetailsPage = ({
   const { fqn, tab: activeTab } = useParams<{ fqn: string; tab: string }>();
   const domainFqn = fqn ? decodeURIComponent(fqn) : '';
   const assetTabRef = useRef<AssetsTabRef>(null);
+  const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -154,6 +157,9 @@ const DomainDetailsPage = ({
 
       try {
         await addDataProducts(data as CreateDataProduct);
+        dataProductsTabRef.current?.refreshDataProducts();
+        activeTab !== DomainTabs.DATA_PRODUCTS &&
+          handleTabChange(DomainTabs.DATA_PRODUCTS);
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -295,6 +301,7 @@ const DomainDetailsPage = ({
         children: (
           <DataProductsTab
             permissions={domainPermission}
+            ref={dataProductsTabRef}
             onAddDataProduct={onAddDataProduct}
           />
         ),
@@ -350,12 +357,13 @@ const DomainDetailsPage = ({
           <div style={{ textAlign: 'right' }}>
             <Dropdown
               className="m-l-xs"
+              data-testid="domain-details-add-button-menu"
               menu={{
                 items: addButtonContent,
               }}
               placement="bottomRight"
               trigger={['click']}>
-              <Button type="primary">
+              <Button data-testid="domain-details-add-button" type="primary">
                 <Space>
                   {t('label.add')}
                   <DownOutlined />
@@ -417,13 +425,17 @@ const DomainDetailsPage = ({
           />
         </Col>
       </Row>
-      <AddDataProductModal
-        open={showAddDataProductModal}
-        onCancel={() => setShowAddDataProductModal(false)}
-        onSubmit={(data: CreateDomain | CreateDataProduct) =>
-          addDataProduct(data as CreateDataProduct)
-        }
-      />
+
+      {showAddDataProductModal && (
+        <AddDataProductModal
+          open={showAddDataProductModal}
+          onCancel={() => setShowAddDataProductModal(false)}
+          onSubmit={(data: CreateDomain | CreateDataProduct) =>
+            addDataProduct(data as CreateDataProduct)
+          }
+        />
+      )}
+
       <AssetSelectionModal
         entityFqn={domainFqn}
         open={assetModalVisible}
