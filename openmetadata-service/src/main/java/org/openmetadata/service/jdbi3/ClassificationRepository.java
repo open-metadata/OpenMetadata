@@ -117,14 +117,37 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   @SuppressWarnings("unused")
   public void postUpdate(Classification entity) {
     String scriptTxt = "ctx._source.disabled=true";
+    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     try {
       searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
-    } catch (DocumentMissingException ex) {
-      LOG.error("Missing Document", ex);
     } catch (ElasticsearchException e) {
       LOG.error("failed to update ES doc");
       LOG.debug(e.getMessage());
+      if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
+        LOG.error("Error in publishing to ElasticSearch");
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+        throw new SearchRetriableException(e.getMessage());
+      } else {
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+        LOG.error(e.getMessage(), e);
+      }
     } catch (IOException ie) {
+      SearchEventPublisher.updateElasticSearchFailureStatus(
+          contextInfo,
+          EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+          String.format(
+              "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+              ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
       throw new EventPublisherException(ie.getMessage());
     }
   }
