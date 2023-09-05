@@ -18,7 +18,7 @@ import os
 import shutil
 import traceback
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List, Tuple
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -82,22 +82,24 @@ class TableUsageStage(Stage):
         logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
 
-    def _get_user_entity(self, username: str):
+    def _get_user_entity(self, username: str) -> Tuple[List[str], List[str]]:
         if username:
             user = self.metadata.get_by_name(entity=User, fqn=username)
             if user:
-                return [user.fullyQualifiedName.__root__]
-        return []
+                return [user.fullyQualifiedName.__root__], []
+        return [], [username]
 
     def _add_sql_query(self, record, table):
+        users, used_by = self._get_user_entity(record.userName)
         if self.table_queries.get((table, record.date)):
             self.table_queries[(table, record.date)].append(
                 CreateQueryRequest(
                     query=record.sql,
                     query_type=record.query_type,
                     exclude_usage=record.exclude_usage,
-                    users=self._get_user_entity(record.userName),
+                    users=users,
                     queryDate=record.date,
+                    usedBy=used_by,
                     duration=record.duration,
                 )
             )
@@ -107,8 +109,9 @@ class TableUsageStage(Stage):
                     query=record.sql,
                     query_type=record.query_type,
                     exclude_usage=record.exclude_usage,
-                    users=self._get_user_entity(record.userName),
+                    users=users,
                     queryDate=record.date,
+                    usedBy=used_by,
                     duration=record.duration,
                 )
             ]
