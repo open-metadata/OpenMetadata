@@ -29,7 +29,7 @@ const DataProductSummary = ({
 }: DataProductSummaryProps) => {
   const { t } = useTranslation();
 
-  const experts = useMemo(() => entityDetails.experts || [], [entityDetails]);
+  const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>

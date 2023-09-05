@@ -190,60 +190,56 @@ export const AssetSelectionModal = ({
   };
 
   const handleSave = async () => {
-    if (type === AssetsOfEntity.GLOSSARY) {
-      setIsLoading(true);
-      const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-        getEntityAPIfromSource(item.entityType)(
-          item.fullyQualifiedName,
-          getAssetsFields(type)
-        )
-      );
+    setIsLoading(true);
+    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
+      getEntityAPIfromSource(item.entityType)(
+        item.fullyQualifiedName,
+        getAssetsFields(type)
+      )
+    );
 
-      try {
-        const entityDetailsResponse = await Promise.allSettled(entityDetails);
-        const map = new Map();
+    try {
+      const entityDetailsResponse = await Promise.allSettled(entityDetails);
+      const map = new Map();
 
-        entityDetailsResponse.forEach((response) => {
-          if (response.status === 'fulfilled') {
-            const entity = response.value;
-            entity && map.set(entity.fullyQualifiedName, entity.tags);
+      entityDetailsResponse.forEach((response) => {
+        if (response.status === 'fulfilled') {
+          const entity = response.value;
+          entity && map.set(entity.fullyQualifiedName, entity.tags);
+        }
+      });
+      const patchAPIPromises = [...(selectedItems?.values() ?? [])]
+        .map((item) => {
+          if (map.has(item.fullyQualifiedName)) {
+            const jsonPatch = compare(
+              { tags: map.get(item.fullyQualifiedName) },
+              {
+                tags: [
+                  ...(item.tags ?? []),
+                  {
+                    tagFQN: entityFqn,
+                    source: 'Glossary',
+                    labelType: 'Manual',
+                  },
+                ],
+              }
+            );
+            const api = getAPIfromSource(item.entityType);
+
+            return api(item.id, jsonPatch);
           }
-        });
-        const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-          .map((item) => {
-            if (map.has(item.fullyQualifiedName)) {
-              const jsonPatch = compare(
-                { tags: map.get(item.fullyQualifiedName) },
-                {
-                  tags: [
-                    ...(item.tags ?? []),
-                    {
-                      tagFQN: entityFqn,
-                      source: 'Glossary',
-                      labelType: 'Manual',
-                    },
-                  ],
-                }
-              );
-              const api = getAPIfromSource(item.entityType);
 
-              return api(item.id, jsonPatch);
-            }
+          return;
+        })
+        .filter(Boolean);
 
-            return;
-          })
-          .filter(Boolean);
-
-        await Promise.all(patchAPIPromises);
-        onSave?.();
-        onCancel();
-      } catch (_) {
-        // Nothing here
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      handleDomainSave();
+      await Promise.all(patchAPIPromises);
+      onSave?.();
+      onCancel();
+    } catch (_) {
+      // Nothing here
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -276,7 +272,12 @@ export const AssetSelectionModal = ({
       footer={
         <>
           <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button loading={isLoading} type="primary" onClick={handleSave}>
+          <Button
+            loading={isLoading}
+            type="primary"
+            onClick={
+              type === AssetsOfEntity.GLOSSARY ? handleSave : handleDomainSave
+            }>
             {t('label.save')}
           </Button>
         </>

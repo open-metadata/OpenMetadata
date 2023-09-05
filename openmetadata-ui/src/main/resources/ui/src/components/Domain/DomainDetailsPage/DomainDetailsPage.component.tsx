@@ -364,7 +364,7 @@ const DomainDetailsPage = ({
             </Dropdown>
 
             <ButtonGroup className="p-l-xs" size="small">
-              {domain && domain.version && (
+              {domain?.version && (
                 <Button
                   className={classNames('', {
                     'text-primary border-primary': undefined,
