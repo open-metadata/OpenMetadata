@@ -36,7 +36,7 @@ const TeamsSelectable = ({
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
 
   const onChange = (newValue: string[]) => {
-    onSelectionChange(newValue);
+    onSelectionChange && onSelectionChange(newValue);
     setValue(newValue);
   };
 

@@ -43,7 +43,6 @@ const SignUp = () => {
     authorizerConfig,
   } = useAuthContext();
 
-  const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleCreateNewUser: FormProps['onFinish'] = async (data) => {
@@ -52,7 +51,6 @@ const SignUp = () => {
     try {
       const res = await createUser({
         ...data,
-        teams: selectedTeams as Array<string>,
         profile: {
           images: getImages(appState.newUser.picture ?? ''),
         },
@@ -172,12 +170,9 @@ const SignUp = () => {
             label={t('label.select-field', {
               field: t('label.team-plural-lowercase'),
             })}
-            name="teams">
-            <TeamsSelectable
-              filterJoinable
-              showTeamsAlert
-              onSelectionChange={setSelectedTeams}
-            />
+            name="teams"
+            trigger="onSelectionChange">
+            <TeamsSelectable filterJoinable showTeamsAlert />
           </Form.Item>
 
           <Space align="center" className="w-full justify-end d-flex">
