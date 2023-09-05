@@ -49,17 +49,20 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
 )
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
-from metadata.ingestion.api.workflow import REPORTS_INTERVAL_SECONDS
 from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
 from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
 from metadata.timer.repeated_timer import RepeatedTimer
-from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import data_insight_logger, set_loggers_level
 from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
-from metadata.utils.workflow_output_handler import print_data_insight_status
+from metadata.workflow.base import REPORTS_INTERVAL_SECONDS
+from metadata.workflow.workflow_output_handler import (
+    get_ingestion_status_timer,
+    print_data_insight_status,
+)
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = data_insight_logger()
@@ -70,7 +73,7 @@ RETENTION_DAYS = 7
 
 class DataInsightWorkflow(WorkflowStatusMixin):
     """
-    Configure and run the Data Insigt workflow
+    Configure and run the Data Insight workflow
 
     Attributes:
     """
@@ -190,10 +193,16 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                 error = f"Error while executing data insight workflow for report type {report_data_type}: {exc}"
                 logger.error(error)
                 logger.debug(traceback.format_exc())
-                self.status.failed(str(report_data_type), error, traceback.format_exc())
+                self.status.failed(
+                    StackTraceError(
+                        name=str(report_data_type),
+                        error=error,
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def _execute_kpi_runner(self):
-        """KPI runner method to run KPI definiton against platform latest metric"""
+        """KPI runner method to run KPI definition against platform latest metric"""
         kpis = self._get_kpis()
         self.kpi_runner = KpiRunner(kpis, self.metadata)
 

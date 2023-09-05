@@ -85,11 +85,6 @@
       "version": {
         "type": "float"
       },
-      "termCount": {
-        "description": "Total number of children tag terms under this classification. This includes all the children in the hierarchy.",
-        "type": "integer",
-        "minimum": 0
-      },
       "updatedAt": {
         "type": "text"
       },
@@ -98,10 +93,6 @@
       },
       "href": {
         "type": "text"
-      },
-      "usageCount": {
-        "description": "Count of how many times the tags from this classification are used.",
-        "type": "integer"
       },
       "deleted": {
         "type": "text"

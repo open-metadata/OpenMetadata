@@ -32,6 +32,7 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  COUCHBASE,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
@@ -211,6 +212,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.MongoDB:
       return MONGODB;
+
+    case DatabaseServiceType.Couchbase:
+      return COUCHBASE;
 
     case MessagingServiceType.Kafka:
       return KAFKA;

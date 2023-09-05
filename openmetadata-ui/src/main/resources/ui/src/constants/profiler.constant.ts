@@ -13,16 +13,15 @@
 
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
-import i18n from 'utils/i18next/LocalUtil';
 import {
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
-} from 'utils/TimeUtils';
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
+import i18n from 'utils/i18next/LocalUtil';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
-  DatabaseServiceType,
   DataType,
   PartitionIntervalType,
   PartitionIntervalUnit,
@@ -118,9 +117,8 @@ export const DEFAULT_SELECTED_RANGE = {
 };
 
 export const DEFAULT_RANGE_DATA = {
-  startTs: getPastDatesTimeStampFromCurrentDate(DEFAULT_SELECTED_RANGE.days),
-
-  endTs: getCurrentDateTimeStamp(),
+  startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
+  endTs: getCurrentMillis(),
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
@@ -394,10 +392,4 @@ export const PROFILER_MODAL_LABEL_STYLE = {
 export const TIME_BASED_PARTITION = [
   PartitionIntervalType.IngestionTime,
   PartitionIntervalType.TimeUnit,
-];
-
-export const allowedServiceForOperationGraph = [
-  DatabaseServiceType.BigQuery,
-  DatabaseServiceType.Redshift,
-  DatabaseServiceType.Snowflake,
 ];

@@ -167,9 +167,7 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-        Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-        Object resource = createResource(daoObject, resourceClass, config, authorizer, authenticatorHandler);
+        Object resource = createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -231,13 +229,18 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject,
+      Jdbi jdbi,
       String resourceClass,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
+
+    // Decorate Collection DAO
+    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+    Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
+
     Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
@@ -250,7 +253,11 @@ public final class CollectionRegistry {
             clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, AuthenticatorHandler.class)
                 .newInstance(daoObject, authorizer, authHandler);
       } catch (NoSuchMethodException ex) {
-        resource = Class.forName(resourceClass).getConstructor().newInstance();
+        try {
+          resource = clz.getDeclaredConstructor(Jdbi.class, Authorizer.class).newInstance(jdbi, authorizer);
+        } catch (NoSuchMethodException exe) {
+          resource = Class.forName(resourceClass).getConstructor().newInstance();
+        }
       }
     } catch (Exception ex) {
       LOG.warn("Exception encountered", ex);

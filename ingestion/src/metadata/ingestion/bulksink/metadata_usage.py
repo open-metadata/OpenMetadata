@@ -40,7 +40,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.bulk_sink import BulkSink
+from metadata.ingestion.api.models import StackTraceError
+from metadata.ingestion.api.steps import BulkSink
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_table_entities_from_query,
@@ -129,7 +130,7 @@ class MetadataUsageBulkSink(BulkSink):
                 logger.info(
                     f"Successfully table usage published for {value_dict['table_entity'].fullyQualifiedName.__root__}"
                 )
-                self.status.records_written(
+                self.status.scanned(
                     f"Table: {value_dict['table_entity'].fullyQualifiedName.__root__}"
                 )
             except ValidationError as err:
@@ -142,7 +143,13 @@ class MetadataUsageBulkSink(BulkSink):
                 error = f"Failed to update usage for {name} :{exc}"
                 logger.debug(traceback.format_exc())
                 logger.warning(error)
-                self.status.failed(name, error, traceback.format_exc())
+                self.status.failed(
+                    StackTraceError(
+                        name=value_dict["table_entity"].fullyQualifiedName.__root__,
+                        error=f"Failed to update usage for {name} :{exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def iterate_files(self):
         """
@@ -158,7 +165,7 @@ class MetadataUsageBulkSink(BulkSink):
                     yield file
 
     # Check here how to properly pick up ES and/or table query data
-    def write_records(self) -> None:
+    def run(self) -> None:
         for file_handler in self.iterate_files():
             self.table_usage_map = {}
             for usage_record in file_handler.readlines():
@@ -226,7 +233,13 @@ class MetadataUsageBulkSink(BulkSink):
                     error = f"Failed to update query join for {table_usage}: {err}"
                     logger.debug(traceback.format_exc())
                     logger.warning(error)
-                    self.status.failed(table_usage.table, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=table_usage.table,
+                            error=error,
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
                 except Exception as exc:
                     name = table_entity.name.__root__
                     error = (
@@ -234,13 +247,19 @@ class MetadataUsageBulkSink(BulkSink):
                     )
                     logger.debug(traceback.format_exc())
                     logger.warning(error)
-                    self.status.failed(name, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=name, error=error, stack_trace=traceback.format_exc()
+                        )
+                    )
             else:
                 logger.warning(
                     "Could not fetch table"
                     f" {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
                 )
-                self.status.warning(f"Table: {table_usage.table}")
+                self.status.warning(
+                    f"Table: {table_usage.table}", reason="Could not fetch table"
+                )
 
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount

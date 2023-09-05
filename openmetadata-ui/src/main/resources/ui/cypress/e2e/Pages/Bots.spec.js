@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
+import {
+  customFormatDateTime,
+  getEpochMillisForFutureDays,
+} from '../../../src/utils/date-time/DateTimeUtils';
 import {
   descriptionBox,
   interceptURL,
@@ -73,7 +76,7 @@ const revokeToken = () => {
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .should('be.visible')
       .click();
@@ -153,9 +156,8 @@ describe('Bots Page should work properly', () => {
         .should('be.visible')
         .click();
       // Save the updated date
-      const expiryDate = getExpiryDateTimeFromDate(
-        expiry,
-        'days',
+      const expiryDate = customFormatDateTime(
+        getEpochMillisForFutureDays(expiry),
         `ccc d'th' MMMM, yyyy`
       );
       cy.get('[data-testid="save-edit"]').should('be.visible').click();

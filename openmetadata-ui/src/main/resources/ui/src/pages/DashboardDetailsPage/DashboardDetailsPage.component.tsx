@@ -281,6 +281,16 @@ const DashboardDetailsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setDashboardDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
@@ -314,6 +324,7 @@ const DashboardDetailsPage = () => {
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}
+      handleToggleDelete={handleToggleDelete}
       unFollowDashboardHandler={unFollowDashboard}
       versionHandler={versionHandler}
       onDashboardUpdate={onDashboardUpdate}

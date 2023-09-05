@@ -416,7 +416,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
     repository.isTestSuiteExecutable(create.getTestSuite());
-    repository.prepareInternal(test);
+    repository.prepareInternal(test, true);
     PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -638,9 +638,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     if (existingTestCaseCount != testCaseIds.size()) {
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
-    Response response = repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
-    repository.postUpdate((TestCase) response.getEntity());
-    return response;
+    return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {

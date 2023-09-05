@@ -23,19 +23,28 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.rest.RestStatus;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
+import org.openmetadata.service.search.SearchEventPublisher;
+import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -49,6 +58,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         "",
         "");
     quoteFqn = true;
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -69,7 +79,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void prepare(Classification entity) {
+  public void prepare(Classification entity, boolean update) {
     /* Nothing to do */
   }
 
@@ -108,9 +118,66 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   public void postUpdate(Classification entity) {
     String scriptTxt = "ctx._source.disabled=true";
     try {
-      searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt, null);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+      searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
+    } catch (DocumentMissingException ex) {
+      LOG.error("Missing Document", ex);
+    } catch (ElasticsearchException e) {
+      LOG.error("failed to update ES doc");
+      LOG.debug(e.getMessage());
+    } catch (IOException ie) {
+      throw new EventPublisherException(ie.getMessage());
+    }
+  }
+
+  @Override
+  public void deleteFromSearch(Classification entity, String changeType) {
+    if (supportsSearchIndex) {
+      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
+      try {
+        if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+          searchClient.softDeleteOrRestoreEntityFromSearch(
+              entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
+        } else {
+          searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "classification.fullyQualifiedName");
+        }
+      } catch (DocumentMissingException ex) {
+        LOG.error("Missing Document", ex);
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
+      } catch (ElasticsearchException e) {
+        LOG.error("failed to update ES doc");
+        LOG.debug(e.getMessage());
+        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
+          LOG.error("Error in publishing to ElasticSearch");
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          throw new SearchRetriableException(e.getMessage());
+        } else {
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          LOG.error(e.getMessage(), e);
+        }
+      } catch (IOException ie) {
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+        throw new EventPublisherException(ie.getMessage());
+      }
     }
   }
 

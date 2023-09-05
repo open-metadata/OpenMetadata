@@ -256,7 +256,7 @@ class SplineUnitTest(TestCase):
     def test_pipelines(self):
         pipline = list(self.spline.yield_pipeline(EXPECTED_SPLINE_PIPELINES.items[0]))[
             0
-        ]
+        ].right
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_jdbc_parsing(self):

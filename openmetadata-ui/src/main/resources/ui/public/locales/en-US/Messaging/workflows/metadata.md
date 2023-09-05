@@ -38,3 +38,9 @@ $$section
 
 Optional configuration to soft delete `topics` in OpenMetadata if the source `topics` are deleted. After deleting, all the associated entities like lineage, etc., with that `topic` will be deleted.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$

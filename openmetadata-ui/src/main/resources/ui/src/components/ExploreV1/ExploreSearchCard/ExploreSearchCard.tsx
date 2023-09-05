@@ -118,12 +118,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               <div className="d-flex gap-2 items-center">
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
-                  <TitleBreadcrumb titleLinks={breadcrumbs} />
+                  <TitleBreadcrumb
+                    titleLinks={breadcrumbs}
+                    widthDeductions={780}
+                  />
                 </div>
               </div>
             </Col>
           )}
-          <Col span={24}>
+          <Col data-testid={`${source.service?.name}-${source.name}`} span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text

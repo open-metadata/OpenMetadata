@@ -13,12 +13,25 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.resources.EntityResource.searchClient;
+
+import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.rest.RestStatus;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
+import org.openmetadata.service.search.SearchEventPublisher;
+import org.openmetadata.service.search.SearchRetriableException;
 
+@Slf4j
 public class MessagingServiceRepository extends ServiceEntityRepository<MessagingService, MessagingConnection> {
   private static final String UPDATE_FIELDS = "owner, connection";
 
@@ -31,5 +44,53 @@ public class MessagingServiceRepository extends ServiceEntityRepository<Messagin
         MessagingConnection.class,
         UPDATE_FIELDS,
         ServiceType.MESSAGING);
+    supportsSearchIndex = true;
+  }
+
+  @Override
+  public void deleteFromSearch(MessagingService entity, String changeType) {
+    if (supportsSearchIndex) {
+      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
+      try {
+        searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "service.fullyQualifiedName");
+      } catch (DocumentMissingException ex) {
+        LOG.error("Missing Document", ex);
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
+      } catch (ElasticsearchException e) {
+        LOG.error("failed to update ES doc");
+        LOG.debug(e.getMessage());
+        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
+          LOG.error("Error in publishing to ElasticSearch");
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          throw new SearchRetriableException(e.getMessage());
+        } else {
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          LOG.error(e.getMessage(), e);
+        }
+      } catch (IOException ie) {
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+        throw new EventPublisherException(ie.getMessage());
+      }
+    }
   }
 }

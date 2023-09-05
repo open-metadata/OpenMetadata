@@ -77,9 +77,11 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.index.query.RangeQueryBuilder;
+import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
 import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
+import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
@@ -111,7 +113,6 @@ import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -301,6 +302,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         searchSourceBuilder = buildQuerySearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "test_case_search_index":
+      case "test_suite_search_index":
         searchSourceBuilder = buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
@@ -781,11 +783,9 @@ public class ElasticSearchClientImpl implements SearchClient {
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
     deleteEntityFromElasticSearch(deleteRequest);
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
-    if (!CommonUtil.nullOrEmpty(field)) {
+    if (!CommonUtil.nullOrEmpty(scriptTxt) && !CommonUtil.nullOrEmpty(field)) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
-    }
-    if (!CommonUtil.nullOrEmpty(scriptTxt)) {
       Script script =
           new Script(
               ScriptType.INLINE,
@@ -794,6 +794,12 @@ public class ElasticSearchClientImpl implements SearchClient {
               new HashMap<>());
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
+    } else if (!CommonUtil.nullOrEmpty(field)) {
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      DeleteByQueryRequest request = new DeleteByQueryRequest("SearchAlias");
+      queryBuilder.must(new TermQueryBuilder(field, entity.getFullyQualifiedName()));
+      request.setQuery(queryBuilder);
+      deleteEntityFromElasticSearchByQuery(request);
     }
   }
 
@@ -814,21 +820,17 @@ public class ElasticSearchClientImpl implements SearchClient {
    * @throws IOException
    */
   @Override
-  public void updateSearchEntityUpdated(EntityReference entity, String scriptTxt, Map<String, Object> document)
-      throws IOException {
+  public void updateSearchEntityUpdated(EntityReference entity, String scriptTxt) throws IOException {
     String entityType = entity.getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
     EntityInterface entityInterface = Entity.getEntity(entity, "", Include.ALL);
-    Map<String, Object> doc = document;
-    if (document != null) {
-      ElasticSearchIndex elasticSearchIndex =
-          SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "*", Include.ALL));
-      doc = elasticSearchIndex.buildESDoc();
-    }
     if (Objects.equals(entityInterface.getVersion(), entityInterface.getChangeDescription().getPreviousVersion())) {
       updateRequest = applyESChangeEvent(entity);
     } else {
+      ElasticSearchIndex elasticSearchIndex =
+          SearchIndexFactory.buildIndex(entityType, Entity.getEntity(entity, "*", Include.ALL));
+      Map<String, Object> doc = elasticSearchIndex.buildESDoc();
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
       updateRequest.script(script);
       updateRequest.scriptedUpsert(true);
@@ -852,32 +854,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
-  @Override
-  public void addTestCaseFromLogicalTestSuite(Object testSuiteObj) throws IOException {
-    TestSuite testSuite = (TestSuite) testSuiteObj;
-    // Process creation of test cases (linked to a logical test suite) by adding reference to existing test cases
-    List<EntityReference> testCaseReferences = testSuite.getTests();
-    TestSuite testSuiteReference =
-        new TestSuite()
-            .withId(testSuite.getId())
-            .withName(testSuite.getName())
-            .withDisplayName(testSuite.getDisplayName())
-            .withDescription(testSuite.getDescription())
-            .withFullyQualifiedName(testSuite.getFullyQualifiedName())
-            .withDeleted(testSuite.getDeleted())
-            .withHref(testSuite.getHref())
-            .withExecutable(testSuite.getExecutable());
-    Map<String, Object> testSuiteDoc = JsonUtils.getMap(testSuiteReference);
-    for (EntityReference testcaseReference : testCaseReferences) {
-      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TEST_SUITE);
-      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
-      String scripText = "ctx._source.testSuites.add(params)";
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
-      updateRequest.script(script);
-      updateElasticSearch(updateRequest);
-    }
-  }
-
   /** */
   @Override
   public void close() {
@@ -893,6 +869,14 @@ public class ElasticSearchClientImpl implements SearchClient {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
+    if (deleteRequest != null) {
+      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
+      deleteRequest.setRefresh(true);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 

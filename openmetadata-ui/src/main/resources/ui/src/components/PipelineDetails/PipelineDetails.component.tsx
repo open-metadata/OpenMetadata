@@ -19,7 +19,6 @@ import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/Activit
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
@@ -32,7 +31,6 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
 import { isEmpty, isUndefined, map } from 'lodash';
@@ -42,7 +40,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
@@ -60,11 +57,7 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import {
-  getCurrentUserId,
-  getFeedCounts,
-  refreshPage,
-} from '../../utils/CommonUtils';
+import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -87,6 +80,7 @@ const PipelineDetails = ({
   versionHandler,
   pipelineFQN,
   onExtensionUpdate,
+  handleToggleDelete,
 }: PipeLineDetailsProp) => {
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -101,7 +95,6 @@ const PipelineDetails = ({
     entityName,
     tier,
     tags,
-    entityFqn,
     followers,
   } = useMemo(() => {
     return {
@@ -114,7 +107,6 @@ const PipelineDetails = ({
       tier: getTierTags(pipelineDetails.tags ?? []),
       tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
       entityName: getEntityName(pipelineDetails),
-      entityFqn: pipelineDetails.fullyQualifiedName ?? '',
       followers: pipelineDetails.followers ?? [],
     };
   }, [pipelineDetails]);
@@ -260,7 +252,7 @@ const PipelineDetails = ({
         }),
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -390,7 +382,7 @@ const PipelineDetails = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFqn={entityFqn}
+            entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             hasEditPermission={
               pipelinePermissions.EditDescription || pipelinePermissions.EditAll
@@ -410,7 +402,7 @@ const PipelineDetails = ({
         width: 300,
         render: (tags, record, index) => (
           <TableTags<Task>
-            entityFqn={entityFqn}
+            entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -431,7 +423,7 @@ const PipelineDetails = ({
         width: 300,
         render: (tags, record, index) => (
           <TableTags<Task>
-            entityFqn={entityFqn}
+            entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -448,7 +440,6 @@ const PipelineDetails = ({
     [
       deleted,
       editTask,
-      entityFqn,
       hasTagEditAccess,
       pipelinePermissions,
       getEntityName,
@@ -494,6 +485,12 @@ const PipelineDetails = ({
       await settingsUpdateHandler(updatedTopic);
     }
   };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
 
   const tabs = useMemo(
     () => [
@@ -663,9 +660,7 @@ const PipelineDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !pipelinePermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             entityDetails={
               pipelineDetails as CustomPropertyProps['entityDetails']
@@ -676,6 +671,7 @@ const PipelineDetails = ({
               pipelinePermissions.EditAll ||
               pipelinePermissions.EditCustomFields
             }
+            hasPermission={pipelinePermissions.ViewAll}
           />
         ),
       },
@@ -716,7 +712,7 @@ const PipelineDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
             dataAsset={pipelineDetails}
             entityType={EntityType.PIPELINE}
             permissions={pipelinePermissions}

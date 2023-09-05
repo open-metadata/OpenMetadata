@@ -37,15 +37,15 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SearchEventPublisher extends AbstractEventPublisher {
-  private final SearchClient searchClient;
-  private final CollectionDAO dao;
+  private static SearchClient searchClient;
+  private static CollectionDAO dao;
 
   public SearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize());
-    this.dao = dao;
+    SearchEventPublisher.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();
-    this.searchClient = IndexUtil.getSearchClient(esConfig, dao);
+    searchClient = IndexUtil.getSearchClient(esConfig, dao);
     SearchIndexDefinition esIndexDefinition = new SearchIndexDefinition(searchClient);
     esIndexDefinition.createIndexes(esConfig);
   }
@@ -66,7 +66,8 @@ public class SearchEventPublisher extends AbstractEventPublisher {
     LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 
-  public void updateElasticSearchFailureStatus(String context, EventPublisherJob.Status status, String failureMessage) {
+  public static void updateElasticSearchFailureStatus(
+      String context, EventPublisherJob.Status status, String failureMessage) {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =

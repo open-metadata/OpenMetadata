@@ -229,7 +229,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
-    repository.prepareInternal(entity);
+    repository.prepareInternal(entity, true);
 
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
@@ -255,6 +255,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
+    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -265,6 +266,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     DeleteResponse<T> response =
         repository.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

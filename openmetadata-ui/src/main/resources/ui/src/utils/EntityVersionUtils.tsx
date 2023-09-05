@@ -24,6 +24,7 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
+import { Column as DataModelColumn } from 'generated/entity/data/dashboardDataModel';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Field } from 'generated/entity/data/topic';
@@ -33,6 +34,7 @@ import {
   EntityDiffProps,
   EntityDiffWithMultiChanges,
 } from 'interface/EntityVersion.interface';
+import { ServicesType } from 'interface/service.interface';
 import {
   cloneDeep,
   isEmpty,
@@ -216,7 +218,7 @@ export const getTagsDiff = (
 };
 
 export const getEntityVersionTags = (
-  currentVersionData: VersionData | Glossary | GlossaryTerm,
+  currentVersionData: VersionData | Glossary | GlossaryTerm | ServicesType,
   changeDescription: ChangeDescription
 ) => {
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
@@ -652,7 +654,7 @@ export const getAllChangedEntityNames = (
 };
 
 export function getColumnsDataWithVersionChanges<
-  A extends TableColumn | ContainerColumn
+  A extends TableColumn | ContainerColumn | DataModelColumn
 >(
   changeDescription: ChangeDescription,
   colList?: A[],

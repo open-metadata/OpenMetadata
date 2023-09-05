@@ -15,9 +15,8 @@ Test dashboard connectors with CLI
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.api.status import Status
+from metadata.workflow.metadata import MetadataWorkflow
 
 from ..base.test_cli import PATH_TO_RESOURCES
 from ..base.test_cli_dashboard import CliDashboardBase
@@ -38,7 +37,9 @@ class CliCommonDashboard:
         @classmethod
         def setUpClass(cls) -> None:
             connector = cls.get_connector_name()
-            workflow: Workflow = cls.get_workflow(connector, cls.get_test_type())
+            workflow: MetadataWorkflow = cls.get_workflow(
+                connector, cls.get_test_type()
+            )
             cls.openmetadata = workflow.source.metadata
             cls.config_file_path = str(
                 Path(PATH_TO_RESOURCES + f"/dashboard/{connector}/{connector}.yaml")
@@ -47,9 +48,7 @@ class CliCommonDashboard:
                 Path(PATH_TO_RESOURCES + f"/dashboard/{connector}/test.yaml")
             )
 
-        def assert_not_including(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
+        def assert_not_including(self, source_status: Status, sink_status: Status):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertTrue(len(source_status.filtered) == 0)
@@ -63,7 +62,7 @@ class CliCommonDashboard:
             )
 
         def assert_for_vanilla_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ) -> None:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
@@ -78,9 +77,7 @@ class CliCommonDashboard:
                 + self.expected_lineage(),
             )
 
-        def assert_filtered_mix(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
+        def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertEqual(self.expected_filtered_mix(), len(source_status.filtered))

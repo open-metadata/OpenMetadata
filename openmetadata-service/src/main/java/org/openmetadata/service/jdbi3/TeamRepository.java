@@ -39,6 +39,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.UNEXPEC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,11 +54,16 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.rest.RestStatus;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -66,9 +72,12 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.TeamResource;
+import org.openmetadata.service.search.SearchEventPublisher;
+import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -123,7 +132,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void prepare(Team team) {
+  public void prepare(Team team, boolean update) {
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());
@@ -190,7 +199,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  protected void preDelete(Team entity) {
+  protected void preDelete(Team entity, String deletedBy) {
     if (entity.getId().equals(organization.getId())) {
       throw new IllegalArgumentException(DELETE_ORGANIZATION);
     }
@@ -221,6 +230,55 @@ public class TeamRepository extends EntityRepository<Team> {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
     return teamCsv.importCsv(csv, dryRun);
+  }
+
+  @Override
+  public void deleteFromSearch(Team entity, String changeType) {
+    if (supportsSearchIndex) {
+      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
+      String scriptTxt =
+          "for (int i = 0; i < ctx._source.teams.length; i++) { if (ctx._source.teams[i].tagFQN == '%s') { ctx._source.teams.remove(i) }}";
+      try {
+        searchClient.updateSearchEntityDeleted(entity.getEntityReference(), scriptTxt, "teams.fullyQualifiedName");
+      } catch (DocumentMissingException ex) {
+        LOG.error("Missing Document", ex);
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
+      } catch (ElasticsearchException e) {
+        LOG.error("failed to update ES doc");
+        LOG.debug(e.getMessage());
+        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
+          LOG.error("Error in publishing to ElasticSearch");
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          throw new SearchRetriableException(e.getMessage());
+        } else {
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          LOG.error(e.getMessage(), e);
+        }
+      } catch (IOException ie) {
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+        throw new EventPublisherException(ie.getMessage());
+      }
+    }
   }
 
   private List<EntityReference> getInheritedRoles(Team team) {

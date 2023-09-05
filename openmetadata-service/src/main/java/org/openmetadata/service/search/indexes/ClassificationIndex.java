@@ -5,7 +5,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ClassificationIndex implements ElasticSearchIndex {
-  Classification classification;
+  final Classification classification;
 
   public ClassificationIndex(Classification classification) {
     this.classification = classification;

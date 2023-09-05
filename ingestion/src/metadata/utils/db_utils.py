@@ -14,8 +14,11 @@ Helpers module for db sources
 """
 
 import traceback
+from typing import Iterable
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
@@ -44,7 +47,7 @@ def get_view_lineage(
     service_name: str,
     connection_type: str,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
-):
+) -> Iterable[Either[AddLineageRequest]]:
     """
     Method to generate view lineage
     """

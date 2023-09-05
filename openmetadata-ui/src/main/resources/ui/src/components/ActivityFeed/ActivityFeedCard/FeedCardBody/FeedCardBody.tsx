@@ -16,11 +16,11 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDateTimeFromSeconds } from 'utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import { getDateTimeByTimeStamp } from '../../../../utils/TimeUtils';
 import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
 import Reactions from '../../../Reactions/Reactions';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
@@ -107,9 +107,9 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           <Space direction="vertical" size={4}>
             <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
               {t('label.schedule')}{' '}
-              {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)}{' '}
+              {formatDateTimeFromSeconds(announcementDetails.startTime)}{' '}
               {t('label.to-lowercase')}{' '}
-              {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
+              {formatDateTimeFromSeconds(announcementDetails.endTime)}
             </Typography.Text>
             <Typography.Text className="font-medium">
               {postMessage}

@@ -349,7 +349,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
-        repository.prepareInternal(entity);
+        repository.prepareInternal(entity, false);
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
       } catch (Exception ex) {

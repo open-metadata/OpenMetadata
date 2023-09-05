@@ -20,18 +20,17 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
+import {
+  formatDateTimeWithTimezone,
+  formatTimeDurationFromSeconds,
+} from 'utils/date-time/DateTimeUtils';
 import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import {
-  getDateTimeFromMilliSeconds,
-  getTimeDurationFromSeconds,
-} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
@@ -95,7 +94,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'lastSession',
         render: (lastSession: number) => (
           <Typography.Text>
-            {getDateTimeFromMilliSeconds(lastSession)}
+            {formatDateTimeWithTimezone(lastSession)}
           </Typography.Text>
         ),
       },
@@ -115,7 +114,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
           <Typography.Text>
-            {getTimeDurationFromSeconds(avgSessionDuration)}
+            {formatTimeDurationFromSeconds(avgSessionDuration)}
           </Typography.Text>
         ),
       },
@@ -127,6 +126,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      loading={isLoading}
       title={
         <PageHeader
           data={{
@@ -135,9 +135,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isLoading ? (
-        <Loader />
-      ) : isEmpty(mostActiveUsers) ? (
+      {isEmpty(mostActiveUsers) ? (
         <EmptyGraphPlaceholder />
       ) : (
         <Table

@@ -28,7 +28,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void prepare(Workflow entity) {
+  public void prepare(Workflow entity, boolean update) {
     // validate request and status
     if (entity.getRequest() == null) {
       throw new IllegalArgumentException("Request must not be empty");

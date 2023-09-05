@@ -15,7 +15,6 @@ import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -122,6 +121,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      loading={isLoading}
       title={
         <PageHeader
           data={{
@@ -130,9 +130,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isLoading ? (
-        <Loader />
-      ) : isEmpty(mostViewedEntities) ? (
+      {isEmpty(mostViewedEntities) ? (
         <EmptyGraphPlaceholder />
       ) : (
         <Table

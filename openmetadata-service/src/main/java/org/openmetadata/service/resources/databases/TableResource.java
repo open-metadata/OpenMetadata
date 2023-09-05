@@ -453,9 +453,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
           UUID userId) {
-    Response response = repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
-    repository.postUpdate((Table) response.getEntity());
-    return response;
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @PUT
@@ -925,6 +923,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
                 .withTags(create.getTags())
+                .withFileFormat(create.getFileFormat())
                 .withViewDefinition(create.getViewDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
                 .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))

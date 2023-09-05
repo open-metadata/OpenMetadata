@@ -31,6 +31,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ChartRepository extends EntityRepository<Chart> {
   public ChartRepository(CollectionDAO dao) {
     super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -39,7 +40,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void prepare(Chart chart) {
+  public void prepare(Chart chart, boolean update) {
     DashboardService dashboardService = Entity.getEntity(chart.getService(), "", Include.ALL);
     chart.setService(dashboardService.getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());

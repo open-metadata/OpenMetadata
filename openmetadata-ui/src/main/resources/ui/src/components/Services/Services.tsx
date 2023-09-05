@@ -157,7 +157,7 @@ const Services = ({
           </Space>
         </Col>
         {serviceData.length ? (
-          <Col span={24}>
+          <Col className="m-b-md" span={24}>
             <Row data-testid="data-container" gutter={[16, 16]}>
               {serviceData.map((service) => (
                 <Col key={service.name} lg={8} xl={6}>

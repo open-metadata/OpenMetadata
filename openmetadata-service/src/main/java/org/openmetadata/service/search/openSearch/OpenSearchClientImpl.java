@@ -48,7 +48,6 @@ import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -815,8 +814,7 @@ public class OpenSearchClientImpl implements SearchClient {
    * @throws IOException
    */
   @Override
-  public void updateSearchEntityUpdated(EntityReference entity, String scriptTxt, Map<String, Object> document)
-      throws IOException {
+  public void updateSearchEntityUpdated(EntityReference entity, String scriptTxt) throws IOException {
     String entityType = entity.getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
@@ -847,32 +845,6 @@ public class OpenSearchClientImpl implements SearchClient {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  @Override
-  public void addTestCaseFromLogicalTestSuite(Object testSuiteObj) throws IOException {
-    TestSuite testSuite = (TestSuite) testSuiteObj;
-    // Process creation of test cases (linked to a logical test suite) by adding reference to existing test cases
-    List<EntityReference> testCaseReferences = testSuite.getTests();
-    TestSuite testSuiteReference =
-        new TestSuite()
-            .withId(testSuite.getId())
-            .withName(testSuite.getName())
-            .withDisplayName(testSuite.getDisplayName())
-            .withDescription(testSuite.getDescription())
-            .withFullyQualifiedName(testSuite.getFullyQualifiedName())
-            .withDeleted(testSuite.getDeleted())
-            .withHref(testSuite.getHref())
-            .withExecutable(testSuite.getExecutable());
-    Map<String, Object> testSuiteDoc = JsonUtils.getMap(testSuiteReference);
-    for (EntityReference testcaseReference : testCaseReferences) {
-      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TEST_SUITE);
-      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
-      String scripText = "ctx._source.testSuites.add(params)";
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
-      updateRequest.script(script);
-      updateElasticSearch(updateRequest);
     }
   }
 

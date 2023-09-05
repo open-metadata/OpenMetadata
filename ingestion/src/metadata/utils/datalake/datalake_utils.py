@@ -62,3 +62,16 @@ def fetch_dataframe(
         raise err
 
     return None
+
+
+def get_file_format_type(
+    key: str,
+) -> Optional[str]:
+    """
+    Method to get file format type
+    """
+    for supported_type in SupportedTypes:
+        if key.endswith(supported_type.value):
+            return supported_type.value
+
+    return None

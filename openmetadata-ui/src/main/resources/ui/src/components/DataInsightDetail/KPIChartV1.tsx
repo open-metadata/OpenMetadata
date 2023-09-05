@@ -29,9 +29,9 @@ import {
 import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from 'utils/TimeUtils';
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
@@ -92,8 +92,8 @@ const KPIChartV1: FC<Props> = ({ isKPIListLoading, kpiList, selectedDays }) => {
     try {
       const promises = kpiList.map((kpi) =>
         getListKpiResult(kpi.fullyQualifiedName ?? '', {
-          startTs: getPastDaysDateTimeMillis(selectedDays),
-          endTs: getCurrentDateTimeMillis(),
+          startTs: getEpochMillisForPastDays(selectedDays),
+          endTs: getCurrentMillis(),
         })
       );
       const responses = await Promise.allSettled(promises);

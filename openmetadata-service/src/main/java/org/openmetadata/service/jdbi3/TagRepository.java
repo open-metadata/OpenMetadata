@@ -24,16 +24,24 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.rest.RestStatus;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.search.SearchEventPublisher;
+import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -45,7 +53,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void prepare(Tag entity) {
+  public void prepare(Tag entity, boolean update) {
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent(), NON_DELETED);
     entity.setParent(parentTerm);
@@ -98,14 +106,50 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  protected void deleteFromSearch(Tag entity, String changeType) {
+  public void deleteFromSearch(Tag entity, String changeType) {
     if (supportsSearchIndex) {
+      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
       try {
         searchClient.updateSearchEntityDeleted(entity.getEntityReference(), scriptTxt, "tags.tagFQN");
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      } catch (DocumentMissingException ex) {
+        LOG.error("Missing Document", ex);
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
+      } catch (ElasticsearchException e) {
+        LOG.error("failed to update ES doc");
+        LOG.debug(e.getMessage());
+        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
+          LOG.error("Error in publishing to ElasticSearch");
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          throw new SearchRetriableException(e.getMessage());
+        } else {
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          LOG.error(e.getMessage(), e);
+        }
+      } catch (IOException ie) {
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+        throw new EventPublisherException(ie.getMessage());
       }
     }
   }

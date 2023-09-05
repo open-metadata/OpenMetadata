@@ -13,7 +13,12 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.rest.RestStatus;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -22,7 +27,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
+import org.openmetadata.service.search.SearchEventPublisher;
+import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -129,7 +137,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public void prepare(TestSuite entity) {
+  public void prepare(TestSuite entity, boolean update) {
     /* Nothing to do */
   }
 
@@ -156,8 +164,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  protected void deleteFromSearch(TestSuite entity, String changeType) {
+  public void deleteFromSearch(TestSuite entity, String changeType) {
     if (supportsSearchIndex) {
+      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
       try {
         if (Boolean.TRUE.equals(entity.getExecutable())) {
           searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "testSuites.fullyQualifiedName");
@@ -167,13 +176,52 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
           searchClient.updateSearchEntityDeleted(
               entity.getEntityReference(), scriptTxt, "testSuites.fullyQualifiedName");
         }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      } catch (DocumentMissingException ex) {
+        LOG.error("Missing Document", ex);
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
+      } catch (ElasticsearchException e) {
+        LOG.error("failed to update ES doc");
+        LOG.debug(e.getMessage());
+        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
+          LOG.error("Error in publishing to ElasticSearch");
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          throw new SearchRetriableException(e.getMessage());
+        } else {
+          SearchEventPublisher.updateElasticSearchFailureStatus(
+              contextInfo,
+              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+              String.format(
+                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+          LOG.error(e.getMessage(), e);
+        }
+      } catch (IOException ie) {
+        SearchEventPublisher.updateElasticSearchFailureStatus(
+            contextInfo,
+            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+            String.format(
+                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+        throw new EventPublisherException(ie.getMessage());
       }
     }
   }
 
+  @Override
   protected void postCreate(TestSuite entity) {}
+
+  @Override
+  public void postUpdate(TestSuite entity) {}
 
   public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =
@@ -188,7 +236,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     // the relationship to test cases if hardDelete is true. Test Cases
     // will not be deleted.
     String updatedBy = securityContext.getUserPrincipal().getName();
-    preDelete(original);
+    preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
 
     String changeType;
