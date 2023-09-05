@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.pii.processor import PIIProcessor
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import (
@@ -445,7 +444,6 @@ class Profiler(Generic[TMetric]):
     def process(
         self,
         generate_sample_data: Optional[bool],
-        process_pii_sensitive: Optional[bool],
     ) -> ProfilerResponse:
         """
         Given a table, we will prepare the profiler for
@@ -461,11 +459,6 @@ class Profiler(Generic[TMetric]):
             sample_data = self.generate_sample_data()
         else:
             sample_data = None
-
-        # If we also have sample data, we'll use the NER Scanner,
-        # otherwise we'll stick to the ColumnNameScanner
-        if process_pii_sensitive:
-            self.process_pii_sensitive(sample_data)
 
         profile = self.get_profile()
         self._check_profile_and_handle(profile)
@@ -494,28 +487,6 @@ class Profiler(Generic[TMetric]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
             return None
-
-    def process_pii_sensitive(self, sample_data: TableData) -> None:
-        """Read sample data to find pii sensitive columns and tag them
-        as PII sensitive data
-
-        Args:
-            sample_data (TableData): sample data
-        """
-        try:
-            pii_processor = PIIProcessor(
-                metadata=self.profiler_interface.ometa_client  # type: ignore
-            )
-            pii_processor.process(
-                sample_data,
-                self.profiler_interface.table_entity,  # type: ignore
-                self.profiler_interface.source_config.confidence,
-            )
-        except Exception as exc:
-            logger.warning(
-                f"Unexpected error while processing sample data for auto pii tagging - {exc}"
-            )
-            logger.debug(traceback.format_exc())
 
     def get_profile(self) -> CreateTableProfileRequest:
         """

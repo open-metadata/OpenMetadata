@@ -141,13 +141,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
+    CollectionDAO daoObject = (CollectionDAO) jdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass(CollectionDAO.class);
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(jdbiUnitOfWorkProvider, new HashSet<>()));
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Init Settings Cache
-    SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
+    SettingsCache.initialize(daoObject, catalogConfig);
 
     // init Secret Manager
     final SecretsManager secretsManager =
@@ -191,23 +192,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
-    registerResources(catalogConfig, environment, jdbi, jdbiUnitOfWorkProvider);
+    registerResources(catalogConfig, environment, jdbi, jdbiUnitOfWorkProvider, daoObject);
 
     // Register Event Handler
-    registerEventFilter(catalogConfig, environment, jdbi);
+    registerEventFilter(catalogConfig, environment, daoObject);
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
-    registerEventPublisher(catalogConfig, jdbi);
+    registerEventPublisher(catalogConfig, daoObject);
 
     // update entities secrets if required
     new SecretsManagerUpdateService(secretsManager, catalogConfig.getClusterName()).updateEntities();
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
-    authorizer.init(catalogConfig, jdbi);
+    authorizer.init(catalogConfig, daoObject);
 
     // authenticationHandler Handles auth related activities
-    authenticatorHandler.init(catalogConfig, jdbi);
+    authenticatorHandler.init(catalogConfig, daoObject);
 
     webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
     FilterRegistration.Dynamic micrometerFilter =
@@ -405,21 +406,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerEventFilter(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
+  private void registerEventFilter(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment, CollectionDAO daoObject) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
-      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
+      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, daoObject);
       environment.jersey().register(eventFilter);
       ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
       environment.jersey().register(reindexingJobs);
     }
   }
 
-  private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
+  private void registerEventPublisher(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig, CollectionDAO daoObject) {
     // register ElasticSearch Event publisher
     if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
       SearchEventPublisher searchEventPublisher =
-          new SearchEventPublisher(
-              openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
+          new SearchEventPublisher(openMetadataApplicationConfig.getElasticSearchConfiguration(), daoObject);
       EventPubSub.addEventHandler(searchEventPublisher);
     }
 
@@ -438,12 +440,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config,
       Environment environment,
       Jdbi jdbi,
-      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
+      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
+      CollectionDAO daoObject) {
     List<String> extensionResources =
         config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
     CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance()
-        .registerResources(jdbi, jdbiUnitOfWorkProvider, environment, config, authorizer, authenticatorHandler);
+        .registerResources(
+            jdbi, jdbiUnitOfWorkProvider, environment, config, daoObject, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

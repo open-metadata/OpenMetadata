@@ -64,13 +64,13 @@ class ProfilerInterface(ABC):
         self.source_config = source_config
         self.service_connection_config = service_connection_config
         self.connection = get_connection(self.service_connection_config)
-        self.processor_status = ProfilerProcessorStatus()
+        self.status = ProfilerProcessorStatus()
         try:
             fqn = self.table_entity.fullyQualifiedName
         except AttributeError:
-            self.processor_status.entity = None
+            self.status.entity = None
         else:
-            self.processor_status.entity = fqn.__root__ if fqn else None
+            self.status.entity = fqn.__root__ if fqn else None
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
         self.partition_details = (

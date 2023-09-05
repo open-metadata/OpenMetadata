@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3.unitofwork;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Handles;
-import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 
 @Slf4j
 public class JdbiTransactionAspect {
@@ -13,12 +12,12 @@ public class JdbiTransactionAspect {
     this.handleManager = handleManager;
   }
 
-  public void begin() {
+  public void begin(boolean autoCommit) {
     try {
       Handle handle = handleManager.get();
-      handle.getConnection().setAutoCommit(false);
+      handle.getConnection().setAutoCommit(autoCommit);
       handle.getConfig(Handles.class).setForceEndTransactions(false);
-      handle.setTransactionIsolationLevel(TransactionIsolationLevel.READ_COMMITTED);
+      // handle.setTransactionIsolationLevel(TransactionIsolationLevel.READ_COMMITTED);
       handle.begin();
       LOG.debug(
           "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
@@ -41,7 +40,8 @@ public class JdbiTransactionAspect {
       return;
     }
     try {
-      handle.commit();
+      handle.getConnection().commit();
+      // handle.commit();
       LOG.debug(
           "Performing commit Thread Id [{}] has handle id [{}] Transaction {} Level {}",
           Thread.currentThread().getId(),
@@ -50,7 +50,6 @@ public class JdbiTransactionAspect {
           handle.getTransactionIsolationLevel());
     } catch (Exception ex) {
       handle.rollback();
-      throw ex;
     } finally {
       terminateHandle();
     }
@@ -63,8 +62,9 @@ public class JdbiTransactionAspect {
       return;
     }
     try {
-      handle.rollback();
-      LOG.info(
+      handle.getConnection().rollback();
+      // handle.rollback();
+      LOG.debug(
           "Performed rollback on Thread Id [{}] has handle id [{}] Transaction {} Level {}",
           Thread.currentThread().getId(),
           handle.hashCode(),

@@ -223,7 +223,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
       showSuccessToast(
         `${t('label.pipeline')}  ${
           reDeployed ? t('label.re-deploy') : t('label.deployed')
-        }  ${t('label.successfully-small')}`
+        }  ${t('label.successfully-lowercase')}`
       );
     } catch (error) {
       setCurrDeployId({ id: '', state: '' });

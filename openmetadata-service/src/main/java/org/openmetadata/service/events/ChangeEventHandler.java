@@ -23,7 +23,6 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -41,19 +40,16 @@ import org.openmetadata.service.util.NotificationHandler;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
-  private CollectionDAO dao;
+  private CollectionDAO collectionDAO;
   private FeedRepository feedDao;
   private ObjectMapper mapper;
   private NotificationHandler notificationHandler;
-
-  private ChangeEventRepository changeEventRepository;
 
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
     this.mapper = new ObjectMapper();
     this.notificationHandler = new NotificationHandler(jdbi.onDemand(CollectionDAO.class));
-    this.changeEventRepository = new ChangeEventRepository(dao);
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -122,10 +118,10 @@ public class ChangeEventHandler implements EventHandler {
 
   private void deleteAllConversationsRelatedToEntity(EntityInterface entityInterface) {
     String entityId = entityInterface.getId().toString();
-    List<String> threadIds = dao.feedDAO().findByEntityId(entityId);
+    List<String> threadIds = collectionDAO.feedDAO().findByEntityId(entityId);
     for (String threadId : threadIds) {
-      dao.relationshipDAO().deleteAll(threadId, Entity.THREAD);
-      dao.feedDAO().delete(threadId);
+      collectionDAO.relationshipDAO().deleteAll(threadId, Entity.THREAD);
+      collectionDAO.feedDAO().delete(threadId);
     }
   }
 

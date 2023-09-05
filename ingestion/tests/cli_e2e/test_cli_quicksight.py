@@ -63,3 +63,9 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     # Quicksight do not ingest datamodels
     def get_includes_datamodels(self) -> List[str]:
         return []
+
+    def expected_datamodel_lineage(self) -> int:
+        return 0
+    
+    def expected_datamodels(self) -> int:
+        return 0
