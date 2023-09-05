@@ -66,6 +66,6 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
 
     def expected_datamodel_lineage(self) -> int:
         return 0
-    
+
     def expected_datamodels(self) -> int:
         return 0
