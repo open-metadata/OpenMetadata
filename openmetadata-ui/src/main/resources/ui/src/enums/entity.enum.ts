@@ -50,6 +50,7 @@ export enum EntityType {
   USER_NAME = 'username',
   CHART = 'chart',
   SAMPLE_DATA = 'sampleData',
+  STORED_PROCEDURE = 'storedProcedure',
 }
 
 export enum AssetsType {
@@ -167,6 +168,8 @@ export enum EntityTabs {
   SQL = 'sql',
   FIELDS = 'fields',
   SEARCH_INDEX_SETTINGS = 'search-index-settings',
+  STORED_PROCEDURE = 'stored_procedure',
+  CODE = 'code',
 }
 
 export enum EntityAction {

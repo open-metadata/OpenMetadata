@@ -55,6 +55,7 @@ import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { SearchIndex } from 'generated/entity/data/searchIndex';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardConnection } from 'generated/entity/services/dashboardService';
 import { DatabaseService } from 'generated/entity/services/databaseService';
@@ -126,7 +127,8 @@ export type ServicePageData =
   | Pipeline
   | Container
   | DashboardDataModel
-  | SearchIndex;
+  | SearchIndex
+  | StoredProcedure;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();

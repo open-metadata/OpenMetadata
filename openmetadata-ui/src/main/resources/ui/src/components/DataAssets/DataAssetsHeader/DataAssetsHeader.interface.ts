@@ -22,6 +22,7 @@ import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { SearchIndex } from 'generated/entity/data/searchIndex';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardService } from 'generated/entity/services/dashboardService';
@@ -46,6 +47,7 @@ export type DataAssetsType =
   | SearchIndex
   | Database
   | DashboardDataModel
+  | StoredProcedure
   | DatabaseSchema
   | DatabaseService
   | MessagingService
@@ -96,6 +98,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetContainer
   | DataAssetSearchIndex
   | DataAssetDashboardDataModel
+  | DataAssetStoredProcedure
   | DataAssetDatabase
   | DataAssetDatabaseSchema
   | DataAssetDatabaseService
@@ -145,6 +148,11 @@ export interface DataAssetSearchIndex {
 export interface DataAssetDashboardDataModel {
   dataAsset: DashboardDataModel;
   entityType: EntityType.DASHBOARD_DATA_MODEL;
+}
+
+export interface DataAssetStoredProcedure {
+  dataAsset: StoredProcedure;
+  entityType: EntityType.STORED_PROCEDURE;
 }
 
 export interface DataAssetDatabase {

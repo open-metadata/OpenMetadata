@@ -100,7 +100,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
-        # Pick up the service connection from the API if neededweb_analytic_report_data_processor
+        # Pick up the service connection from the API if needed
         self._retrieve_service_connection_if_needed(self.service_type)
 
         # Informs the `source` and the rest of `steps` to execute

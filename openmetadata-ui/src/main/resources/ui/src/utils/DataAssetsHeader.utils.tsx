@@ -20,7 +20,10 @@ import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
 } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { getDashboardDetailsPath } from 'constants/constants';
+import {
+  getDashboardDetailsPath,
+  NO_DATA_PLACEHOLDER,
+} from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
@@ -30,6 +33,10 @@ import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { SearchIndex } from 'generated/entity/data/searchIndex';
+import {
+  StoredProcedure,
+  StoredProcedureCodeObject,
+} from 'generated/entity/data/storedProcedure';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardService } from 'generated/entity/services/dashboardService';
@@ -41,7 +48,7 @@ import { PipelineService } from 'generated/entity/services/pipelineService';
 import { SearchService } from 'generated/entity/services/searchService';
 import { StorageService } from 'generated/entity/services/storageService';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
+import { isObject, isUndefined } from 'lodash';
 import React from 'react';
 import {
   getBreadcrumbForContainer,
@@ -340,6 +347,28 @@ export const getDataAssetsHeaderInfo = (
       const searchIndexDetails = dataAsset as SearchIndex;
       returnData.breadcrumbs =
         getBreadcrumbForEntitiesWithServiceOnly(searchIndexDetails);
+
+      break;
+
+    case EntityType.STORED_PROCEDURE:
+      const storedProcedureDetails = dataAsset as StoredProcedure;
+
+      returnData.extraInfo = (
+        <>
+          {isObject(storedProcedureDetails.storedProcedureCode) && (
+            <ExtraInfoLabel
+              label={t('label.language')}
+              value={
+                (
+                  storedProcedureDetails.storedProcedureCode as StoredProcedureCodeObject
+                ).language ?? NO_DATA_PLACEHOLDER
+              }
+            />
+          )}
+        </>
+      );
+
+      returnData.breadcrumbs = getBreadcrumbForTable(dataAsset as Table);
 
       break;
 

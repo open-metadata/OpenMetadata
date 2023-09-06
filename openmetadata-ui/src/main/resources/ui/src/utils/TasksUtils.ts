@@ -41,6 +41,7 @@ import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
 import { getContainerByFQN } from 'rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import {
@@ -66,7 +67,7 @@ import {
   defaultFields as DashboardFields,
   fetchCharts,
 } from './DashboardDetailsUtils';
-import { DatabaseFields } from './Database/DatabaseDetails.utils';
+import { DatabaseFields } from './DatabaseDetails.utils';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
@@ -75,6 +76,7 @@ import { getEntityFQN, getEntityType } from './FeedUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { serviceTypeLogo } from './ServiceUtils';
+import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -270,6 +272,7 @@ export const TASK_ENTITIES = [
   EntityType.CONTAINER,
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.STORED_PROCEDURE,
 ];
 
 export const getBreadCrumbList = (
@@ -356,6 +359,15 @@ export const getBreadCrumbList = (
 
     case EntityType.CONTAINER: {
       return [service(ServiceCategory.STORAGE_SERVICES), activeEntity];
+    }
+
+    case EntityType.STORED_PROCEDURE: {
+      return [
+        service(ServiceCategory.DATABASE_SERVICES),
+        database,
+        databaseSchema,
+        activeEntity,
+      ];
     }
 
     default:
@@ -454,6 +466,17 @@ export const fetchEntityDetail = (
 
     case EntityType.SEARCH_INDEX:
       getSearchIndexDetailsByFQN(entityFQN, '')
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.STORED_PROCEDURE:
+      getStoredProceduresDetailsByFQN(
+        entityFQN,
+        STORED_PROCEDURE_DEFAULT_FIELDS
+      )
         .then((res) => {
           setEntityData(res);
         })

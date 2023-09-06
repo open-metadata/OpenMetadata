@@ -1329,6 +1329,8 @@ export const getParamByEntityType = (entityType: EntityType): string => {
       return 'databaseSchemaFQN';
     case EntityType.DASHBOARD_DATA_MODEL:
       return 'dashboardDataModelFQN';
+    case EntityType.STORED_PROCEDURE:
+      return 'storedProcedureFQN';
     default:
       return 'entityFQN';
   }
