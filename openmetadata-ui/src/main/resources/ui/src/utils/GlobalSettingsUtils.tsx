@@ -43,6 +43,7 @@ import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as SearchIcon } from '../assets/svg/search.svg';
 import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {
@@ -246,6 +247,12 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.containers',
           icon: <StorageIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.search-index'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.searchIndex',
+          icon: <SearchIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.stored-procedure'),
