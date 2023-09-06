@@ -12,7 +12,6 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space } from 'antd';
-import { FormInstance } from 'antd/lib/form/Form';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -29,15 +28,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import { generateFormFields, getField } from 'utils/formUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { DomainFormType } from '../DomainPage.interface';
-
-interface AddDomainFormProps {
-  isFormInDialog: boolean;
-  onCancel: () => void;
-  onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
-  formRef: FormInstance<CreateDomain | CreateDataProduct>;
-  loading: boolean;
-  type: DomainFormType;
-}
+import { AddDomainFormProps } from './AddDomainForm.interface';
 
 const AddDomainForm = ({
   isFormInDialog,

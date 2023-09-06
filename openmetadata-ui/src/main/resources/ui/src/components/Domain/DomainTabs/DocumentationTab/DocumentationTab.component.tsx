@@ -38,11 +38,7 @@ import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import '../../domain.less';
-
-interface DocumentationTabProps {
-  domain: Domain;
-  onUpdate: (value: Domain) => Promise<void>;
-}
+import { DocumentationTabProps } from './DocumentationTab.interface';
 
 const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
   const { t } = useTranslation();

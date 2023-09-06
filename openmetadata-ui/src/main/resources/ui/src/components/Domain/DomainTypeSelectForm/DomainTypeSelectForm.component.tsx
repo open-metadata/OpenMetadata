@@ -15,12 +15,7 @@ import { Button, Col, Form, Row, Select, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DomainType } from 'generated/api/domains/createDomain';
 import React, { useState } from 'react';
-
-interface DomainTypeSelectFormProps {
-  defaultValue: string;
-  onSubmit: (domainType: string) => void;
-  onCancel: () => void;
-}
+import { DomainTypeSelectFormProps } from './DomainTypeSelectForm.interface';
 
 const DomainTypeSelectForm = ({
   defaultValue,

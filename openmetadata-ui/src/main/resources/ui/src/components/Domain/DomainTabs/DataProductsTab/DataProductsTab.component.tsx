@@ -17,7 +17,6 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
@@ -36,15 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getDataProductList } from 'rest/dataProductAPI';
 import { showErrorToast } from 'utils/ToastUtils';
-
-export interface DataProductsTabRef {
-  refreshDataProducts: () => void;
-}
-
-interface DataProductsTabProps {
-  onAddDataProduct: () => void;
-  permissions: OperationPermission;
-}
+import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
   ({ permissions, onAddDataProduct }: DataProductsTabProps, ref) => {

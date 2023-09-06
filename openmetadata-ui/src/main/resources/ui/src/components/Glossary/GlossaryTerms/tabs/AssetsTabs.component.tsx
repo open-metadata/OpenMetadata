@@ -144,7 +144,7 @@ const AssetsTabs = forwardRef(
                   : 0,
             };
 
-            setItemCount(counts as Record<AssetsUnion, number>);
+            setItemCount(counts);
 
             find(counts, (count, key) => {
               if (count > 0) {

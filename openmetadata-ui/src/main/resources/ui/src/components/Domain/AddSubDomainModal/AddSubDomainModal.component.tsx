@@ -14,18 +14,11 @@ import { Button, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { CreateDomain } from 'generated/api/domains/createDomain';
-import { Domain } from 'generated/entity/domains/domain';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
-
-interface AddSubDomainModalProps {
-  open: boolean;
-  data?: Domain;
-  onCancel: () => void;
-  onSubmit: (data: CreateDomain) => Promise<void>;
-}
+import { AddSubDomainModalProps } from './AddSubDomainModal.interface';
 
 const AddSubDomainModal = ({
   open,

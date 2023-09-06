@@ -50,7 +50,6 @@ import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { CreateDomain } from 'generated/api/domains/createDomain';
-import { Domain } from 'generated/entity/domains/domain';
 import { cloneDeep, noop, toString } from 'lodash';
 import React, {
   useCallback,
@@ -70,18 +69,11 @@ import Fqn from '../../../utils/Fqn';
 import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
 import '../domain.less';
 import { DomainTabs } from '../DomainPage.interface';
-import DataProductsTab, {
-  DataProductsTabRef,
-} from '../DomainTabs/DataProductsTab/DataProductsTab.component';
+import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
+import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
 import DocumentationTab from '../DomainTabs/DocumentationTab/DocumentationTab.component';
+import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
-
-interface DomainDetailsPageProps {
-  domain: Domain;
-  loading: boolean;
-  onUpdate: (value: Domain) => Promise<void>;
-  onDelete: (id: string) => void;
-}
 
 const DomainDetailsPage = ({
   domain,
