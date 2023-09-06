@@ -33,6 +33,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
+import static org.openmetadata.service.resources.EntityResourceTest.USER1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -392,7 +393,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     int totalAnnouncementCount = listAnnouncements(null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
 
     // create two announcements with start time in the future
-    LocalDateTime now = LocalDateTime.now();
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
 
     // Create announcement 1
@@ -445,7 +445,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   void post_invalidAnnouncement_400() throws IOException {
     // create two announcements with same start time in the future
-    LocalDateTime now = LocalDateTime.now();
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     AnnouncementDetails announcementDetails = getAnnouncementDetails("1", 3, 5);
     createAnnouncement(USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
@@ -962,41 +961,38 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void list_threadsWithOwnerFilter() throws HttpResponseException {
-    // THREAD is created with TABLE entity in BeforeAll
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
-    String ownerId = TABLE.getOwner().getId().toString();
-    assertNotNull(ownerId);
-    int user1ThreadCount =
-        listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), USER_AUTH_HEADERS).getPaging().getTotal();
-    int user2ThreadCount =
-        listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), USER_AUTH_HEADERS)
-            .getPaging()
-            .getTotal();
+    String user1 = USER1.getId().toString(); // user1 is the owner of TABLE
+    String user2 = USER2.getId().toString(); // user2 belongs to team2 which owns TABLE2
+    assertNotNull(user1);
+    // Get thread counts for user1 and user2
+    int user1ThreadCount = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
+    int user2ThreadCount = listThreadsWithFilter(user2, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
 
-    // create another thread on an entity with a different owner
-    String ownerId2 = TABLE2.getOwner().getId().toString();
-    assertNotNull(ownerId2);
+    // create another thread on an entity with team2 as owner
+    String team2 = TABLE2.getOwner().getId().toString();
+    assertNotEquals(user1, team2);
     createAndCheck(
         create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
         ADMIN_AUTH_HEADERS);
-    assertNotEquals(ownerId, ownerId2);
 
-    ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), USER_AUTH_HEADERS);
+    // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is not part of it
+    ThreadList threads = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS);
     assertEquals(user1ThreadCount, threads.getPaging().getTotal());
 
     // This should return error since the table is owned by a team
     // and for the filter we are passing team id instead of user id
     assertResponse(
-        () -> listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), USER_AUTH_HEADERS),
+        () -> listThreadsWithFilter(team2, FilterType.OWNER, USER_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(Entity.USER, ownerId2));
+        entityNotFound(Entity.USER, team2));
 
-    // Now, test the filter with user who is part of the team
-    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), USER_AUTH_HEADERS);
+    // Now, test the filter with user2 who is part of the team2
+    threads = listThreadsWithFilter(user2, FilterType.OWNER, USER_AUTH_HEADERS);
     assertEquals(user2ThreadCount + 1, threads.getPaging().getTotal());
 
     // Test if no user id  filter returns all threads
-    threads = listThreadsWithFilter(null, FilterType.OWNER.toString(), USER_AUTH_HEADERS);
+    threads = listThreadsWithFilter(null, FilterType.OWNER, USER_AUTH_HEADERS);
     assertEquals(totalThreadCount + 1, threads.getPaging().getTotal());
   }
 
@@ -1019,8 +1015,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             ADMIN_AUTH_HEADERS);
     addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
 
-    ThreadList threads =
-        listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS.toString(), USER_AUTH_HEADERS);
+    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS, USER_AUTH_HEADERS);
     assertEquals(2, threads.getPaging().getTotal());
   }
 
@@ -1046,11 +1041,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         .until(
             () -> {
               ThreadList threads =
-                  listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS.toString(), USER_AUTH_HEADERS);
+                  listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
               return threads.getPaging().getTotal().equals(initialThreadCount + 3);
             });
-    ThreadList threads =
-        listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS.toString(), USER_AUTH_HEADERS);
+    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
     assertEquals(initialThreadCount + 3, threads.getPaging().getTotal());
     assertEquals(initialThreadCount + 3, threads.getData().size());
     assertEquals(
@@ -1059,7 +1053,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals("Message 2", threads.getData().get(1).getMessage());
 
     // Filter by follows for another user should return 0 threads
-    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.FOLLOWS.toString(), USER_AUTH_HEADERS);
+    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
     assertEquals(0, threads.getPaging().getTotal());
     assertEquals(0, threads.getData().size());
   }
@@ -1384,6 +1378,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
     TestUtils.put(target, userId, OK, authHeaders);
+  }
+
+  public ThreadList listThreadsWithFilter(String userId, FilterType filterType, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return listThreadsWithFilter(userId, filterType.toString(), authHeaders);
   }
 
   public ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)

@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
@@ -11,9 +12,10 @@ import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
-import javax.json.JsonPatch;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContainerFileFormat;
@@ -21,10 +23,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -202,32 +205,57 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
-    // TODO move this as the first check
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("dataModel")) {
-      Container container = getByName(null, entityLink.getEntityFQN(), getFields("dataModel,tags"), Include.ALL, false);
-      Column column =
-          container.getDataModel().getColumns().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
-
-      String origJson = JsonUtils.pojoToJson(container);
-      if (EntityUtil.isDescriptionTask(task.getType())) {
-        column.setDescription(newValue);
-      } else if (EntityUtil.isTagTask(task.getType())) {
-        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-        column.setTags(tags);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new DataModelDescriptionTaskWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new DataModelTagTaskWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
       }
-      String updatedEntityJson = JsonUtils.pojoToJson(container);
-      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
-      patch(null, container.getId(), user, patch);
-      return;
     }
-    super.update(task, entityLink, newValue, user);
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class DataModelDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+    private final Column column;
+
+    DataModelDescriptionTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      DashboardDataModel dataModel =
+          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel", ALL);
+      threadContext.setAboutEntity(dataModel);
+      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      column.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class DataModelTagTaskWorkflow extends TagTaskWorkflow {
+    private final Column column;
+
+    DataModelTagTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      DashboardDataModel dataModel =
+          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel,tags", ALL);
+      threadContext.setAboutEntity(dataModel);
+      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      column.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
   }
 
   private void addDerivedColumnTags(List<Column> columns) {
