@@ -41,7 +41,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -353,6 +354,9 @@ class LookerUnitTest(TestCase):
                         fromEntity=EntityReference(id=table.id.__root__, type="table"),
                         toEntity=EntityReference(
                             id=to_entity.id.__root__, type="dashboard"
+                        ),
+                        lineageDetails=LineageDetails(
+                            source=LineageSource.DashboardLineage
                         ),
                     )
                 ),

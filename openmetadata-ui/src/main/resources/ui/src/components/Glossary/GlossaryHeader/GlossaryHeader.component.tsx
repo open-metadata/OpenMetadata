@@ -398,6 +398,7 @@ const GlossaryHeader = ({
                     className={classNames('', {
                       'text-primary border-primary': version,
                     })}
+                    data-testid="version-button"
                     icon={<Icon component={VersionIcon} />}
                     onClick={handleVersionClick}>
                     <Typography.Text

@@ -89,11 +89,15 @@ public class FeedResource {
   private final Authorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, List<Thread> threads) {
-    threads.forEach(t -> addHref(uriInfo, t));
+    if (uriInfo != null) {
+      threads.forEach(t -> addHref(uriInfo, t));
+    }
   }
 
   public static Thread addHref(UriInfo uriInfo, Thread thread) {
-    thread.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, thread.getId()));
+    if (uriInfo != null) {
+      thread.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, thread.getId()));
+    }
     return thread;
   }
 
@@ -104,7 +108,7 @@ public class FeedResource {
     this.authorizer = authorizer;
   }
 
-  static class ThreadList extends ResultList<Thread> {
+  public static class ThreadList extends ResultList<Thread> {
     /* Required for serde */
   }
 
@@ -543,7 +547,7 @@ public class FeedResource {
     return null;
   }
 
-  private List<EntityReference> formatAssignees(List<EntityReference> assignees) {
+  public static List<EntityReference> formatAssignees(List<EntityReference> assignees) {
     List<EntityReference> result = new ArrayList<>();
     assignees.forEach(
         assignee -> result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType())));

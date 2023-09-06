@@ -44,6 +44,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
+    Group,
     PowerBIDashboard,
     PowerBIReport,
     PowerBiTable,
@@ -54,6 +55,7 @@ from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,
     filter_by_datamodel,
+    filter_by_project,
 )
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -80,12 +82,32 @@ class PowerbiSource(DashboardServiceSource):
 
     def prepare(self):
         if self.service_connection.useAdminApis:
-            self.get_admin_workspace_data()
+            groups = self.get_admin_workspace_data()
         else:
-            self.get_org_workspace_data()
+            groups = self.get_org_workspace_data()
+        if groups:
+            self.workspace_data = self.get_filtered_workspaces(groups)
         return super().prepare()
 
-    def get_org_workspace_data(self):
+    def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
+        """
+        Method to get the workspaces filtered by project filter pattern
+        """
+        filtered_groups = []
+        for group in groups:
+            if filter_by_project(
+                self.source_config.projectFilterPattern,
+                group.name,
+            ):
+                self.status.filter(
+                    group.name,
+                    "Workspace Filtered Out",
+                )
+                continue
+            filtered_groups.append(group)
+        return filtered_groups
+
+    def get_org_workspace_data(self) -> Optional[List[Group]]:
         """
         fetch all the group workspace ids
         """
@@ -121,12 +143,13 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     or []
                 )
-        self.workspace_data = groups
+        return groups
 
-    def get_admin_workspace_data(self):
+    def get_admin_workspace_data(self) -> Optional[List[Group]]:
         """
         fetch all the workspace ids
         """
+        groups = []
         workspaces = self.client.fetch_all_workspaces()
         if workspaces:
             workspace_id_list = [workspace.id for workspace in workspaces]
@@ -155,7 +178,7 @@ class PowerbiSource(DashboardServiceSource):
                     response = self.client.fetch_workspace_scan_result(
                         scan_id=workspace_scan.id
                     )
-                    self.workspace_data.extend(
+                    groups.extend(
                         [
                             active_workspace
                             for active_workspace in response.workspaces
@@ -166,7 +189,8 @@ class PowerbiSource(DashboardServiceSource):
                     logger.error("Error in fetching dashboards and charts")
                 count += 1
         else:
-            logger.error("Unable to fetch any Powerbi workspaces")
+            logger.error("Unable to fetch any PowerBI workspaces")
+        return groups or None
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -180,7 +204,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def get_dashboard(self) -> Any:
         """
-        Method to iterate through dashboard lists filter dashbaords & yield dashboard details
+        Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for workspace in self.workspace_data:
             self.context.workspace = workspace
@@ -369,7 +393,7 @@ class PowerbiSource(DashboardServiceSource):
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
-                    project=str(self.context.workspace.name),
+                    project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.displayName,
                     dashboardType=DashboardType.Dashboard,
                     charts=[
@@ -391,7 +415,7 @@ class PowerbiSource(DashboardServiceSource):
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
-                    project=str(self.context.workspace.name),
+                    project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
@@ -667,4 +691,17 @@ class PowerbiSource(DashboardServiceSource):
             )
             return next(iter(workspace_names), None)
 
+        return None
+
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+        """
+        Get the project / workspace / folder / collection name of the dashboard
+        """
+        try:
+            return str(self.context.workspace.name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching project name for {dashboard_details.id}: {exc}"
+            )
         return None

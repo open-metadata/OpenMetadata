@@ -34,7 +34,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     def get_excludes_charts(self) -> List[str]:
         return []
 
-    def expected_entities(self) -> int:
+    def expected_dashboards_and_charts(self) -> int:
         return 6
 
     def expected_lineage(self) -> int:
@@ -63,3 +63,9 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     # Quicksight do not ingest datamodels
     def get_includes_datamodels(self) -> List[str]:
         return []
+
+    def expected_datamodel_lineage(self) -> int:
+        return 0
+
+    def expected_datamodels(self) -> int:
+        return 0

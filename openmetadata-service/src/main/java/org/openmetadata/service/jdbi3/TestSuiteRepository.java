@@ -58,6 +58,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
+
     return new TestSummary()
         .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
         .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
@@ -115,18 +116,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       List<TestSuite> testSuites = listAll(EntityUtil.Fields.EMPTY_FIELDS, filter);
       testSummary = getTestCasesExecutionSummary(testSuites);
     } else {
-      TestSuite testSuite = find(testSuiteId, Include.ALL);
-      if (!Boolean.TRUE.equals(testSuite.getExecutable())) {
-        throw new IllegalArgumentException("Test Suite is not executable. Please provide an executable test suite.");
-      }
+      // don't want to get it from the cache as test results summary may be stale
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "", Include.ALL, false);
       testSummary = getTestCasesExecutionSummary(testSuite);
     }
-
     return testSummary;
   }
 
   @Override
-  public void prepare(TestSuite entity) {
+  public void prepare(TestSuite entity, boolean update) {
     /* Nothing to do */
   }
 
@@ -165,7 +163,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     // the relationship to test cases if hardDelete is true. Test Cases
     // will not be deleted.
     String updatedBy = securityContext.getUserPrincipal().getName();
-    preDelete(original);
+    preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
 
     String changeType;

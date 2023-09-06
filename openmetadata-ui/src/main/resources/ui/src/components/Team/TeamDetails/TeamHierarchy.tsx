@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Modal, Skeleton, Table, Typography } from 'antd';
+import { Modal, Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import { TeamType } from 'generated/api/teams/createTeam';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
