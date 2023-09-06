@@ -274,7 +274,6 @@ const AssetsTabs = forwardRef(
                 pagingHandler={(page: string | number) =>
                   setCurrentPage(Number(page))
                 }
-                totalCount={total}
               />
             )}
           </>
