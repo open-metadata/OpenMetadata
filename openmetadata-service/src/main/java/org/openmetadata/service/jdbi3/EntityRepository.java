@@ -75,6 +75,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
@@ -740,46 +741,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postCreate(T entity) {
     if (supportsSearchIndex) {
       String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      try {
-        searchClient.updateSearchEntityCreated(entity.getEntityReference());
-      } catch (DocumentMissingException ex) {
-        LOG.error("Missing Document", ex);
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
-      } catch (ElasticsearchException e) {
-        LOG.error("failed to update ES doc");
-        LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
-          LOG.error("Error in publishing to ElasticSearch");
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          throw new SearchRetriableException(e.getMessage());
-        } else {
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          LOG.error(e.getMessage(), e);
-        }
-      } catch (IOException ie) {
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
-        throw new EventPublisherException(ie.getMessage());
-      }
+      CompletableFuture.runAsync(
+          () -> {
+            try {
+              searchClient.updateSearchEntityCreated(entity.getEntityReference());
+            } catch (DocumentMissingException ex) {
+              handleDocumentMissingException(contextInfo, ex);
+            } catch (ElasticsearchException e) {
+              handleElasticsearchException(contextInfo, e);
+            } catch (IOException ie) {
+              handleIOException(contextInfo, ie);
+            }
+          });
     }
   }
 
@@ -787,48 +760,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void postUpdate(T entity) {
     if (supportsSearchIndex) {
       String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      ;
-      try {
-        String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-        searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
-      } catch (DocumentMissingException ex) {
-        LOG.error("Missing Document", ex);
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
-      } catch (ElasticsearchException e) {
-        LOG.error("failed to update ES doc");
-        LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
-          LOG.error("Error in publishing to ElasticSearch");
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          throw new SearchRetriableException(e.getMessage());
-        } else {
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          LOG.error(e.getMessage(), e);
-        }
-      } catch (IOException ie) {
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
-        throw new EventPublisherException(ie.getMessage());
-      }
+      CompletableFuture<Void> future =
+          CompletableFuture.runAsync(
+              () -> {
+                try {
+                  String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+                  searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
+                } catch (DocumentMissingException ex) {
+                  handleDocumentMissingException(contextInfo, ex);
+                } catch (ElasticsearchException e) {
+                  handleElasticsearchException(contextInfo, e);
+                } catch (IOException ie) {
+                  handleIOException(contextInfo, ie);
+                }
+              });
     }
   }
 
@@ -972,51 +917,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void deleteFromSearch(T entity, String changeType) {
     if (supportsSearchIndex) {
       String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      try {
-        if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-          searchClient.softDeleteOrRestoreEntityFromSearch(
-              entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-        } else {
-          searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "");
-        }
-      } catch (DocumentMissingException ex) {
-        LOG.error("Missing Document", ex);
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
-      } catch (ElasticsearchException e) {
-        LOG.error("failed to update ES doc");
-        LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
-          LOG.error("Error in publishing to ElasticSearch");
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          throw new SearchRetriableException(e.getMessage());
-        } else {
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          LOG.error(e.getMessage(), e);
-        }
-      } catch (IOException ie) {
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
-        throw new EventPublisherException(ie.getMessage());
-      }
+      CompletableFuture.runAsync(
+          () -> {
+            try {
+              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+                searchClient.softDeleteOrRestoreEntityFromSearch(
+                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
+              } else {
+                searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "");
+              }
+            } catch (DocumentMissingException ex) {
+              handleDocumentMissingException(contextInfo, ex);
+            } catch (ElasticsearchException e) {
+              handleElasticsearchException(contextInfo, e);
+            } catch (IOException ie) {
+              handleIOException(contextInfo, ie);
+            }
+          });
     }
   }
 
@@ -1026,44 +943,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
       try {
         searchClient.softDeleteOrRestoreEntityFromSearch(entity.getEntityReference(), false);
       } catch (DocumentMissingException ex) {
-        LOG.error("Missing Document", ex);
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
+        handleDocumentMissingException(contextInfo, ex);
       } catch (ElasticsearchException e) {
-        LOG.error("failed to update ES doc");
-        LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
-          LOG.error("Error in publishing to ElasticSearch");
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          throw new SearchRetriableException(e.getMessage());
-        } else {
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          LOG.error(e.getMessage(), e);
-        }
+        handleElasticsearchException(contextInfo, e);
       } catch (IOException ie) {
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
-        throw new EventPublisherException(ie.getMessage());
+        handleIOException(contextInfo, ie);
       }
     }
+  }
+
+  public void handleDocumentMissingException(String contextInfo, DocumentMissingException ex) {
+    LOG.error("Missing Document", ex);
+    SearchEventPublisher.updateElasticSearchFailureStatus(
+        contextInfo,
+        EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+        String.format(
+            "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
+            ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
+  }
+
+  public void handleElasticsearchException(String contextInfo, ElasticsearchException e) {
+    LOG.debug(e.getMessage());
+    if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
+      LOG.error("Error in publishing to ElasticSearch");
+      SearchEventPublisher.updateElasticSearchFailureStatus(
+          contextInfo,
+          EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+          String.format(
+              "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+              e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+      throw new SearchRetriableException(e.getMessage());
+    } else {
+      SearchEventPublisher.updateElasticSearchFailureStatus(
+          contextInfo,
+          EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+          String.format(
+              "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
+              e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
+      LOG.error(e.getMessage(), e);
+    }
+  }
+
+  public void handleIOException(String contextInfo, IOException ie) {
+    SearchEventPublisher.updateElasticSearchFailureStatus(
+        contextInfo,
+        EventPublisherJob.Status.ACTIVE_WITH_ERROR,
+        String.format(
+            "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
+            ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+    throw new EventPublisherException(ie.getMessage());
   }
 
   private DeleteResponse<T> delete(String deletedBy, T original, boolean recursive, boolean hardDelete) {

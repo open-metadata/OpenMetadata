@@ -19,22 +19,17 @@ import static org.openmetadata.service.resources.EntityResource.searchClient;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.index.engine.DocumentMissingException;
-import org.elasticsearch.rest.RestStatus;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
-import org.openmetadata.service.search.SearchEventPublisher;
-import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -134,51 +129,24 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void deleteFromSearch(DatabaseSchema entity, String changeType) {
     if (supportsSearchIndex) {
       String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      try {
-        if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-          searchClient.softDeleteOrRestoreEntityFromSearch(
-              entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-        } else {
-          searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "databaseSchema.fullyQualifiedName");
-        }
-      } catch (DocumentMissingException ex) {
-        LOG.error("Missing Document", ex);
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
-      } catch (ElasticsearchException e) {
-        LOG.error("failed to update ES doc");
-        LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
-          LOG.error("Error in publishing to ElasticSearch");
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          throw new SearchRetriableException(e.getMessage());
-        } else {
-          SearchEventPublisher.updateElasticSearchFailureStatus(
-              contextInfo,
-              EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          LOG.error(e.getMessage(), e);
-        }
-      } catch (IOException ie) {
-        SearchEventPublisher.updateElasticSearchFailureStatus(
-            contextInfo,
-            EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
-        throw new EventPublisherException(ie.getMessage());
-      }
+      CompletableFuture.runAsync(
+          () -> {
+            try {
+              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+                searchClient.softDeleteOrRestoreEntityFromSearch(
+                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
+              } else {
+                searchClient.updateSearchEntityDeleted(
+                    entity.getEntityReference(), "", "databaseSchema.fullyQualifiedName");
+              }
+            } catch (DocumentMissingException ex) {
+              handleDocumentMissingException(contextInfo, ex);
+            } catch (ElasticsearchException e) {
+              handleElasticsearchException(contextInfo, e);
+            } catch (IOException ie) {
+              handleIOException(contextInfo, ie);
+            }
+          });
     }
   }
 
