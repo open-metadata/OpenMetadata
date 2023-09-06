@@ -68,6 +68,7 @@ import {
   getMlModelDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
+  getStoredProcedureDetailPath,
   getTableDetailsPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
@@ -1037,6 +1038,10 @@ export const getEntityLinkFromType = (
       return getContainerDetailPath(fullyQualifiedName);
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(fullyQualifiedName);
+    case EntityType.STORED_PROCEDURE:
+      return getStoredProcedureDetailPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1161,6 +1166,7 @@ export const getEntityBreadcrumbs = (
   entity:
     | SearchedDataProps['data'][number]['_source']
     | DashboardDataModel
+    | StoredProcedure
     | Database
     | DatabaseSchema
     | DataAssetsWithoutServiceField,
@@ -1169,6 +1175,7 @@ export const getEntityBreadcrumbs = (
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
+    case EntityType.STORED_PROCEDURE:
       return getBreadcrumbForTable(entity as Table, includeCurrent);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:

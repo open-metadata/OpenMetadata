@@ -36,8 +36,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.lifeCycle import Created, Deleted
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -55,6 +57,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
+    SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
@@ -73,6 +76,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -428,3 +432,32 @@ class SnowflakeSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
         return None
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
+        try:
+            table = self.context.table
+            results = self.engine.execute(
+                SNOWFLAKE_LIFE_CYCLE_QUERY.format(
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                    table_name=table.name.__root__,
+                )
+            ).all()
+            for row in results:
+                life_cycle = init_empty_life_cycle_properties()
+                life_cycle.created = Created(created_at=row[0])
+                if row[1]:
+                    life_cycle.deleted = Deleted(deleted_at=row[1])
+                yield Either(
+                    right=OMetaLifeCycleData(
+                        entity=table, life_cycle_properties=life_cycle
+                    )
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}"
+            )
