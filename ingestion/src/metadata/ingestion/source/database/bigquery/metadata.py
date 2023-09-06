@@ -350,12 +350,40 @@ class BigquerySource(CommonDbSourceService):
                 )
         yield Either(right=database_schema_request_obj)
 
+    def get_table_obj(self, table_name: str):
+        schema_name = self.context.database_schema.name.__root__
+        database = self.context.database.name.__root__
+        return self.client.get_table(f"{database}.{schema_name}.{table_name}")
+
+    def yield_table_tag_details(self, table_name_and_type: Tuple[str, str]):
+        table_name, _ = table_name_and_type
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, value in table_obj.labels.items():
+                yield from get_ometa_tag_and_classification(
+                    tags=[value],
+                    classification_name=key,
+                    tag_description="Bigquery Table Label",
+                    classification_description="",
+                )
+
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
         is properly informed
         """
-        return []
+        table_tag_labels = super().get_tag_labels(table_name) or []
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, _ in table_obj.labels.items():
+                tag_label = get_tag_label(
+                    metadata=self.metadata,
+                    tag_name=key,
+                    classification_name=key,
+                )
+                if tag_label:
+                    table_tag_labels.append(tag_label)
+        return table_tag_labels
 
     def get_column_tag_labels(
         self, table_name: str, column: dict
