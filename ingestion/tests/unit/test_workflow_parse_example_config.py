@@ -13,7 +13,9 @@ class TestWorkflowParse(TestCase):
     """
 
     def test_parse_workflow_config(self):
-        package_path = f"{Path(__file__).parent.parent.parent}/examples/workflows"
+        package_path = (
+            f"{Path(__file__).parent.parent.parent}/src/metadata/examples/workflows"
+        )
         workflow_files = [files for _, _, files in walk(package_path)]
         for yaml_file in workflow_files[0]:
             with self.subTest(file_name=yaml_file):

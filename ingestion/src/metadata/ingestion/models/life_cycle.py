@@ -9,18 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-PII processing models
+Custom models for life cycle
 """
-from enum import Enum
-
 from pydantic import BaseModel
 
-
-class TagType(Enum):
-    SENSITIVE = "Sensitive"
-    NONSENSITIVE = "NonSensitive"
+from metadata.generated.schema.type.lifeCycle import LifeCycleProperties
+from metadata.ingestion.api.models import Entity
 
 
-class TagAndConfidence(BaseModel):
-    tag_fqn: str
-    confidence: float
+class OMetaLifeCycleData(BaseModel):
+    entity: Entity
+    life_cycle_properties: LifeCycleProperties

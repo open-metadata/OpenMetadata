@@ -13,9 +13,8 @@
 Processor util to fetch pii sensitive columns
 """
 import traceback
-from typing import Optional, cast
+from typing import List, Optional, cast
 
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, TableData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -41,7 +40,6 @@ from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
 from metadata.profiler.api.models import PatchColumnTagResponse, ProfilerResponse
-from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -80,18 +78,11 @@ class PIIProcessor(Processor):
     def close(self) -> None:
         """Nothing to close"""
 
-    def build_column_tag(
-        self, tag_type: str, column_fqn: str
-    ) -> PatchColumnTagResponse:
+    @staticmethod
+    def build_column_tag(tag_fqn: str, column_fqn: str) -> PatchColumnTagResponse:
         """
         Build the tag and run the PATCH
         """
-        tag_fqn = fqn.build(
-            self.metadata,
-            entity_type=Tag,
-            classification_name=PII,
-            tag_name=tag_type,
-        )
         tag_label = TagLabel(
             tagFQN=tag_fqn,
             source=TagSource.Classification,
@@ -107,7 +98,7 @@ class PIIProcessor(Processor):
         column: Column,
         table_data: Optional[TableData],
         confidence_threshold: float,
-    ) -> Optional[PatchColumnTagResponse]:
+    ) -> Optional[List[PatchColumnTagResponse]]:
         """
         Tag a column with PII if we find it using our scanners
         """
@@ -132,13 +123,16 @@ class PIIProcessor(Processor):
 
         if (
             tag_and_confidence
-            and tag_and_confidence.tag
+            and tag_and_confidence.tag_fqn
             and tag_and_confidence.confidence >= confidence_threshold / 100
         ):
-            return self.build_column_tag(
-                tag_type=tag_and_confidence.tag.value,
-                column_fqn=column.fullyQualifiedName.__root__,
-            )
+            # We support returning +1 tags for a single column in _run
+            return [
+                self.build_column_tag(
+                    tag_fqn=tag_and_confidence.tag_fqn,
+                    column_fqn=column.fullyQualifiedName.__root__,
+                )
+            ]
 
         return None
 
@@ -160,14 +154,14 @@ class PIIProcessor(Processor):
         column_tags = []
         for idx, column in enumerate(record.table.columns):
             try:
-                col_tag = self.process_column(
+                col_tags = self.process_column(
                     idx=idx,
                     column=column,
                     table_data=record.sample_data,
                     confidence_threshold=self.confidence_threshold,
                 )
-                if col_tag:
-                    column_tags.append(col_tag)
+                if col_tags:
+                    column_tags.extend(col_tags)
             except Exception as err:
                 self.status.failed(
                     StackTraceError(
