@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Col, Drawer, Row, Space, Typography } from 'antd';
+import { ReactComponent as IconUser } from 'assets/svg/user.svg';
 import Description from 'components/common/description/Description';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -175,7 +177,7 @@ const TableQueryRightPanel = ({
               <Typography.Text
                 className="right-panel-label"
                 data-testid="users">
-                {t('label.used-by')}
+                {t('label.user-plural')}
               </Typography.Text>
               {query.users && query.users.length ? (
                 <Space wrap size={6}>
@@ -198,6 +200,31 @@ const TableQueryRightPanel = ({
                 <Typography.Paragraph className="m-b-0 text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.user-plural'),
+                  })}
+                </Typography.Paragraph>
+              )}
+            </Space>
+          </Col>
+          <Col span={24}>
+            <Space className="m-b-md" direction="vertical" size={4}>
+              <Typography.Text
+                className="right-panel-label"
+                data-testid="used-by">
+                {t('label.used-by')}
+              </Typography.Text>
+              {query.usedBy && query.usedBy.length ? (
+                <Space wrap size={6}>
+                  {query.usedBy.map((user) => (
+                    <Space className="m-r-xss" key={user} size={4}>
+                      <Icon component={IconUser} />
+                      {user}
+                    </Space>
+                  ))}
+                </Space>
+              ) : (
+                <Typography.Paragraph className="m-b-0 text-grey-muted">
+                  {t('label.no-entity', {
+                    entity: t('label.used-by'),
                   })}
                 </Typography.Paragraph>
               )}
