@@ -41,7 +41,7 @@ public class JdbiUnitOfWorkProvider {
     if (daoClass == null) {
       throw new IllegalArgumentException("DAO Class cannot be null");
     }
-    LOG.info(
+    LOG.debug(
         "Binding class [{}] with proxy handler [{}] ",
         daoClass.getSimpleName(),
         provider.getHandleManager().getClass().getSimpleName());

@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3.unitofwork;
 import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -40,8 +39,7 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
     return handleInvocation(method, args);
   }
 
-  private Object handleInvocation(Method method, Object[] args)
-      throws IllegalAccessException, InvocationTargetException {
+  private Object handleInvocation(Method method, Object[] args) throws Throwable {
     Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
     LOG.debug(
         "{}.{} [{}] Thread Id [{}] with handle id [{}]",
@@ -51,12 +49,16 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
         Thread.currentThread().getId(),
         handle.hashCode());
 
-    Object dao = handle.attach(underlying);
-    Object result = method.invoke(dao, args);
     if (CollectionDAO.class.isAssignableFrom(underlying) && method.isAnnotationPresent(CreateSqlObject.class)) {
-      result = getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, method.getReturnType());
+      return getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, method.getReturnType());
+    } else {
+      Object dao = handle.attach(underlying);
+      try {
+        return method.invoke(dao, args);
+      } catch (Exception ex) {
+        throw ex.getCause();
+      }
     }
-    return result;
   }
 
   @Override
