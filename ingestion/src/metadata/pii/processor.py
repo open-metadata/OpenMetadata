@@ -15,7 +15,6 @@ Processor util to fetch pii sensitive columns
 import traceback
 from typing import List, Optional, cast
 
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, TableData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -41,7 +40,6 @@ from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
 from metadata.profiler.api.models import PatchColumnTagResponse, ProfilerResponse
-from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()

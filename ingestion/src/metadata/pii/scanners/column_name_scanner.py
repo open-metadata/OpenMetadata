@@ -55,6 +55,10 @@ class ColumnNameScanner:
 
     @classmethod
     def scan(cls, column_name: str) -> Optional[TagAndConfidence]:
+        """
+        Check the column name against the regex patterns and prepare the
+        sensitive or non-sensitive tag
+        """
         for pii_type_pattern in cls.sensitive_regex.values():
             if pii_type_pattern.match(column_name) is not None:
                 return TagAndConfidence(
