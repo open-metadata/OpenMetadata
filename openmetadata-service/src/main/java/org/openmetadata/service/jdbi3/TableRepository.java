@@ -379,13 +379,26 @@ public class TableRepository extends EntityRepository<Table> {
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
     if (systemProfiles != null && !systemProfiles.isEmpty()) {
       for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
+        // system metrics timestamp is the one of the operation. We'll need to
+        // update the entry if it already exists in the database
+        String storedSystemProfile =
+            daoCollection
+                .profilerDataTimeSeriesDao()
+                .getExtensionAtTimestampWithOperation(
+                    table.getFullyQualifiedName(),
+                    SYSTEM_PROFILE_EXTENSION,
+                    systemProfile.getTimestamp(),
+                    systemProfile.getOperation().value());
         daoCollection
             .profilerDataTimeSeriesDao()
-            .insert(
+            .storeTimeSeriesWithOperation(
                 table.getFullyQualifiedName(),
                 SYSTEM_PROFILE_EXTENSION,
                 "systemProfile",
-                JsonUtils.pojoToJson(systemProfile));
+                JsonUtils.pojoToJson(systemProfile),
+                systemProfile.getTimestamp(),
+                systemProfile.getOperation().value(),
+                storedSystemProfile != null);
       }
     }
 
