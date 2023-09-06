@@ -70,14 +70,6 @@ class OMetaQueryMixin:
                         f"{self.get_suffix(Query)}/{model_str(query.id)}/usage",
                         data=table_ref_json,
                     )
-                    if query and query.get("id"):
-                        table_ref = EntityReference(id=entity.id.__root__, type="table")
-                        # convert object to json array string
-                        table_ref_json = "[" + table_ref.json() + "]"
-                        self.client.put(
-                            f"{self.get_suffix(Query)}/{query.get('id')}/usage",
-                            data=table_ref_json,
-                        )
 
                     # Add Query Users
                     user_fqn_list = create_query.users
