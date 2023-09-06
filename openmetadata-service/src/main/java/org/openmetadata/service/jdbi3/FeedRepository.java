@@ -229,7 +229,6 @@ public class FeedRepository {
     storeMentions(thread, thread.getMessage());
   }
 
-
   @JdbiUnitOfWork
   private Thread createThread(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
