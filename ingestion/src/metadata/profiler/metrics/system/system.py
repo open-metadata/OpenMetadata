@@ -113,10 +113,6 @@ def _(
     dataset_id = table.__table_args__["schema"]  # type: ignore
 
     metric_results: List[Dict] = []
-    # QueryResult = namedtuple(
-    #     "QueryResult",
-    #     "query_type,timestamp,destination_table,dml_statistics",
-    # )
 
     jobs = get_value_from_cache(
         SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.BigQuery}.{project_id}.{dataset_id}.jobs"
