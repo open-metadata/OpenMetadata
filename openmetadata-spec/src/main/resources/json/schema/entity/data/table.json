@@ -1032,6 +1032,10 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "$ref" : "#/definitions/fileFormat"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": [

@@ -59,26 +59,27 @@ class OMetaQueryMixin:
         :param queries: CreateQueryRequest to add
         """
         for create_query in queries:
-            query = self._get_or_create_query(create_query)
-            if query:
-                # Add Query Usage
-                table_ref = EntityReference(id=entity.id.__root__, type="table")
-                # convert object to json array string
-                table_ref_json = "[" + table_ref.json() + "]"
-                self.client.put(
-                    f"{self.get_suffix(Query)}/{model_str(query.id)}/usage",
-                    data=table_ref_json,
-                )
-
-                # Add Query Users
-                user_fqn_list = create_query.users
-                if user_fqn_list:
+            if not create_query.exclude_usage:
+                query = self._get_or_create_query(create_query)
+                if query:
+                    # Add Query Usage
+                    table_ref = EntityReference(id=entity.id.__root__, type="table")
+                    # convert object to json array string
+                    table_ref_json = "[" + table_ref.json() + "]"
                     self.client.put(
-                        f"{self.get_suffix(Query)}/{model_str(query.id)}/users",
-                        data=json.dumps(
-                            [model_str(user_fqn) for user_fqn in user_fqn_list]
-                        ),
+                        f"{self.get_suffix(Query)}/{model_str(query.id)}/usage",
+                        data=table_ref_json,
                     )
+
+                    # Add Query Users
+                    user_fqn_list = create_query.users
+                    if user_fqn_list:
+                        self.client.put(
+                            f"{self.get_suffix(Query)}/{model_str(query.id)}/users",
+                            data=json.dumps(
+                                [model_str(user_fqn) for user_fqn in user_fqn_list]
+                            ),
+                        )
 
     def get_entity_queries(
         self, entity_id: Union[Uuid, str], fields: Optional[List[str]] = None

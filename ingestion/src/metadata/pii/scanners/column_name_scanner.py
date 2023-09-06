@@ -14,7 +14,10 @@ Regex scanner for column names
 import re
 from typing import Optional
 
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.pii.constants import PII
 from metadata.pii.models import TagAndConfidence, TagType
+from metadata.utils import fqn
 
 
 class ColumnNameScanner:
@@ -26,8 +29,8 @@ class ColumnNameScanner:
         "PASSWORD": re.compile("^.*password.*$", re.IGNORECASE),
         "SSN": re.compile("^.*(ssn|social).*$", re.IGNORECASE),
         "CREDIT_CARD": re.compile("^.*(credit).*(card).*$", re.IGNORECASE),
-        "BANKACC": re.compile("^.*bank.*(acc|num).*$", re.IGNORECASE),
-        "EMAIL": re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
+        "BANK_ACCOUNT": re.compile("^.*bank.*(acc|num).*$", re.IGNORECASE),
+        "EMAIL_ADDRESS": re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
         "USER_NAME": re.compile("^.*(user|client|person).*(name).*$", re.IGNORECASE),
         "PERSON": re.compile(
             "^.*(firstname|lastname|fullname|maidenname|nickname|name_suffix).*$",
@@ -47,22 +50,36 @@ class ColumnNameScanner:
             "zipcode|zip|postal|zone|borough).*$",
             re.IGNORECASE,
         ),
-        "PHONE": re.compile("^.*(phone).*$", re.IGNORECASE),
+        "PHONE_NUMBER": re.compile("^.*(phone).*$", re.IGNORECASE),
     }
 
     @classmethod
     def scan(cls, column_name: str) -> Optional[TagAndConfidence]:
+        """
+        Check the column name against the regex patterns and prepare the
+        sensitive or non-sensitive tag
+        """
         for pii_type_pattern in cls.sensitive_regex.values():
             if pii_type_pattern.match(column_name) is not None:
                 return TagAndConfidence(
-                    tag=TagType.SENSITIVE,
+                    tag_fqn=fqn.build(
+                        metadata=None,
+                        entity_type=Tag,
+                        classification_name=PII,
+                        tag_name=TagType.SENSITIVE.value,
+                    ),
                     confidence=1,
                 )
 
         for pii_type_pattern in cls.non_sensitive_regex.values():
             if pii_type_pattern.match(column_name) is not None:
                 return TagAndConfidence(
-                    tag=TagType.NONSENSITIVE,
+                    tag_fqn=fqn.build(
+                        metadata=None,
+                        entity_type=Tag,
+                        classification_name=PII,
+                        tag_name=TagType.NONSENSITIVE.value,
+                    ),
                     confidence=1,
                 )
 
