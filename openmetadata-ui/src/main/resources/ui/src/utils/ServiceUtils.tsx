@@ -601,6 +601,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   if (type === 'storageServices') {
     return GlobalSettingOptions.STORAGES;
   }
+  if (type === 'searchServices') {
+    return GlobalSettingOptions.SEARCH;
+  }
 
   return GlobalSettingOptions.DATABASES;
 };
@@ -653,6 +656,8 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
       return t('label.ml-model-plural');
     case ServiceCategory.STORAGE_SERVICES:
       return t('label.container-plural');
+    case ServiceCategory.SEARCH_SERVICES:
+      return t('label.search-index-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return t('label.database-plural');
@@ -682,6 +687,8 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.METADATA_SERVICE;
     case ServiceCategory.STORAGE_SERVICES:
       return EntityType.STORAGE_SERVICE;
+    case ServiceCategory.SEARCH_SERVICES:
+      return EntityType.SEARCH_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return EntityType.DATABASE_SERVICE;
@@ -704,6 +711,9 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
 
     case ServiceCategory.STORAGE_SERVICES:
       return getEntityLink(EntityType.CONTAINER, fqn);
+
+    case ServiceCategory.SEARCH_SERVICES:
+      return getEntityLink(EntityType.SEARCH_INDEX, fqn);
 
     case ServiceCategory.DATABASE_SERVICES:
     default:

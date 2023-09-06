@@ -19,6 +19,7 @@ import { EntityType } from 'enums/entity.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { StorageServiceType } from 'generated/entity/data/container';
+import { SearchServiceType } from 'generated/entity/services/searchService';
 import { ServiceType } from 'generated/entity/services/serviceType';
 import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
@@ -211,6 +212,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   storageServices: (Object.values(StorageServiceType) as string[]).sort(
     customServiceComparator
   ),
+  searchServices: (Object.values(SearchServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -230,6 +234,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
+  search: ServiceCategory.SEARCH_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -240,6 +245,7 @@ export const SERVICE_CATEGORY_TYPE = {
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
   storageServices: 'storages',
+  searchServices: 'search',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -263,6 +269,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   }),
   storageServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.storage'),
+  }),
+  searchServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.search'),
   }),
   dashboardDataModel: i18n.t('label.entity-service', {
     entity: i18n.t('label.data-model'),
@@ -379,6 +388,7 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
   [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
+  [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
 };
 
 export const BETA_SERVICES = [
