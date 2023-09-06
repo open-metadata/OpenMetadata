@@ -25,6 +25,10 @@ source:
         includes:
           - Supplier Quality Analysis Sample
           - "Customer"
+      projectFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
 sink:
   type: metadata-rest
   config: {}

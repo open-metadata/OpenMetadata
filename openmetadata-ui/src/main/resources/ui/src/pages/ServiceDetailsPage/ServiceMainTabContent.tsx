@@ -201,7 +201,6 @@ function ServiceMainTabContent({
                     pageSize={PAGE_SIZE}
                     paging={paging}
                     pagingHandler={pagingHandler}
-                    totalCount={paging.total}
                   />
                 )}
             </Space>
