@@ -17,7 +17,7 @@ from metadata.pii.models import TagAndConfidence, TagType
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 
 EXPECTED_SENSITIVE = TagAndConfidence(
-    tag=TagType.SENSITIVE,
+    tag_fqn="PII.Sensitive",
     confidence=1,
 )
 

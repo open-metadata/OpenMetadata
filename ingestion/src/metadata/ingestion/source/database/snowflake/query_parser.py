@@ -13,7 +13,7 @@ Snowflake Query parser module
 """
 from abc import ABC
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -62,6 +62,20 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.get_filters(),
         )
+
+    def check_life_cycle_query(self, query_type: Optional[str]) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        if (
+            query_type
+            and query_type.upper()
+            in self.life_cycle_filters  # pylint: disable=no-member
+        ):
+            return True
+        return False
 
     def set_session_query_tag(self) -> None:
         """
