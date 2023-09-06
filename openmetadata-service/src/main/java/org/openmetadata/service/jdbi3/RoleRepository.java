@@ -27,7 +27,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -89,7 +88,6 @@ public class RoleRepository extends EntityRepository<Role> {
    * <p>This method ensures that the role and its policy are stored correctly.
    */
   @Override
-  @JdbiUnitOfWork
   public void storeEntity(Role role, boolean update) {
     // Don't store policy. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();

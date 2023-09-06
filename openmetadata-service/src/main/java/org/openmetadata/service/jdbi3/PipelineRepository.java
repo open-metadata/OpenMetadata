@@ -40,7 +40,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -145,7 +144,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PipelineStatus.class);
   }
 
-  @JdbiUnitOfWork
   public Pipeline addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
@@ -166,7 +164,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 
-  @JdbiUnitOfWork
   public Pipeline deletePipelineStatus(String fqn, Long timestamp) {
     // Validate the request content
     Pipeline pipeline = dao.findEntityByName(fqn);

@@ -77,26 +77,22 @@ public class UsageRepository {
     return addUsage(POST, entityType, id, usage);
   }
 
-  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> createByName(String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(POST, entityType, ref.getId().toString(), usage);
   }
 
-  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> createOrUpdate(String entityType, UUID id, DailyCount usage) {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
     return addUsage(PUT, entityType, id.toString(), usage);
   }
 
-  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> createOrUpdateByName(String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(PUT, entityType, ref.getId().toString(), usage);
   }
 
-  @JdbiUnitOfWork
   public void computePercentile(String entityType, String date) {
     dao.usageDAO().computePercentile(entityType, date);
   }

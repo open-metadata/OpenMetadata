@@ -6,7 +6,6 @@ import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -19,7 +18,6 @@ public class ReportDataRepository {
     this.daoCollection = dao;
   }
 
-  @JdbiUnitOfWork
   public Response addReportData(ReportData reportData) {
     reportData.setId(UUID.randomUUID());
     daoCollection

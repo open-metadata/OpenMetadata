@@ -33,7 +33,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -89,7 +88,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(entityReference);
   }
 
-  @JdbiUnitOfWork
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityById(ingestionPipelineId);
@@ -168,7 +166,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return change;
   }
 
-  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> addPipelineStatus(UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityByName(fqn);

@@ -45,7 +45,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -161,7 +160,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     return topic;
   }
 
-  @JdbiUnitOfWork
   public Topic addSampleData(UUID topicId, TopicSampleData sampleData) {
     // Validate the request content
     Topic topic = daoCollection.topicDAO().findEntityById(topicId);

@@ -23,7 +23,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -99,7 +98,6 @@ public class KpiRepository extends EntityRepository<Kpi> {
     addRelationship(kpi.getId(), kpi.getDataInsightChart().getId(), KPI, DATA_INSIGHT_CHART, Relationship.USES);
   }
 
-  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
@@ -115,7 +113,6 @@ public class KpiRepository extends EntityRepository<Kpi> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
