@@ -42,14 +42,14 @@ class NERScannerTest(TestCase):
                     "saratimithi@godesign.com",
                     "heroldsean@google.com",
                 ]
-            ).tag,
-            TagType.SENSITIVE,
+            ).tag_fqn,
+            "PII.Sensitive",
         )
         self.assertEqual(
             self.ner_scanner.scan(
                 ["im ok", "saratimithi@godesign.com", "not sensitive"]
-            ).tag,
-            TagType.SENSITIVE,
+            ).tag_fqn,
+            "PII.Sensitive",
         )
 
     def test_scanner_nonsensitive(self):
@@ -60,6 +60,6 @@ class NERScannerTest(TestCase):
                     "Alaska",
                     "Netherfield Lea Street",
                 ]
-            ).tag,
-            TagType.NONSENSITIVE,
+            ).tag_fqn,
+            "PII.NonSensitive",
         )

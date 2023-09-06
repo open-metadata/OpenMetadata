@@ -12,7 +12,7 @@
  */
 export interface TeamsSelectableProps {
   showTeamsAlert?: boolean;
-  onSelectionChange: (teams: string[]) => void;
+  onSelectionChange?: (teams: string[]) => void;
   filterJoinable?: boolean;
   placeholder?: string;
   selectedTeams?: string[];

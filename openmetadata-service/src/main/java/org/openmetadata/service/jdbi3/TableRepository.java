@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -99,6 +100,7 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
+  public static final String TABLE_LIFE_CYCLE_EXTENSION = "table.lifeCycle";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_COLUMN_EXTENSION = "table.column.";
   public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
@@ -125,6 +127,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
+    table.setLifeCycle(fields.contains("lifeCycle") ? getLifeCycleData(table) : table.getLifeCycle());
     table.setTableProfilerConfig(
         fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
@@ -208,7 +211,54 @@ public class TableRepository extends EntityRepository<Table> {
 
     return table.withJoins(getJoins(table));
   }
+  
+  public Table addLifeCycle(String fqn, LifeCycle lifeCycle) {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityByName(fqn);
+    table.setService(getContainer(table.getId()));
 
+    LifeCycle currentLifeCycle = getLifeCycleData(table);
+    if (currentLifeCycle == null) {
+      currentLifeCycle = new LifeCycle();
+    }
+
+    if (lifeCycle.getCreated() != null) {
+      if (currentLifeCycle.getCreated() == null
+          || lifeCycle.getCreated().getCreatedAt().compareTo(currentLifeCycle.getCreated().getCreatedAt()) > 0) {
+        currentLifeCycle.setCreated(lifeCycle.getCreated());
+      }
+    }
+
+    if (lifeCycle.getAccessed() != null) {
+      if (currentLifeCycle.getAccessed() == null
+          || lifeCycle.getAccessed().getAccessedAt().compareTo(currentLifeCycle.getAccessed().getAccessedAt()) > 0) {
+        currentLifeCycle.setAccessed(lifeCycle.getAccessed());
+      }
+    }
+
+    if (lifeCycle.getUpdated() != null) {
+      if (currentLifeCycle.getUpdated() == null
+          || lifeCycle.getUpdated().getUpdatedAt().compareTo(currentLifeCycle.getUpdated().getUpdatedAt()) > 0) {
+        currentLifeCycle.setUpdated(lifeCycle.getUpdated());
+      }
+    }
+
+    if (lifeCycle.getDeleted() != null) {
+      if (currentLifeCycle.getDeleted() == null
+          || lifeCycle.getDeleted().getDeletedAt().compareTo(currentLifeCycle.getDeleted().getDeletedAt()) > 0) {
+        currentLifeCycle.setDeleted(lifeCycle.getDeleted());
+      }
+    }
+
+    daoCollection
+        .tableEntityExtensionDAO()
+        .insert(
+            table.getId().toString(), TABLE_LIFE_CYCLE_EXTENSION, "lifeCycle", JsonUtils.pojoToJson(currentLifeCycle));
+
+    table.setLifeCycle(currentLifeCycle);
+    return table.withLifeCycle(currentLifeCycle);
+  }
+  
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -232,7 +282,7 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
   }
-
+  
   public Table getSampleData(UUID tableId, boolean authorizePII) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -253,7 +303,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     return table;
   }
-
+  
   public Table deleteSampleData(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -262,13 +312,13 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
-
+  
   public TableProfilerConfig getTableProfilerConfig(Table table) {
     return JsonUtils.readValue(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_PROFILER_CONFIG_EXTENSION),
         TableProfilerConfig.class);
   }
-
+  
   public TestSuite getTestSuite(Table table) {
     List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
         daoCollection.relationshipDAO().findTo(table.getId().toString(), TABLE, Relationship.CONTAINS.ordinal());
@@ -280,7 +330,7 @@ public class TableRepository extends EntityRepository<Table> {
         ? getEntity(Entity.TEST_SUITE, testSuiteRelationshipRecord.get().getId(), "*", Include.ALL)
         : null;
   }
-
+  
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -312,7 +362,7 @@ public class TableRepository extends EntityRepository<Table> {
     clearFields(table, Fields.EMPTY_FIELDS);
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
-
+  
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -341,7 +391,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     return null;
   }
-
+  
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -397,7 +447,7 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withProfile(createTableProfile.getTableProfile());
   }
-
+  
   public void deleteTableProfile(String fqn, String entityType, Long timestamp) {
     // Validate the request content
     String extension;
@@ -423,7 +473,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     daoCollection.profilerDataTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
   }
-
+  
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {
     List<TableProfile> tableProfiles;
     tableProfiles =
@@ -435,7 +485,7 @@ public class TableRepository extends EntityRepository<Table> {
             TableProfile.class);
     return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
-
+  
   public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
@@ -447,7 +497,7 @@ public class TableRepository extends EntityRepository<Table> {
             ColumnProfile.class);
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
-
+  
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {
     List<SystemProfile> systemProfiles;
     systemProfiles =
@@ -474,7 +524,7 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
   }
-
+  
   public Table getLatestTableProfile(String fqn, boolean authorizePII) {
     Table table = dao.findEntityByName(fqn, ALL);
     TableProfile tableProfile =
@@ -494,7 +544,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     return table;
   }
-
+  
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -531,7 +581,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     return table;
   }
-
+  
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -565,7 +615,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     return table;
   }
-
+  
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table = dao.findEntityById(tableId);
     table.withDataModel(dataModel);
@@ -965,6 +1015,14 @@ public class TableRepository extends EntityRepository<Table> {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     return JsonUtils.readObjects(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
+  }
+
+  private LifeCycle getLifeCycleData(Table table) {
+    LifeCycle lifeCycle =
+        JsonUtils.readValue(
+            daoCollection.tableEntityExtensionDAO().getExtension(table.getId().toString(), TABLE_LIFE_CYCLE_EXTENSION),
+            LifeCycle.class);
+    return lifeCycle;
   }
 
   private void getCustomMetrics(boolean setMetrics, Table table) {
