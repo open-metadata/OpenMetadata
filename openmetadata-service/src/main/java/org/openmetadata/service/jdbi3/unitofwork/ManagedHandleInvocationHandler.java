@@ -1,19 +1,23 @@
 package org.openmetadata.service.jdbi3.unitofwork;
 
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 @Slf4j
 public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
   private static final Object[] NO_ARGS = {};
-  private final JdbiHandleManager handleManager;
   private final Class<T> underlying;
+  private final JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider;
 
-  public ManagedHandleInvocationHandler(JdbiHandleManager handleManager, Class<T> underlying) {
-    this.handleManager = handleManager;
+  public ManagedHandleInvocationHandler(JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider, Class<T> underlying) {
+    this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
     this.underlying = underlying;
   }
 
@@ -38,7 +42,7 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
 
   private Object handleInvocation(Method method, Object[] args)
       throws IllegalAccessException, InvocationTargetException {
-    Handle handle = handleManager.get();
+    Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
     LOG.debug(
         "{}.{} [{}] Thread Id [{}] with handle id [{}]",
         method.getDeclaringClass().getSimpleName(),
@@ -48,7 +52,11 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
         handle.hashCode());
 
     Object dao = handle.attach(underlying);
-    return method.invoke(dao, args);
+    Object result = method.invoke(dao, args);
+    if (CollectionDAO.class.isAssignableFrom(underlying) && method.isAnnotationPresent(CreateSqlObject.class)) {
+      result = getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, method.getReturnType());
+    }
+    return result;
   }
 
   @Override

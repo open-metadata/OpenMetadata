@@ -13,6 +13,7 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
 
 import io.dropwizard.Application;
@@ -141,7 +142,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
-    CollectionDAO daoObject = (CollectionDAO) jdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass(CollectionDAO.class);
+    CollectionDAO daoObject =
+        (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(jdbiUnitOfWorkProvider, new HashSet<>()));
 
     // Configure the Fernet instance
