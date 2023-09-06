@@ -14,6 +14,7 @@ import { Skeleton, SpinProps, Table as AntdTable, TableProps } from 'antd';
 import { SMALL_TABLE_LOADER_SIZE } from 'constants/constants';
 import React, { useMemo } from 'react';
 import { getUniqueArray } from 'utils/CommonUtils';
+import { getTableExpandableConfig } from 'utils/TableUtils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
 const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
@@ -53,7 +54,12 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
     );
   }
 
-  return <AntdTable {...rest} />;
+  return (
+    <AntdTable
+      {...rest}
+      expandable={{ ...getTableExpandableConfig, ...rest.expandable }}
+    />
+  );
 };
 
 export default Table;

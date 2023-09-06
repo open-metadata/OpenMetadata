@@ -11,24 +11,28 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import Card from 'antd/lib/card/Card';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { ListView } from 'components/ListView/ListView.component';
+import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import {
   getServiceDetailsPath,
   pagingObject,
   SERVICE_VIEW_CAP,
 } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { isEmpty } from 'lodash';
+import { isEmpty, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getServices } from 'rest/serviceAPI';
 import { getServiceLogo, showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { FilterIcon } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -43,7 +47,11 @@ import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
-import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import {
+  getOptionalFields,
+  getResourceEntityFromServiceCategory,
+  getServiceTypesFromServiceCategory,
+} from '../../utils/ServiceUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import PageHeader from '../header/PageHeader.component';
@@ -167,6 +175,16 @@ const Services = ({ serviceName }: ServicesProps) => {
     ]
   );
 
+  const serviceTypeFilters = useMemo(() => {
+    return map(
+      getServiceTypesFromServiceCategory(serviceName as ServiceCategory),
+      (value) => ({
+        text: startCase(value),
+        value,
+      })
+    );
+  }, [serviceName]);
+
   const columns: ColumnsType<ServicesType> = [
     {
       title: t('label.name'),
@@ -207,11 +225,77 @@ const Services = ({ serviceName }: ServicesProps) => {
       dataIndex: 'serviceType',
       key: 'serviceType',
       width: 200,
+      filterDropdown: ColumnFilter,
+      filterIcon: FilterIcon,
+      filters: serviceTypeFilters,
+      onFilter: (value: string | number | boolean, record) =>
+        record.serviceType === value,
       render: (serviceType) => (
         <span className="font-normal text-grey-body">{serviceType}</span>
       ),
     },
   ];
+
+  const serviceCardRenderer = (service: ServicesType) => {
+    return (
+      <Col key={service.name} lg={8} xl={6}>
+        <Card className="w-full" size="small">
+          <div
+            className="d-flex justify-between text-grey-muted"
+            data-testid="service-card">
+            <Row gutter={[0, 6]}>
+              <Col span={24}>
+                <Link
+                  className="no-underline"
+                  to={getServiceDetailsPath(
+                    encodeURIComponent(
+                      service.fullyQualifiedName ?? service.name
+                    ),
+                    serviceName
+                  )}>
+                  <Typography.Text
+                    className="text-base text-grey-body font-medium truncate w-48"
+                    data-testid={`service-name-${service.name}`}
+                    title={getEntityName(service)}>
+                    {getEntityName(service)}
+                  </Typography.Text>
+                </Link>
+                <div
+                  className="p-t-xs text-grey-body break-all description-text"
+                  data-testid="service-description">
+                  {service.description ? (
+                    <RichTextEditorPreviewer
+                      enableSeeMoreVariant={false}
+                      markdown={service.description}
+                    />
+                  ) : (
+                    <span className="text-grey-muted">
+                      {t('label.no-description')}
+                    </span>
+                  )}
+                </div>
+                {getOptionalFields(service, serviceName)}
+              </Col>
+              <Col span={24}>
+                <div className="m-b-xss" data-testid="service-type">
+                  <label className="m-b-0">{`${t('label.type')}:`}</label>
+                  <span className="font-normal m-l-xss text-grey-body">
+                    {service.serviceType}
+                  </span>
+                </div>
+              </Col>
+            </Row>
+
+            <div className="d-flex flex-col justify-between flex-none">
+              <div className="d-flex justify-end" data-testid="service-icon">
+                {getServiceLogo(service.serviceType || '', 'h-7')}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </Col>
+    );
+  };
 
   return (
     <Row
@@ -246,17 +330,20 @@ const Services = ({ serviceName }: ServicesProps) => {
         </Space>
       </Col>
       <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          dataSource={serviceDetails}
-          key="fullyQualifiedName"
-          loading={isLoading}
-          locale={{
-            emptyText: noDataPlaceholder,
+        <ListView<ServicesType>
+          cardRenderer={serviceCardRenderer}
+          tableprops={{
+            bordered: true,
+            columns,
+            dataSource: serviceDetails,
+            rowKey: 'fullyQualifiedName',
+            loading: isLoading,
+            locale: {
+              emptyText: noDataPlaceholder,
+            },
+            pagination: false,
+            size: 'small',
           }}
-          pagination={false}
-          size="small"
         />
       </Col>
       <Col span={24}>

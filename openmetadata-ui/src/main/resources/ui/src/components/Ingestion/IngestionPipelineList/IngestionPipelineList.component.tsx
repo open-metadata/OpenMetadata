@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Typography } from 'antd';
 import Tooltip from 'antd/es/tooltip';
 import { ColumnsType, TableProps } from 'antd/lib/table';
@@ -18,7 +17,6 @@ import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Table from 'components/common/Table/Table';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import { PRIMERY_COLOR } from 'constants/constants';
 import cronstrue from 'cronstrue';
 import {
   IngestionPipeline,
@@ -34,6 +32,7 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { FilterIcon } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 
@@ -101,11 +100,7 @@ export const IngestionPipelineList = ({
         dataIndex: 'pipelineType',
         key: 'pipelineType',
         filterDropdown: ColumnFilter,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: FilterIcon,
         filters: map(PipelineType, (value) => ({
           text: startCase(value),
           value,
