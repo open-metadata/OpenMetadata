@@ -17,6 +17,7 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import DomainTypeSelectForm from 'components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagButton from 'components/TagButton/TagButton.component';
@@ -27,7 +28,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
-import { Domain } from 'generated/entity/domains/domain';
+import { Domain, DomainType } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
 import { EntityReference } from 'generated/entity/type';
 import { cloneDeep, includes, isEqual } from 'lodash';
@@ -48,6 +49,7 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
   const { permissions } = usePermissionProvider();
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+  const [editDomainType, setEditDomainType] = useState(false);
 
   const editDescriptionPermission = useMemo(
     () =>
@@ -67,6 +69,12 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
         ResourceEntity.DOMAIN,
         permissions
       ) ||
+      checkPermission(Operation.EditAll, ResourceEntity.DOMAIN, permissions),
+    [permissions]
+  );
+
+  const editAllPermission = useMemo(
+    () =>
       checkPermission(Operation.EditAll, ResourceEntity.DOMAIN, permissions),
     [permissions]
   );
@@ -154,6 +162,16 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
     }
   };
 
+  const handleDomainTypeUpdate = async (domainType: string) => {
+    let updatedDomain = cloneDeep(domain);
+    updatedDomain = {
+      ...updatedDomain,
+      domainType: domainType as DomainType,
+    };
+    await onUpdate(updatedDomain);
+    setEditDomainType(false);
+  };
+
   return (
     <Row>
       <Col className="border-right p-md domain-content-container" span={18}>
@@ -210,7 +228,7 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
               </UserTeamSelectableList>
             )}
           </Col>
-          <Col span="24">
+          <Col data-testid="domain-expert-name" span="24">
             <div
               className={`d-flex items-center ${
                 domain.experts && domain.experts.length > 0 ? 'm-b-xss' : ''
@@ -259,6 +277,38 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
                   </UserSelectableList>
                 )}
             </div>
+          </Col>
+          <Col data-testid="domainType" span="24">
+            <div className="d-flex items-center m-b-xss">
+              <Typography.Text
+                className="right-panel-label"
+                data-testid="domainType-heading-name">
+                {t('label.domain-type')}
+              </Typography.Text>
+              {editAllPermission && domain.domainType && (
+                <Button
+                  className="cursor-pointer flex-center m-l-xss"
+                  data-testid="edit-domainType-button"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
+                  onClick={() => setEditDomainType(true)}
+                />
+              )}
+            </div>
+            {!editDomainType && (
+              <Space wrap data-testid="glossary-reviewer-name" size={6}>
+                {domain.domainType}
+              </Space>
+            )}
+
+            {editDomainType && (
+              <DomainTypeSelectForm
+                defaultValue={domain.domainType}
+                onCancel={() => setEditDomainType(false)}
+                onSubmit={handleDomainTypeUpdate}
+              />
+            )}
           </Col>
         </Row>
       </Col>
