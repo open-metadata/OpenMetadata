@@ -49,6 +49,7 @@ export enum EntityType {
   CHART = 'chart',
   SAMPLE_DATA = 'sampleData',
   STORED_PROCEDURE = 'storedProcedure',
+  SEARCH_INDEX = 'searchIndex',
 }
 
 export enum AssetsType {
@@ -103,6 +104,7 @@ export enum TabSpecificField {
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
+  FIELDS = 'fields',
 }
 
 export enum FqnPart {
@@ -113,6 +115,7 @@ export enum FqnPart {
   Column,
   NestedColumn,
   Topic,
+  SearchIndexField,
 }
 
 export enum EntityInfo {
@@ -162,6 +165,8 @@ export enum EntityTabs {
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
   SQL = 'sql',
+  FIELDS = 'fields',
+  SEARCH_INDEX_SETTINGS = 'search-index-settings',
   STORED_PROCEDURE = 'stored_procedure',
   CODE = 'code',
 }

@@ -76,6 +76,7 @@ import {
   sortTagsCaseInsensitive,
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import { getSearchIndexDetailsPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
 
@@ -258,6 +259,9 @@ export const getEntityLink = (
         getTableFQNFromColumnFQN(fullyQualifiedName),
         EntityTabs.PROFILER
       )}?activeTab=Data Quality`;
+
+    case EntityType.SEARCH_INDEX:
+      return getSearchIndexDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
