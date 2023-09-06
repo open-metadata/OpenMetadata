@@ -141,6 +141,9 @@
     "domain" : {
       "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
     }
   },
   "required": [

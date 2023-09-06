@@ -110,6 +110,9 @@
     "domain" : {
       "description": "Domain the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
     }
   },
   "required": ["name", "database", "service"],

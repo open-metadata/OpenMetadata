@@ -59,7 +59,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     allowedFields = repository.getAllowedFields();
     this.repository = repository;
     this.authorizer = authorizer;
-    addViewOperation("owner,followers,tags,extension", VIEW_BASIC);
+    addViewOperation("owner,followers,votes,tags,extension", VIEW_BASIC);
     Entity.registerEntity(entityClass, entityType, repository, getEntitySpecificOperations());
   }
 
