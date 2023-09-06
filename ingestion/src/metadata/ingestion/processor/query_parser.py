@@ -58,6 +58,8 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         databaseName=record.databaseName,
         databaseSchema=record.databaseSchema,
         sql=record.query,
+        query_type=record.query_type,
+        exclude_usage=record.exclude_usage,
         userName=record.userName,
         date=int(start_date.__root__.timestamp()),
         serviceName=record.serviceName,

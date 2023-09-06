@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
@@ -86,7 +87,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
-          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts";
+          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -925,6 +926,31 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return repository
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
+  }
+
+  @PUT
+  @Path("/{fqn}/lifeCycle")
+  @Operation(
+      operationId = "addLifeCycleData",
+      summary = "Add life cycle data",
+      description = "Add life cycle data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The table with the new life cycle updates",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Table addLifeCycle(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the table", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
+      @Valid LifeCycle lifeCycle) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_LIFE_CYCLE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    Table table = repository.addLifeCycle(fqn, lifeCycle);
+    return addHref(uriInfo, table);
   }
 
   public static Table validateNewTable(Table table) {

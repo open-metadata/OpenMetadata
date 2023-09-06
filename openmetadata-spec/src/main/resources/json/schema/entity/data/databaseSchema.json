@@ -113,6 +113,10 @@
     },
     "votes" : {
       "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "database", "service"],

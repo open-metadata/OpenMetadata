@@ -168,6 +168,10 @@
     },
     "votes" : {
       "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["id", "name", "partitions", "service"],
