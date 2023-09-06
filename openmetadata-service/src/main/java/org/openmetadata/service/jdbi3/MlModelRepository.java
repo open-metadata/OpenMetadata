@@ -25,9 +25,9 @@ import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.EntityReference;
@@ -37,10 +37,12 @@ import org.openmetadata.schema.type.MlFeatureSource;
 import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -61,6 +63,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao,
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
+  }
+
+  public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {
+    return features.stream()
+        .filter(c -> c.getName().equals(featureName))
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("mlFeature", featureName)));
   }
 
   @Override
@@ -238,31 +248,53 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("mlFeatures")) {
-      MlModel mlModel = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL, false);
-      MlFeature mlFeature =
-          mlModel.getMlFeatures().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("chart", entityLink.getArrayFieldName())));
-
-      String origJson = JsonUtils.pojoToJson(mlModel);
-      if (EntityUtil.isDescriptionTask(task.getType())) {
-        mlFeature.setDescription(newValue);
-      } else if (EntityUtil.isTagTask(task.getType())) {
-        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-        mlFeature.setTags(tags);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new MlFeatureDescriptionTaskWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new MlFeatureTagTaskWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
       }
-      String updatedEntityJson = JsonUtils.pojoToJson(mlModel);
-      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
-      patch(null, mlModel.getId(), user, patch);
-      return;
     }
-    super.update(task, entityLink, newValue, user);
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class MlFeatureDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+    private final MlFeature mlFeature;
+
+    MlFeatureDescriptionTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      MlModel mlModel = (MlModel) threadContext.getAboutEntity();
+      mlFeature = findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      mlFeature.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class MlFeatureTagTaskWorkflow extends TagTaskWorkflow {
+    private final MlFeature mlFeature;
+
+    MlFeatureTagTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      MlModel mlModel = (MlModel) threadContext.getAboutEntity();
+      mlFeature = findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      mlFeature.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
   }
 
   private void populateService(MlModel mlModel) {
