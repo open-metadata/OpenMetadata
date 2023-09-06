@@ -166,9 +166,18 @@ export const AssetSelectionModal = ({
         .map((item) => {
           if (map.has(item.fullyQualifiedName) && activeEntity) {
             const entity = map.get(item.fullyQualifiedName);
+            const { id, description, fullyQualifiedName, name, displayName } =
+              activeEntity;
             const jsonPatch = compare(entity, {
               ...entity,
-              domain: activeEntity.fullyQualifiedName,
+              domain: {
+                id,
+                description,
+                fullyQualifiedName,
+                name,
+                displayName,
+                type: 'domain',
+              },
             });
             const api = getAPIfromSource(item.entityType);
 

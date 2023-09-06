@@ -256,7 +256,7 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
                   </UserSelectableList>
                 )}
             </div>
-            <Space wrap data-testid="glossary-reviewer-name" size={6}>
+            <Space wrap data-testid="domain-expert-name-label" size={6}>
               {domain.experts?.map((expert) => getExpert(expert))}
             </Space>
             <div>
@@ -297,7 +297,7 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
               )}
             </div>
             {!editDomainType && (
-              <Space wrap data-testid="glossary-reviewer-name" size={6}>
+              <Space wrap data-testid="domain-type-label" size={6}>
                 {domain.domainType}
               </Space>
             )}
