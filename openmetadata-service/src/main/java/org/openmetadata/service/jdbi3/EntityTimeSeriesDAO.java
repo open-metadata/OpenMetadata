@@ -393,6 +393,21 @@ public interface EntityTimeSeriesDAO {
     return getLatestExtensionByKeyInternal(getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
   }
 
+  default void storeTimeSeriesWithOperation(
+      String fqn,
+      String extension,
+      String jsonSchema,
+      String entityJson,
+      Long timestamp,
+      String operation,
+      boolean update) {
+    if (update) {
+      updateExtensionByOperation(fqn, extension, entityJson, timestamp, operation);
+    } else {
+      insert(fqn, extension, jsonSchema, entityJson);
+    }
+  }
+
   /** @deprecated */
   @SqlQuery("SELECT DISTINCT entityFQN FROM <table> WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
   @Deprecated(since = "1.1.1")
