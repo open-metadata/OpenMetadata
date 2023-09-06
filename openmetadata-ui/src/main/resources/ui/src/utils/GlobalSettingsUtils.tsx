@@ -258,12 +258,6 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <StorageIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.search-index'),
-          isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.searchIndex',
-          icon: <SearchIcon className="side-panel-icons" />,
-        },
-        {
           label: i18next.t('label.stored-procedure'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.storedProcedure',
