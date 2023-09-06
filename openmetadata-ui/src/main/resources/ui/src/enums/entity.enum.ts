@@ -50,6 +50,7 @@ export enum EntityType {
   CHART = 'chart',
   SAMPLE_DATA = 'sampleData',
   STORED_PROCEDURE = 'storedProcedure',
+  SEARCH_INDEX = 'searchIndex',
 }
 
 export enum AssetsType {
