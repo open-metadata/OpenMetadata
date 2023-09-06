@@ -333,7 +333,7 @@ class SnowflakeSource(CommonDbSourceService):
         to get the names and pass the Regular type.
 
         This is useful for sources where we need fine-grained
-        logic on how to handle table types, e.g., external, foreign,...processor
+        logic on how to handle table types, e.g., external, foreign,...
         """
         table_list = [
             TableNameAndType(name=table_name)
