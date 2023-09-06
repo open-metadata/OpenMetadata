@@ -19,6 +19,7 @@ import { Icons } from '../utils/SvgUtils';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
+export const TIER_FQN_KEY = 'tier.tagFQN';
 
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';

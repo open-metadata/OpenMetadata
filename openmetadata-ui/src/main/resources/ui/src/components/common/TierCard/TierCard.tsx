@@ -25,6 +25,7 @@ import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import React, { useState } from 'react';
 import { getTags } from 'rest/tagAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -47,7 +48,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
         const tierData: CardWithListItems[] =
           data.map((tier: { name: string; description: string }) => ({
             id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-            title: tier.name,
+            title: getEntityName(tier),
             description: tier.description.substring(
               0,
               tier.description.indexOf('\n\n')
