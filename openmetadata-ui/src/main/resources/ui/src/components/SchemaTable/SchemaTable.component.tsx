@@ -70,12 +70,9 @@ const SchemaTable = ({
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const [editColumn, setEditColumn] = useState<{
-    column: Column;
-  }>();
+  const [editColumn, setEditColumn] = useState<Column>();
 
-  const [editColumnDisplayName, setEditColumnDisplayName] =
-    useState<{ column: Column }>();
+  const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
@@ -88,7 +85,7 @@ const SchemaTable = ({
   );
 
   const handleEditColumn = (column: Column): void => {
-    setEditColumn({ column });
+    setEditColumn(column);
   };
   const closeEditColumnModal = (): void => {
     setEditColumn(undefined);
@@ -167,10 +164,10 @@ const SchemaTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn && editColumn.column.fullyQualifiedName) {
+    if (editColumn && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
-        fqn: editColumn.column.fullyQualifiedName,
+        fqn: editColumn.fullyQualifiedName,
         value: columnDescription,
         field: 'description',
         columns: tableCols,
@@ -311,17 +308,14 @@ const SchemaTable = ({
   }, [searchText, sortByOrdinalPosition]);
 
   const handleEditDisplayNameClick = (record: Column) => {
-    setEditColumnDisplayName({ column: record });
+    setEditColumnDisplayName(record);
   };
 
   const handleEditDisplayName = ({ displayName }: EntityName) => {
-    if (
-      editColumnDisplayName &&
-      editColumnDisplayName.column.fullyQualifiedName
-    ) {
+    if (editColumnDisplayName && editColumnDisplayName.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
-        fqn: editColumnDisplayName.column.fullyQualifiedName,
+        fqn: editColumnDisplayName.fullyQualifiedName,
         value: isEmpty(displayName) ? undefined : displayName,
         field: 'displayName',
         columns: tableCols,
@@ -375,7 +369,6 @@ const SchemaTable = ({
                     {getEntityName(record)}
                   </Typography.Text>
                 </div>
-                {/* <span className="break-word">{}</span> */}
               </Space>
               <Icon
                 className="hover-cell-icon text-left"
@@ -481,9 +474,9 @@ const SchemaTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumn.column.name}"`}
+          })}: "${editColumn.name}"`}
           placeholder={t('message.enter-column-description')}
-          value={editColumn.column.description as string}
+          value={editColumn.description as string}
           visible={Boolean(editColumn)}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
@@ -491,10 +484,10 @@ const SchemaTable = ({
       )}
       {editColumnDisplayName && (
         <EntityNameModal
-          entity={editColumnDisplayName.column}
+          entity={editColumnDisplayName}
           title={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumnDisplayName?.column.name}"`}
+          })}: "${editColumnDisplayName?.name}"`}
           visible={Boolean(editColumnDisplayName)}
           onCancel={closeEditColumnModal}
           onSave={handleEditDisplayName}
