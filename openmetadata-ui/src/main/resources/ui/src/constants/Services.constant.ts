@@ -439,4 +439,5 @@ export const SERVICE_TYPES = [
   EntityType.MLMODEL_SERVICE,
   EntityType.METADATA_SERVICE,
   EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
 ];
