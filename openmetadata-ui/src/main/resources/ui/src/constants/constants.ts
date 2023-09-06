@@ -139,6 +139,7 @@ export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dashboardDataModelFQN';
+export const PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN = ':storedProcedureFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -264,6 +265,10 @@ export const ROUTES = {
   CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   CONTAINER_DETAILS_WITH_SUB_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
+  STORED_PROCEDURE_DETAILS: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}`,
+  STORED_PROCEDURE_DETAILS_WITH_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  STORED_PROCEDURE_DETAILS_WITH_SUB_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
@@ -348,6 +353,19 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN));
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getStoredProcedureDetailsPath = (
+  storedProcedureFQN: string,
+  columnName?: string
+) => {
+  let path = ROUTES.STORED_PROCEDURE_DETAILS;
+  path = path.replace(
+    PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN,
+    getEncodedFqn(storedProcedureFQN)
+  );
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -660,6 +678,32 @@ export const getContainerDetailPath = (
   return path;
 };
 
+export const getStoredProcedureDetailPath = (
+  storedProcedureFQN: string,
+  tab?: string,
+  subTab = 'all'
+) => {
+  let path = tab
+    ? ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB
+    : ROUTES.STORED_PROCEDURE_DETAILS;
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  path = path.replace(
+    PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN,
+    getEncodedFqn(storedProcedureFQN)
+  );
+
+  return path;
+};
+
 export const getGlossaryTermDetailsPath = (
   glossaryFQN: string,
   tab?: string
@@ -784,6 +828,7 @@ export const ENTITY_PATH: Record<string, string> = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
+  storedprocedure: 'storedProcedure',
 };
 
 export const VALIDATION_MESSAGES = {

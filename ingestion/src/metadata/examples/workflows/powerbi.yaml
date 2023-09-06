@@ -1,17 +1,34 @@
 source:
-  type: metabase
-  serviceName: test
+  type: powerbi
+  serviceName: local_powerbi
   serviceConnection:
     config:
-      type: Metabase
-      username: username
-      password: password
-      hostPort: http://hostPort
+      clientId: client_id
+      clientSecret: client_secret
+      tenantId: tenant_id
+      scope:
+        - https://analysis.windows.net/powerbi/api/.default
+      pagination_entity_per_page: 100
+      # useAdminApis: true or false
+      type: PowerBI
   sourceConfig:
     config:
       type: DashboardMetadata
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
+      chartFilterPattern:
+        includes:
+          - Gross Margin %
+          - Total Defect*
+          - "Number"
+        excludes:
+          - Total Revenue
+      dashboardFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
+      projectFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
 sink:
   type: metadata-rest
   config: {}

@@ -752,7 +752,6 @@ const TeamDetailsV1 = ({
             pageSize={LIST_SIZE}
             paging={{} as Paging}
             pagingHandler={onAssetsPaginate}
-            totalCount={assets.total}
           />
         )}
       </div>

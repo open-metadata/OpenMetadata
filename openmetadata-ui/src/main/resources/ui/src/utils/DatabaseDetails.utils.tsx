@@ -113,7 +113,6 @@ export const getDatabaseSchemaTable = (
             pageSize={PAGE_SIZE}
             paging={databaseSchemaPaging}
             pagingHandler={databaseSchemaPagingHandler}
-            totalCount={databaseSchemaPaging.total}
           />
         )}
       </Space>

@@ -275,7 +275,6 @@ const UserListV1: FC<UserListV1Props> = ({
             pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={onPagingChange}
-            totalCount={paging.total}
           />
         )}
       </Col>

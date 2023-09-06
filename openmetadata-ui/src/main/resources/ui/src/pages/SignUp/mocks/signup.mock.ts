@@ -11,6 +11,19 @@
  *  limitations under the License.
  */
 
+export const mockFormData = {
+  name: 'Sample Name',
+  email: 'sample123@sample.com',
+  picture: 'Profile Picture',
+  userName: 'sample123',
+};
+
+export const mockChangedFormData = {
+  fullName: 'f_name m_name l_name',
+  userName: 'mockUserName',
+  email: 'test@gmail.com',
+};
+
 export const mockCreateUser = {
   data: {
     id: '911d4be4-6ebf-48a0-9016-43a2cf716428',

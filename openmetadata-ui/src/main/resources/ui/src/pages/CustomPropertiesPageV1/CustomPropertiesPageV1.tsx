@@ -139,6 +139,8 @@ const CustomEntityDetailV1 = () => {
 
       case ENTITY_PATH.containers:
         return PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES;
+      case ENTITY_PATH.storedprocedure:
+        return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }
