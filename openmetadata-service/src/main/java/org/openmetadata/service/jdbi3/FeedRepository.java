@@ -74,7 +74,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -120,7 +119,6 @@ public class FeedRepository {
     AFTER
   }
 
-  @JdbiUnitOfWork
   public int getNextTaskId() {
     dao.feedDAO().updateTaskId();
     return dao.feedDAO().getTaskId();
@@ -187,7 +185,6 @@ public class FeedRepository {
     return new ThreadContext(thread);
   }
 
-  @JdbiUnitOfWork
   public Thread create(Thread thread) {
     ThreadContext threadContext = getThreadContext(thread);
     return createThread(threadContext);
@@ -229,7 +226,6 @@ public class FeedRepository {
     storeMentions(thread, thread.getMessage());
   }
 
-  @JdbiUnitOfWork
   private Thread createThread(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
     if (thread.getType() == ThreadType.Task) {
@@ -363,7 +359,6 @@ public class FeedRepository {
                         null));
   }
 
-  @JdbiUnitOfWork
   public Thread addPostToThread(String id, Post post, String userName) {
     // Validate the user posting the message
     UUID fromUserId = Entity.getEntityReferenceByName(USER, post.getFrom(), NON_DELETED).getId();
@@ -395,7 +390,6 @@ public class FeedRepository {
     return post.get();
   }
 
-  @JdbiUnitOfWork
   public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
@@ -410,7 +404,6 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  @JdbiUnitOfWork
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     deleteThreadInternal(thread.getId().toString());
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
@@ -428,7 +421,6 @@ public class FeedRepository {
     dao.feedDAO().delete(id);
   }
 
-  @JdbiUnitOfWork
   public void deleteByAbout(UUID entityId) {
     List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
     for (String threadId : threadIds) {
@@ -440,7 +432,6 @@ public class FeedRepository {
     }
   }
 
-  @JdbiUnitOfWork
   public ThreadCount getThreadsCount(FeedFilter filter, String link) {
     List<List<String>> result;
     if (link == null) {
@@ -498,7 +489,6 @@ public class FeedRepository {
   }
 
   /** List threads based on the filters and limits in the order of the updated timestamp. */
-  @JdbiUnitOfWork
   public ResultList<Thread> list(FeedFilter filter, String link, int limitPosts, String userId, int limit) {
     int total;
     List<Thread> threads;
@@ -599,7 +589,6 @@ public class FeedRepository {
             null);
   }
 
-  @JdbiUnitOfWork
   public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch) {
     // Apply JSON patch to the original post to get the updated post
     Post updated = JsonUtils.applyPatch(post, patch, Post.class);
@@ -624,7 +613,6 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updated, change);
   }
 
-  @JdbiUnitOfWork
   public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original thread that can be updated during PATCH operation
     Thread original = get(id.toString());
