@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3.unitofwork;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Handles;
+import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 
 @Slf4j
 public class JdbiTransactionAspect {
@@ -17,6 +18,7 @@ public class JdbiTransactionAspect {
       Handle handle = handleManager.get();
       handle.getConnection().setAutoCommit(autoCommit);
       handle.getConfig(Handles.class).setForceEndTransactions(false);
+      handle.setTransactionIsolationLevel(TransactionIsolationLevel.READ_UNCOMMITTED);
       handle.begin();
       LOG.debug(
           "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
