@@ -27,7 +27,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
