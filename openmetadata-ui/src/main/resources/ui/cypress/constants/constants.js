@@ -445,7 +445,7 @@ export const TAG_INVALID_NAMES = {
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
 };
 
-export const GLOSSARY_INVALID_NAMES = {
+export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
@@ -457,5 +457,45 @@ export const NAME_VALIDATION_ERROR =
 export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 2 and 64';
 
-export const GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR =
+export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name can be a maximum of 128 characters';
+
+export const DOMAIN_1 = {
+  name: 'Cypress%Domain',
+  updatedName: 'Cypress_Domain_Name',
+  updatedDisplayName: 'Cypress_Domain_Display_Name',
+  description:
+    'This is the Cypress for testing domain creation with percent and dot',
+  updatedDescription:
+    'This is the updated description for Cypress for testing domain creation',
+  experts: 'Aaron Johnson',
+  owner: 'Aaron Johnson',
+  updatedOwner: 'Angel Smith',
+  domainType: 'Source-aligned',
+  dataProducts: [
+    {
+      name: 'Cypress.Data.Product1',
+      description:
+        'This is the data product description for Cypress.Data.Product1',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+    },
+    {
+      name: 'Cypress.Data.Product2With%',
+      description:
+        'This is the data product description for Cypress.Data.Product2With%',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+    },
+  ],
+};
+
+export const DOMAIN_2 = {
+  name: 'Cypress.Domain.New',
+  updatedName: 'Cypress.Domain.New',
+  updatedDisplayName: 'Cypress.Domain.New',
+  description: 'This is the Cypress for testing domain creation',
+  experts: 'Aaron Singh',
+  owner: 'Aaron Singh',
+  domainType: 'Source-aligned',
+};

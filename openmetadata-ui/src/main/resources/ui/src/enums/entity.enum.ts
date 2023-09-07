@@ -47,6 +47,8 @@ export enum EntityType {
   SUBSCRIPTION = 'subscription',
   USER_NAME = 'username',
   CHART = 'chart',
+  DOMAIN = 'domain',
+  DATA_PRODUCT = 'dataProduct',
   SAMPLE_DATA = 'sampleData',
   STORED_PROCEDURE = 'storedProcedure',
 }
