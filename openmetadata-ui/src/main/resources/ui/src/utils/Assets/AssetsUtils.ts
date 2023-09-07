@@ -14,9 +14,12 @@ import {
   AssetsUnion,
   MapPatchAPIResponse,
 } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { Operation } from 'fast-json-patch';
 import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
+import { getGlossariesByName, patchGlossaries } from 'rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
@@ -42,6 +45,8 @@ export const getAPIfromSource = (
       return patchTopicDetails;
     case EntityType.CONTAINER:
       return patchContainerDetails;
+    case EntityType.GLOSSARY:
+      return patchGlossaries;
   }
 };
 
@@ -64,5 +69,32 @@ export const getEntityAPIfromSource = (
       return getTopicByFqn;
     case EntityType.CONTAINER:
       return getContainerByName;
+    case EntityType.GLOSSARY:
+      return getGlossariesByName;
+  }
+};
+
+export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
+  const commonAssets: Record<string, SearchIndex> = {
+    [EntityType.TABLE]: SearchIndex.TABLE,
+    [EntityType.PIPELINE]: SearchIndex.PIPELINE,
+    [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
+    [EntityType.MLMODEL]: SearchIndex.MLMODEL,
+    [EntityType.TOPIC]: SearchIndex.TOPIC,
+    [EntityType.CONTAINER]: SearchIndex.CONTAINER,
+  };
+
+  if (source === AssetsOfEntity.DOMAIN) {
+    commonAssets[EntityType.GLOSSARY] = SearchIndex.GLOSSARY;
+  }
+
+  return commonAssets;
+};
+
+export const getAssetsFields = (source: AssetsOfEntity) => {
+  if (source === AssetsOfEntity.GLOSSARY) {
+    return 'tags';
+  } else {
+    return 'domain';
   }
 };
