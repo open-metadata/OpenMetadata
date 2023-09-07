@@ -87,12 +87,8 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.index.engine.DocumentMissingException;
-import org.elasticsearch.rest.RestStatus;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -103,7 +99,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -124,7 +119,6 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -133,8 +127,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
-import org.openmetadata.service.search.SearchEventPublisher;
-import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -743,15 +735,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
       CompletableFuture.runAsync(
           () -> {
-            try {
-              searchClient.updateSearchEntityCreated(entity.getEntityReference());
-            } catch (DocumentMissingException ex) {
-              handleDocumentMissingException(contextInfo, ex);
-            } catch (ElasticsearchException e) {
-              handleElasticsearchException(contextInfo, e);
-            } catch (IOException ie) {
-              handleIOException(contextInfo, ie);
-            }
+            searchClient.updateSearchEntityCreated(entity);
           });
     }
   }
@@ -759,21 +743,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @SuppressWarnings("unused")
   public void postUpdate(T entity) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-              () -> {
-                try {
-                  String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-                  searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
-                } catch (DocumentMissingException ex) {
-                  handleDocumentMissingException(contextInfo, ex);
-                } catch (ElasticsearchException e) {
-                  handleElasticsearchException(contextInfo, e);
-                } catch (IOException ie) {
-                  handleIOException(contextInfo, ie);
-                }
-              });
+      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+      searchClient.updateSearchEntityUpdated(entity, scriptTxt, "");
     }
   }
 
@@ -846,6 +817,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
+    entity.setChangeDescription(change);
+    postUpdate(entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -916,82 +889,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public void deleteFromSearch(T entity, String changeType) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-                searchClient.softDeleteOrRestoreEntityFromSearch(
-                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-              } else {
-                searchClient.updateSearchEntityDeleted(entity.getEntityReference(), "", "");
-              }
-            } catch (DocumentMissingException ex) {
-              handleDocumentMissingException(contextInfo, ex);
-            } catch (ElasticsearchException e) {
-              handleElasticsearchException(contextInfo, e);
-            } catch (IOException ie) {
-              handleIOException(contextInfo, ie);
-            }
-          });
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+      } else {
+        searchClient.updateSearchEntityDeleted(entity, "", "");
+      }
     }
   }
 
   public void restoreFromSearch(T entity) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      try {
-        searchClient.softDeleteOrRestoreEntityFromSearch(entity.getEntityReference(), false);
-      } catch (DocumentMissingException ex) {
-        handleDocumentMissingException(contextInfo, ex);
-      } catch (ElasticsearchException e) {
-        handleElasticsearchException(contextInfo, e);
-      } catch (IOException ie) {
-        handleIOException(contextInfo, ie);
-      }
+      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "");
     }
-  }
-
-  public void handleDocumentMissingException(String contextInfo, DocumentMissingException ex) {
-    LOG.error("Missing Document", ex);
-    SearchEventPublisher.updateElasticSearchFailureStatus(
-        contextInfo,
-        EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-        String.format(
-            "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
-            ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
-  }
-
-  public void handleElasticsearchException(String contextInfo, ElasticsearchException e) {
-    LOG.debug(e.getMessage());
-    if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
-      LOG.error("Error in publishing to ElasticSearch");
-      SearchEventPublisher.updateElasticSearchFailureStatus(
-          contextInfo,
-          EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-          String.format(
-              "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-              e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-      throw new SearchRetriableException(e.getMessage());
-    } else {
-      SearchEventPublisher.updateElasticSearchFailureStatus(
-          contextInfo,
-          EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-          String.format(
-              "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
-              e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-      LOG.error(e.getMessage(), e);
-    }
-  }
-
-  public void handleIOException(String contextInfo, IOException ie) {
-    SearchEventPublisher.updateElasticSearchFailureStatus(
-        contextInfo,
-        EventPublisherJob.Status.ACTIVE_WITH_ERROR,
-        String.format(
-            "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-            ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
-    throw new EventPublisherException(ie.getMessage());
   }
 
   private DeleteResponse<T> delete(String deletedBy, T original, boolean recursive, boolean hardDelete) {

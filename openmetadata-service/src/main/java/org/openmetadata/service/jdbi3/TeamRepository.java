@@ -50,13 +50,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.index.engine.DocumentMissingException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -231,27 +228,19 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void deleteFromSearch(Team entity, String changeType) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      String scriptTxt =
-          "for (int i = 0; i < ctx._source.teams.length; i++) { if (ctx._source.teams[i].fullyQualifiedName == '%s') { ctx._source.teams.remove(i) }}";
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-                searchClient.softDeleteOrRestoreEntityFromSearch(
-                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-              } else {
-                searchClient.updateSearchEntityDeleted(
-                    entity.getEntityReference(), scriptTxt, "teams.fullyQualifiedName");
-              }
-            } catch (DocumentMissingException ex) {
-              handleDocumentMissingException(contextInfo, ex);
-            } catch (ElasticsearchException e) {
-              handleElasticsearchException(contextInfo, e);
-            } catch (IOException ie) {
-              handleIOException(contextInfo, ie);
-            }
-          });
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "parents.fullyQualifiedName");
+      } else {
+        searchClient.updateSearchEntityDeleted(entity, "", "parents.fullyQualifiedName");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(Team entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "parents.fullyQualifiedName");
     }
   }
 

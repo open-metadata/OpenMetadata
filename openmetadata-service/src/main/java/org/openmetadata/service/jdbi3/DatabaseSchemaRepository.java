@@ -16,13 +16,9 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.resources.EntityResource.searchClient;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.index.engine.DocumentMissingException;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityReference;
@@ -79,7 +75,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public void postUpdate(DatabaseSchema entity) {}
+  public void postUpdate(DatabaseSchema entity) {
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+    searchClient.updateSearchEntityUpdated(entity, scriptTxt, "databaseSchema.fullyQualifiedName");
+  }
 
   private List<EntityReference> getTables(DatabaseSchema schema) {
     return schema == null
@@ -128,25 +127,19 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void deleteFromSearch(DatabaseSchema entity, String changeType) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-                searchClient.softDeleteOrRestoreEntityFromSearch(
-                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-              } else {
-                searchClient.updateSearchEntityDeleted(
-                    entity.getEntityReference(), "", "databaseSchema.fullyQualifiedName");
-              }
-            } catch (DocumentMissingException ex) {
-              handleDocumentMissingException(contextInfo, ex);
-            } catch (ElasticsearchException e) {
-              handleElasticsearchException(contextInfo, e);
-            } catch (IOException ie) {
-              handleIOException(contextInfo, ie);
-            }
-          });
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "databaseSchema.fullyQualifiedName");
+      } else {
+        searchClient.updateSearchEntityDeleted(entity, "", "databaseSchema.fullyQualifiedName");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(DatabaseSchema entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "databaseSchema.fullyQualifiedName");
     }
   }
 

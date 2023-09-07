@@ -123,9 +123,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
   }
 
-  @Override
-  public void postUpdate(TestCase entity) {}
-
   private EntityReference getTestSuite(TestCase test) throws EntityNotFoundException {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
@@ -360,7 +357,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<EntityReference> testCasesEntityReferences = new ArrayList<>();
     List<ResultSummary> resultSummaries = listOrEmpty(testSuite.getTestCaseResultSummary());
     for (UUID testCaseId : testCaseIds) {
-      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
+      postUpdate(testCase);
       // Get the latest result to set the testSuite summary field
       String result =
           daoCollection

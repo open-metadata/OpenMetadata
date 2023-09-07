@@ -17,16 +17,12 @@ import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.EntityResource.searchClient;
 
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.index.engine.DocumentMissingException;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.Include;
@@ -111,44 +107,29 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   @Override
   @SuppressWarnings("unused")
   public void postUpdate(Classification entity) {
-    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            String scriptTxt = "ctx._source.disabled=true";
-            searchClient.updateSearchEntityUpdated(entity.getEntityReference(), scriptTxt);
-          } catch (DocumentMissingException ex) {
-            handleDocumentMissingException(contextInfo, ex);
-          } catch (ElasticsearchException e) {
-            handleElasticsearchException(contextInfo, e);
-          } catch (IOException ie) {
-            handleIOException(contextInfo, ie);
-          }
-        });
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+    if (entity.getDisabled() != null) {
+      scriptTxt = "ctx._source.disabled=" + entity.getDisabled();
+    }
+    searchClient.updateSearchEntityUpdated(entity, scriptTxt, "classification.fullyQualifiedName");
   }
 
   @Override
   public void deleteFromSearch(Classification entity, String changeType) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-                searchClient.softDeleteOrRestoreEntityFromSearch(
-                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-              } else {
-                searchClient.updateSearchEntityDeleted(
-                    entity.getEntityReference(), "", "classification.fullyQualifiedName");
-              }
-            } catch (DocumentMissingException ex) {
-              handleDocumentMissingException(contextInfo, ex);
-            } catch (ElasticsearchException e) {
-              handleElasticsearchException(contextInfo, e);
-            } catch (IOException ie) {
-              handleIOException(contextInfo, ie);
-            }
-          });
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "classification.fullyQualifiedName");
+      } else {
+        searchClient.updateSearchEntityDeleted(entity, "", "classification.fullyQualifiedName");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(Classification entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "classification.fullyQualifiedName");
     }
   }
 

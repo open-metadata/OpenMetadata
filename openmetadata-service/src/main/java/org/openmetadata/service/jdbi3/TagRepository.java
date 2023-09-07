@@ -19,15 +19,11 @@ import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.index.engine.DocumentMissingException;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -104,26 +100,21 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void deleteFromSearch(Tag entity, String changeType) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-                searchClient.softDeleteOrRestoreEntityFromSearch(
-                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-              } else {
-                searchClient.updateSearchEntityDeleted(entity.getEntityReference(), scriptTxt, "tags.tagFQN");
-              }
-            } catch (DocumentMissingException ex) {
-              handleDocumentMissingException(contextInfo, ex);
-            } catch (ElasticsearchException e) {
-              handleElasticsearchException(contextInfo, e);
-            } catch (IOException ie) {
-              handleIOException(contextInfo, ie);
-            }
-          });
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
+      } else {
+        searchClient.deleteEntityAndRemoveRelationships(entity, scriptTxt, "tags.tagFQN");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(Tag entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "tags.tagFQN");
     }
   }
 

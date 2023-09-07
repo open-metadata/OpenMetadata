@@ -83,13 +83,7 @@
         }
       },
       "storedProcedureCode": {
-        "properties": {
-          "type": "keyword"
-        },
-          "code": {
-            "type": "keyword"
-          }
-        }
+        "type": "keyword"
       },
       "version": {
         "type": "float"

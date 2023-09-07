@@ -352,6 +352,9 @@
       "dataProducts": {
         "type": "keyword"
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "location": {
         "properties": {
           "id": {

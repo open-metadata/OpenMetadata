@@ -6,16 +6,12 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.index.engine.DocumentMissingException;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -167,37 +163,33 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public void deleteFromSearch(TestSuite entity, String changeType) {
     if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-                searchClient.softDeleteOrRestoreEntityFromSearch(
-                    entity.getEntityReference(), changeType.equals(RestUtil.ENTITY_SOFT_DELETED));
-              } else {
-                if (Boolean.TRUE.equals(entity.getExecutable())) {
-                  searchClient.updateSearchEntityDeleted(
-                      entity.getEntityReference(), "", "testSuites.fullyQualifiedName");
-                } else {
-                  String scriptTxt =
-                      "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";
-                  searchClient.updateSearchEntityDeleted(
-                      entity.getEntityReference(), scriptTxt, "testSuites.fullyQualifiedName");
-                }
-              }
-            } catch (DocumentMissingException ex) {
-              handleDocumentMissingException(contextInfo, ex);
-            } catch (ElasticsearchException e) {
-              handleElasticsearchException(contextInfo, e);
-            } catch (IOException ie) {
-              handleIOException(contextInfo, ie);
-            }
-          });
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "testSuites.fullyQualifiedName");
+      } else {
+        if (Boolean.TRUE.equals(entity.getExecutable())) {
+          searchClient.updateSearchEntityDeleted(entity, "", "testSuites.fullyQualifiedName");
+        } else {
+          String scriptTxt =
+              "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";
+          searchClient.deleteEntityAndRemoveRelationships(entity, scriptTxt, "testSuites.fullyQualifiedName");
+        }
+      }
     }
   }
 
   @Override
-  public void postUpdate(TestSuite entity) {}
+  public void restoreFromSearch(TestSuite entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "testSuites.fullyQualifiedName");
+    }
+  }
+
+  @Override
+  public void postUpdate(TestSuite entity) {
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+    searchClient.updateSearchEntityUpdated(entity, scriptTxt, "testSuite.fullyQualifiedName");
+  }
 
   public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =

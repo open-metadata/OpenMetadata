@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +31,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.UsageDetails;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType;
@@ -77,13 +74,15 @@ public interface SearchClient {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  void updateSearchEntityCreated(EntityReference entity) throws IOException;
+  void updateSearchEntityCreated(EntityInterface entity);
 
-  void updateSearchEntityDeleted(EntityReference entity, String script, String field) throws IOException;
+  void updateSearchEntityDeleted(EntityInterface entity, String script, String field);
 
-  void softDeleteOrRestoreEntityFromSearch(EntityReference entity, boolean delete) throws IOException;
+  void deleteEntityAndRemoveRelationships(EntityInterface entity, String script, String field);
 
-  void updateSearchEntityUpdated(EntityReference entity, String script) throws IOException;
+  void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete, String field);
+
+  void updateSearchEntityUpdated(EntityInterface entity, String script, String field);
 
   void close();
 
@@ -122,13 +121,13 @@ public interface SearchClient {
       String dataReportIndex)
       throws IOException, ParseException;
 
-  default void getScriptWithParams(ChangeEvent event, String script, Map<String, Object> fieldParams) {
-    ChangeDescription changeDescription = event.getChangeDescription();
+  default void getScriptWithParams(EntityInterface entity, StringBuilder script, Map<String, Object> fieldAddParams) {
+    ChangeDescription changeDescription = entity.getChangeDescription();
 
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
-    Map<String, Object> fieldAddParams = new HashMap<>();
-    fieldAddParams.put("updatedAt", event.getTimestamp());
+    //    Map<String, Object> fieldAddParams = new HashMap<>();
+    fieldAddParams.put("updatedAt", entity.getUpdatedAt());
     scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
@@ -160,7 +159,8 @@ public interface SearchClient {
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
       }
-      if (event.getEntityType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+      if (entity.getEntityReference().getType().equals(QUERY)
+          && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
         fieldAddParams.put(
             fieldChange.getName(),
             JsonUtils.convertValue(
@@ -168,73 +168,15 @@ public interface SearchClient {
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
       }
       if (fieldChange.getName().equalsIgnoreCase("votes")) {
-        Map<String, Object> doc = JsonUtils.getMap(event.getEntity());
+        Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
         scriptTxt.append("ctx._source.votes = params.votes;");
       }
     }
 
     // Set to the Output variables
-    script = scriptTxt.toString();
-    fieldParams = fieldAddParams;
-  }
-
-  default void getScriptWithParams(EntityReference entity, String script, Map<String, Object> fieldParams) {
-    EntityInterface entityInterface = Entity.getEntity(entity, "", Include.ALL);
-    ChangeDescription changeDescription = entityInterface.getChangeDescription();
-
-    List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
-    StringBuilder scriptTxt = new StringBuilder();
-    Map<String, Object> fieldAddParams = new HashMap<>();
-    fieldAddParams.put("updatedAt", entityInterface.getUpdatedAt());
-    scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
-    for (FieldChange fieldChange : fieldsAdded) {
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
-        @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
-        List<String> newFollowers = new ArrayList<>();
-        for (EntityReference follower : entityReferences) {
-          newFollowers.add(follower.getId().toString());
-        }
-        fieldAddParams.put(fieldChange.getName(), newFollowers);
-        scriptTxt.append("ctx._source.followers.addAll(params.followers);");
-      }
-    }
-
-    for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
-        @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
-        for (EntityReference follower : entityReferences) {
-          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
-        }
-        scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
-      }
-    }
-
-    for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
-        UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
-        fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
-        scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
-      }
-      if (entity.getType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
-        fieldAddParams.put(
-            fieldChange.getName(),
-            JsonUtils.convertValue(
-                fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {}));
-        scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
-      }
-      if (fieldChange.getName().equalsIgnoreCase("votes")) {
-        Map<String, Object> doc = JsonUtils.getMap(Entity.getEntity(entity, "", Include.ALL));
-        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
-        scriptTxt.append("ctx._source.votes = params.votes;");
-      }
-    }
-
-    // Set to the Output variables
-    script = scriptTxt.toString();
-    fieldParams = fieldAddParams;
+    script.append(scriptTxt);
+    //    fieldParams = fieldAddParams;
   }
 
   default String getIndexMapping(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang)
