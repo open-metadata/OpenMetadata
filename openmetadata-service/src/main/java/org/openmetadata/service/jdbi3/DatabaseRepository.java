@@ -76,12 +76,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void postUpdate(Database entity) {
-    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    searchClient.updateSearchEntityUpdated(entity, scriptTxt, "database.fullyQualifiedName");
-  }
-
-  @Override
   public void deleteFromSearch(Database entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {

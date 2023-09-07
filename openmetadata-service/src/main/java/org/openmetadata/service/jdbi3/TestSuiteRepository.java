@@ -185,12 +185,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
-  @Override
-  public void postUpdate(TestSuite entity) {
-    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    searchClient.updateSearchEntityUpdated(entity, scriptTxt, "testSuite.fullyQualifiedName");
-  }
-
   public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =
         Entity.getEntityByName(
