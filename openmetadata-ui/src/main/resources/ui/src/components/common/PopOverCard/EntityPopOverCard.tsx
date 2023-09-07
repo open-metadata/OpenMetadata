@@ -28,10 +28,12 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from 'rest/databaseAPI';
+import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getContainerByFQN } from 'rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
@@ -52,7 +54,7 @@ const PopoverContent: React.FC<{
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
@@ -117,6 +119,16 @@ const PopoverContent: React.FC<{
 
         break;
 
+      case EntityType.DASHBOARD_DATA_MODEL:
+        promise = getDataModelDetailsByFQN(entityFQN, fields);
+
+        break;
+
+      case EntityType.STORED_PROCEDURE:
+        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
+
+        break;
+
       default:
         break;
     }
@@ -134,6 +146,8 @@ const PopoverContent: React.FC<{
         .finally(() => {
           setLoading(false);
         });
+    } else {
+      setLoading(false);
     }
   }, [entityType, entityFQN]);
 
@@ -141,6 +155,7 @@ const PopoverContent: React.FC<{
     const entityData = AppState.entityData[entityFQN];
     if (entityData) {
       setEntityData(entityData);
+      setLoading(false);
     } else {
       getData();
     }
@@ -151,7 +166,7 @@ const PopoverContent: React.FC<{
   }, [entityFQN]);
 
   if (loading) {
-    return <Loader />;
+    return <Loader size="small" />;
   }
 
   return (

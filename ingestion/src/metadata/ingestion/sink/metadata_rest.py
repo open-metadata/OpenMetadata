@@ -50,6 +50,7 @@ from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -403,6 +404,16 @@ class MetadataRestSink(Sink):
 
         logger.debug(f"No sample data to PUT for {get_log_name(record.entity)}")
         return Either(right=record.entity)
+
+    @_run_dispatch.register
+    def write_life_cycle_data(self, record: OMetaLifeCycleData) -> Either[Entity]:
+        """
+        Ingest the life cycle data
+        """
+        self.metadata.ingest_life_cycle_data(
+            entity=record.entity, life_cycle_data=record.life_cycle_properties
+        )
+        return Either(right=record)
 
     @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:
