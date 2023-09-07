@@ -49,7 +49,7 @@ public class ChangeEventHandler implements EventHandler {
 
   public void init(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
     this.mapper = new ObjectMapper();
-    this.notificationHandler = new NotificationHandler();
+    this.notificationHandler = new NotificationHandler(jdbiUnitOfWorkProvider);
     this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
   }
 
@@ -66,7 +66,7 @@ public class ChangeEventHandler implements EventHandler {
     try {
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
-        notificationHandler.processNotifications(responseContext, collectionDAO);
+        notificationHandler.processNotifications(responseContext);
       } else {
         ChangeEvent changeEvent = getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
         if (changeEvent != null) {

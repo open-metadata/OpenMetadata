@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +31,7 @@ import java.util.concurrent.Executors;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -40,6 +42,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.socket.WebSocketManager;
 
@@ -47,20 +50,30 @@ import org.openmetadata.service.socket.WebSocketManager;
 public class NotificationHandler {
   private final ObjectMapper mapper;
 
+  private final JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider;
   private final ExecutorService threadScheduler;
 
-  public NotificationHandler() {
+  public NotificationHandler(JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
     this.mapper = new ObjectMapper();
     this.threadScheduler = Executors.newFixedThreadPool(1);
+    this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
   }
 
-  public void processNotifications(ContainerResponseContext responseContext, CollectionDAO collectionDAO) {
+  public void processNotifications(ContainerResponseContext responseContext) {
     threadScheduler.submit(
         () -> {
+          Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
+          handle.begin();
           try {
+            CollectionDAO collectionDAO =
+                (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
             handleNotifications(responseContext, collectionDAO);
-          } catch (JsonProcessingException e) {
-            LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", e);
+            handle.commit();
+          } catch (Exception ex) {
+            handle.rollback();
+            LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
+          } finally {
+            jdbiUnitOfWorkProvider.getHandleManager().clear();
           }
         });
   }
