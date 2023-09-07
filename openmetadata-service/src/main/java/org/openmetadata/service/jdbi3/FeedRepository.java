@@ -56,7 +56,9 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Reaction;
@@ -128,12 +130,25 @@ public class FeedRepository {
     @Getter protected final Thread thread;
     @Getter @Setter protected final EntityLink about;
     @Getter @Setter protected EntityInterface aboutEntity;
-    @Getter private final EntityReference createdBy;
+    @Getter private EntityReference createdBy;
 
     ThreadContext(Thread thread) {
       this.thread = thread;
       this.about = EntityLink.parse(thread.getAbout());
       this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+      this.createdBy = Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
+      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+    }
+
+    ThreadContext(Thread thread, ChangeEvent event) {
+      this.thread = thread;
+      this.about = EntityLink.parse(thread.getAbout());
+      if (event.getEventType().equals(EventType.ENTITY_DELETED)) {
+        String json = (String) event.getEntity();
+        this.aboutEntity = JsonUtils.readValue(json, Entity.getEntityClassFromType(event.getEntityType()));
+      } else {
+        this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+      }
       this.createdBy = Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
       thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     }
@@ -185,8 +200,17 @@ public class FeedRepository {
     return new ThreadContext(thread);
   }
 
+  private ThreadContext getThreadContext(Thread thread, ChangeEvent event) {
+    return new ThreadContext(thread, event);
+  }
+
   public Thread create(Thread thread) {
     ThreadContext threadContext = getThreadContext(thread);
+    return createThread(threadContext);
+  }
+
+  public Thread create(Thread thread, ChangeEvent event) {
+    ThreadContext threadContext = getThreadContext(thread, event);
     return createThread(threadContext);
   }
 

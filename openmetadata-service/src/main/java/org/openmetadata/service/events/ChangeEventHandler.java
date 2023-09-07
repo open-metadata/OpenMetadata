@@ -16,6 +16,7 @@ package org.openmetadata.service.events;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -24,7 +25,6 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -34,6 +34,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.JsonUtils;
@@ -44,21 +45,25 @@ public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
   private NotificationHandler notificationHandler;
 
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  private JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider;
+
+  public void init(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
     this.mapper = new ObjectMapper();
     this.notificationHandler = new NotificationHandler();
+    this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext, Jdbi jdbi) {
+  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
-    Handle handle = jdbi.open();
-    CollectionDAO collectionDAO = handle.attach(CollectionDAO.class);
+    Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
+    handle.begin();
+    CollectionDAO collectionDAO =
+        (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
     FeedRepository feedRepository = new FeedRepository(collectionDAO);
     try {
-      handle.begin();
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
         notificationHandler.processNotifications(responseContext, collectionDAO);
@@ -89,7 +94,7 @@ public class ChangeEventHandler implements EventHandler {
             for (Thread thread : listOrEmpty(FeedUtils.getThreads(changeEvent, loggedInUserName))) {
               // Don't create a thread if there is no message
               if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
-                feedRepository.create(thread);
+                feedRepository.create(thread, changeEvent);
                 String jsonThread = mapper.writeValueAsString(thread);
                 WebSocketManager.getInstance()
                     .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
@@ -106,7 +111,7 @@ public class ChangeEventHandler implements EventHandler {
       handle.rollback();
       LOG.error("Failed to capture change event for method {} due to ", method, e);
     } finally {
-      handle.close();
+      jdbiUnitOfWorkProvider.getHandleManager().clear();
     }
     return null;
   }
