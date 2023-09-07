@@ -39,7 +39,8 @@
         "EditTier",
         "EditTests",
         "EditUsage",
-        "EditUsers"
+        "EditUsers",
+        "EditLifeCycle"
       ]
     }
   },

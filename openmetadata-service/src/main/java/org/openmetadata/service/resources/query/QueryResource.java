@@ -383,6 +383,28 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return repository.addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
   }
 
+  @PUT
+  @Path("/{id}/users")
+  @Operation(
+      operationId = "addQueryUsers",
+      summary = "Add query users",
+      description = "Add query users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Response addQueryUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid List<String> userFqnList) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return repository.AddQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList).toResponse();
+  }
+
   @DELETE
   @Path("/{id}/usage")
   @Operation(

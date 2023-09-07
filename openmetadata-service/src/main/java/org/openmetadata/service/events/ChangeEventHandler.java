@@ -86,7 +86,7 @@ public class ChangeEventHandler implements EventHandler {
             for (Thread thread : listOrEmpty(FeedUtils.getThreads(changeEvent, loggedInUserName))) {
               // Don't create a thread if there is no message
               if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
-                feedDao.create(thread, responseContext);
+                feedDao.create(thread);
                 String jsonThread = mapper.writeValueAsString(thread);
                 WebSocketManager.getInstance()
                     .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
