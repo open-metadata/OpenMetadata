@@ -536,4 +536,12 @@ public final class EntityUtil {
   public static boolean isTagTask(TaskType taskType) {
     return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
   }
+
+  public static Column findColumn(List<Column> columns, String columnName) {
+    return columns.stream()
+        .filter(c -> c.getName().equals(columnName))
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
+  }
 }
