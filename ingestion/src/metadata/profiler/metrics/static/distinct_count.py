@@ -17,7 +17,6 @@ Distinct Count Metric definition
 
 from sqlalchemy import column, distinct, func
 
-from metadata.generated.schema.entity.data.table import DataType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.count import CountFn
 from metadata.utils.logger import profiler_logger
