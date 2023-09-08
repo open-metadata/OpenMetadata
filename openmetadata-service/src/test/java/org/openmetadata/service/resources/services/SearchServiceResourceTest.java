@@ -12,8 +12,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
@@ -93,14 +91,13 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
   }
 
   @Test
-  void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+  void put_updateService_as_admin_2xx(TestInfo test) throws IOException {
     SearchConnection connection1 =
-        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
+        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9300"));
     SearchService service =
         createAndCheckEntity(createRequest(test).withDescription(null).withConnection(connection1), ADMIN_AUTH_HEADERS);
 
-    ElasticSearchConnection credentials2 =
-        new ElasticSearchConnection().withHostPort(new URI("https://localhost:9400"));
+    ElasticSearchConnection credentials2 = new ElasticSearchConnection().withHostPort("https://localhost:9400");
     SearchConnection connection2 = new SearchConnection().withConfig(credentials2);
 
     // Update SearchService description and connection
@@ -139,16 +136,11 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
 
   @Override
   public CreateSearchService createRequest(String name) {
-    try {
-      return new CreateSearchService()
-          .withName(name)
-          .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
-          .withConnection(
-              new SearchConnection()
-                  .withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9200"))));
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
-    }
+    return new CreateSearchService()
+        .withName(name)
+        .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
+        .withConnection(
+            new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9200")));
   }
 
   @Override
