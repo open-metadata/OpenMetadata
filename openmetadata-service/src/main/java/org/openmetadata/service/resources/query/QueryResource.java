@@ -72,7 +72,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("users,votes,queryUsedIn", MetadataOperation.VIEW_BASIC);
+    addViewOperation("users,queryUsedIn", MetadataOperation.VIEW_BASIC);
     return null;
   }
 
@@ -321,9 +321,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @PUT
   @Path("/{id}/vote")
   @Operation(
-      operationId = "updateVote",
-      summary = "Update Vote for a query",
-      description = "Update vote for a query",
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -334,7 +334,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid VoteRequest request) {
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }

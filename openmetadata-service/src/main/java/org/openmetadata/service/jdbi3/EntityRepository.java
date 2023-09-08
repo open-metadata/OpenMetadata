@@ -244,6 +244,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_EXTENSION);
     }
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
+    if (supportsVotes) {
+      this.patchFields.addField(allowedFields, FIELD_VOTES);
+      this.putFields.addField(allowedFields, FIELD_VOTES);
+    }
     this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
     if (supportsDomain) {
       this.patchFields.addField(allowedFields, FIELD_DOMAIN);
@@ -670,6 +674,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+    entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
     setFields(entity, fields);
     return entity;
   }
@@ -684,6 +689,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? entity.getExperts() : null);
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? entity.getReviewers() : null);
+    entity.setVotes(fields.contains(FIELD_VOTES) ? entity.getVotes() : null);
     clearFields(entity, fields);
     return entity;
   }
