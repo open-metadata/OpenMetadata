@@ -19,9 +19,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
-from metadata.pii.constants import SPACY_EN_MODEL
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.pii.constants import PII, SPACY_EN_MODEL
 from metadata.pii.models import TagAndConfidence, TagType
 from metadata.pii.ner import NEREntity
+from metadata.utils import fqn
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
@@ -118,6 +120,14 @@ class NERScanner:
         if entities_score:
             label, score = self.get_highest_score_label(entities_score)
             tag_type = NEREntity.__members__.get(label, TagType.NONSENSITIVE).value
-            return TagAndConfidence(tag=tag_type, confidence=score)
+            return TagAndConfidence(
+                tag_fqn=fqn.build(
+                    metadata=None,
+                    entity_type=Tag,
+                    classification_name=PII,
+                    tag_name=tag_type,
+                ),
+                confidence=score,
+            )
 
         return None

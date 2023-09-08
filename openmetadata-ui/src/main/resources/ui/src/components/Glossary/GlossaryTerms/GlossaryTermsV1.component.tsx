@@ -30,6 +30,7 @@ import { getCountBadge } from 'utils/CommonUtils';
 import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
+import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 type Props = {
@@ -247,8 +248,9 @@ const GlossaryTermsV1 = ({
       </Row>
       {glossaryTerm.fullyQualifiedName && (
         <AssetSelectionModal
-          glossaryFQN={glossaryTerm.fullyQualifiedName}
+          entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}
+          type={AssetsOfEntity.GLOSSARY}
           onCancel={() => setAssetModelVisible(false)}
           onSave={handleAssetSave}
         />

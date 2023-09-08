@@ -75,6 +75,7 @@ import {
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
+  getStoredProcedureDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
   getVersionPath,
@@ -96,8 +97,15 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import StoredProcedureVersion from 'components/StoredProcedureVersion/StoredProcedureVersion.component';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { isEmpty } from 'lodash';
+import {
+  getStoredProceduresDetailsByFQN,
+  getStoredProceduresVersion,
+  getStoredProceduresVersionsList,
+} from 'rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import './EntityVersionPage.less';
@@ -109,6 +117,7 @@ export type VersionData =
   | Pipeline
   | Mlmodel
   | Container
+  | StoredProcedure
   | DashboardDataModel;
 
 const EntityVersionPage: FunctionComponent = () => {
@@ -172,6 +181,11 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
       case EntityType.DASHBOARD_DATA_MODEL:
         history.push(getDataModelDetailsPath(entityFQN, tab));
+
+        break;
+
+      case EntityType.STORED_PROCEDURE:
+        history.push(getStoredProcedureDetailsPath(entityFQN, tab));
 
         break;
 
@@ -262,6 +276,11 @@ const EntityVersionPage: FunctionComponent = () => {
         }
         case EntityType.DASHBOARD_DATA_MODEL: {
           await fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
+
+          break;
+        }
+        case EntityType.STORED_PROCEDURE: {
+          await fetchResourcePermission(ResourceEntity.STORED_PROCEDURE);
 
           break;
         }
@@ -395,6 +414,18 @@ const EntityVersionPage: FunctionComponent = () => {
           break;
         }
 
+        case EntityType.STORED_PROCEDURE: {
+          const { id } = await getStoredProceduresDetailsByFQN(entityFQN, '');
+
+          setEntityId(id ?? '');
+
+          const versions = await getStoredProceduresVersionsList(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
+
         default:
           break;
       }
@@ -506,6 +537,27 @@ const EntityVersionPage: FunctionComponent = () => {
                 getEntityBreadcrumbs(
                   currentVersion,
                   EntityType.DASHBOARD_DATA_MODEL
+                )
+              );
+
+              break;
+            }
+
+            case EntityType.STORED_PROCEDURE: {
+              const currentVersion = await getStoredProceduresVersion(
+                id,
+                version
+              );
+
+              const { owner, tags = [] } = currentVersion;
+
+              setEntityState(
+                tags,
+                owner,
+                currentVersion,
+                getEntityBreadcrumbs(
+                  currentVersion,
+                  EntityType.STORED_PROCEDURE
                 )
               );
 
@@ -656,6 +708,25 @@ const EntityVersionPage: FunctionComponent = () => {
             slashedDataModelName={slashedEntityName}
             tier={tier as TagLabel}
             topicFQN={entityFQN}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+
+      case EntityType.STORED_PROCEDURE: {
+        return (
+          <StoredProcedureVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData}
+            deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owner={owner}
+            slashedTableName={slashedEntityName}
+            storedProcedureFQN={entityFQN}
+            tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}

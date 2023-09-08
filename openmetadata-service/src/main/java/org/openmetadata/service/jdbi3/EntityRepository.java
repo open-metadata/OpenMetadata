@@ -81,6 +81,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.json.JsonPatch;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
@@ -91,6 +92,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -109,8 +111,8 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -123,7 +125,8 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -328,26 +331,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Set fullyQualifiedName of an entity */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
-  }
-
-  /** Update an entity based suggested description and tags in the task */
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
-    TaskType taskType = task.getType();
-    T entity = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL, false);
-    String origJson = JsonUtils.pojoToJson(entity);
-    if (EntityUtil.isDescriptionTask(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
-      entity.setDescription(newValue);
-    } else if (supportsTags && EntityUtil.isTagTask(taskType) && entityLink.getFieldName().equals("tags")) {
-      List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-      entity.setTags(tags);
-    } else {
-      // Not supported
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), task.getType()));
-    }
-    String updatedEntityJson = JsonUtils.pojoToJson(entity);
-    JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
-    patch(null, entity.getId(), user, patch);
   }
 
   /**
@@ -1683,6 +1666,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity.getTags();
   }
 
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else {
+      throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
+    }
+  }
+
+  public void validateTaskThread(ThreadContext threadContext) {
+    ThreadType threadType = threadContext.getThread().getType();
+    if (threadType != ThreadType.Task) {
+      throw new IllegalArgumentException(String.format("Thread type %s is not task related", threadType));
+    }
+  }
+
   public enum Operation {
     PUT,
     PATCH,
@@ -2321,11 +2323,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
     @Override
-    public EntityInterface load(@CheckForNull Pair<String, UUID> idPair) throws IOException {
+    public EntityInterface load(@NotNull Pair<String, UUID> idPair) throws IOException {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
       return repository.getDao().findEntityById(id, ALL);
+    }
+  }
+
+  public static class DescriptionTaskWorkflow extends TaskWorkflow {
+    DescriptionTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      EntityInterface aboutEntity = threadContext.getAboutEntity();
+      aboutEntity.setDescription(resolveTask.getNewValue());
+      return aboutEntity;
+    }
+  }
+
+  public static class TagTaskWorkflow extends TaskWorkflow {
+    TagTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      EntityInterface aboutEntity = threadContext.getAboutEntity();
+      aboutEntity.setTags(tags);
+      return aboutEntity;
     }
   }
 }

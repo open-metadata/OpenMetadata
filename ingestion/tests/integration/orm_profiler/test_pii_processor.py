@@ -72,7 +72,8 @@ table_data = TableData(
         ColumnName(__root__="first_name"),
         ColumnName(__root__="last_name"),
         ColumnName(__root__="first_order"),
-        ColumnName(__root__="customer_email"),
+        # Apply a random name to force the NER scanner execution here
+        ColumnName(__root__="random"),
         ColumnName(__root__="number_of_orders"),
     ],
     rows=[
@@ -120,44 +121,27 @@ EXPECTED_COLUMN_TAGS = [
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_name",
         tag_label=TagLabel(
             tagFQN=TagFQN(__root__="PII.Sensitive"),
-            description=(
-                "PII which if lost, compromised, or disclosed without authorization, could result in"
-                " substantial harm, embarrassment, inconvenience, or unfairness to an individual."
-            ),
             source="Classification",
             labelType="Automated",
             state="Suggested",
-            href=None,
         ),
     ),
     PatchColumnTagResponse(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_order",
         tag_label=TagLabel(
             tagFQN=TagFQN(__root__="PII.NonSensitive"),
-            description=(
-                "PII which is easily accessible from public sources and can include zip code, "
-                "race, gender, and date of birth."
-            ),
             source="Classification",
             labelType="Automated",
             state="Suggested",
-            href=None,
         ),
     ),
     PatchColumnTagResponse(
-        column_fqn="test-service-table-patch.test-db.test-schema.customers.customer_email",
+        column_fqn="test-service-table-patch.test-db.test-schema.customers.random",
         tag_label=TagLabel(
             tagFQN=TagFQN(__root__="PII.Sensitive"),
-            description=(
-                (
-                    "PII which if lost, compromised, or disclosed without authorization, could result in"
-                    " substantial harm, embarrassment, inconvenience, or unfairness to an individual."
-                )
-            ),
             source="Classification",
             labelType="Automated",
             state="Suggested",
-            href=None,
         ),
     ),
 ]
@@ -198,9 +182,7 @@ class PiiProcessorTest(TestCase):
     )
 
     metadata = OpenMetadata(server_config)
-    ner_scanner_processor = PIIProcessor(
-        config=workflow_config, metadata_config=server_config
-    )
+    pii_processor = PIIProcessor(config=workflow_config, metadata_config=server_config)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -309,30 +291,12 @@ class PiiProcessorTest(TestCase):
                 Column(name="first_name", dataType=DataType.VARCHAR, dataLength=20),
                 Column(name="last_name", dataType=DataType.VARCHAR, dataLength=20),
                 Column(name="first_order", dataType=DataType.DATE),
-                Column(name="customer_email", dataType=DataType.VARCHAR, dataLength=20),
+                Column(name="random", dataType=DataType.VARCHAR, dataLength=20),
                 Column(name="number_of_orders", dataType=DataType.BIGINT),
             ],
             databaseSchema=create_schema_entity.fullyQualifiedName,
         )
         cls.table_entity = cls.metadata.create_or_update(data=created_table)
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-table-patch"
-            ).id.__root__
-        )
-
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
 
     def test_ner_scanner_process(self):
         """
@@ -351,7 +315,7 @@ class PiiProcessorTest(TestCase):
             sample_data=table_data,
         )
 
-        updated_record: ProfilerResponse = self.ner_scanner_processor.run(record)
+        updated_record: ProfilerResponse = self.pii_processor.run(record)
 
         for _, (expected, original) in enumerate(
             zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags)

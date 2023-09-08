@@ -84,8 +84,10 @@ describe('Check if tags addition and removal flow working properly from tables',
     cy.login();
   });
 
-  TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) =>
-    it(`Adding and removing tags to the ${entityDetails.entity} entity should work properly`, () => {
+  TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) => {
+    it(`Adding & removing tags to the ${entityDetails.entity} entity`, () => {
+      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
+
       interceptURL(
         'GET',
         `/api/v1/${entityDetails.entity}/name/*?fields=*`,
@@ -103,6 +105,7 @@ describe('Check if tags addition and removal flow working properly from tables',
         entityDetails.entity
       );
       verifyResponseStatusCode('@getEntityDetail', 200);
+      verifyResponseStatusCode('@getEntityPermission', 200);
 
       cy.get(
         '[data-testid="entity-right-panel"] [data-testid="tags-container"]'
@@ -127,6 +130,44 @@ describe('Check if tags addition and removal flow working properly from tables',
       checkTags(entityDetails.tags[0], true);
 
       removeTags(true);
+    });
+
+    it(`Adding & removing tags to the ${entityDetails.entity} entity schema table`, () => {
+      interceptURL(
+        'GET',
+        `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+        'getEntityDetail'
+      );
+      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
+      interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
+      interceptURL(
+        'PATCH',
+        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+        'tagsChange'
+      );
+      if (entityDetails.insideEntity) {
+        interceptURL(
+          'GET',
+          `/api/v1/${entityDetails.insideEntity}/*`,
+          'getInsideColumn'
+        );
+        interceptURL(
+          'GET',
+          `/api/v1/permissions/chart/*`,
+          'getInsideColumnPermission'
+        );
+      }
+      visitEntityDetailsPage(
+        entityDetails.term,
+        entityDetails.serviceName,
+        entityDetails.entity
+      );
+      verifyResponseStatusCode('@getEntityDetail', 200);
+      verifyResponseStatusCode('@getEntityPermission', 200);
+      if (entityDetails.insideEntity) {
+        verifyResponseStatusCode('@getInsideColumn', 200);
+        verifyResponseStatusCode('@getInsideColumnPermission', 200);
+      }
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
@@ -165,6 +206,6 @@ describe('Check if tags addition and removal flow working properly from tables',
       entityDetails.tags.map((tag) => checkTags(tag));
 
       removeTags(false, entityDetails.separate);
-    })
-  );
+    });
+  });
 });

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import AddDomain from 'components/Domain/AddDomain/AddDomain.component';
+import DomainPage from 'components/Domain/DomainPage.component';
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -275,6 +277,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         permissions
       ),
 
+    [permissions]
+  );
+
+  const domainPermission = useMemo(
+    () =>
+      userPermissions.hasViewPermissions(ResourceEntity.DOMAIN, permissions),
     [permissions]
   );
 
@@ -566,6 +574,26 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
+      <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN_DETAILS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN_DETAILS_WITH_TAB}
+      />
+
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
       <AdminProtectedRoute
         exact

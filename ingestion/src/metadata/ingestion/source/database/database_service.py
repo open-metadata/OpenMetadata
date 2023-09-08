@@ -51,6 +51,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -140,6 +141,13 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+            ),
+            NodeStage(
+                type_=OMetaLifeCycleData,
+                context="life_cycle",
+                processor="yield_life_cycle_data",
+                ack_sink=False,
+                nullable=True,
             ),
         ],
     )
@@ -419,6 +427,11 @@ class DatabaseServiceSource(
                         mark_deleted_entity=self.source_config.markDeletedTables,
                         params={"database": schema_fqn},
                     )
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
