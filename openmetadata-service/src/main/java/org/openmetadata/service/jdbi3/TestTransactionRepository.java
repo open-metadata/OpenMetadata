@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.UsageDetails;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -47,7 +46,6 @@ public class TestTransactionRepository {
     throw new IllegalArgumentException("Rollback Transaction");
   }
 
-  @JdbiUnitOfWork
   public Table createOrUpdateTableWithJdbiUnitOfWork(Table table) throws JsonProcessingException {
     dao.tableDAO().insert(table, FullyQualifiedName.buildHash(table.getFullyQualifiedName()));
     return table;

@@ -59,7 +59,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
@@ -264,7 +263,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createPipeline",
@@ -283,7 +281,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return create(uriInfo, securityContext, pipeline);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -308,7 +305,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdatePipeline",
@@ -392,7 +388,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return repository.getPipelineStatuses(fqn, startTs, endTs);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{fqn}/status/{timestamp}")
   @Operation(
@@ -420,7 +415,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return addHref(uriInfo, pipeline);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -443,7 +437,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -466,7 +459,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -488,7 +480,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -512,7 +503,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

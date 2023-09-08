@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3.unitofwork;
 
 import javax.ws.rs.HttpMethod;
 import lombok.extern.slf4j.Slf4j;
-import org.glassfish.jersey.server.model.ResourceMethod;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
 
@@ -36,18 +35,10 @@ class NonHttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListen
   }
 
   private boolean isTransactional(RequestEvent event) {
-    ResourceMethod method = event.getUriInfo().getMatchedResourceMethod();
     String httpMethod = event.getContainerRequest().getMethod();
-    if (httpMethod.equals(HttpMethod.POST)
+    return httpMethod.equals(HttpMethod.POST)
         || httpMethod.equals(HttpMethod.PUT)
         || httpMethod.equals(HttpMethod.PATCH)
-        || httpMethod.equals(HttpMethod.DELETE)) {
-      return true;
-    }
-    if (method != null) {
-      JdbiUnitOfWork annotation = method.getInvocable().getDefinitionMethod().getAnnotation(JdbiUnitOfWork.class);
-      return annotation != null;
-    }
-    return false;
+        || httpMethod.equals(HttpMethod.DELETE);
   }
 }

@@ -59,7 +59,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -212,7 +211,6 @@ public class PipelineServiceResource
     return decryptOrNullify(securityContext, pipelineService);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/testConnectionResult")
   @Operation(
@@ -301,7 +299,6 @@ public class PipelineServiceResource
     return decryptOrNullify(securityContext, pipelineService);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createPipelineService",
@@ -323,7 +320,6 @@ public class PipelineServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdatePipelineService",
@@ -345,7 +341,6 @@ public class PipelineServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -370,7 +365,6 @@ public class PipelineServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -398,7 +392,6 @@ public class PipelineServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -424,7 +417,6 @@ public class PipelineServiceResource
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

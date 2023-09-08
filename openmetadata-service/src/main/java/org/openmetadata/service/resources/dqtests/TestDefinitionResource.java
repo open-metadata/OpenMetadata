@@ -45,7 +45,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -281,7 +280,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return create(uriInfo, securityContext, testDefinition);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -306,7 +304,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateTestDefinition",
@@ -324,7 +321,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return createOrUpdate(uriInfo, securityContext, testDefinition);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -346,7 +342,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -369,7 +364,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

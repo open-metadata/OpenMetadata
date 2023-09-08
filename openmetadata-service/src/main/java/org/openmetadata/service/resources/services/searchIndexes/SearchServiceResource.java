@@ -47,7 +47,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SearchServiceRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -289,7 +288,6 @@ public class SearchServiceResource
     return decryptOrNullify(securityContext, searchService);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createSearchService",
@@ -310,7 +308,6 @@ public class SearchServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateSearchService",
@@ -331,7 +328,6 @@ public class SearchServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -356,7 +352,6 @@ public class SearchServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -383,7 +378,6 @@ public class SearchServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -406,7 +400,6 @@ public class SearchServiceResource
     return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

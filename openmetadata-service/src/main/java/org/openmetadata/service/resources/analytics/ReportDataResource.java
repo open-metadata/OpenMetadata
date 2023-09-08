@@ -31,7 +31,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -100,7 +99,6 @@ public class ReportDataResource {
   }
 
   @POST
-  @JdbiUnitOfWork
   @Operation(
       operationId = "addReportData",
       summary = "Add data to a data insight report",
@@ -121,7 +119,6 @@ public class ReportDataResource {
 
   @DELETE
   @Path("/{reportDataType}/{date}")
-  @JdbiUnitOfWork
   @Operation(
       operationId = "deleteReportData",
       summary = "Delete report data for a given report data type ando date",

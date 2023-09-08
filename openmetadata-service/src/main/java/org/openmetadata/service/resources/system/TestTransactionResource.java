@@ -22,7 +22,6 @@ import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TestTransactionRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.RestUtil;
@@ -70,7 +69,6 @@ public class TestTransactionResource {
   }
 
   @PUT
-  @JdbiUnitOfWork
   @Path("/createwithunitofwork")
   @Operation(
       operationId = "createOrUpdate",
@@ -116,7 +114,6 @@ public class TestTransactionResource {
   }
 
   @PUT
-  @JdbiUnitOfWork
   @Path("/updatewithjdbi")
   @Operation(
       operationId = "createOrUpdate",
@@ -163,7 +160,6 @@ public class TestTransactionResource {
   }
 
   @PUT
-  @JdbiUnitOfWork
   @Path("/updatewithjdbiwitherror")
   @Operation(
       operationId = "createOrUpdate",

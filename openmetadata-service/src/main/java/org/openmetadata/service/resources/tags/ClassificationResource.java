@@ -56,7 +56,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -252,7 +251,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
   }
 
   @POST
-  @JdbiUnitOfWork
   @Operation(
       operationId = "createClassification",
       summary = "Create a classification",
@@ -273,7 +271,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
     return create(uriInfo, securityContext, category);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateClassification",
@@ -285,7 +282,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
     return createOrUpdate(uriInfo, securityContext, category);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -310,7 +306,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -332,7 +327,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -355,7 +349,6 @@ public class ClassificationResource extends EntityResource<Classification, Class
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

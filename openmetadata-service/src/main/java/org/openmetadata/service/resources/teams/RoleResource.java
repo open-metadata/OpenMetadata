@@ -60,7 +60,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -285,7 +284,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createRole",
@@ -304,7 +302,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return create(uriInfo, securityContext, role);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateRole",
@@ -323,7 +320,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return createOrUpdate(uriInfo, securityContext, role);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -348,7 +344,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -372,7 +367,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -394,7 +388,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

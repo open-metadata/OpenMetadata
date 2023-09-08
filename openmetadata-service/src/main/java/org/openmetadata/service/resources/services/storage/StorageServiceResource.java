@@ -47,7 +47,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -205,7 +204,6 @@ public class StorageServiceResource
     return decryptOrNullify(securityContext, storageService);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/testConnectionResult")
   @Operation(
@@ -314,7 +312,6 @@ public class StorageServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateStorageService",
@@ -336,7 +333,6 @@ public class StorageServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -361,7 +357,6 @@ public class StorageServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -388,7 +383,6 @@ public class StorageServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -411,7 +405,6 @@ public class StorageServiceResource
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

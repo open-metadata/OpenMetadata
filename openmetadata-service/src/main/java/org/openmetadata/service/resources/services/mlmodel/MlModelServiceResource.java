@@ -61,7 +61,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -213,7 +212,6 @@ public class MlModelServiceResource
     return decryptOrNullify(securityContext, mlModelService);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/testConnectionResult")
   @Operation(
@@ -302,7 +300,6 @@ public class MlModelServiceResource
     return decryptOrNullify(securityContext, mlModelService);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createMlModelService",
@@ -324,7 +321,6 @@ public class MlModelServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateMlModelService",
@@ -346,7 +342,6 @@ public class MlModelServiceResource
     return response;
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -371,7 +366,6 @@ public class MlModelServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -399,7 +393,6 @@ public class MlModelServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -424,7 +417,6 @@ public class MlModelServiceResource
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

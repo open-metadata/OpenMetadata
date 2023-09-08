@@ -46,7 +46,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -308,7 +307,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return super.getVersionInternal(securityContext, id, version, operationContext, resourceContext);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createTestCase",
@@ -334,7 +332,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return Response.created(test.getHref()).entity(test).build();
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -366,7 +363,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return response.toResponse();
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{fqn}/testCaseResult/{timestamp}")
   @Operation(
@@ -400,7 +396,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return patchResponse.toResponse();
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateTest",
@@ -427,7 +422,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return response.toResponse();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -456,7 +450,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return response.toResponse();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -480,7 +473,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/logicalTestCases/{testSuiteId}/{id}")
   @Operation(
@@ -503,7 +495,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return response.toResponse();
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -521,7 +512,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{fqn}/testCaseResult")
   @Operation(
@@ -587,7 +577,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.getTestCaseResults(fqn, startTs, endTs);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{fqn}/testCaseResult/{timestamp}")
   @Operation(
@@ -615,7 +604,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp).toResponse();
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/logicalTestCases")
   @Operation(

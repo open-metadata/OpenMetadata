@@ -45,7 +45,6 @@ import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -70,7 +69,6 @@ public class UsageRepository {
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
-  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> create(String entityType, String id, DailyCount usage) {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);

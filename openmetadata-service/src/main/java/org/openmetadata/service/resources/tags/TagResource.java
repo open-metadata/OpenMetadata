@@ -68,7 +68,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -363,7 +362,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createTag",
@@ -381,7 +379,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return create(uriInfo, securityContext, tag);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -406,7 +403,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateTag",
@@ -425,7 +421,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return createOrUpdate(uriInfo, securityContext, tag);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -451,7 +446,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -474,7 +468,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

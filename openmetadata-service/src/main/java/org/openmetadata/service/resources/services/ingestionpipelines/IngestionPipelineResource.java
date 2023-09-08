@@ -78,7 +78,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -413,7 +412,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return response;
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -441,7 +439,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return response;
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateIngestionPipeline",
@@ -465,7 +462,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return response;
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/deploy/{id}")
   @Operation(
@@ -489,7 +485,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return deployPipelineInternal(id, uriInfo, securityContext);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/bulk/deploy")
   @Operation(
@@ -522,7 +517,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .collect(Collectors.toList());
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/trigger/{id}")
   @Operation(
@@ -553,7 +547,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return pipelineServiceClient.runPipeline(ingestionPipeline, service);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/toggleIngestion/{id}")
   @Operation(
@@ -583,7 +576,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return response;
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/kill/{id}")
   @Operation(
@@ -643,7 +635,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return pipelineServiceClient.getServiceStatus();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -666,7 +657,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -690,7 +680,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -734,7 +723,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{fqn}/pipelineStatus")
   @Operation(
@@ -822,7 +810,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return repository.getPipelineStatus(fqn, runId);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/pipelineStatus")
   @Operation(

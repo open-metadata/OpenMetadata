@@ -43,7 +43,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UsageRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -154,7 +153,6 @@ public class UsageResource {
     return addHref(uriInfo, dao.getByName(entity, fqn, actualDate, actualDays));
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/{entity}/{id}")
   @Operation(
@@ -221,7 +219,6 @@ public class UsageResource {
     return dao.createOrUpdate(entity, id, usage).toResponse();
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/{entity}/name/{fqn}")
   @Operation(
@@ -259,7 +256,6 @@ public class UsageResource {
     return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{entity}/name/{fqn}")
   @Operation(
@@ -297,7 +293,6 @@ public class UsageResource {
     return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
   }
 
-  @JdbiUnitOfWork
   @POST
   @Path("/compute.percentile/{entity}/{date}")
   @Operation(
