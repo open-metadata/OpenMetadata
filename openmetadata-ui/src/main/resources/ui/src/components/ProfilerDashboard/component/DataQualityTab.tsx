@@ -32,11 +32,12 @@ import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { compare } from 'fast-json-patch';
 import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
 import { Operation } from 'generated/entity/policies/policy';
 import { isUndefined, sortBy } from 'lodash';
 import QueryString from 'qs';
-import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
+import { patchTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getEncodedFqn, replacePlus } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -119,14 +120,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const handleStatusSubmit = async (data: TestCaseFailureStatus) => {
-    if (selectedTestCase?.data) {
+    if (selectedTestCase?.data?.testCaseResult) {
+      const timestamp = selectedTestCase.data?.testCaseResult.timestamp ?? 0;
       const updatedResult: TestCaseResult = {
         ...selectedTestCase.data?.testCaseResult,
         testCaseFailureStatus: data,
       };
       const testCaseFqn = selectedTestCase.data?.fullyQualifiedName ?? '';
+      const patch = compare(
+        selectedTestCase.data.testCaseResult,
+        updatedResult
+      );
       try {
-        await putTestCaseResult(testCaseFqn, updatedResult);
+        await patchTestCaseResult({ testCaseFqn, patch, timestamp });
 
         onTestCaseResultUpdate?.({
           ...selectedTestCase.data,
