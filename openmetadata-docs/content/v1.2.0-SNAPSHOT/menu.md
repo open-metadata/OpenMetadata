@@ -487,6 +487,13 @@ site_menu:
   - category: Connectors / Storage / S3 / Run Externally
     url: /connectors/storage/s3/yaml
 
+  - category: Connectors / Search
+    url: /connectors/search
+  - category: Connectors / Search / ElasticSearch
+    url: /connectors/search/elasticsearch
+  - category: Connectors / Search / ElasticSearch / Run Externally
+    url: /connectors/search/elasticsearch/yaml
+
   - category: Connectors / Metadata
     url: /connectors/metadata
   - category: Connectors / Metadata / Amundsen
