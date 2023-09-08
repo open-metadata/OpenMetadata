@@ -43,6 +43,7 @@ import {
   StoredProcedureCodeObject,
 } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import i18next from 'i18next';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import {
@@ -96,7 +97,12 @@ import {
 } from './CommonUtils';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import {
@@ -1038,6 +1044,8 @@ export const getEntityLinkFromType = (
       return getContainerDetailPath(fullyQualifiedName);
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
+    case EntityType.DATA_PRODUCT:
+      return getDataProductsDetailsPath(getEncodedFqn(fullyQualifiedName));
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(fullyQualifiedName);
     case EntityType.STORED_PROCEDURE:
@@ -1340,6 +1348,17 @@ export const getEntityBreadcrumbs = (
         includeCurrent: true,
         parents: isUndefined(data.parent) ? [] : [data.parent],
       });
+    }
+
+    case EntityType.DATA_PRODUCT: {
+      const data = entity as DataProduct;
+
+      return [
+        {
+          name: getEntityName(data.domain),
+          url: getDomainPath(data.domain.fullyQualifiedName),
+        },
+      ];
     }
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
