@@ -186,9 +186,7 @@ def _parse_complex_column(
             name=col_hierarchy[-1],
             dataType=data_type,
             dataTypeDisplay=data_type,
-            arrayDataType=DataType.UNKNOWN
-            if data_type == DataType.ARRAY
-            else None,
+            arrayDataType=DataType.UNKNOWN if data_type == DataType.ARRAY else None,
         )
 
         parent_col.children.append(leaf_column)
@@ -279,5 +277,3 @@ def fetch_col_types(data_frame, column_name):
         )
         logger.debug(traceback.format_exc())
     return data_type
-
-        

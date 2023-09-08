@@ -85,7 +85,7 @@ class DatalakeMetricsTest(TestCase):
     @mock.patch.object(
         PandasProfilerInterface,
         "_convert_table_to_list_of_dataframe_objects",
-        return_value=[df1, pd.concat([df2,pd.DataFrame(index=df1.index)])],
+        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def setUpClass(cls, mock_get_connection, mocked_dfs):
         """

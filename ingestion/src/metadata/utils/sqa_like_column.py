@@ -14,7 +14,6 @@ Helper module to reploicate the behavior of SQLAlchemy Column object
 """
 
 from dataclasses import dataclass
-from typing import Union
 
 from metadata.generated.schema.entity.data.table import DataType
 
