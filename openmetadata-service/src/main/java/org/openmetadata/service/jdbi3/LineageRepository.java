@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
@@ -40,19 +39,16 @@ public class LineageRepository {
     this.dao = dao;
   }
 
-  @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) {
     EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @Transaction
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @Transaction
   public void addLineage(AddLineage addLineage) {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
@@ -121,7 +117,6 @@ public class LineageRepository {
         || !(to.getType().equals(Entity.TABLE) || to.getType().equals(Entity.DASHBOARD_DATA_MODEL));
   }
 
-  @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);

@@ -89,7 +89,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
@@ -248,6 +247,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_EXTENSION);
     }
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
+    if (supportsVotes) {
+      this.patchFields.addField(allowedFields, FIELD_VOTES);
+      this.putFields.addField(allowedFields, FIELD_VOTES);
+    }
     this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
     if (supportsDomain) {
       this.patchFields.addField(allowedFields, FIELD_DOMAIN);
@@ -376,7 +379,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Initialize a given entity if it does not exist. */
-  @Transaction
   public void initializeEntity(T entity) {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
@@ -396,13 +398,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityUpdater(original, updated, operation);
   }
 
-  @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
     return get(uriInfo, id, fields, NON_DELETED, false);
   }
 
   /** Used for getting an entity with a set of requested fields */
-  @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include, boolean fromCache) {
     if (!fromCache) {
       // Clear the cache and always get the entity from the database to ensure read-after-write consistency
@@ -422,7 +422,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** getReference is used for getting the entity references from the entity in the cache. */
-  @Transaction
   public final EntityReference getReference(UUID id, Include include) throws EntityNotFoundException {
     return find(id, include).getEntityReference();
   }
@@ -430,7 +429,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @Transaction
   public T find(UUID id, Include include) throws EntityNotFoundException {
     try {
       @SuppressWarnings("unchecked")
@@ -445,12 +443,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public T getByName(UriInfo uriInfo, String fqn, Fields fields) {
     return getByName(uriInfo, fqn, fields, NON_DELETED, false);
   }
 
-  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     if (!fromCache) {
@@ -470,13 +466,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return withHref(uriInfo, entityClone);
   }
 
-  @Transaction
   public final EntityReference getReferenceByName(String fqn, Include include) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     return findByName(fqn, include).getEntityReference();
   }
 
-  @Transaction
   public T findByNameOrNull(String fqn, Include include) {
     try {
       return findByName(fqn, include);
@@ -488,7 +482,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @Transaction
   public T findByName(String fqn, Include include) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     try {
@@ -504,7 +497,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public final List<T> listAll(Fields fields, ListFilter filter) {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
@@ -517,7 +509,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entities;
   }
 
-  @Transaction
   public ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     int total = dao.listCount(filter);
     List<T> entities = new ArrayList<>();
@@ -545,7 +536,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
     List<String> errors = new ArrayList<>();
@@ -576,7 +566,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public ResultList<T> listBefore(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
@@ -599,7 +588,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
-  @Transaction
   public T getVersion(UUID id, String version) {
     Double requestedVersion = Double.parseDouble(version);
     String extension = EntityUtil.getVersionExtension(entityType, requestedVersion);
@@ -618,7 +606,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
   }
 
-  @Transaction
   public EntityHistory listVersions(UUID id) {
     T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
@@ -639,7 +626,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
-  @Transaction
   public final T createInternal(T entity) {
     prepareInternal(entity, false);
     return createNewEntity(entity);
@@ -674,6 +660,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+    entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
     setFields(entity, fields);
     return entity;
   }
@@ -688,6 +675,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? entity.getExperts() : null);
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? entity.getReviewers() : null);
+    entity.setVotes(fields.contains(FIELD_VOTES) ? entity.getVotes() : null);
     clearFields(entity, fields);
     return entity;
   }
@@ -702,7 +690,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
-  @Transaction
   public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) {
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) { // If an original entity does not exist then create it, else update
@@ -727,7 +714,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
@@ -745,7 +731,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);
@@ -767,7 +752,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @Transaction
   public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
     // Get entity
     T entity = dao.findEntityById(entityId);
@@ -801,7 +785,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
   public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) {
     T originalEntity = dao.findEntityById(entityId);
 
@@ -909,7 +892,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new DeleteResponse<>(updated, changeType);
   }
 
-  @Transaction
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     // Validate entity
@@ -917,9 +899,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
-  @Transaction
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
+
     T entity = dao.findEntityById(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
@@ -990,7 +972,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
   }
 
-  @Transaction
   public PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) {
     T entity = find(entityId, NON_DELETED);
 

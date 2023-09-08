@@ -15,17 +15,17 @@ package org.openmetadata.service.security;
 
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 public interface Authorizer {
 
   /** Initialize the authorizer */
-  void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi);
+  void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, CollectionDAO daoObject);
 
   /** Returns a list of operations that the authenticated user (subject) can perform */
   List<ResourcePermission> listPermissions(SecurityContext securityContext, String user);

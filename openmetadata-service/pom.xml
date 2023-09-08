@@ -77,6 +77,11 @@
       <artifactId>swagger-annotations</artifactId>
     </dependency>
     <dependency>
+      <groupId>ru.vyarus.guicey</groupId>
+      <artifactId>guicey-jdbi3</artifactId>
+      <version>5.9.1</version>
+    </dependency>
+    <dependency>
       <groupId>com.smoketurner</groupId>
       <artifactId>dropwizard-swagger</artifactId>
       <version>${dropwizard.swagger.version}</version>
@@ -231,8 +236,6 @@
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>
     </dependency>
-
-
     <!-- Dependencies for secret store manager providers -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -479,6 +482,12 @@
       <groupId>com.fasterxml.woodstox</groupId>
       <artifactId>woodstox-core</artifactId>
       <version>${woodstox.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>32.0.1-jre</version>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 

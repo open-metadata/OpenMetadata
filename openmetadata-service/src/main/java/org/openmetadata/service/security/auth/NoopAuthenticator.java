@@ -3,16 +3,16 @@ package org.openmetadata.service.security.auth;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FORBIDDEN_AUTHENTICATOR_OP;
 
 import javax.ws.rs.core.Response;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 public class NoopAuthenticator implements AuthenticatorHandler {
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
     /* deprecated unused */
   }
 

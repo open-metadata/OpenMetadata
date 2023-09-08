@@ -13,7 +13,7 @@ Elasticsearch source to extract metadata
 """
 from typing import Any, Iterable, Optional
 
-from elasticsearch import Elasticsearch
+from elasticsearch8 import Elasticsearch
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -67,7 +67,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         index_list = self.client.indices.get_alias() or {}
         for index in index_list.keys():
-            yield self.client.indices.get(index)
+            yield self.client.indices.get(index=str(index))
 
     def get_search_index_name(self, search_index_details: dict) -> Optional[str]:
         """
