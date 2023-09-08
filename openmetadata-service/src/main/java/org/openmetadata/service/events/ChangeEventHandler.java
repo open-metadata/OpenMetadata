@@ -23,6 +23,7 @@ import java.util.List;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
@@ -53,17 +54,18 @@ public class ChangeEventHandler implements EventHandler {
     this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
   }
 
+  @SneakyThrows
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
-    Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
-    handle.begin();
-    CollectionDAO collectionDAO =
-        (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
-    CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
-    FeedRepository feedRepository = new FeedRepository(collectionDAO);
     try {
+      Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
+      handle.getConnection().setAutoCommit(true);
+      CollectionDAO collectionDAO =
+          (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
+      CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
+      FeedRepository feedRepository = new FeedRepository(collectionDAO);
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
         notificationHandler.processNotifications(responseContext);
@@ -106,9 +108,7 @@ public class ChangeEventHandler implements EventHandler {
           }
         }
       }
-      handle.commit();
     } catch (Exception e) {
-      handle.rollback();
       LOG.error("Failed to capture the change event for method {} due to ", method, e);
     } finally {
       jdbiUnitOfWorkProvider.getHandleManager().clear();

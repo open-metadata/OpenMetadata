@@ -62,15 +62,13 @@ public class NotificationHandler {
   public void processNotifications(ContainerResponseContext responseContext) {
     threadScheduler.submit(
         () -> {
-          Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
-          handle.begin();
           try {
+            Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
+            handle.getConnection().setAutoCommit(true);
             CollectionDAO collectionDAO =
                 (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
             handleNotifications(responseContext, collectionDAO);
-            handle.commit();
           } catch (Exception ex) {
-            handle.rollback();
             LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
           } finally {
             jdbiUnitOfWorkProvider.getHandleManager().clear();
