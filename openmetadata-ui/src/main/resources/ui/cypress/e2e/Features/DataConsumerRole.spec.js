@@ -49,42 +49,47 @@ const ID = {
   teams: {
     testid: '[data-menu-id*="teams"]',
     button: 'add-team',
+    api: '/api/v1/teams/name/Organization?*',
   },
   users: {
     testid: '[data-menu-id*="users"]',
     button: 'add-user',
+    api: '/api/v1/users?fields=*isBot=false*',
   },
   admins: {
     testid: '[data-menu-id*="admins"]',
     button: 'add-user',
-  },
-  roles: {
-    testid: '[data-menu-id*="roles"]',
-    button: 'add-role',
-  },
-  policies: {
-    testid: '[data-menu-id*="policies"]',
-    button: 'add-policy',
+    api: '/api/v1/users?fields=*isAdmin=true*',
   },
   databases: {
     testid: '[data-menu-id*="databases"]',
     button: 'add-service-button',
+    api: '/api/v1/services/databaseServices?*',
   },
   messaging: {
     testid: '[data-menu-id*="messaging"]',
     button: 'add-service-button',
+    api: '/api/v1/services/messagingServices?*',
   },
   dashboard: {
     testid: '[data-menu-id*="services.dashboards"]',
     button: 'add-service-button',
+    api: '/api/v1/services/dashboardServices?*',
   },
   pipelines: {
     testid: '[data-menu-id*="services.pipelines"]',
     button: 'add-service-button',
+    api: '/api/v1/services/pipelineServices?*',
   },
   mlmodels: {
     testid: '[data-menu-id*="services.mlModels"]',
     button: 'add-service-button',
+    api: '/api/v1/services/mlmodelServices?*',
+  },
+  storage: {
+    testid: '[data-menu-id*="services.storages"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/storageServices?*',
   },
 };
 const PERMISSIONS = {
@@ -273,7 +278,15 @@ describe('DataConsumer Edit policy should work properly', () => {
     // Navigate to settings
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(ID).forEach((id) => {
+      if (id?.api) {
+        interceptURL('GET', id.api, 'getTabDetails');
+      }
+
       cy.get(id.testid).should('be.visible').click();
+      if (id?.api) {
+        verifyResponseStatusCode('@getTabDetails', 200);
+      }
+
       cy.get(`[data-testid="${id.button}"]`).should('not.be.exist');
     });
 
