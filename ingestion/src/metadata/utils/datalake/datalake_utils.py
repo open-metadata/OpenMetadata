@@ -13,7 +13,7 @@
 Module to define helper methods for datalake and to fetch data and metadata 
 from different auths and different file systems.
 """
-
+import ast
 import traceback
 from typing import List, Optional
 
@@ -31,15 +31,15 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 DATALAKE_DATA_TYPES = {
-    **dict.fromkeys(["int64", "INT", "int32"], DataType.INT.value),
-    "object": DataType.JSON.value,
-    "list": DataType.ARRAY.value,
-    **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT.value),
-    "bool": DataType.BOOLEAN.value,
+    **dict.fromkeys(["int64", "int", "int32"], DataType.INT),
+    "dict": DataType.JSON,
+    "list": DataType.ARRAY,
+    **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT),
+    "bool": DataType.BOOLEAN,
     **dict.fromkeys(
-        ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME.value
+        ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME
     ),
-    "str": DataType.STRING.value,
+    "str": DataType.STRING,
 }
 
 
@@ -166,9 +166,9 @@ def _parse_complex_column(
                 intermediate_column = Column(
                     name=truncate_column_name(col_name),
                     displayName=col_name,
-                    dataType=DataType.RECORD.value,
+                    dataType=DataType.RECORD,
                     children=[],
-                    dataTypeDisplay=DataType.RECORD.value,
+                    dataTypeDisplay=DataType.RECORD,
                 )
                 if parent_col:
                     parent_col.children.append(intermediate_column)
@@ -178,7 +178,7 @@ def _parse_complex_column(
 
         # prepare the leaf node
         # use String as default type
-        data_type = DataType.STRING.value
+        data_type = DataType.STRING
         if hasattr(data_frame[column], "dtypes"):
             data_type = fetch_col_types(data_frame, column_name=column)
 
@@ -187,7 +187,7 @@ def _parse_complex_column(
             dataType=data_type,
             dataTypeDisplay=data_type,
             arrayDataType=DataType.UNKNOWN
-            if data_type == DataType.ARRAY.value
+            if data_type == DataType.ARRAY
             else None,
         )
 
@@ -224,7 +224,7 @@ def get_columns(data_frame: "DataFrame"):
                 )
             else:
                 # use String by default
-                data_type = DataType.STRING.value
+                data_type = DataType.STRING
                 try:
                     if hasattr(data_frame[column], "dtypes"):
                         data_type = fetch_col_types(data_frame, column_name=column)
@@ -235,7 +235,7 @@ def get_columns(data_frame: "DataFrame"):
                         "name": truncate_column_name(column),
                         "displayName": column,
                     }
-                    if data_type == DataType.ARRAY.value:
+                    if data_type == DataType.ARRAY:
                         parsed_string["arrayDataType"] = DataType.UNKNOWN
 
                     cols.append(Column(**parsed_string))
@@ -255,23 +255,29 @@ def fetch_col_types(data_frame, column_name):
         data_frame (DataFrame)
         column_name (string)
     """
-    data_type = None
-    if data_frame[column_name].dtypes.name == "object":
-        # we check further what is the type of the rows / values
-        data_type = type(data_frame[column_name].dropna().values[0]).__name__
-    data_type = DATALAKE_DATA_TYPES.get(
-        data_type or data_frame[column_name].dtypes.name, DataType.STRING.value
-    )
-    if data_type == DataType.FLOAT.value:
-        try:
-            if data_frame[column_name].dropna().any():
-                if isinstance(data_frame[column_name].iloc[0], dict):
-                    return DataType.JSON.value
-                if isinstance(data_frame[column_name].iloc[0], str):
-                    return DataType.STRING.value
-        except Exception as err:
-            logger.warning(
-                f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
-            )
-            logger.debug(traceback.format_exc())
+    try:
+        data_type = None
+        if data_frame[column_name].dtypes.name == "object" and any(
+            data_frame[column_name].dropna().values
+        ):
+            try:
+                # Safely evaluate the input string
+                df_row_val = data_frame[column_name].dropna().values[0]
+                parsed_object = ast.literal_eval(df_row_val)
+                # Determine the data type of the parsed object
+                data_type = type(parsed_object).__name__.lower()
+            except (ValueError, SyntaxError):
+                # Handle any exceptions that may occur
+                data_type = "string"
+
+        data_type = DATALAKE_DATA_TYPES.get(
+            data_type or data_frame[column_name].dtypes.name, DataType.STRING
+        )
+    except Exception as err:
+        logger.warning(
+            f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
+        )
+        logger.debug(traceback.format_exc())
     return data_type
+
+        

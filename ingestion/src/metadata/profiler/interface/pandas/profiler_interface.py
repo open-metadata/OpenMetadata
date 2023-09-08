@@ -33,7 +33,7 @@ from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_col_types, fetch_dataframe
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
-from metadata.utils.sqa_like_column import SQALikeColumn, Type
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = profiler_interface_registry_logger()
 
@@ -110,7 +110,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         )
 
     @valuedispatch
-    def _get_metrics(self, *args, **kwargs):
+    def _get_metrics(self, *_, **__):
         """Generic getter method for metrics. To be used with
         specific dispatch methods
         """
@@ -373,7 +373,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             return [
                 SQALikeColumn(
                     column_name,
-                    Type(fetch_col_types(df, column_name)),
+                    fetch_col_types(df, column_name),
                 )
                 for column_name in df.columns
             ]

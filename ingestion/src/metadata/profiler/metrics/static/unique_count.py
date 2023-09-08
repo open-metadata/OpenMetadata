@@ -72,15 +72,7 @@ class UniqueCount(QueryMetric):
         try:
             counter = Counter()
             for df in dfs:
-                col_type = df[self.col.name].dtypes.name
-                if (
-                    col_type == "object"
-                    and self.col.type in [DataType.ARRAY, DataType.JSON]
-                    and any(df[self.col.name].values)
-                ):
-                    df_col_value = df[self.col.name].dropna().to_list()[0]
-                else:
-                    df_col_value = df[self.col.name].dropna().to_list()
+                df_col_value = df[self.col.name].dropna().to_list()
                 counter.update(df_col_value)
             return len([key for key, value in counter.items() if value == 1])
         except Exception as err:

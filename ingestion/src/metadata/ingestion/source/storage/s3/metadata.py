@@ -101,16 +101,9 @@ class S3Source(StorageServiceSource):
                     bucket_response=bucket_response
                 )
                 self._bucket_cache[bucket_response.name] = self.context.container
-                try:
-                    metadata_config_response = self.s3_reader.read(
-                        path=OPENMETADATA_TEMPLATE_FILE_NAME,
-                        bucket_name=bucket_response.name,
-                        verbose=False,
-                    )
-                    content = json.loads(metadata_config_response)
-                    metadata_config = StorageContainerConfig.parse_obj(content)
-                except ReadException:
-                    continue
+                metadata_config = self._load_metadata_file(
+                    bucket_name=bucket_response.name
+                )
                 if metadata_config:
                     for metadata_entry in metadata_config.entries:
                         logger.info(
@@ -368,4 +361,29 @@ class S3Source(StorageServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
+        return None
+
+    def _load_metadata_file(self, bucket_name: str) -> Optional[StorageContainerConfig]:
+        """
+        Load the metadata template file from the root of the bucket, if it exists
+        """
+        try:
+            logger.info(
+                f"Found metadata template file at - s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
+            )
+            response_object = self.s3_reader.read(
+                path=OPENMETADATA_TEMPLATE_FILE_NAME,
+                bucket_name=bucket_name,
+                verbose=False,
+            )
+            content = json.load(response_object["Body"])
+            metadata_config = StorageContainerConfig.parse_obj(content)
+            return metadata_config
+        except ReadException:
+            pass
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed loading metadata file s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}-{exc}"
+            )
         return None
