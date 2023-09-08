@@ -25,7 +25,6 @@ from pydantic import BaseModel, Field
 from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
