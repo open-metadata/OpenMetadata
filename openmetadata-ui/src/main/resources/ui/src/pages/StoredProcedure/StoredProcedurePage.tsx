@@ -478,7 +478,7 @@ const StoredProcedurePage = () => {
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <Card className="m-b-md">
+                <Card className="m-b-md" data-testid="code-component">
                   <SchemaEditor
                     editorClass="custom-code-mirror-theme full-screen-editor-height"
                     mode={{ name: CSMode.SQL }}
