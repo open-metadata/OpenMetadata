@@ -55,8 +55,8 @@ const DATABASE_AND_SCHEMA = {
 
 export const ENTITIES_DISPLAY_NAME = {
   table: {
-    name: 'dim(shop)',
-    oldDisplayName: 'dim(shop)',
+    name: 'dim.shop',
+    oldDisplayName: 'dim.shop',
     displayName: 'Dim Shop Test',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: DB_SERVICE,
