@@ -14,7 +14,7 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -25,6 +25,10 @@ from sqlalchemy.inspection import inspect
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -49,7 +53,10 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    QueryByProcedure,
+)
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.models import TableView
@@ -356,6 +363,27 @@ class CommonDbSourceService(
         Each source should implement its own when needed
         """
 
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Not implemented"""
+
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Not implemented"""
+
     @calculate_execution_time_generator
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -452,7 +480,7 @@ class CommonDbSourceService(
                 metadata=self.metadata,
                 service_name=self.context.database_service.name.__root__,
                 connection_type=self.service_connection.type.value,
-                timeout_seconds=self.source_config.viewParsingTimeoutLimit,
+                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
             )
 
     def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
