@@ -18,7 +18,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TestCaseIndex implements ElasticSearchIndex {
-  TestCase testCase;
+  final TestCase testCase;
 
   private static final List<String> excludeFields = List.of("changeDescription");
 

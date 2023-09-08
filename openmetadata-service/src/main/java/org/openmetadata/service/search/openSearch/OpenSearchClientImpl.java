@@ -785,6 +785,10 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public void updateSearchEntityCreated(EntityInterface entity) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
     String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -806,6 +810,10 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public void updateSearchEntityDeleted(EntityInterface entity, String scriptTxt, String field) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
     String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -843,6 +851,10 @@ public class OpenSearchClientImpl implements SearchClient {
    */
   @Override
   public void deleteEntityAndRemoveRelationships(EntityInterface entity, String scriptTxt, String field) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
     String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -880,6 +892,10 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete, String field) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
     String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -919,6 +935,10 @@ public class OpenSearchClientImpl implements SearchClient {
    */
   @Override
   public void updateSearchEntityUpdated(EntityInterface entity, String scriptTxt, String field) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
     String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);

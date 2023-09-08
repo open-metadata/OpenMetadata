@@ -165,14 +165,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "testSuites.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, TestSuite.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "testSuites.fullyQualifiedName");
       } else {
         if (Boolean.TRUE.equals(entity.getExecutable())) {
-          searchClient.updateSearchEntityDeleted(entity, "", "testSuites.fullyQualifiedName");
+          searchClient.updateSearchEntityDeleted(
+              JsonUtils.deepCopy(entity, TestSuite.class), "", "testSuites.fullyQualifiedName");
         } else {
           String scriptTxt =
               "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";
-          searchClient.deleteEntityAndRemoveRelationships(entity, scriptTxt, "testSuites.fullyQualifiedName");
+          searchClient.deleteEntityAndRemoveRelationships(
+              JsonUtils.deepCopy(entity, TestSuite.class), scriptTxt, "testSuites.fullyQualifiedName");
         }
       }
     }
@@ -181,7 +185,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public void restoreFromSearch(TestSuite entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "testSuites.fullyQualifiedName");
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, TestSuite.class), false, "testSuites.fullyQualifiedName");
     }
   }
 

@@ -29,6 +29,7 @@ import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -80,9 +81,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "database.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, Database.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "database.fullyQualifiedName");
       } else {
-        searchClient.updateSearchEntityDeleted(entity, "", "database.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, Database.class), "", "database.fullyQualifiedName");
       }
     }
   }
@@ -90,7 +94,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void restoreFromSearch(Database entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "database.fullyQualifiedName");
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, Database.class), false, "database.fullyQualifiedName");
     }
   }
 

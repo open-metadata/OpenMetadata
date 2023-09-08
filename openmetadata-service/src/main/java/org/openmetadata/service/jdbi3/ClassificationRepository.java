@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -111,7 +112,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (entity.getDisabled() != null) {
       scriptTxt = "ctx._source.disabled=" + entity.getDisabled();
     }
-    searchClient.updateSearchEntityUpdated(entity, scriptTxt, "classification.fullyQualifiedName");
+    searchClient.updateSearchEntityUpdated(
+        JsonUtils.deepCopy(entity, Classification.class), scriptTxt, "classification.fullyQualifiedName");
   }
 
   @Override
@@ -119,9 +121,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "classification.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, Classification.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "classification.fullyQualifiedName");
       } else {
-        searchClient.updateSearchEntityDeleted(entity, "", "classification.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, Classification.class), "", "classification.fullyQualifiedName");
       }
     }
   }
@@ -129,7 +134,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   @Override
   public void restoreFromSearch(Classification entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "classification.fullyQualifiedName");
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, Classification.class), false, "classification.fullyQualifiedName");
     }
   }
 

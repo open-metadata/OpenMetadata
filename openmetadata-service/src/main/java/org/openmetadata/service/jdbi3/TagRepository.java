@@ -35,6 +35,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -104,9 +105,10 @@ public class TagRepository extends EntityRepository<Tag> {
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
+            JsonUtils.deepCopy(entity, Tag.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
       } else {
-        searchClient.deleteEntityAndRemoveRelationships(entity, scriptTxt, "tags.tagFQN");
+        searchClient.deleteEntityAndRemoveRelationships(
+            JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
       }
     }
   }
@@ -114,7 +116,7 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void restoreFromSearch(Tag entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "tags.tagFQN");
+      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, Tag.class), false, "tags.tagFQN");
     }
   }
 

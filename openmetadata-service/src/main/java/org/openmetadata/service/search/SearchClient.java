@@ -29,7 +29,6 @@ import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -126,16 +125,16 @@ public interface SearchClient {
 
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
-    //    Map<String, Object> fieldAddParams = new HashMap<>();
     fieldAddParams.put("updatedAt", entity.getUpdatedAt());
     scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
+        List<LinkedHashMap<String, Object>> entityReferencesMap =
+            (List<LinkedHashMap<String, Object>>) fieldChange.getNewValue();
         List<String> newFollowers = new ArrayList<>();
-        for (EntityReference follower : entityReferences) {
-          newFollowers.add(follower.getId().toString());
+        for (LinkedHashMap<String, Object> entityReferenceMap : entityReferencesMap) {
+          newFollowers.add(entityReferenceMap.get("id").toString());
         }
         fieldAddParams.put(fieldChange.getName(), newFollowers);
         scriptTxt.append("ctx._source.followers.addAll(params.followers);");
@@ -145,9 +144,10 @@ public interface SearchClient {
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
-        for (EntityReference follower : entityReferences) {
-          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
+        List<LinkedHashMap<String, Object>> entityReferencesMap =
+            (List<LinkedHashMap<String, Object>>) fieldChange.getOldValue();
+        for (LinkedHashMap<String, Object> entityReferenceMap : entityReferencesMap) {
+          fieldAddParams.put(fieldChange.getName(), entityReferenceMap.get("id").toString());
         }
         scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
@@ -176,7 +176,6 @@ public interface SearchClient {
 
     // Set to the Output variables
     script.append(scriptTxt);
-    //    fieldParams = fieldAddParams;
   }
 
   default String getIndexMapping(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang)

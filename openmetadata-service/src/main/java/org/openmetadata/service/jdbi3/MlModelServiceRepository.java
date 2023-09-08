@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -44,9 +45,12 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "service.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, MlModelService.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "service.fullyQualifiedName");
       } else {
-        searchClient.updateSearchEntityDeleted(entity, "", "service.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, MlModelService.class), "", "service.fullyQualifiedName");
       }
     }
   }
@@ -54,7 +58,8 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
   @Override
   public void restoreFromSearch(MlModelService entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "service.fullyQualifiedName");
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, MlModelService.class), false, "service.fullyQualifiedName");
     }
   }
 }

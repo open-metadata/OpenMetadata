@@ -230,9 +230,12 @@ public class TeamRepository extends EntityRepository<Team> {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "parents.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, Team.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "parents.fullyQualifiedName");
       } else {
-        searchClient.updateSearchEntityDeleted(entity, "", "parents.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, Team.class), "", "parents.fullyQualifiedName");
       }
     }
   }
@@ -240,7 +243,8 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void restoreFromSearch(Team entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "parents.fullyQualifiedName");
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, Team.class), false, "parents.fullyQualifiedName");
     }
   }
 

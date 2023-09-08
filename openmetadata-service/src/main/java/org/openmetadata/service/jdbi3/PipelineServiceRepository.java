@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -41,9 +42,12 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "service.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, PipelineService.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "service.fullyQualifiedName");
       } else {
-        searchClient.updateSearchEntityDeleted(entity, "", "service.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, PipelineService.class), "", "service.fullyQualifiedName");
       }
     }
   }
@@ -51,7 +55,8 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
   @Override
   public void restoreFromSearch(PipelineService entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "service.fullyQualifiedName");
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, PipelineService.class), false, "service.fullyQualifiedName");
     }
   }
 }

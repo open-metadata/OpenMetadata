@@ -51,6 +51,7 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -204,7 +205,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         searchClient.softDeleteOrRestoreEntityFromSearch(
             entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
       } else {
-        searchClient.deleteEntityAndRemoveRelationships(entity, scriptTxt, "tags.tagFQN");
+        searchClient.deleteEntityAndRemoveRelationships(
+            JsonUtils.deepCopy(entity, GlossaryTerm.class), scriptTxt, "tags.tagFQN");
       }
     }
   }
@@ -212,7 +214,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void restoreFromSearch(GlossaryTerm entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "tags.tagFQN");
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, GlossaryTerm.class), false, "tags.tagFQN");
     }
   }
 

@@ -715,7 +715,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postCreate(T entity) {
     if (supportsSearchIndex) {
       String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      searchClient.updateSearchEntityCreated(entity);
+      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
     }
   }
 
@@ -723,7 +723,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void postUpdate(T entity) {
     if (supportsSearchIndex) {
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(entity, scriptTxt, "");
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, entityClass), scriptTxt, "");
     }
   }
 
@@ -797,7 +797,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    postUpdate(entity);
+    postUpdate(JsonUtils.deepCopy(entity, entityClass));
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -869,16 +869,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void deleteFromSearch(T entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, entityClass), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
       } else {
-        searchClient.updateSearchEntityDeleted(entity, "", "");
+        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
       }
     }
   }
 
   public void restoreFromSearch(T entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(entity, false, "");
+      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
     }
   }
 
