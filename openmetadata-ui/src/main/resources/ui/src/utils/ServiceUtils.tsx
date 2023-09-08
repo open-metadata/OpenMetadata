@@ -17,6 +17,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
+import { SearchServiceType } from 'generated/entity/services/searchService';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import React from 'react';
@@ -44,6 +45,7 @@ import {
   DOMO,
   DRUID,
   DYNAMODB,
+  ELASTIC_SEARCH,
   FIVETRAN,
   GLUE,
   HIVE,
@@ -305,6 +307,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case StorageServiceType.S3:
       return AMAZON_S3;
+
+    case SearchServiceType.ElasticSearch:
+      return ELASTIC_SEARCH;
 
     default: {
       let logo;
