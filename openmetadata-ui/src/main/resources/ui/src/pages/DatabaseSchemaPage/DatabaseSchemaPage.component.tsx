@@ -222,7 +222,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         setStoredProcedure((prev) => ({ ...prev, isLoading: true }));
         const { data, paging } = await getStoredProceduresList({
-          service: getDecodedFqn(databaseSchemaFQN),
+          databaseSchema: getDecodedFqn(databaseSchemaFQN),
           fields: 'owner,tags,followers',
           include: storedProcedure.deleted
             ? Include.Deleted
