@@ -284,3 +284,23 @@ export const putTestCaseResult = async (
 
   return response.data;
 };
+export const patchTestCaseResult = async ({
+  testCaseFqn,
+  timestamp,
+  patch,
+}: {
+  testCaseFqn: string;
+  timestamp: number;
+  patch: Operation[];
+}) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+  const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
+    `${testCaseUrl}/${testCaseFqn}/testCaseResult/${timestamp}`,
+    patch,
+    configOptions
+  );
+
+  return response.data;
+};
