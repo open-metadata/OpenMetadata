@@ -113,7 +113,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
               <li
                 className="d-flex items-center breadcrumb-item"
                 data-testid="breadcrumb-link"
-                key={`${link.name + index}`}>
+                key={link.name}>
                 {link.imgSrc ? (
                   <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}

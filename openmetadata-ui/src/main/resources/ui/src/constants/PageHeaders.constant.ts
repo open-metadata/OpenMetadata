@@ -121,7 +121,7 @@ export const PAGE_HEADERS = {
   STORED_PROCEDURE_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.stored-procedure'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
-      entity: i18n.t('label.label.stored-procedure'),
+      entity: i18n.t('label.stored-procedure'),
     }),
   },
   BOTS: {
