@@ -95,6 +95,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
       change = ENTITY_UPDATED;
     }
+
+    // set the test case result state in the test case entity if the state has changed
+    if (!Objects.equals(original, updated)) {
+      TestCase testCase = dao.findEntityByName(fqn);
+      setTestCaseResult(testCase, updated, false);
+    }
+
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
   }
 
@@ -212,6 +219,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, TEST_SUITE_FIELD));
     setTestSuiteSummary(testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
+    setTestCaseResult(testCase, testCaseResult, false);
     ChangeDescription change = addTestCaseChangeDescription(testCase.getVersion(), testCaseResult);
     ChangeEvent changeEvent =
         getChangeEvent(updatedBy, withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
@@ -235,6 +243,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       testCase.setTestCaseResult(storedTestCaseResult);
       ChangeDescription change = deleteTestCaseChangeDescription(testCase.getVersion(), storedTestCaseResult);
       ChangeEvent changeEvent = getChangeEvent(updatedBy, testCase, change, entityType, testCase.getVersion());
+      setTestCaseResult(testCase, storedTestCaseResult, true);
       return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
@@ -288,6 +297,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  // Stores the test case result with the test case entity for the latest execution
+  private void setTestCaseResult(TestCase testCase, TestCaseResult testCaseResult, boolean isDeleted) {
+    boolean shouldUpdateState = compareTestCaseResult(testCase, testCaseResult);
+    if (!shouldUpdateState) {
+      return;
+    }
+
+    if (!isDeleted) {
+      // Test case result is updated or created
+      testCase.setTestCaseResult(testCaseResult);
+    } else {
+      TestCaseResult latestTestCaseResult =
+          JsonUtils.readValue(
+              daoCollection
+                  .dataQualityDataTimeSeriesDao()
+                  .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
+              TestCaseResult.class); // we'll fetch the new latest result to update the test case state
+      testCase.setTestCaseResult(latestTestCaseResult);
+    }
+    dao.update(testCase.getId(), testCase.getFullyQualifiedName(), JsonUtils.pojoToJson(testCase));
+  }
+
+  private boolean compareTestCaseResult(TestCase testCase, TestCaseResult testCaseResult) {
+    TestCaseResult savedTestCaseResult = testCase.getTestCaseResult();
+    if (savedTestCaseResult == null) {
+      return true;
+    }
+
+    return testCaseResult.getTimestamp() >= savedTestCaseResult.getTimestamp();
+  }
+
   private ChangeDescription addTestCaseChangeDescription(Double version, Object newValue) {
     FieldChange fieldChange = new FieldChange().withName(TEST_CASE_RESULT_FIELD).withNewValue(newValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
@@ -318,6 +358,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private TestCaseResult getTestCaseResult(TestCase testCase) {
+    if (testCase.getTestCaseResult() != null) {
+      // we'll return the saved state if it exists otherwise we'll fetch it from the database
+      return testCase.getTestCaseResult();
+    }
     return JsonUtils.readValue(
         daoCollection
             .dataQualityDataTimeSeriesDao()

@@ -762,6 +762,63 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
   }
 
+  @Test
+  public void test_testCaseResultState(TestInfo test) throws IOException, ParseException {
+    TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    String dateStr = "2023-08-";
+    List<TestCaseResult> testCaseResults = new ArrayList<>();
+    for (int i = 11; i <= 15; i++) {
+      TestCaseResult testCaseResult =
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+      putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+      testCaseResults.add(testCaseResult);
+    }
+
+    // check that result is state is the latest
+    TestCase storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    assertEquals(TestUtils.dateToTimestamp("2023-08-15"), storedTestCase.getTestCaseResult().getTimestamp());
+
+    // delete latest and check that result is the  new latest (i.e. the 14th)
+    deleteTestCaseResult(testCase.getFullyQualifiedName(), TestUtils.dateToTimestamp("2023-08-15"), ADMIN_AUTH_HEADERS);
+    storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    assertEquals(TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
+
+    // delete the 13h and check that result is still the 14th
+    deleteTestCaseResult(testCase.getFullyQualifiedName(), TestUtils.dateToTimestamp("2023-08-13"), ADMIN_AUTH_HEADERS);
+    storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    assertEquals(TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
+
+    // Patch the test case result adding the resolved status
+    TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
+    String original = JsonUtils.pojoToJson(testCaseResult);
+    testCaseResult.withTestCaseFailureStatus(
+        new TestCaseFailureStatus()
+            .withTestCaseFailureStatusType(TestCaseFailureStatusType.Resolved)
+            .withTestCaseFailureReason(TestCaseFailureReason.FalsePositive)
+            .withTestCaseFailureComment("Test failure was a false positive"));
+    JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
+    patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2023-08-14"), patch, ADMIN_AUTH_HEADERS);
+
+    storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        TestCaseFailureStatusType.Resolved,
+        storedTestCase.getTestCaseResult().getTestCaseFailureStatus().getTestCaseFailureStatusType());
+
+    // add a new test case result for the 16th and check the state is correctly updated
+    testCaseResult =
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp(dateStr + 16));
+    putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    assertEquals(TestUtils.dateToTimestamp("2023-08-16"), storedTestCase.getTestCaseResult().getTimestamp());
+  }
+
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);
