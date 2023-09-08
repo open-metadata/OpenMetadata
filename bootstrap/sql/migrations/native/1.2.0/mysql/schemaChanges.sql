@@ -80,3 +80,12 @@ CREATE TABLE IF NOT EXISTS table_entity_extension (
     json JSON NOT NULL,
     PRIMARY KEY (id, extension)
 );
+
+-- rename viewParsingTimeoutLimit for queryParsingTimeoutLimit
+UPDATE ingestion_pipeline_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.sourceConfig.config.viewParsingTimeoutLimit'),
+    '$.sourceConfig.config.queryParsingTimeoutLimit',
+    JSON_EXTRACT(json, '$.sourceConfig.config.viewParsingTimeoutLimit')
+)
+WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';

@@ -78,3 +78,13 @@ CREATE TABLE IF NOT EXISTS table_entity_extension (
     json JSONB NOT NULL,
     PRIMARY KEY (id, extension)
 );
+
+-- rename viewParsingTimeoutLimit for queryParsingTimeoutLimit
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+  json::jsonb #- '{sourceConfig,config,viewParsingTimeoutLimit}',
+  '{sourceConfig,config,queryParsingTimeoutLimit}',
+  (json #> '{sourceConfig,config,viewParsingTimeoutLimit}')::jsonb,
+  true
+)
+WHERE json #>> '{pipelineType}' = 'metadata';
