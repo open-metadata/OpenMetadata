@@ -15,15 +15,6 @@ import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import i18n from 'utils/i18next/LocalUtil';
 
-export const mapAssetsSearchIndex = {
-  [EntityType.TABLE]: SearchIndex.TABLE,
-  [EntityType.PIPELINE]: SearchIndex.PIPELINE,
-  [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
-  [EntityType.MLMODEL]: SearchIndex.MLMODEL,
-  [EntityType.TOPIC]: SearchIndex.TOPIC,
-  [EntityType.CONTAINER]: SearchIndex.CONTAINER,
-};
-
 export const AssetsFilterOptions: Array<{
   label: string;
   key: AssetsUnion;
@@ -58,5 +49,10 @@ export const AssetsFilterOptions: Array<{
     label: i18n.t('label.container-plural'),
     key: EntityType.CONTAINER,
     value: SearchIndex.CONTAINER,
+  },
+  {
+    label: i18n.t('label.glossary-plural'),
+    key: EntityType.GLOSSARY,
+    value: SearchIndex.GLOSSARY,
   },
 ];

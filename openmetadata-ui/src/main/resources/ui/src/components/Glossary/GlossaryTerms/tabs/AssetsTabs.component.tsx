@@ -38,18 +38,21 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { AssetsOfEntity } from './AssetsTabs.interface';
 
 interface Props {
   onAddAsset: () => void;
   permissions: OperationPermission;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  type?: AssetsOfEntity;
 }
 
 export interface AssetsTabRef {
@@ -59,7 +62,13 @@ export interface AssetsTabRef {
 
 const AssetsTabs = forwardRef(
   (
-    { permissions, onAssetClick, isSummaryPanelOpen, onAddAsset }: Props,
+    {
+      permissions,
+      onAssetClick,
+      isSummaryPanelOpen,
+      onAddAsset,
+      type = AssetsOfEntity.GLOSSARY,
+    }: Props,
     ref
   ) => {
     const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
@@ -69,28 +78,47 @@ const AssetsTabs = forwardRef(
       container: 0,
       topic: 0,
       dashboard: 0,
-    });
+      glossary: 0,
+    } as Record<AssetsUnion, number>);
     const [activeFilter, setActiveFilter] = useState<SearchIndex>(
       SearchIndex.TABLE
     );
-    const { glossaryName } = useParams<{ glossaryName: string }>();
+    const { glossaryName, fqn } =
+      useParams<{ glossaryName: string; fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [total, setTotal] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedCard, setSelectedCard] = useState<SourceType>();
 
+    const queryParam = useMemo(() => {
+      if (type !== AssetsOfEntity.GLOSSARY) {
+        return `(domain:"${fqn}")`;
+      } else {
+        return `(tags.tagFQN:"${glossaryName}")`;
+      }
+    }, [type, glossaryName, fqn]);
+
+    const searchIndexes = useMemo(() => {
+      const indexesToFetch = [
+        SearchIndex.TABLE,
+        SearchIndex.TOPIC,
+        SearchIndex.DASHBOARD,
+        SearchIndex.PIPELINE,
+        SearchIndex.MLMODEL,
+        SearchIndex.CONTAINER,
+      ];
+      if (type !== AssetsOfEntity.GLOSSARY) {
+        indexesToFetch.push(SearchIndex.GLOSSARY);
+      }
+
+      return indexesToFetch;
+    }, [type]);
+
     const fetchCountsByEntity = () => {
       Promise.all(
-        [
-          SearchIndex.TABLE,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.CONTAINER,
-        ].map((index) =>
-          searchData('', 0, 0, `(tags.tagFQN:"${glossaryName}")`, '', '', index)
+        searchIndexes.map((index) =>
+          searchData('', 0, 0, queryParam, '', '', index)
         )
       )
         .then(
@@ -101,6 +129,7 @@ const AssetsTabs = forwardRef(
             pipelineResponse,
             mlmodelResponse,
             containerResponse,
+            glossaryResponse,
           ]) => {
             const counts = {
               [EntityType.TOPIC]: topicResponse.data.hits.total.value,
@@ -109,13 +138,16 @@ const AssetsTabs = forwardRef(
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
               [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
+              [EntityType.GLOSSARY]:
+                type !== AssetsOfEntity.GLOSSARY
+                  ? glossaryResponse.data.hits.total.value
+                  : 0,
             };
+
             setItemCount(counts);
 
             find(counts, (count, key) => {
               if (count > 0) {
-                key;
-
                 const option = AssetsFilterOptions.find((el) => el.key === key);
                 if (option) {
                   setActiveFilter(option.value);
@@ -155,7 +187,7 @@ const AssetsTabs = forwardRef(
             '',
             page,
             PAGE_SIZE,
-            `(tags.tagFQN:"${glossaryName}")`,
+            queryParam,
             '',
             '',
             index

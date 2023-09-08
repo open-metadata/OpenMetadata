@@ -15,12 +15,14 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.List;
-import javax.json.JsonPatch;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
@@ -28,9 +30,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -60,31 +63,57 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("columns")) {
-      DashboardDataModel dashboardDataModel =
-          getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL, false);
-      String origJson = JsonUtils.pojoToJson(dashboardDataModel);
-      Column column =
-          dashboardDataModel.getColumns().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
-      if (EntityUtil.isDescriptionTask(task.getType())) {
-        column.setDescription(newValue);
-      } else if (EntityUtil.isTagTask(task.getType())) {
-        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-        column.setTags(tags);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new ColumnDescriptionTaskWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new ColumnTagTaskWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
       }
-      String updatedEntityJson = JsonUtils.pojoToJson(dashboardDataModel);
-      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
-      patch(null, dashboardDataModel.getId(), user, patch);
-      return;
     }
-    super.update(task, entityLink, newValue, user);
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class ColumnDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+    private final Column column;
+
+    ColumnDescriptionTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      DashboardDataModel dataModel =
+          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns", ALL);
+      threadContext.setAboutEntity(dataModel);
+      column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      column.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class ColumnTagTaskWorkflow extends TagTaskWorkflow {
+    private final Column column;
+
+    ColumnTagTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      DashboardDataModel dataModel =
+          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
+      threadContext.setAboutEntity(dataModel);
+      column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      column.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
   }
 
   @Override

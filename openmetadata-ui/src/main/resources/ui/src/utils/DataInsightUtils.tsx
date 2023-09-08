@@ -283,11 +283,13 @@ const getLatestPercentage = (
     });
     switch (dataInsightChartType) {
       case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+      case DataInsightChartType.PercentageOfServicesWithDescription:
         return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
           2
         );
 
       case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+      case DataInsightChartType.PercentageOfServicesWithOwner:
         return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
 
       default:
@@ -339,11 +341,13 @@ const getOldestPercentage = (
     });
     switch (dataInsightChartType) {
       case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+      case DataInsightChartType.PercentageOfServicesWithDescription:
         return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
           2
         );
 
       case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+      case DataInsightChartType.PercentageOfServicesWithOwner:
         return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
 
       default:

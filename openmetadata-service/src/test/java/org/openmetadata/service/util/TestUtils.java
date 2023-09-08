@@ -226,8 +226,13 @@ public final class TestUtils {
   }
 
   static {
-    ELASTIC_SEARCH_CONNECTION =
-        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9200"));
+    try {
+      ELASTIC_SEARCH_CONNECTION =
+          new SearchConnection()
+              .withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9200")));
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
     OPEN_SEARCH_CONNECTION =
         new SearchConnection().withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
   }
