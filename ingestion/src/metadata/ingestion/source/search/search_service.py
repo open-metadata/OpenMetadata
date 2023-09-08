@@ -17,6 +17,9 @@ from typing import Any, Iterable, List, Optional, Set
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
+from metadata.generated.schema.api.services.createSearchService import (
+    CreateSearchServiceRequest,
+)
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
@@ -165,9 +168,13 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 continue
             yield index_details
 
-    def yield_create_request_search_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=SearchService, config=config
+    def yield_create_request_search_service(
+        self, config: WorkflowSource
+    ) -> Iterable[Either[CreateSearchServiceRequest]]:
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=SearchService, config=config
+            )
         )
 
     def get_services(self) -> Iterable[WorkflowSource]:

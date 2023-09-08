@@ -25,8 +25,8 @@ import {
 import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
   DELETE_TERM,
-  GLOSSARY_INVALID_NAMES,
-  GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR,
+  INVALID_NAMES,
+  NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   NEW_GLOSSARY,
   NEW_GLOSSARY_1,
@@ -86,16 +86,16 @@ const validateForm = () => {
   cy.get('[data-testid="name"]')
     .scrollIntoView()
     .should('be.visible')
-    .type(GLOSSARY_INVALID_NAMES.MAX_LENGTH);
+    .type(INVALID_NAMES.MAX_LENGTH);
   cy.get('#name_help')
     .should('be.visible')
-    .contains(GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR);
+    .contains(NAME_MAX_LENGTH_VALIDATION_ERROR);
 
   // with special char validation
   cy.get('[data-testid="name"]')
     .should('be.visible')
     .clear()
-    .type(GLOSSARY_INVALID_NAMES.WITH_SPECIAL_CHARS);
+    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
   cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
 };
 
