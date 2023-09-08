@@ -344,6 +344,7 @@ export const MOCK_TEST_CASE = [
   {
     id: '5f83c798-91ac-4289-aeb0-99ef372e7e96',
     name: 'column_values_to_match_regex',
+    displayName: 'column values to match regex',
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.last_name.column_values_to_match_regex',
     description: 'test value of a column match regex',
