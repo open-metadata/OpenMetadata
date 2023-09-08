@@ -259,6 +259,9 @@
       "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
