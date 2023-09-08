@@ -12,6 +12,7 @@
 """Test Ometa Dataframe utility tests"""
 import unittest
 from unittest.mock import patch
+import os
 
 import pyarrow.parquet as pq
 
@@ -25,8 +26,10 @@ from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 
 from .topology.database.test_datalake import mock_datalake_config
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 resp_parquet_file = (
-    pq.ParquetFile("ingestion/tests/unit/test_ometa_to_dataframe.parquet")
+    pq.ParquetFile(os.path.join(ROOT_DIR, "test_ometa_to_dataframe.parquet"))
     .read()
     .to_pandas()
 )
