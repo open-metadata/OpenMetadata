@@ -17,6 +17,7 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import amundsenConnection from '../jsons/connectionSchemas/connections/metadata/amundsenConnection.json';
 import atlasConnection from '../jsons/connectionSchemas/connections/metadata/atlasConnection.json';
 import openMetadataConnection from '../jsons/connectionSchemas/connections/metadata/openMetadataConnection.json';
+import sasCatalogConnection from '../jsons/connectionSchemas/connections/metadata/sasCatalogConnection.json';
 
 export const getMetadataConfig = (type: MetadataServiceType) => {
   let schema = {};
@@ -34,6 +35,11 @@ export const getMetadataConfig = (type: MetadataServiceType) => {
     }
     case MetadataServiceType.OpenMetadata: {
       schema = openMetadataConnection;
+
+      break;
+    }
+    case MetadataServiceType.SASCatalog: {
+      schema = sasCatalogConnection;
 
       break;
     }

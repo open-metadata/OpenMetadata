@@ -142,6 +142,7 @@ plugins: Dict[str, Set[str]] = {
         "sqlalchemy-bigquery>=1.2.2",
     },
     "clickhouse": {"clickhouse-driver~=0.2", "clickhouse-sqlalchemy~=0.2"},
+    "custom-database": {},
     "dagster": {
         VERSIONS["pymysql"],
         "psycopg2-binary",
@@ -246,6 +247,7 @@ plugins: Dict[str, Set[str]] = {
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce==1.11.4"},
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
+    "sascatalog": {},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"]},

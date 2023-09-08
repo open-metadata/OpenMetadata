@@ -208,6 +208,7 @@ class REST:
         """
         retry_codes = self._retry_codes
         try:
+            logger.debug(f"{method} - {url}")
             resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
 

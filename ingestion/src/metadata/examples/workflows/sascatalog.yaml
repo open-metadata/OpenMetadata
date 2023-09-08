@@ -1,0 +1,19 @@
+source:
+  type: sascatalog
+  serviceName: local_sascatalog
+  serviceConnection:
+    config:
+      type: SASCatalog
+      username: username
+      password: password
+      serverHost: serverHost
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

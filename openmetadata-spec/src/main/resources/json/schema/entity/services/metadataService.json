@@ -14,7 +14,7 @@
       "description": "Type of database service such as Amundsen, Atlas...",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas", "Alation"],
+      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas", "Alation", "SASCatalog"],
       "javaEnums": [
         {
           "name": "Amundsen"
@@ -30,6 +30,9 @@
         },
         {
           "name": "Alation"
+        },
+        {
+          "name": "SASCatalog"
         }
       ]
     },
@@ -58,6 +61,9 @@
             },
             {
               "$ref": "./connections/metadata/alationConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/sasCatalogConnection.json"
             }
           ]
         }
