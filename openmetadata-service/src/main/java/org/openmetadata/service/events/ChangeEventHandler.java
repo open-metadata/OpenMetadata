@@ -109,7 +109,7 @@ public class ChangeEventHandler implements EventHandler {
       handle.commit();
     } catch (Exception e) {
       handle.rollback();
-      LOG.error("Failed to capture change event for method {} due to ", method, e);
+      LOG.error("Failed to capture the change event for method {} due to ", method, e);
     } finally {
       jdbiUnitOfWorkProvider.getHandleManager().clear();
     }
