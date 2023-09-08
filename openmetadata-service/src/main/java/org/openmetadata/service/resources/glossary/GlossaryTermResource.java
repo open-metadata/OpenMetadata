@@ -44,10 +44,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -57,7 +59,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -295,7 +296,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createGlossaryTerm",
@@ -314,7 +314,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return create(uriInfo, securityContext, term);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -339,7 +338,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateGlossaryTerm",
@@ -358,7 +356,27 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return createOrUpdate(uriInfo, securityContext, term);
   }
 
-  @JdbiUnitOfWork
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -383,7 +401,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -407,7 +424,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

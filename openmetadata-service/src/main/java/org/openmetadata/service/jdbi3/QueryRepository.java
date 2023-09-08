@@ -27,10 +27,9 @@ import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
-
   private static final String QUERY_USERS_FIELD = "users";
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn";
-  private static final String QUERY_UPDATE_FIELDS = "users,votes,queryUsedIn";
+  private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -45,14 +44,12 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   public Query setFields(Query entity, EntityUtil.Fields fields) {
-    entity.setVotes(fields.contains("votes") ? getVotes(entity) : entity.getVotes());
     entity.setQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
     return entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
   }
 
   @Override
   public Query clearFields(Query entity, EntityUtil.Fields fields) {
-    entity.withVotes(fields.contains("votes") ? entity.getVotes() : null);
     entity.withQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? entity.getQueryUsedIn() : null);
     return entity.withUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
   }

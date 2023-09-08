@@ -31,6 +31,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Container;
@@ -42,7 +43,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -208,7 +208,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createContainer",
@@ -227,7 +226,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return create(uriInfo, securityContext, container);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -252,7 +250,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateContainer",
@@ -271,7 +268,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return createOrUpdate(uriInfo, securityContext, container);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -293,7 +289,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -318,7 +313,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .toResponse();
   }
 
-  @JdbiUnitOfWork
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -338,7 +332,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return super.listVersionsInternal(securityContext, id);
   }
 
-  @JdbiUnitOfWork
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -366,7 +359,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -388,7 +380,27 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -411,7 +423,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

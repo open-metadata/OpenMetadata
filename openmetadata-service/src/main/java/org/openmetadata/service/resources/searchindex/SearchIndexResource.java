@@ -46,6 +46,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateSearchIndex;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.SearchIndex;
@@ -58,7 +59,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SearchIndexRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -275,7 +275,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return create(uriInfo, securityContext, searchIndex);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -300,7 +299,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateSearchIndex",
@@ -318,7 +316,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return createOrUpdate(uriInfo, securityContext, searchIndex);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/sampleData")
   @Operation(
@@ -367,7 +364,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return addHref(uriInfo, searchIndex);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -389,7 +385,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -413,7 +408,27 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         .toResponse();
   }
 
-  @JdbiUnitOfWork
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -435,7 +450,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -459,7 +473,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

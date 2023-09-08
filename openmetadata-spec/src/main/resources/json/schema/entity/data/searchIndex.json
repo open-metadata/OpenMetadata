@@ -226,6 +226,9 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
     }
   },
   "required": ["id", "name", "service", "fields"],

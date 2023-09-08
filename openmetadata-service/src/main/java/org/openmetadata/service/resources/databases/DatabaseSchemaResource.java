@@ -46,9 +46,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -56,7 +58,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -260,7 +261,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDBSchema",
@@ -280,7 +280,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return create(uriInfo, securityContext, schema);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -305,7 +304,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDBSchema",
@@ -323,7 +321,27 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return createOrUpdate(uriInfo, securityContext, schema);
   }
 
-  @JdbiUnitOfWork
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -349,7 +367,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -372,7 +389,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

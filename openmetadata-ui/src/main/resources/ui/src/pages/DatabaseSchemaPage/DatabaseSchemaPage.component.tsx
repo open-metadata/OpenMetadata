@@ -222,7 +222,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         setStoredProcedure((prev) => ({ ...prev, isLoading: true }));
         const { data, paging } = await getStoredProceduresList({
-          service: getDecodedFqn(databaseSchemaFQN),
+          databaseSchema: getDecodedFqn(databaseSchemaFQN),
           fields: 'owner,tags,followers',
           include: storedProcedure.deleted
             ? Include.Deleted
@@ -624,6 +624,25 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
+          count={storedProcedure.paging.total}
+          id={EntityTabs.STORED_PROCEDURE}
+          isActive={activeTab === EntityTabs.STORED_PROCEDURE}
+          name={t('label.stored-procedure-plural')}
+        />
+      ),
+      key: EntityTabs.STORED_PROCEDURE,
+      children: (
+        <StoredProcedureTab
+          fetchStoredProcedure={fetchStoreProcedureDetails}
+          pagingHandler={storedProcedurePagingHandler}
+          storedProcedure={storedProcedure}
+          onShowDeletedStoreProcedureChange={handleShowDeletedStoredProcedure}
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
           count={feedCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
@@ -640,25 +659,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
           />
         </ActivityFeedProvider>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          count={storedProcedure.paging.total}
-          id={EntityTabs.STORED_PROCEDURE}
-          isActive={activeTab === EntityTabs.STORED_PROCEDURE}
-          name={t('label.stored-procedure')}
-        />
-      ),
-      key: EntityTabs.STORED_PROCEDURE,
-      children: (
-        <StoredProcedureTab
-          fetchStoredProcedure={fetchStoreProcedureDetails}
-          pagingHandler={storedProcedurePagingHandler}
-          storedProcedure={storedProcedure}
-          onShowDeletedStoreProcedureChange={handleShowDeletedStoredProcedure}
-        />
       ),
     },
   ];

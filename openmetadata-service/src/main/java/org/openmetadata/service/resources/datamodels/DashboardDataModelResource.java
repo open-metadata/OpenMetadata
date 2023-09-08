@@ -43,16 +43,17 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
@@ -258,7 +259,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createDataModel",
@@ -278,7 +278,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return create(uriInfo, securityContext, dashboardDataModel);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -304,7 +303,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateDataModel",
@@ -323,7 +321,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return createOrUpdate(uriInfo, securityContext, dashboardDataModel);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -342,7 +339,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -359,7 +355,27 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
-  @JdbiUnitOfWork
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -381,7 +397,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -405,7 +420,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(

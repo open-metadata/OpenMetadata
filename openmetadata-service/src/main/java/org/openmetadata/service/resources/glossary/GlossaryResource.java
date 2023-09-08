@@ -45,9 +45,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -57,7 +59,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.Reindex;
@@ -242,7 +243,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return super.getVersionInternal(securityContext, id, version);
   }
 
-  @JdbiUnitOfWork
   @POST
   @Operation(
       operationId = "createGlossary",
@@ -261,7 +261,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return create(uriInfo, securityContext, glossary);
   }
 
-  @JdbiUnitOfWork
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -286,7 +285,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Operation(
       operationId = "createOrUpdateGlossary",
@@ -305,7 +303,27 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return createOrUpdate(uriInfo, securityContext, glossary);
   }
 
-  @JdbiUnitOfWork
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -331,7 +349,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -354,7 +371,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/restore")
   @Operation(
@@ -376,7 +392,10 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation")
-  public String getCsvDocumentation(@Context SecurityContext securityContext) {
+  public String getCsvDocumentation(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
+          String name) {
     return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
   }
 
@@ -401,7 +420,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return exportCsvInternal(securityContext, name);
   }
 
-  @JdbiUnitOfWork
   @PUT
   @Path("/name/{name}/import")
   @Consumes(MediaType.TEXT_PLAIN)

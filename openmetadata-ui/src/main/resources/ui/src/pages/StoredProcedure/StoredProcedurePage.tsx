@@ -62,6 +62,7 @@ import {
   restoreStoredProcedures,
 } from 'rest/storedProceduresAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
@@ -162,6 +163,15 @@ const StoredProcedurePage = () => {
       );
 
       setStoredProcedure(response);
+
+      addToRecentViewed({
+        displayName: getEntityName(response),
+        entityType: EntityType.STORED_PROCEDURE,
+        fqn: response.fullyQualifiedName ?? '',
+        serviceType: response.serviceType,
+        timestamp: 0,
+        id: response.id ?? '',
+      });
     } catch (error) {
       // Error here
     } finally {
@@ -323,7 +333,7 @@ const StoredProcedurePage = () => {
       await restoreStoredProcedures(storedProcedureId);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.stored-procedure'),
+          entity: t('label.stored-procedure-plural'),
         }),
         2000
       );
@@ -332,7 +342,7 @@ const StoredProcedurePage = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.stored-procedure'),
+          entity: t('label.stored-procedure-plural'),
         })
       );
     }
@@ -637,7 +647,9 @@ const StoredProcedurePage = () => {
   }
 
   return (
-    <PageLayoutV1 className="bg-white" pageTitle={t('label.stored-procedure')}>
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle={t('label.stored-procedure-plural')}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
