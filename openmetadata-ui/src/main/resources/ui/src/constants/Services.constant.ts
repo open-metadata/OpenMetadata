@@ -89,6 +89,7 @@ import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
 import logo from '../assets/svg/logo-monogram.svg';
+import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
@@ -181,6 +182,7 @@ export const QLIK_SENSE = qlikSense;
 export const LIGHT_DASH = lightDash;
 export const COUCHBASE = couchbase;
 export const ELASTIC_SEARCH = elasticSearch;
+export const OPEN_SEARCH = openSearch;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;

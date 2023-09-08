@@ -65,6 +65,7 @@ import {
   MSSQL,
   MYSQL,
   NIFI,
+  OPEN_SEARCH,
   ORACLE,
   PINOT,
   PIPELINE_DEFAULT,
@@ -310,6 +311,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case SearchServiceType.ElasticSearch:
       return ELASTIC_SEARCH;
+
+    case SearchServiceType.OpenSearch:
+      return OPEN_SEARCH;
 
     default: {
       let logo;
