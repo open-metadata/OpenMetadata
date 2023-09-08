@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/sasCatalogConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SASCatalogConnection",
+  "description": "SAS Catalog Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.SASCatalogConnection",
+  "definitions": {
+    "sasCatalogType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SASCatalog"],
+      "default": "SASCatalog"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/sasCatalogType",
+      "default": "SASCatalog"
+    },
+    "username": {
+      "description": "username to connect to SAS Catalog",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect to SAS Catalog",
+      "type": "string",
+      "format": "password"
+    },
+    "serverHost": {
+      "description": "Hostname of SAS Catalog Server",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": ["username", "password", "serverHost"],
+  "additionalProperties": false
+}
