@@ -23,8 +23,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -44,24 +43,25 @@ public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
   private NotificationHandler notificationHandler;
 
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  private CollectionDAO dao;
+
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO dao) {
     this.mapper = new ObjectMapper();
     this.notificationHandler = new NotificationHandler();
+    this.dao = dao;
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext, Jdbi jdbi) {
+  @Transaction
+  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
-    Handle handle = jdbi.open();
-    CollectionDAO collectionDAO = handle.attach(CollectionDAO.class);
-    CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
-    FeedRepository feedRepository = new FeedRepository(collectionDAO);
+    CollectionDAO.ChangeEventDAO changeEventDAO = dao.changeEventDAO();
+    FeedRepository feedRepository = new FeedRepository(dao);
     try {
-      handle.begin();
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
-        notificationHandler.processNotifications(responseContext, collectionDAO);
+        notificationHandler.processNotifications(responseContext, dao);
       } else {
         ChangeEvent changeEvent = getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
         if (changeEvent != null) {
@@ -94,19 +94,15 @@ public class ChangeEventHandler implements EventHandler {
                 WebSocketManager.getInstance()
                     .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
                 if (changeEvent.getEventType().equals(EventType.ENTITY_DELETED)) {
-                  deleteAllConversationsRelatedToEntity(getEntity(changeEvent), collectionDAO);
+                  deleteAllConversationsRelatedToEntity(getEntity(changeEvent), dao);
                 }
               }
             }
           }
         }
       }
-      handle.commit();
     } catch (Exception e) {
-      handle.rollback();
       LOG.error("Failed to capture change event for method {} due to ", method, e);
-    } finally {
-      handle.close();
     }
     return null;
   }

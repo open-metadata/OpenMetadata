@@ -187,7 +187,7 @@ public class FeedRepository {
     return new ThreadContext(thread);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Thread create(Thread thread) {
     ThreadContext threadContext = getThreadContext(thread);
     return createThread(threadContext);

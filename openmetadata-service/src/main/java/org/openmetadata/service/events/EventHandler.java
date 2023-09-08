@@ -15,13 +15,18 @@ package org.openmetadata.service.events;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
-import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 public interface EventHandler {
-  void init(OpenMetadataApplicationConfig config, Jdbi jdbi);
+  void init(OpenMetadataApplicationConfig config, CollectionDAO dao);
 
-  Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext, Jdbi jdbi);
+  /* we need to enforce Transaction so that the process gets its own jdbi handle
+   the work done with-in process method is surrounded by its own handle and transaction is committed
+  do not wrap this with JdbiUnitOfWork as its wraps transaction across the request */
+  @Transaction
+  Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext);
 
   void close();
 }

@@ -23,6 +23,7 @@ import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.ParallelStreamUtil;
 
@@ -36,14 +37,14 @@ public class EventFilter implements ContainerResponseFilter {
 
   private Jdbi jdbi;
 
-  public EventFilter(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  public EventFilter(OpenMetadataApplicationConfig config, CollectionDAO dao) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
     this.jdbi = jdbi;
-    registerEventHandlers(config, jdbi);
+    registerEventHandlers(config, dao);
   }
 
-  private void registerEventHandlers(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  private void registerEventHandlers(OpenMetadataApplicationConfig config, CollectionDAO dao) {
     try {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
@@ -51,7 +52,7 @@ public class EventFilter implements ContainerResponseFilter {
         @SuppressWarnings("unchecked")
         EventHandler eventHandler =
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
-        eventHandler.init(config, jdbi);
+        eventHandler.init(config, dao);
         eventHandlers.add(eventHandler);
         LOG.info("Added event handler {}", eventHandlerClassName);
       }
@@ -74,8 +75,7 @@ public class EventFilter implements ContainerResponseFilter {
             eventHandler -> {
               UriInfo uriInfo = requestContext.getUriInfo();
               if (JwtFilter.EXCLUDED_ENDPOINTS.stream().noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
-                ParallelStreamUtil.runAsync(
-                    () -> eventHandler.process(requestContext, responseContext, jdbi), forkJoinPool);
+                ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool);
               }
             });
   }
