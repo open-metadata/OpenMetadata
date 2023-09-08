@@ -91,7 +91,6 @@ const StoredProcedureTab = ({
         <Table
           bordered
           columns={tableColumn}
-          data-testid="data-models-table"
           dataSource={data}
           loading={{
             spinning: isLoading,
