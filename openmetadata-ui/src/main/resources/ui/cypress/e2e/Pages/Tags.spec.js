@@ -22,13 +22,16 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import {
+  deleteClassification,
+  submitForm,
+  validateForm,
+  visitClassificationPage,
+} from '../../common/TagUtils';
+import {
   DELETE_TERM,
-  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
-  NAME_VALIDATION_ERROR,
   NEW_CLASSIFICATION,
   NEW_TAG,
   SEARCH_ENTITY_TABLE,
-  TAG_INVALID_NAMES,
 } from '../../constants/constants';
 
 const permanentDeleteModal = (entity) => {
@@ -51,53 +54,6 @@ const permanentDeleteModal = (entity) => {
     .click();
 };
 
-const submitForm = () => {
-  cy.get('button[type="submit"]').scrollIntoView().should('be.visible').click();
-};
-
-const validateForm = () => {
-  // submit form without any data to trigger validation
-  submitForm();
-
-  // error messages
-  cy.get('#tags_name_help').should('be.visible').contains('Name is required');
-  cy.get('#tags_description_help')
-    .scrollIntoView()
-    .should('be.visible')
-    .contains('Description is required');
-
-  // validation should work for invalid names
-
-  // min length validation
-  cy.get('[data-testid="name"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .clear()
-    .type(TAG_INVALID_NAMES.MIN_LENGTH);
-  cy.get('#tags_name_help')
-    .should('be.visible')
-    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
-
-  // max length validation
-  cy.get('[data-testid="name"]')
-
-    .should('be.visible')
-    .clear()
-    .type(TAG_INVALID_NAMES.MAX_LENGTH);
-  cy.get('#tags_name_help')
-    .should('be.visible')
-    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
-
-  // with special char validation
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
-  cy.get('#tags_name_help')
-    .should('be.visible')
-    .contains(NAME_VALIDATION_ERROR);
-};
-
 describe('Tags page should work', () => {
   beforeEach(() => {
     cy.login();
@@ -112,17 +68,7 @@ describe('Tags page should work', () => {
       `/api/v1/search/query?q=*%20AND%20disabled%3Afalse&index=tag_search_index*`,
       'suggestTag'
     );
-    interceptURL('GET', '/api/v1/tags*', 'getTags');
-
-    cy.get('[data-testid="governance"]')
-      .should('exist')
-      .and('be.visible')
-      .click({ animationDistanceThreshold: 20 });
-
-    // adding manual wait to open dropdown in UI
-    cy.wait(500);
-    cy.get('[data-testid="app-bar-item-tags"]').should('be.visible').click();
-    verifyResponseStatusCode('@getTags', 200);
+    visitClassificationPage();
   });
 
   it('Required Details should be available', () => {
@@ -455,40 +401,6 @@ describe('Tags page should work', () => {
   });
 
   it('Delete Tag classification flow should work properly', () => {
-    interceptURL(
-      'DELETE',
-      '/api/v1/classifications/*',
-      'deletTagClassification'
-    );
-
-    cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_CLASSIFICATION.displayName)
-      .should('be.visible')
-      .as('newCategory');
-
-    cy.get('@newCategory')
-      .click()
-      .parent()
-      .should('have.class', 'activeCategory');
-
-    cy.get('[data-testid="manage-button"]').should('be.visible').click();
-
-    cy.get('[data-testid="delete-button"]').should('be.visible').click();
-
-    cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
-
-    cy.get('[data-testid="confirm-button"]')
-      .should('be.visible')
-      .should('not.disabled')
-      .click();
-
-    verifyResponseStatusCode('@deletTagClassification', 200);
-    cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_CLASSIFICATION.name)
-      .should('not.be.exist');
+    deleteClassification(NEW_CLASSIFICATION);
   });
 });

@@ -54,6 +54,7 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardConnection } from 'generated/entity/services/dashboardService';
 import { DatabaseService } from 'generated/entity/services/databaseService';
@@ -123,7 +124,8 @@ export type ServicePageData =
   | Mlmodel
   | Pipeline
   | Container
-  | DashboardDataModel;
+  | DashboardDataModel
+  | StoredProcedure;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();

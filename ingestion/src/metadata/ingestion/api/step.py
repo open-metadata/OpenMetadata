@@ -61,17 +61,17 @@ class ReturnStep(Step, ABC):
     """Steps that run by returning a single unit"""
 
     @abstractmethod
-    def _run(self, *args, **kwargs) -> Either:
+    def _run(self, record: Entity) -> Either:
         """
         Main entrypoint to execute the step
         """
 
-    def run(self, *args, **kwargs) -> Optional[Entity]:
+    def run(self, record: Entity) -> Optional[Entity]:
         """
         Run the step and handle the status and exceptions
         """
         try:
-            result: Either = self._run(*args, **kwargs)
+            result: Either = self._run(record)
             if result.left is not None:
                 self.status.failed(result.left)
                 return None
@@ -98,7 +98,7 @@ class StageStep(Step, ABC):
     """Steps that run by returning a single unit"""
 
     @abstractmethod
-    def _run(self, *args, **kwargs) -> Iterable[Either[str]]:
+    def _run(self, record: Entity) -> Iterable[Either[str]]:
         """
         Main entrypoint to execute the step.
 
@@ -110,12 +110,12 @@ class StageStep(Step, ABC):
         pick up the file components.
         """
 
-    def run(self, *args, **kwargs) -> None:
+    def run(self, record: Entity) -> None:
         """
         Run the step and handle the status and exceptions.
         """
         try:
-            for result in self._run(*args, **kwargs):
+            for result in self._run(record):
                 if result.left is not None:
                     self.status.failed(result.left)
 
@@ -138,7 +138,7 @@ class IterStep(Step, ABC):
     """Steps that are run as Iterables"""
 
     @abstractmethod
-    def _iter(self, *args, **kwargs) -> Iterable[Either]:
+    def _iter(self) -> Iterable[Either]:
         """Main entrypoint to run through the Iterator"""
 
     def run(self) -> Iterable[Optional[Entity]]:

@@ -145,6 +145,9 @@ public interface CollectionDAO {
   EntityExtensionDAO entityExtensionDAO();
 
   @CreateSqlObject
+  TableEntityExtensionDAO tableEntityExtensionDAO();
+
+  @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
 
   @CreateSqlObject
@@ -621,6 +624,44 @@ public interface CollectionDAO {
     void deleteExtension(@Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
+    void deleteAll(@Bind("id") String id);
+  }
+
+  interface TableEntityExtensionDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "REPLACE INTO table_entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO table_entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insert(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM table_entity_extension WHERE id = :id AND extension = :extension")
+    String getExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM table_entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%') "
+            + "ORDER BY extension")
+    List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @SqlUpdate("DELETE FROM table_entity_extension WHERE id = :id AND extension = :extension")
+    void delete(@Bind("id") String id, @Bind("extension") String extension);
+
+    @SqlUpdate("DELETE FROM table_entity_extension WHERE extension = :extension")
+    void deleteExtension(@Bind("extension") String extension);
+
+    @SqlUpdate("DELETE FROM table_entity_extension WHERE id = :id")
     void deleteAll(@Bind("id") String id);
   }
 
@@ -3167,6 +3208,18 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "report_data_time_series";
     }
+
+    @SqlQuery("SELECT json FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
+    List<String> listReportDataAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and DATE(TO_TIMESTAMP((json ->> 'timestamp')::bigint/1000)) = DATE(:date)",
+        connectionType = POSTGRES)
+    void deleteReportDataTypeAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {

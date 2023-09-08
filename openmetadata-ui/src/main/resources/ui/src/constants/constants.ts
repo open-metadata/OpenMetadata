@@ -68,6 +68,7 @@ export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const MAX_CHAR_LIMIT_TEST_SUITE = 75;
+export const SMALL_TABLE_LOADER_SIZE = 3;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -100,8 +101,9 @@ export const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
-const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
-const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
+
+export const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
+export const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
 
 export const PLACEHOLDER_ROUTE_TEST_CASE_FQN = ':testCaseFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
@@ -137,6 +139,7 @@ export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dashboardDataModelFQN';
+export const PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN = ':storedProcedureFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -215,6 +218,7 @@ export const ROUTES = {
   SWAGGER: '/docs',
   TAGS: '/tags',
   TAG_DETAILS: `/tags/${PLACEHOLDER_TAG_NAME}`,
+  TAG_VERSION: `/tags/${PLACEHOLDER_TAG_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SIGNUP: '/signup',
   REGISTER: '/register',
   SIGNIN: '/signin',
@@ -240,10 +244,12 @@ export const ROUTES = {
   DATA_MODEL_DETAILS_WITH_SUB_TAB: `/dashboardDataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
+  DATABASE_VERSION: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS_WITH_SUB_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   SCHEMA_DETAILS: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}`,
+  SCHEMA_VERSION: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SCHEMA_DETAILS_WITH_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SCHEMA_DETAILS_WITH_SUB_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
@@ -259,6 +265,10 @@ export const ROUTES = {
   CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   CONTAINER_DETAILS_WITH_SUB_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
+  STORED_PROCEDURE_DETAILS: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}`,
+  STORED_PROCEDURE_DETAILS_WITH_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  STORED_PROCEDURE_DETAILS_WITH_SUB_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
@@ -270,6 +280,12 @@ export const ROUTES = {
   ADD_WEBHOOK: '/add-webhook/',
   ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
+
+  DOMAIN: '/domain',
+  DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
+  DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ADD_DOMAIN: '/add-domain',
+  DATA_PRODUCT_DETAILS: `/data-product/${PLACEHOLDER_ROUTE_FQN}`,
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/add-glossary',
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
@@ -343,6 +359,19 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN));
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getStoredProcedureDetailsPath = (
+  storedProcedureFQN: string,
+  columnName?: string
+) => {
+  let path = ROUTES.STORED_PROCEDURE_DETAILS;
+  path = path.replace(
+    PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN,
+    getEncodedFqn(storedProcedureFQN)
+  );
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -655,6 +684,32 @@ export const getContainerDetailPath = (
   return path;
 };
 
+export const getStoredProcedureDetailPath = (
+  storedProcedureFQN: string,
+  tab?: string,
+  subTab = 'all'
+) => {
+  let path = tab
+    ? ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB
+    : ROUTES.STORED_PROCEDURE_DETAILS;
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  path = path.replace(
+    PLACEHOLDER_ROUTE_STORED_PROCEDURE_FQN,
+    getEncodedFqn(storedProcedureFQN)
+  );
+
+  return path;
+};
+
 export const getGlossaryTermDetailsPath = (
   glossaryFQN: string,
   tab?: string
@@ -779,6 +834,7 @@ export const ENTITY_PATH: Record<string, string> = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
+  storedprocedure: 'storedProcedure',
 };
 
 export const VALIDATION_MESSAGES = {

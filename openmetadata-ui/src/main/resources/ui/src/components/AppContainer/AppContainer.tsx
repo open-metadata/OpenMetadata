@@ -19,7 +19,7 @@ import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
 import AuthenticatedAppRouter from 'components/router/AuthenticatedAppRouter';
 import { ROUTES } from 'constants/constants';
 import { isEmpty } from 'lodash';
-import SignupPage from 'pages/signup';
+import SignUpPage from 'pages/SignUp/SignUpPage';
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import './app-container.less';
@@ -27,7 +27,7 @@ import './app-container.less';
 const AppContainer = () => {
   return (
     <Switch>
-      <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
+      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
 

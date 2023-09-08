@@ -53,6 +53,7 @@ import {
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
+  getStoredProcedureDetailsPath,
   getTableDetailsPath,
   getTableTabPath,
   getTagsDetailsPath,
@@ -249,6 +250,9 @@ export const getEntityLink = (
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
 
+    case EntityType.STORED_PROCEDURE:
+      return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
+
     case EntityType.TEST_CASE:
       return `${getTableTabPath(
         getTableFQNFromColumnFQN(fullyQualifiedName),
@@ -269,6 +273,8 @@ export const getServiceIcon = (source: SourceType) => {
     return (
       <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
     );
+  } else if (source.entityType === EntityType.DATA_PRODUCT) {
+    return <></>;
   } else {
     return (
       <img

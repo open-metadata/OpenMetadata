@@ -32,20 +32,22 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
@@ -275,51 +277,84 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("fields")) {
-      String schemaName = entityLink.getArrayFieldName();
-      String childrenSchemaName = "";
-      if (entityLink.getArrayFieldName().contains(".")) {
-        String fieldNameWithoutQuotes =
-            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
-        schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-        childrenSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new FieldDescriptionWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new FieldTagWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
       }
-      SearchIndex searchIndex = getByName(null, entityLink.getEntityFQN(), getFields("tags"), ALL, false);
-      SearchIndexField schemaField = null;
-      for (SearchIndexField field : searchIndex.getFields()) {
-        if (field.getName().equals(schemaName)) {
-          schemaField = field;
-          break;
-        }
-      }
-      if (!"".equals(childrenSchemaName) && schemaField != null) {
-        schemaField = getChildrenSchemaField(schemaField.getChildren(), childrenSchemaName);
-      }
-      if (schemaField == null) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidFieldName("schema", entityLink.getArrayFieldName()));
-      }
-
-      String origJson = JsonUtils.pojoToJson(searchIndex);
-      if (EntityUtil.isDescriptionTask(task.getType())) {
-        schemaField.setDescription(newValue);
-      } else if (EntityUtil.isTagTask(task.getType())) {
-        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-        schemaField.setTags(tags);
-      }
-      String updatedEntityJson = JsonUtils.pojoToJson(searchIndex);
-      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
-      patch(null, searchIndex.getId(), user, patch);
-      return;
     }
-    super.update(task, entityLink, newValue, user);
+    return super.getTaskWorkflow(threadContext);
   }
 
-  private static SearchIndexField getChildrenSchemaField(List<SearchIndexField> fields, String childrenSchemaName) {
+  static class FieldDescriptionWorkflow extends DescriptionTaskWorkflow {
+    private final SearchIndexField schemaField;
+
+    FieldDescriptionWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      schemaField =
+          getSchemaField((SearchIndex) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      schemaField.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class FieldTagWorkflow extends TagTaskWorkflow {
+    private final SearchIndexField schemaField;
+
+    FieldTagWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      schemaField =
+          getSchemaField((SearchIndex) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      schemaField.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  private static SearchIndexField getSchemaField(SearchIndex searchIndex, String fieldName) {
+    String schemaName = fieldName;
+    List<SearchIndexField> schemaFields = searchIndex.getFields();
+    String childSchemaName = "";
+    if (fieldName.contains(".")) {
+      String fieldNameWithoutQuotes = fieldName.substring(1, fieldName.length() - 1);
+      schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+      childSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+    }
+    SearchIndexField schemaField = null;
+    for (SearchIndexField field : schemaFields) {
+      if (field.getName().equals(schemaName)) {
+        schemaField = field;
+        break;
+      }
+    }
+    if (!"".equals(childSchemaName) && schemaField != null) {
+      schemaField = getChildSchemaField(schemaField.getChildren(), childSchemaName);
+    }
+    if (schemaField == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("schema", fieldName));
+    }
+    return schemaField;
+  }
+
+  private static SearchIndexField getChildSchemaField(List<SearchIndexField> fields, String childSchemaName) {
     SearchIndexField childrenSchemaField = null;
     for (SearchIndexField field : fields) {
-      if (field.getName().equals(childrenSchemaName)) {
+      if (field.getName().equals(childSchemaName)) {
         childrenSchemaField = field;
         break;
       }
@@ -327,7 +362,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     if (childrenSchemaField == null) {
       for (SearchIndexField field : fields) {
         if (field.getChildren() != null) {
-          childrenSchemaField = getChildrenSchemaField(field.getChildren(), childrenSchemaName);
+          childrenSchemaField = getChildSchemaField(field.getChildren(), childSchemaName);
           if (childrenSchemaField != null) {
             break;
           }

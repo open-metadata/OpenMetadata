@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import AddDomain from 'components/Domain/AddDomain/AddDomain.component';
+import DomainPage from 'components/Domain/DomainPage.component';
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -72,6 +74,11 @@ const SwaggerPage = withSuspenseFallback(
 const TagsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TagsPage/TagsPage'))
 );
+const ClassificationVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/ClassificationVersionPage/ClassificationVersionPage')
+  )
+);
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TopicDetails/TopicDetailsPage.component'))
 );
@@ -127,6 +134,10 @@ const DataModelDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
 );
 
+const StoredProcedureDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/StoredProcedure/StoredProcedurePage'))
+);
+
 const TableDetailsPageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/TableDetailsPageV1/TableDetailsPageV1'))
 );
@@ -142,6 +153,14 @@ const EntityVersionPage = withSuspenseFallback(
 );
 const ServiceVersionPage = withSuspenseFallback(
   React.lazy(() => import('pages/ServiceVersionPage/ServiceVersionPage'))
+);
+const DatabaseVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/DatabaseVersionPage/DatabaseVersionPage'))
+);
+const DatabaseSchemaVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
+  )
 );
 const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/explore/ExplorePageV1.component'))
@@ -261,6 +280,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
+  const domainPermission = useMemo(
+    () =>
+      userPermissions.hasViewPermissions(ResourceEntity.DOMAIN, permissions),
+    [permissions]
+  );
+
   const tagCategoryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(
@@ -328,6 +353,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_DETAILS}
       />
+      <AdminProtectedRoute
+        exact
+        component={ClassificationVersionPage}
+        hasPermission={tagCategoryPermission}
+        path={ROUTES.TAG_VERSION}
+      />
       <Route
         exact
         component={() => <GlossaryVersionPage isGlossary />}
@@ -342,6 +373,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={GlossaryVersionPage}
         path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
+      />
+      <Route
+        exact
+        component={DatabaseVersionPage}
+        path={ROUTES.DATABASE_VERSION}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaVersionPage}
+        path={ROUTES.SCHEMA_VERSION}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route
@@ -432,6 +473,23 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={DataModelDetailsPage}
         path={ROUTES.DATA_MODEL_DETAILS_WITH_SUB_TAB}
       />
+
+      <Route
+        exact
+        component={StoredProcedureDetailsPage}
+        path={ROUTES.STORED_PROCEDURE_DETAILS}
+      />
+      <Route
+        exact
+        component={StoredProcedureDetailsPage}
+        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={StoredProcedureDetailsPage}
+        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB}
+      />
+
       <Route
         exact
         component={PipelineDetailsPage}
@@ -516,6 +574,26 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
+      <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN_DETAILS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN_DETAILS_WITH_TAB}
+      />
+
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
       <AdminProtectedRoute
         exact
