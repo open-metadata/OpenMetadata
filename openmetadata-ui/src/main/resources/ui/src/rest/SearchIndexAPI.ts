@@ -12,8 +12,7 @@
  */
 
 import { Include } from 'generated/type/include';
-import { Paging } from 'generated/type/paging';
-import { PagingWithoutTotal } from 'Models';
+import { PagingResponse, PagingWithoutTotal } from 'Models';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import APIClient from './index';
 
@@ -26,15 +25,15 @@ export const getSearchIndexes = async (args: {
 }) => {
   const { paging, ...rest } = args;
 
-  const response = await APIClient.get<{
-    data: ServicePageData[];
-    paging: Paging;
-  }>(`/searchIndexes`, {
-    params: {
-      ...rest,
-      ...paging,
-    },
-  });
+  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
+    `/searchIndexes`,
+    {
+      params: {
+        ...rest,
+        ...paging,
+      },
+    }
+  );
 
   return response.data;
 };
