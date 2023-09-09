@@ -19,8 +19,16 @@ import { Include } from 'generated/type/include';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from 'utils/APIUtils';
-import { ListDataModelParams } from './dashboardAPI';
 import APIClient from './index';
+
+interface ListStoredProcedureParams {
+  databaseSchema?: string;
+  fields?: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+  limit?: number;
+}
 
 const URL = '/storedProcedures';
 
@@ -32,7 +40,9 @@ const configOptions = {
   headers: { 'Content-type': 'application/json' },
 };
 
-export const getStoredProceduresList = async (params?: ListDataModelParams) => {
+export const getStoredProceduresList = async (
+  params?: ListStoredProcedureParams
+) => {
   const response = await APIClient.get<PagingResponse<ServicePageData[]>>(URL, {
     params,
   });

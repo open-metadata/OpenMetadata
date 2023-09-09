@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.reflections.Reflections;
@@ -158,8 +159,10 @@ public final class CollectionRegistry {
   /** Register resources from CollectionRegistry */
   public void registerResources(
       Jdbi jdbi,
+      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
       Environment environment,
       OpenMetadataApplicationConfig config,
+      CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
     // Build list of ResourceDescriptors
@@ -167,7 +170,7 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        Object resource = createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+        Object resource = createResource(jdbi, resourceClass, daoObject, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -231,6 +234,7 @@ public final class CollectionRegistry {
   private static Object createResource(
       Jdbi jdbi,
       String resourceClass,
+      CollectionDAO daoObject,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
@@ -238,7 +242,6 @@ public final class CollectionRegistry {
           InstantiationException {
 
     // Decorate Collection DAO
-    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
     Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
 
     Object resource = null;

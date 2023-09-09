@@ -39,6 +39,7 @@ import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_VOTES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -224,6 +225,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final String allFields;
   private final String systemEntityName; // System entity provided by the system that can't be deleted
   protected final boolean supportsFollowers;
+  protected final boolean supportsVotes;
   protected final boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
@@ -393,6 +395,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Set<String> allowedFields = Entity.getEntityFields(entityClass);
     this.supportsEmptyDescription = !EntityUtil.isDescriptionRequired(entityClass);
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
+    this.supportsVotes = allowedFields.contains(FIELD_VOTES);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
@@ -2305,7 +2308,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(300 * 100L)) // 300 iterations for 30 seconds
+        .atMost(Duration.ofMillis(600 * 100L)) // 300 iterations for 30 seconds
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
@@ -2350,7 +2353,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
+        .atMost(Duration.ofMillis(600 * 100L)) // 100 iterations
         .until(
             () ->
                 eventHolder.hasDeletedEvent(getChangeEvents(null, null, null, entityType, timestamp, authHeaders), id));

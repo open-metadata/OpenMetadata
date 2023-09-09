@@ -344,6 +344,13 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.extraInfo = (
         <>
+          {storedProcedureDetails.sourceUrl && (
+            <ExtraInfoLink
+              href={storedProcedureDetails.sourceUrl}
+              label=""
+              value={getEntityName(storedProcedureDetails)}
+            />
+          )}
           {isObject(storedProcedureDetails.storedProcedureCode) && (
             <ExtraInfoLabel
               label={t('label.language')}

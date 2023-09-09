@@ -116,6 +116,9 @@
       "description": "Domain the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
