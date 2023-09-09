@@ -15,24 +15,43 @@ import { EDITOR_OPTIONS } from 'constants/BlockEditor.constants';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
+import {
+  getBackendFormat,
+  getFrontEndFormat,
+  HTMLToMarkdown,
+  MarkdownToHTMLConverter,
+} from 'utils/FeedUtils';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 
 export interface BlockEditorProps {
+  // should be markdown string
   content?: string;
   editable?: boolean;
+  // will be call with markdown content
+  onSave?: (content: string) => void;
 }
 
 const BlockEditor: FC<BlockEditorProps> = ({
   content = '',
   editable = true,
+  onSave,
 }) => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
   const editor = useEditor({
     ...EDITOR_OPTIONS,
+    onBlur({ editor }) {
+      const htmlContent = editor.getHTML();
+
+      const markdown = HTMLToMarkdown.turndown(htmlContent);
+
+      const backendFormat = getBackendFormat(markdown);
+
+      onSave?.(backendFormat);
+    },
   });
 
   const handleLinkToggle = () => {
@@ -145,7 +164,10 @@ const BlockEditor: FC<BlockEditorProps> = ({
     // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
     setTimeout(() => {
       if (content !== undefined) {
-        editor.commands.setContent(content);
+        const htmlContent = MarkdownToHTMLConverter.makeHtml(
+          getFrontEndFormat(content)
+        );
+        editor.commands.setContent(htmlContent);
       }
     });
   }, [content, editor]);
