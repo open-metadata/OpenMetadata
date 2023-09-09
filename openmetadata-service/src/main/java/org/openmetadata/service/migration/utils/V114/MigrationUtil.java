@@ -41,7 +41,8 @@ public class MigrationUtil {
     List<TestSuite> testSuites =
         testSuiteRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {
-      if (suite.getExecutableEntityReference() != null) {
+      if (suite.getExecutableEntityReference() != null && (!suite.getExecutable()
+      || !suite.getFullyQualifiedName().contains("testSuite"))) {
         String tableFQN = suite.getExecutableEntityReference().getFullyQualifiedName();
         String suiteFQN = tableFQN + ".testSuite";
         suite.setName(suiteFQN);
@@ -69,11 +70,11 @@ public class MigrationUtil {
               TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(existingTestSuiteRel.getId());
               if (existingTestSuite.getExecutable()
                   && existingTestSuite.getFullyQualifiedName().equals(executableTestSuiteFQN)) {
-                // remove the existing relation
+                // There is a native test suite associated with this testCase.
                 relationWithExecutableTestSuiteExists = true;
               }
             } catch (EntityNotFoundException ex) {
-              // if testsuite cannot be retrieved but the relation exists, then this is orphaned realtion, we will
+              // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
               // delete the relation
               testSuiteRepository.deleteRelationship(
                   existingTestSuiteRel.getId(), TEST_SUITE, testCase.getId(), TEST_CASE, Relationship.CONTAINS);
