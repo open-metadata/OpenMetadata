@@ -40,6 +40,7 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -170,6 +171,7 @@ import org.openmetadata.service.util.ResultList;
  */
 @Slf4j
 public abstract class EntityRepository<T extends EntityInterface> {
+
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
           .maximumSize(5000)
@@ -186,7 +188,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final Class<T> entityClass;
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
-  protected final CollectionDAO daoCollection;
+  @Getter protected final CollectionDAO daoCollection;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -203,6 +205,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
+
+  protected boolean supportsSearchIndex = false;
 
   protected EntityRepository(
       String collectionPath,
@@ -696,14 +700,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    // Override to perform any operation required after creation.
-    // For example ingestion pipeline creates a pipeline in AirFlow.
+    if (supportsSearchIndex) {
+      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
+      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+    }
   }
 
   @SuppressWarnings("unused")
-  protected void postUpdate(T entity) {
-    // Override to perform any operation required after an entity update.
-    // For example ingestion pipeline creates a pipeline in AirFlow.
+  public void postUpdate(T entity) {
+    if (supportsSearchIndex) {
+      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, entityClass), scriptTxt, "");
+    }
   }
 
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
@@ -772,7 +780,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
-
+    entity.setChangeDescription(change);
+    postUpdate(JsonUtils.deepCopy(entity, entityClass));
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -838,9 +847,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {
-    // Override this method to perform any operation required after deletion.
-    // For example ingestion pipeline deletes a pipeline in AirFlow.
+  protected void postDelete(T entity) {}
+
+  public void deleteFromSearch(T entity, String changeType) {
+    if (supportsSearchIndex) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, entityClass), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+      } else {
+        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
+      }
+    }
+  }
+
+  public void restoreFromSearch(T entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
+    }
   }
 
   private DeleteResponse<T> delete(String deletedBy, T original, boolean recursive, boolean hardDelete) {

@@ -86,6 +86,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -93,6 +94,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.commons.text.RandomStringGenerator.Builder;
@@ -2694,15 +2696,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
+  @SneakyThrows
   protected void importCsvAndValidate(
-      String entityName, List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords)
-      throws HttpResponseException {
+      String entityName, List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
     createRecords = listOrEmpty(createRecords);
     updateRecords = listOrEmpty(updateRecords);
 
     // Import CSV to create new records and update existing records with dryRun=true first
     String csv = EntityCsvTest.createCsv(csvHeaders, createRecords, updateRecords);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     CsvImportResult dryRunResult = importCsv(entityName, csv, true);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
 
     // Validate the imported result summary - it should include both created and updated records
     int totalRows = 1 + createRecords.size() + updateRecords.size();
@@ -2712,6 +2716,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Import CSV to create new records and update existing records with dryRun=false to really import the data
     CsvImportResult result = importCsv(entityName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertEquals(dryRunResult.withDryRun(false), result);
 
     // Finally, export CSV and ensure the exported CSV is same as imported CSV

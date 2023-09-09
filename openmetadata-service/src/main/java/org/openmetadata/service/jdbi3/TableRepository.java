@@ -114,6 +114,7 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

@@ -55,6 +55,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public TestCaseRepository(CollectionDAO dao) {
     super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -340,7 +341,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<EntityReference> testCasesEntityReferences = new ArrayList<>();
     List<ResultSummary> resultSummaries = listOrEmpty(testSuite.getTestCaseResultSummary());
     for (UUID testCaseId : testCaseIds) {
-      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
+      postUpdate(testCase);
       // Get the latest result to set the testSuite summary field
       String result =
           daoCollection

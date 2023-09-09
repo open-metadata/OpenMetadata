@@ -40,6 +40,7 @@ public class QueryRepository extends EntityRepository<Query> {
         dao,
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

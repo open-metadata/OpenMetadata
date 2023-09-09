@@ -63,6 +63,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         dao,
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

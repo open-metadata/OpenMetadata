@@ -46,10 +46,54 @@ public class SearchIndexDefinition {
         Entity.CONTAINER, "container_search_index", "/elasticsearch/%s/container_index_mapping.json"),
     QUERY_SEARCH_INDEX(Entity.QUERY, "query_search_index", "/elasticsearch/%s/query_index_mapping.json"),
     TAG_SEARCH_INDEX(Entity.TAG, "tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
+    CLASSIFICATION_SEARCH_INDEX(
+        Entity.CLASSIFICATION, "classification_search_index", "/elasticsearch/%s/classification_index_mapping.json"),
     ENTITY_REPORT_DATA_INDEX(
         ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
     TEST_CASE_SEARCH_INDEX(
         Entity.TEST_CASE, "test_case_search_index", "/elasticsearch/%s/test_case_index_mapping.json"),
+
+    TEST_SUITE_SEARCH_INDEX(
+        Entity.TEST_SUITE, "test_suite_search_index", "/elasticsearch/%s/test_suite_index_mapping.json"),
+
+    CHART_INDEX_SEARCH_INDEX(Entity.CHART, "chart_search_index", "/elasticsearch/%s/chart_index_mapping.json"),
+
+    DASHBOARD_DATA_MODEL_SEARCH_INDEX(
+        Entity.DASHBOARD_DATA_MODEL,
+        "dashboard_data_model_search_index",
+        "/elasticsearch/%s/dashboard_data_model_index_mapping.json"),
+
+    DASHBOARD_SERVICE_SEARCH_INDEX(
+        Entity.DASHBOARD_SERVICE,
+        "dashboard_service_search_index",
+        "/elasticsearch/%s/dashboard_service_index_mapping.json"),
+
+    DATABASE_SEARCH_INDEX(Entity.DATABASE, "database_search_index", "/elasticsearch/%s/database_index_mapping.json"),
+
+    DATABASE_SCHEMA_SEARCH_INDEX(
+        Entity.DATABASE_SCHEMA, "database_schema_search_index", "/elasticsearch/%s/database_schema_index_mapping.json"),
+
+    DATABASE_SERVICE_SEARCH_INDEX(
+        Entity.DASHBOARD_SERVICE,
+        "database_service_search_index",
+        "/elasticsearch/%s/database_service_index_mapping.json"),
+
+    MESSAGING_SERVICE_SEARCH_INDEX(
+        Entity.MESSAGING_SERVICE,
+        "messaging_service_search_index",
+        "/elasticsearch/%s/messaging_service_index_mapping.json"),
+    MLMODEL_SERVICE_SEARCH_INDEX(
+        Entity.MLMODEL_SERVICE, "mlmodel_service_search_index", "/elasticsearch/%s/mlmodel_service_index_mapping.json"),
+
+    PIPELINE_SERVICE_SEARCH_INDEX(
+        Entity.PIPELINE_SERVICE,
+        "pipeline_service_search_index",
+        "/elasticsearch/%s/pipeline_service_index_mapping.json"),
+
+    SEARCH_SERVICE_SEARCH_INDEX(
+        Entity.SEARCH_SERVICE, "search_service_search_index", "/elasticsearch/%s/search_service_index_mapping.json"),
+
+    SEARCH_INDEX_SEARCH(Entity.SEARCH_INDEX, "search_index", "/elasticsearch/%s/search_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",
