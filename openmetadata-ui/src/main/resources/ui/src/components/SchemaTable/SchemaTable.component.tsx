@@ -17,21 +17,18 @@ import { ExpandableConfig } from 'antd/lib/table/interface';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { LabelType, State, TagSource } from 'generated/type/schema';
-import {
-  cloneDeep,
-  isEmpty,
-  isUndefined,
-  lowerCase,
-  map,
-  reduce,
-  sortBy,
-  toLower,
-} from 'lodash';
+import { TagSource } from 'generated/type/schema';
+import { cloneDeep, isEmpty, isUndefined, map, sortBy, toLower } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  searchInFields,
+  updateFieldDescription,
+  updateFieldTags,
+} from 'utils/CommonUtils';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -40,7 +37,6 @@ import {
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
 import {
-  getDataTypeString,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
@@ -87,78 +83,13 @@ const SchemaTable = ({
     setEditColumn(undefined);
   };
 
-  const updateColumnDescription = (
-    tableCols: Column[],
-    changedColFQN: string,
-    description: string
-  ) => {
-    tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
-        col.description = description;
-      } else {
-        updateColumnDescription(
-          col?.children as Column[],
-          changedColFQN,
-          description
-        );
-      }
-    });
-  };
-
-  const getUpdatedTags = (
-    column: Column,
-    newColumnTags: Array<EntityTags>
-  ): TagLabel[] => {
-    const prevTagsFqn = column?.tags?.map((tag) => tag.tagFQN);
-
-    return reduce(
-      newColumnTags,
-      (acc: Array<EntityTags>, cv: TagOption) => {
-        if (prevTagsFqn?.includes(cv.fqn)) {
-          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.fqn);
-
-          return [...acc, prev];
-        } else {
-          return [
-            ...acc,
-            {
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: cv.source,
-              tagFQN: cv.fqn,
-            },
-          ];
-        }
-      },
-      []
-    );
-  };
-
-  const updateColumnTags = (
-    tableCols: Column[],
-    changedColFQN: string,
-    newColumnTags: Array<TagOption>
-  ) => {
-    tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
-        col.tags = getUpdatedTags(col, newColumnTags);
-      } else {
-        updateColumnTags(
-          col?.children as Column[],
-          changedColFQN,
-          newColumnTags
-        );
-      }
-    });
-  };
-
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn && editColumn.column.fullyQualifiedName) {
+    if (!isUndefined(editColumn) && editColumn.column.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnDescription(
-        tableCols,
+      updateFieldDescription<Column>(
         editColumn.column.fullyQualifiedName,
-        columnDescription
+        columnDescription,
+        tableCols
       );
       await onUpdate(tableCols);
       setEditColumn(undefined);
@@ -177,41 +108,13 @@ const SchemaTable = ({
     }));
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(
-        tableCols,
+      updateFieldTags<Column>(
         editColumnTag.fullyQualifiedName ?? '',
-        newSelectedTags
+        newSelectedTags,
+        tableCols
       );
       await onUpdate(tableCols);
     }
-  };
-
-  const searchInColumns = (table: Column[], searchText: string): Column[] => {
-    const searchedValue: Column[] = table.reduce((searchedCols, column) => {
-      const isContainData =
-        lowerCase(column.name).includes(searchText) ||
-        lowerCase(column.description).includes(searchText) ||
-        lowerCase(getDataTypeString(column.dataType)).includes(searchText);
-
-      if (isContainData) {
-        return [...searchedCols, column];
-      } else if (!isUndefined(column.children)) {
-        const searchedChildren = searchInColumns(column.children, searchText);
-        if (searchedChildren.length > 0) {
-          return [
-            ...searchedCols,
-            {
-              ...column,
-              children: searchedChildren,
-            },
-          ];
-        }
-      }
-
-      return searchedCols;
-    }, [] as Column[]);
-
-    return searchedValue;
   };
 
   const handleUpdate = (column: Column, index: number) => {
@@ -222,20 +125,25 @@ const SchemaTable = ({
     dataTypeDisplay,
     record
   ) => {
+    const displayValue = isEmpty(dataTypeDisplay)
+      ? record.name
+      : dataTypeDisplay;
+
+    if (isEmpty(displayValue)) {
+      return <>{NO_DATA_PLACEHOLDER}</>;
+    }
+
     return (
       <>
-        {dataTypeDisplay ? (
-          isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            toLower(dataTypeDisplay)
-          ) : (
-            <Tooltip title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay || record.dataType}
-              </Typography.Text>
-            </Tooltip>
-          )
+        {isReadOnly ||
+        (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+          toLower(displayValue)
         ) : (
-          '--'
+          <Tooltip title={toLower(displayValue)}>
+            <Typography.Text ellipsis className="cursor-pointer">
+              {displayValue}
+            </Typography.Text>
+          </Tooltip>
         )}
       </>
     );
@@ -386,7 +294,10 @@ const SchemaTable = ({
     if (!searchText) {
       setSearchedColumns(sortByOrdinalPosition);
     } else {
-      const searchCols = searchInColumns(sortByOrdinalPosition, searchText);
+      const searchCols = searchInFields<Column>(
+        sortByOrdinalPosition,
+        searchText
+      );
       setSearchedColumns(searchCols);
     }
   }, [searchText, sortByOrdinalPosition]);

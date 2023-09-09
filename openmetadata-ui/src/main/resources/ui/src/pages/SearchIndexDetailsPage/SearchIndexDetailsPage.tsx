@@ -36,10 +36,9 @@ import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleData
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getVersionPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
 import { SearchIndex, TagLabel } from 'generated/entity/data/searchIndex';
@@ -61,7 +60,6 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
-  getPartialNameFromTableFQN,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
@@ -340,11 +338,6 @@ function SearchIndexDetailsPage() {
             />
             <SearchIndexFieldsTab
               entityFqn={searchIndexFQN}
-              fieldName={getPartialNameFromTableFQN(
-                searchIndexFQN,
-                [FqnPart['SearchIndexField']],
-                FQN_SEPARATOR_CHAR
-              )}
               fields={searchIndexDetails?.fields ?? []}
               hasDescriptionEditAccess={
                 searchIndexPermissions.EditAll ||

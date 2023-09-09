@@ -49,11 +49,6 @@ jest.mock('utils/GlossaryUtils', () => ({
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../../utils/TopicSchema.utils', () => ({
-  updateFieldTags: jest.fn(),
-  updateFieldDescription: jest.fn(),
-}));
-
 jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest
     .fn()
@@ -63,7 +58,7 @@ jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
 );
 
 jest.mock(
-  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()

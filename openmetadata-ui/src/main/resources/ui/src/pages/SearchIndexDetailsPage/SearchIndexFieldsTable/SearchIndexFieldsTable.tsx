@@ -13,32 +13,23 @@
 
 import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { LabelType, State, TagSource } from 'generated/type/schema';
+import { TagSource } from 'generated/type/schema';
 import { TagLabel } from 'generated/type/tagLabel';
-import {
-  cloneDeep,
-  isEmpty,
-  isUndefined,
-  lowerCase,
-  map,
-  reduce,
-  sortBy,
-  toLower,
-} from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { updateFieldDescription, updateFieldTags } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { makeData } from 'utils/SearchIndexUtils';
-import { getDataTypeString, getTableExpandableConfig } from 'utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,
@@ -46,7 +37,8 @@ import {
 
 const SearchIndexFieldsTable = ({
   searchIndexFields,
-  searchText,
+  searchedFields,
+  expandableConfig,
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
@@ -55,103 +47,30 @@ const SearchIndexFieldsTable = ({
   entityFqn,
 }: SearchIndexFieldsTableProps) => {
   const { t } = useTranslation();
-
-  const [searchedFields, setSearchedFields] = useState<Array<SearchIndexField>>(
-    []
-  );
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-
-  const sortByOrdinalPosition = useMemo(
-    () => sortBy(searchIndexFields, 'ordinalPosition'),
-    [searchIndexFields]
-  );
-
-  const data = React.useMemo(() => makeData(searchedFields), [searchedFields]);
-
   const [editField, setEditField] = useState<{
     field: SearchIndexField;
     index: number;
   }>();
 
-  const handleEditField = (field: SearchIndexField, index: number): void => {
-    setEditField({ field, index });
-  };
-  const closeEditFieldModal = (): void => {
+  const data = React.useMemo(() => makeData(searchedFields), [searchedFields]);
+
+  const handleEditField = useCallback(
+    (field: SearchIndexField, index: number) => {
+      setEditField({ field, index });
+    },
+    []
+  );
+  const closeEditFieldModal = useCallback(() => {
     setEditField(undefined);
-  };
-
-  const updateFieldDescription = (
-    searchIndexFields: Array<SearchIndexField>,
-    changedFieldFQN: string,
-    description: string
-  ) => {
-    searchIndexFields?.forEach((field) => {
-      if (field.fullyQualifiedName === changedFieldFQN) {
-        field.description = description;
-      } else {
-        updateFieldDescription(
-          field?.children as Array<SearchIndexField>,
-          changedFieldFQN,
-          description
-        );
-      }
-    });
-  };
-
-  const getUpdatedTags = (
-    field: SearchIndexField,
-    newFieldTags: Array<EntityTags>
-  ): TagLabel[] => {
-    const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
-
-    return reduce(
-      newFieldTags,
-      (acc: Array<EntityTags>, cv: TagOption) => {
-        if (prevTagsFqn?.includes(cv.fqn)) {
-          const prev = field?.tags?.find((tag) => tag.tagFQN === cv.fqn);
-
-          return [...acc, prev];
-        } else {
-          return [
-            ...acc,
-            {
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: cv.source,
-              tagFQN: cv.fqn,
-            },
-          ];
-        }
-      },
-      []
-    );
-  };
-
-  const updateFieldTags = (
-    searchIndexFields: Array<SearchIndexField>,
-    changedFieldFQN: string,
-    newFieldTags: Array<TagOption>
-  ) => {
-    searchIndexFields?.forEach((field) => {
-      if (field.fullyQualifiedName === changedFieldFQN) {
-        field.tags = getUpdatedTags(field, newFieldTags);
-      } else {
-        updateFieldTags(
-          field?.children as Array<SearchIndexField>,
-          changedFieldFQN,
-          newFieldTags
-        );
-      }
-    });
-  };
+  }, []);
 
   const handleEditFieldChange = async (fieldDescription: string) => {
-    if (editField && editField.field.fullyQualifiedName) {
+    if (!isUndefined(editField) && editField.field.fullyQualifiedName) {
       const fields = cloneDeep(searchIndexFields);
-      updateFieldDescription(
-        fields,
+      updateFieldDescription<SearchIndexField>(
         editField.field.fullyQualifiedName,
-        fieldDescription
+        fieldDescription,
+        fields
       );
       await onUpdate(fields);
       setEditField(undefined);
@@ -170,98 +89,80 @@ const SearchIndexFieldsTable = ({
     }));
     if (newSelectedTags && editFieldTag) {
       const fields = cloneDeep(searchIndexFields);
-      updateFieldTags(
-        fields,
+      updateFieldTags<SearchIndexField>(
         editFieldTag.fullyQualifiedName ?? '',
-        newSelectedTags
+        newSelectedTags,
+        fields
       );
       await onUpdate(fields);
     }
   };
 
-  const searchInFields = (
-    searchIndex: Array<SearchIndexField>,
-    searchText: string
-  ): Array<SearchIndexField> => {
-    const searchedValue: Array<SearchIndexField> = searchIndex.reduce(
-      (searchedFields, field) => {
-        const isContainData =
-          lowerCase(field.name).includes(searchText) ||
-          lowerCase(field.description).includes(searchText) ||
-          lowerCase(getDataTypeString(field.dataType)).includes(searchText);
-
-        if (isContainData) {
-          return [...searchedFields, field];
-        } else if (!isUndefined(field.children)) {
-          const searchedChildren = searchInFields(field.children, searchText);
-          if (searchedChildren.length > 0) {
-            return [
-              ...searchedFields,
-              {
-                ...field,
-                children: searchedChildren,
-              },
-            ];
-          }
-        }
-
-        return searchedFields;
-      },
-      [] as Array<SearchIndexField>
-    );
-
-    return searchedValue;
-  };
-
-  const handleUpdate = (field: SearchIndexField, index: number) => {
-    handleEditField(field, index);
-  };
+  const handleUpdate = useCallback(
+    (field: SearchIndexField, index: number) => {
+      handleEditField(field, index);
+    },
+    [handleEditField]
+  );
 
   const renderDataTypeDisplay: SearchIndexCellRendered<
     SearchIndexField,
     'dataTypeDisplay'
-  > = (dataTypeDisplay, record) => {
-    return (
-      <>
-        {dataTypeDisplay ? (
-          isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            toLower(dataTypeDisplay)
+  > = useCallback(
+    (dataTypeDisplay, record) => {
+      const displayValue = isEmpty(dataTypeDisplay)
+        ? record.name
+        : dataTypeDisplay;
+
+      if (isEmpty(displayValue)) {
+        return <>{NO_DATA_PLACEHOLDER}</>;
+      }
+
+      return (
+        <>
+          {isReadOnly ||
+          (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+            toLower(displayValue)
           ) : (
-            <Tooltip title={toLower(dataTypeDisplay)}>
+            <Tooltip title={toLower(displayValue)}>
               <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay || record.dataType}
+                {displayValue}
               </Typography.Text>
             </Tooltip>
-          )
-        ) : (
-          '--'
-        )}
-      </>
-    );
-  };
+          )}
+        </>
+      );
+    },
+    [isReadOnly]
+  );
 
   const renderDescription: SearchIndexCellRendered<
     SearchIndexField,
     'description'
-  > = (_, record, index) => {
-    return (
-      <>
-        <TableDescription
-          columnData={{
-            fqn: record.fullyQualifiedName ?? '',
-            field: record.description,
-          }}
-          entityFqn={entityFqn}
-          entityType={EntityType.SEARCH_INDEX}
-          hasEditPermission={hasDescriptionEditAccess}
-          index={index}
-          isReadOnly={isReadOnly}
-          onClick={() => handleUpdate(record, index)}
-          onThreadLinkSelect={onThreadLinkSelect}
-        />
-      </>
-    );
-  };
+  > = useCallback(
+    (_, record, index) => (
+      <TableDescription
+        columnData={{
+          fqn: record.fullyQualifiedName ?? '',
+          field: record.description,
+        }}
+        entityFqn={entityFqn}
+        entityType={EntityType.SEARCH_INDEX}
+        hasEditPermission={hasDescriptionEditAccess}
+        index={index}
+        isReadOnly={isReadOnly}
+        onClick={() => handleUpdate(record, index)}
+        onThreadLinkSelect={onThreadLinkSelect}
+      />
+    ),
+    [
+      entityFqn,
+      hasDescriptionEditAccess,
+      isReadOnly,
+      handleUpdate,
+      onThreadLinkSelect,
+    ]
+  );
 
   const fields: ColumnsType<SearchIndexField> = useMemo(
     () => [
@@ -353,30 +254,6 @@ const SearchIndexFieldsTable = ({
       onThreadLinkSelect,
     ]
   );
-  const expandableConfig: ExpandableConfig<SearchIndexField> = useMemo(
-    () => ({
-      ...getTableExpandableConfig<SearchIndexField>(),
-      rowExpandable: (record) => !isEmpty(record.children),
-      expandedRowKeys,
-      onExpand: (expanded, record) => {
-        setExpandedRowKeys(
-          expanded
-            ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
-            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
-        );
-      },
-    }),
-    [expandedRowKeys]
-  );
-
-  useEffect(() => {
-    if (!searchText) {
-      setSearchedFields(sortByOrdinalPosition);
-    } else {
-      const searchFields = searchInFields(sortByOrdinalPosition, searchText);
-      setSearchedFields(searchFields);
-    }
-  }, [searchText, sortByOrdinalPosition]);
 
   return (
     <>
