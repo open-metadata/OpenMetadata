@@ -43,6 +43,7 @@ import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import glue from '../assets/img/service-icon-glue.png';
+import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import impala from '../assets/img/service-icon-impala.png';
@@ -178,6 +179,7 @@ export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
 export const LIGHT_DASH = lightDash;
 export const COUCHBASE = couchbase;
+export const GREENPLUM = greenplum;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
