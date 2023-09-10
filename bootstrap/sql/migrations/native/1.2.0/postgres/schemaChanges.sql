@@ -90,3 +90,6 @@ ALTER TABLE tag DROP CONSTRAINT IF EXISTS tag_fqnhash_key;
 ALTER TABLE tag ADD CONSTRAINT unique_fqnHash UNIQUE (fqnHash);
 
 ALTER TABLE tag ADD CONSTRAINT tag_pk PRIMARY KEY (id);
+
+ALTER TABLE query_entity ADD COLUMN queryHash varchar(32) GENERATED ALWAYS AS (json ->> 'checksum') STORED NOT NULL,
+    ADD UNIQUE(queryHash);
