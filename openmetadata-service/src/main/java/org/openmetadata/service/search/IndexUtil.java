@@ -88,10 +88,20 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.CHART)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.CHART_INDEX_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DASHBOARD_DATA_MODEL)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_DATA_MODEL_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.MESSAGING_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.USER)) {
       return SearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TEAM)) {
@@ -100,22 +110,38 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
       return SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.MLMODEL_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
       return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TAG)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.CLASSIFICATION)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.CLASSIFICATION_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
+    } else if (type.equalsIgnoreCase(Entity.CONTAINER) || type.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return SearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
+    } else if (type.equalsIgnoreCase(Entity.TEST_CASE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.TEST_SUITE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATABASE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATABASE_SCHEMA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SCHEMA_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SERVICE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.SEARCH_INDEX)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_INDEX_SEARCH;
+    } else if (type.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_SERVICE_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }

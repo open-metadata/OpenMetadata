@@ -58,11 +58,13 @@ describe('Recently viwed data assets', () => {
       interceptURL(
         'GET',
         '/api/v1/feed?type=Announcement&activeAnnouncement=true',
-        'getAnnoucemenets'
+        'getAnnouncements'
       );
+      interceptURL('GET', '/api/v1/users/*?fields=owns', 'ownerDetails');
 
       cy.clickOnLogo();
-      verifyResponseStatusCode('@getAnnoucemenets', 200);
+      verifyResponseStatusCode('@ownerDetails', 200);
+      verifyResponseStatusCode('@getAnnouncements', 200);
 
       cy.get(
         `[data-testid="recently-viewed-container"] [title="${entity.displayName}"]`

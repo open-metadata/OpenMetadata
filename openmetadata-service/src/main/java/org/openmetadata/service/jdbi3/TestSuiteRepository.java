@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.util.HashMap;
@@ -13,6 +14,7 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.ResultSummary;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -41,6 +43,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -84,6 +87,13 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
 
     return testCaseSummary;
+  }
+
+  private ResultSummary getResultSummary(TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
+    return new ResultSummary()
+        .withTestCaseName(testCase.getFullyQualifiedName())
+        .withStatus(testCaseStatus)
+        .withTimestamp(timestamp);
   }
 
   private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
@@ -147,6 +157,36 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void storeRelationships(TestSuite entity) {
     if (Boolean.TRUE.equals(entity.getExecutable())) {
       storeExecutableRelationship(entity);
+    }
+  }
+
+  @Override
+  public void deleteFromSearch(TestSuite entity, String changeType) {
+    if (supportsSearchIndex) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, TestSuite.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "testSuites.fullyQualifiedName");
+      } else {
+        if (Boolean.TRUE.equals(entity.getExecutable())) {
+          searchClient.updateSearchEntityDeleted(
+              JsonUtils.deepCopy(entity, TestSuite.class), "", "testSuites.fullyQualifiedName");
+        } else {
+          String scriptTxt =
+              "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";
+          searchClient.deleteEntityAndRemoveRelationships(
+              JsonUtils.deepCopy(entity, TestSuite.class), scriptTxt, "testSuites.fullyQualifiedName");
+        }
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(TestSuite entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, TestSuite.class), false, "testSuites.fullyQualifiedName");
     }
   }
 
