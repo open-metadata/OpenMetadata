@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -50,12 +49,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private static final String UPDATE_FIELDS = "entityLink,testSuite,testDefinition";
-  private static final String PATCH_FIELDS = "entityLink,testSuite,testDefinition";
+  private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
+  private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {
     super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -196,7 +196,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
@@ -219,7 +218,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
@@ -343,7 +341,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<EntityReference> testCasesEntityReferences = new ArrayList<>();
     List<ResultSummary> resultSummaries = listOrEmpty(testSuite.getTestCaseResultSummary());
     for (UUID testCaseId : testCaseIds) {
-      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
+      postUpdate(testCase);
       // Get the latest result to set the testSuite summary field
       String result =
           daoCollection

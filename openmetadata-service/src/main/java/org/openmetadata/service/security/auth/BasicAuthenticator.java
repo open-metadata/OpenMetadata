@@ -42,7 +42,6 @@ import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
@@ -90,9 +89,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private boolean isSelfSignUpAvailable;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
-    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
-    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
+    this.userRepository = new UserRepository(collectionDAO);
+    this.tokenRepository = new TokenRepository(collectionDAO);
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     SmtpSettings smtpSettings = config.getSmtpSettings();

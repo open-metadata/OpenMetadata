@@ -116,9 +116,13 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         title: t('label.target'),
         dataIndex: 'targetDefinition',
         key: 'targetDefinition',
-        render: (targetDefinition: Kpi['targetDefinition']) => {
+        render: (targetDefinition: Kpi['targetDefinition'], record: Kpi) => {
+          const isPercentageMetric =
+            record.metricType === KpiTargetType.Percentage;
           const targetValue = targetDefinition?.length
-            ? `${+targetDefinition[0].value * 100}%`
+            ? isPercentageMetric
+              ? `${+targetDefinition[0].value * 100}%`
+              : targetDefinition[0].value
             : '-';
 
           return <Typography.Text>{targetValue}</Typography.Text>;
@@ -242,9 +246,9 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         <DeleteWidgetModal
           afterDeleteAction={handleAfterDeleteAction}
           allowSoftDelete={false}
-          deleteMessage={`Are you sure you want to delete ${getEntityName(
-            selectedKpi
-          )}`}
+          deleteMessage={t('message.are-you-sure-delete-entity', {
+            entity: getEntityName(selectedKpi),
+          })}
           entityId={selectedKpi.id}
           entityName={getEntityName(selectedKpi)}
           entityType={EntityType.KPI}
