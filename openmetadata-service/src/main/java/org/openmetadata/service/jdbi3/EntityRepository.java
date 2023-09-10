@@ -639,6 +639,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity);
+    validateOwner(entity.getOwner());
     // Domain is already validated
   }
 
@@ -1579,6 +1580,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public void updateOwner(T ownedEntity, EntityReference originalOwner, EntityReference newOwner) {
     // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
+    validateOwner(newOwner);
     removeOwner(ownedEntity, originalOwner);
     storeOwner(ownedEntity, newOwner);
   }
@@ -1638,8 +1640,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (owner == null) {
       return null;
     }
-    // Entities can be only owned by team of type 'group'
-    if (owner.getType().equals(Entity.TEAM)) {
+    if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidOwnerType(owner.getType()));
+    } else if (owner.getType().equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
       Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
       if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
