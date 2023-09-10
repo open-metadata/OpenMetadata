@@ -168,7 +168,7 @@ def _parse_complex_column(
                     displayName=col_name,
                     dataType=DataType.RECORD,
                     children=[],
-                    dataTypeDisplay=DataType.RECORD,
+                    dataTypeDisplay=DataType.RECORD.value,
                 )
                 if parent_col:
                     parent_col.children.append(intermediate_column)
@@ -185,7 +185,7 @@ def _parse_complex_column(
         leaf_column = Column(
             name=col_hierarchy[-1],
             dataType=data_type,
-            dataTypeDisplay=data_type,
+            dataTypeDisplay=data_type.value,
             arrayDataType=DataType.UNKNOWN if data_type == DataType.ARRAY else None,
         )
 
@@ -228,7 +228,7 @@ def get_columns(data_frame: "DataFrame"):
                         data_type = fetch_col_types(data_frame, column_name=column)
 
                     parsed_string = {
-                        "dataTypeDisplay": data_type,
+                        "dataTypeDisplay": data_type.value,
                         "dataType": data_type,
                         "name": truncate_column_name(column),
                         "displayName": column,

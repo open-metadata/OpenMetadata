@@ -33,7 +33,6 @@ class PandasValidatorMixin:
             name=column.name,
             type=_type,
         )
-        sqa_like_column.type.__class__.__name__ = _type
         return sqa_like_column
 
     def run_dataframe_results(
