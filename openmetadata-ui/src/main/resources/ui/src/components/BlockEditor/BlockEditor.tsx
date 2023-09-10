@@ -43,7 +43,7 @@ const BlockEditor: FC<BlockEditorProps> = ({
 
   const editor = useEditor({
     ...EDITOR_OPTIONS,
-    onBlur({ editor }) {
+    onUpdate({ editor }) {
       const htmlContent = editor.getHTML();
 
       const markdown = HTMLToMarkdown.turndown(htmlContent);
