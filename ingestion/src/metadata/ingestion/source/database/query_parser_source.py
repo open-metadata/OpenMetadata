@@ -93,6 +93,16 @@ class QueryParserSource(Source, ABC):
             result_limit=self.source_config.resultLimit,
         )
 
+    def check_life_cycle_query(
+        self, query_type: str  # pylint: disable=unused-argument
+    ) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        return False
+
     def get_filters(self) -> str:
         if self.source_config.filterCondition:
             return f"{self.filters} AND {self.source_config.filterCondition}"

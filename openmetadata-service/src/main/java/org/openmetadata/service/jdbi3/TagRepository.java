@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -31,15 +32,17 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
   public TagRepository(CollectionDAO dao) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -93,6 +96,28 @@ public class TagRepository extends EntityRepository<Tag> {
   protected void postDelete(Tag entity) {
     // Cleanup all the tag labels using this tag
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
+  }
+
+  @Override
+  public void deleteFromSearch(Tag entity, String changeType) {
+    if (supportsSearchIndex) {
+      String scriptTxt =
+          "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, Tag.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
+      } else {
+        searchClient.deleteEntityAndRemoveRelationships(
+            JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(Tag entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, Tag.class), false, "tags.tagFQN");
+    }
   }
 
   @Override

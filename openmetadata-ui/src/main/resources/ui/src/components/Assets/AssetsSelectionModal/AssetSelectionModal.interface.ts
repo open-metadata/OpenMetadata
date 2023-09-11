@@ -10,17 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
+import { Glossary } from 'generated/entity/data/glossary';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 
 export interface AssetSelectionModalProps {
-  glossaryFQN: string;
+  entityFqn: string;
   open: boolean;
+  type?: AssetsOfEntity;
   onCancel: () => void;
   onSave?: () => void;
 }
@@ -31,7 +34,8 @@ export type AssetsUnion =
   | EntityType.DASHBOARD
   | EntityType.MLMODEL
   | EntityType.TOPIC
-  | EntityType.CONTAINER;
+  | EntityType.CONTAINER
+  | EntityType.GLOSSARY;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -40,4 +44,5 @@ export type MapPatchAPIResponse = {
   [EntityType.PIPELINE]: Pipeline;
   [EntityType.CONTAINER]: Container;
   [EntityType.TOPIC]: Topic;
+  [EntityType.GLOSSARY]: Glossary;
 };

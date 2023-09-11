@@ -273,6 +273,8 @@ export const getServiceIcon = (source: SourceType) => {
     return (
       <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
     );
+  } else if (source.entityType === EntityType.DATA_PRODUCT) {
+    return <></>;
   } else {
     return (
       <img

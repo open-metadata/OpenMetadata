@@ -103,3 +103,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 - [Amundsen](/connectors/metadata/amundsen)
 - [Atlas](/connectors/metadata/atlas)
+
+## Search Services
+
+- [ElasticSearch](/connectors/search/elasticsearch)

@@ -248,7 +248,7 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <StorageIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.stored-procedure'),
+          label: i18next.t('label.stored-procedure-plural'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.storedProcedure',
           icon: <StoredProcedureIcon className="side-panel-icons" />,
