@@ -14,6 +14,8 @@ import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTab
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
@@ -35,7 +37,9 @@ export type AssetsUnion =
   | EntityType.MLMODEL
   | EntityType.TOPIC
   | EntityType.CONTAINER
-  | EntityType.GLOSSARY_TERM;
+  | EntityType.GLOSSARY_TERM
+  | EntityType.DATABASE_SCHEMA
+  | EntityType.DATABASE;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -45,4 +49,6 @@ export type MapPatchAPIResponse = {
   [EntityType.CONTAINER]: Container;
   [EntityType.TOPIC]: Topic;
   [EntityType.GLOSSARY_TERM]: GlossaryTerm;
+  [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
+  [EntityType.DATABASE]: Database;
 };

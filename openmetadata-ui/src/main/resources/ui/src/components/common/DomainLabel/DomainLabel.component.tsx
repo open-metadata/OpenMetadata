@@ -17,11 +17,13 @@ import { compare } from 'fast-json-patch';
 import { EntityReference } from 'generated/entity/type';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from 'utils/Assets/AssetsUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import { DomainLabelProps } from './DomainLabel.interface';
@@ -70,30 +72,38 @@ const DomainLabel = ({
   }, [domain]);
 
   const label = useMemo(() => {
-    if (activeDomain) {
-      return (
-        <>
-          <Space>
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
-              <span className="text-grey-muted">{`${t(
-                'label.domain'
-              )}: `}</span>
-              <span className="font-medium">{getEntityName(activeDomain)}</span>
+    return (
+      <>
+        <Space>
+          <Typography.Text className="self-center text-xs whitespace-nowrap">
+            <span className="text-grey-muted">{`${t('label.domain')}: `}</span>
+          </Typography.Text>
+          {activeDomain ? (
+            <Link
+              className="text-primary font-medium text-xs no-underline"
+              data-testid="owner-link"
+              to={getDomainPath(activeDomain.fullyQualifiedName)}>
+              {getEntityName(activeDomain)}
+            </Link>
+          ) : (
+            <Typography.Text
+              className="font-medium text-xs"
+              data-testid="owner-link">
+              {t('label.no-entity', { entity: t('label.domain') })}
             </Typography.Text>
-            {hasPermission && (
-              <DomainSelectableList
-                hasPermission={Boolean(hasPermission)}
-                selectedDomain={activeDomain}
-                onUpdate={handleDomainSave}
-              />
-            )}
-          </Space>
-          <Divider className="self-center m-x-sm" type="vertical" />
-        </>
-      );
-    }
+          )}
 
-    return null;
+          {hasPermission && (
+            <DomainSelectableList
+              hasPermission={Boolean(hasPermission)}
+              selectedDomain={activeDomain}
+              onUpdate={handleDomainSave}
+            />
+          )}
+        </Space>
+        <Divider className="self-center m-x-sm" type="vertical" />
+      </>
+    );
   }, [activeDomain, hasPermission]);
 
   return label;

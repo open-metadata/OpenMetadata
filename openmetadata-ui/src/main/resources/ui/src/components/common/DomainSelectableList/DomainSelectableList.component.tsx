@@ -54,7 +54,7 @@ const DomainSelectableList = ({
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
 
-  const fetchOptions = async (searchText: string, after?: string) => {
+  const fetchOptions = async (searchText: string) => {
     if (searchText) {
       try {
         const res = await searchData(

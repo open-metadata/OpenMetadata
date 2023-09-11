@@ -19,5 +19,5 @@ export interface DomainSelectableListProps {
   children?: ReactNode;
   hasPermission: boolean;
   popoverProps?: PopoverProps;
-  selectedDomain: EntityReference;
+  selectedDomain?: EntityReference;
 }

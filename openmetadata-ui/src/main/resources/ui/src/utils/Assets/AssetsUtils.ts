@@ -19,6 +19,12 @@ import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { Operation } from 'fast-json-patch';
 import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from 'rest/databaseAPI';
 import { getGlossaryTermByFQN, patchGlossaryTerm } from 'rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
@@ -47,6 +53,10 @@ export const getAPIfromSource = (
       return patchContainerDetails;
     case EntityType.GLOSSARY_TERM:
       return patchGlossaryTerm;
+    case EntityType.DATABASE_SCHEMA:
+      return patchDatabaseSchemaDetails;
+    case EntityType.DATABASE:
+      return patchDatabaseDetails;
   }
 };
 
@@ -71,6 +81,10 @@ export const getEntityAPIfromSource = (
       return getContainerByName;
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermByFQN;
+    case EntityType.DATABASE_SCHEMA:
+      return getDatabaseSchemaDetailsByFQN;
+    case EntityType.DATABASE:
+      return getDatabaseDetailsByFQN;
   }
 };
 

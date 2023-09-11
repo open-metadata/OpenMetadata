@@ -14,7 +14,6 @@
 import { Button } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
-import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
@@ -71,7 +70,7 @@ const AssetsTabs = forwardRef(
     }: Props,
     ref
   ) => {
-    const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
+    const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
       table: 0,
       pipeline: 0,
       mlmodel: 0,
@@ -79,7 +78,7 @@ const AssetsTabs = forwardRef(
       topic: 0,
       dashboard: 0,
       glossaryTerm: 0,
-    } as Record<AssetsUnion, number>);
+    } as Record<EntityType, number>);
     const [activeFilter, setActiveFilter] = useState<SearchIndex>(
       SearchIndex.TABLE
     );
@@ -144,7 +143,7 @@ const AssetsTabs = forwardRef(
                   : 0,
             };
 
-            setItemCount(counts);
+            setItemCount(counts as Record<EntityType, number>);
 
             find(counts, (count, key) => {
               if (count > 0) {
