@@ -360,6 +360,8 @@ class MetadataUsageBulkSink(BulkSink):
                     user = self.metadata.get_entity_reference(
                         entity=User, fqn=create_query.users[0]
                     )
+                elif create_query.usedBy:
+                    user = create_query.usedBy[0]
                 query_type = get_query_type(create_query=create_query)
                 if query_type == Created and (
                     not life_cycle.created
