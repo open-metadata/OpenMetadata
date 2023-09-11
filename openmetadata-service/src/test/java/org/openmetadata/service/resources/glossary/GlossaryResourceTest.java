@@ -44,9 +44,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import javax.ws.rs.core.Response.Status;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -328,7 +331,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
-  void testImportInvalidCsv() throws IOException {
+  @SneakyThrows
+  void testImportInvalidCsv() {
     String glossaryName = "invalidCsv";
     createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
 
@@ -337,6 +341,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String record = ",g::1,dsp1,dsc1,,,,,,,";
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()%]+$\"\"]")
@@ -347,6 +352,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(0, "invalidParent"))};
     assertRows(result, expectedRows);

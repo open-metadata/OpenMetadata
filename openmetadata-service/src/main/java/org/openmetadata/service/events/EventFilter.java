@@ -13,7 +13,11 @@
 
 package org.openmetadata.service.events;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
@@ -21,8 +25,8 @@ import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.ParallelStreamUtil;
 
@@ -34,13 +38,13 @@ public class EventFilter implements ContainerResponseFilter {
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
-  public EventFilter(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  public EventFilter(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider provider) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
-    registerEventHandlers(config, jdbi);
+    registerEventHandlers(config, provider);
   }
 
-  private void registerEventHandlers(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  private void registerEventHandlers(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider provider) {
     try {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
@@ -48,7 +52,7 @@ public class EventFilter implements ContainerResponseFilter {
         @SuppressWarnings("unchecked")
         EventHandler eventHandler =
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
-        eventHandler.init(config, jdbi);
+        eventHandler.init(config, provider);
         eventHandlers.add(eventHandler);
         LOG.info("Added event handler {}", eventHandlerClassName);
       }
@@ -64,6 +68,7 @@ public class EventFilter implements ContainerResponseFilter {
     if ((responseCode < 200 || responseCode > 299) || (!AUDITABLE_METHODS.contains(method))) {
       return;
     }
+
     eventHandlers
         .parallelStream()
         .forEach(

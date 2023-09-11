@@ -40,6 +40,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
@@ -188,7 +189,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
+  public void initialize(OpenMetadataApplicationConfig config)
+      throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
+          InstantiationException, IllegalAccessException {
+    super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();

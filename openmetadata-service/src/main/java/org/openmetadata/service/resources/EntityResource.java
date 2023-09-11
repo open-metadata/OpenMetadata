@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -32,6 +33,8 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -53,6 +56,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
+  public static SearchClient searchClient;
+  public static ElasticSearchConfiguration esConfig;
+
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
     entityType = repository.getEntityType();
@@ -67,6 +73,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public void initialize(OpenMetadataApplicationConfig config)
       throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
           InstantiationException, IllegalAccessException {
+    esConfig = config.getElasticSearchConfiguration();
+    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     // Nothing to do in the default implementation
   }
 
@@ -237,6 +245,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response = repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
+    repository.postUpdate(response.getEntity());
     return response.toResponse();
   }
 
@@ -246,6 +255,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
+    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -256,6 +266,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     DeleteResponse<T> response =
         repository.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -264,6 +275,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response = repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+    repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(response.getEntity()), response.getEntity().getId());
     return response.toResponse();

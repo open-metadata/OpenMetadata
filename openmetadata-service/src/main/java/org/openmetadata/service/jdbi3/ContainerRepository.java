@@ -46,6 +46,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         dao,
         CONTAINER_PATCH_FIELDS,
         CONTAINER_UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

@@ -28,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -59,15 +58,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private LoginConfiguration loginConfiguration;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
     if (config.getAuthenticationConfiguration().getProvider().equals(AuthProvider.LDAP)
         && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
       ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
-    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
-    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
+    this.userRepository = new UserRepository(collectionDAO);
+    this.tokenRepository = new TokenRepository(collectionDAO);
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();

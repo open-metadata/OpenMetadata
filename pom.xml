@@ -78,6 +78,7 @@
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.15.2</jackson.version>
     <dropwizard.version>2.1.6</dropwizard.version>
+    <dropwizard.testing.version>2.1.7</dropwizard.testing.version>
     <diffMatch.version>1.0</diffMatch.version>
     <jersey-bom.version>2.40</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
@@ -210,7 +211,7 @@
       <dependency>
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-testing</artifactId>
-        <version>${dropwizard.version}</version>
+        <version>${dropwizard.testing.version}</version>
         <exclusions>
           <exclusion>
             <groupId>junit</groupId>
