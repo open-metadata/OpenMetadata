@@ -111,6 +111,9 @@
       "description": "Domain the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"

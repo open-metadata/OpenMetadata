@@ -39,14 +39,13 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -69,11 +68,12 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -114,6 +114,7 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -180,7 +181,6 @@ public class TableRepository extends EntityRepository<Table> {
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
-  @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -212,7 +212,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withJoins(getJoins(table));
   }
 
-  @Transaction
   public Table addLifeCycle(String fqn, LifeCycle lifeCycle) {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityByName(fqn);
@@ -260,7 +259,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withLifeCycle(currentLifeCycle);
   }
 
-  @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -285,7 +283,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withSampleData(tableData);
   }
 
-  @Transaction
   public Table getSampleData(UUID tableId, boolean authorizePII) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -307,7 +304,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  @Transaction
   public Table deleteSampleData(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -317,14 +313,12 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  @Transaction
   public TableProfilerConfig getTableProfilerConfig(Table table) {
     return JsonUtils.readValue(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_PROFILER_CONFIG_EXTENSION),
         TableProfilerConfig.class);
   }
 
-  @Transaction
   public TestSuite getTestSuite(Table table) {
     List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
         daoCollection.relationshipDAO().findTo(table.getId().toString(), TABLE, Relationship.CONTAINS.ordinal());
@@ -337,7 +331,6 @@ public class TableRepository extends EntityRepository<Table> {
         : null;
   }
 
-  @Transaction
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -370,7 +363,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
-  @Transaction
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -400,7 +392,6 @@ public class TableRepository extends EntityRepository<Table> {
     return null;
   }
 
-  @Transaction
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -457,7 +448,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withProfile(createTableProfile.getTableProfile());
   }
 
-  @Transaction
   public void deleteTableProfile(String fqn, String entityType, Long timestamp) {
     // Validate the request content
     String extension;
@@ -484,7 +474,6 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection.profilerDataTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
   }
 
-  @Transaction
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {
     List<TableProfile> tableProfiles;
     tableProfiles =
@@ -497,7 +486,6 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
-  @Transaction
   public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
@@ -510,7 +498,6 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
-  @Transaction
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {
     List<SystemProfile> systemProfiles;
     systemProfiles =
@@ -538,7 +525,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  @Transaction
   public Table getLatestTableProfile(String fqn, boolean authorizePII) {
     Table table = dao.findEntityByName(fqn, ALL);
     TableProfile tableProfile =
@@ -559,7 +545,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  @Transaction
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -597,7 +582,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  @Transaction
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -632,7 +616,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table = dao.findEntityById(tableId);
     table.withDataModel(dataModel);
@@ -762,48 +745,76 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
-    validateEntityLinkFieldExists(entityLink, task.getType());
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("columns")) {
-      String columnName = entityLink.getArrayFieldName();
-      String childrenName = "";
-      if (entityLink.getArrayFieldName().contains(".")) {
-        String fieldNameWithoutQuotes =
-            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
-        columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-        childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new ColumnDescriptionWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new ColumnTagWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
       }
-      Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL, false);
-      Column column = null;
-      for (Column c : table.getColumns()) {
-        if (c.getName().equals(columnName)) {
-          column = c;
-          break;
-        }
-      }
-      if (!"".equals(childrenName) && column != null) {
-        column = getChildrenColumn(column.getChildren(), childrenName);
-      }
-      if (column == null) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName()));
-      }
-      String origJson = JsonUtils.pojoToJson(table);
-      if (EntityUtil.isDescriptionTask(task.getType())) {
-        column.setDescription(newValue);
-      } else if (EntityUtil.isTagTask(task.getType())) {
-        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-        column.setTags(tags);
-      }
-      String updatedEntityJson = JsonUtils.pojoToJson(table);
-      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
-      patch(null, table.getId(), user, patch);
-      return;
     }
-    super.update(task, entityLink, newValue, user);
+    return super.getTaskWorkflow(threadContext);
   }
 
-  private static Column getChildrenColumn(List<Column> column, String childrenName) {
+  static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {
+    private final Column column;
+
+    ColumnDescriptionWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      Table table = Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), "columns", ALL);
+      threadContext.setAboutEntity(table);
+      column = getColumn((Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      column.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class ColumnTagWorkflow extends TagTaskWorkflow {
+    private final Column column;
+
+    ColumnTagWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      Table table = Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
+      threadContext.setAboutEntity(table);
+      column = getColumn((Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      column.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  private static Column getColumn(Table table, String columnName) {
+    String childrenName = "";
+    if (columnName.contains(".")) {
+      String fieldNameWithoutQuotes = columnName.substring(1, columnName.length() - 1);
+      columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+      childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+    }
+
+    Column column = EntityUtil.findColumn(table.getColumns(), columnName);
+    if (!"".equals(childrenName) && column != null) {
+      column = getChildColumn(column.getChildren(), childrenName);
+    }
+    if (column == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName));
+    }
+    return column;
+  }
+
+  private static Column getChildColumn(List<Column> column, String childrenName) {
     Column childrenColumn = null;
     for (Column col : column) {
       if (col.getName().equals(childrenName)) {
@@ -814,7 +825,7 @@ public class TableRepository extends EntityRepository<Table> {
     if (childrenColumn == null) {
       for (Column value : column) {
         if (value.getChildren() != null) {
-          childrenColumn = getChildrenColumn(value.getChildren(), childrenName);
+          childrenColumn = getChildColumn(value.getChildren(), childrenName);
           if (childrenColumn != null) {
             break;
           }

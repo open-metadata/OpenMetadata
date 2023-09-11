@@ -1,6 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,7 +18,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TestCaseIndex implements ElasticSearchIndex {
-  TestCase testCase;
+  final TestCase testCase;
 
   private static final List<String> excludeFields = List.of("changeDescription");
 
@@ -60,5 +64,17 @@ public class TestCaseIndex implements ElasticSearchIndex {
         .withHref(testSuite.getHref())
         .withExecutable(testSuite.getExecutable())
         .withChangeDescription(null);
+  }
+
+  public static Map<String, Float> getFields() {
+    Map<String, Float> fields = new HashMap<>();
+    fields.put(FIELD_NAME, 10.0f);
+    fields.put(FIELD_DESCRIPTION, 3.0f);
+    fields.put("testSuite.fullyQualifiedName", 10.0f);
+    fields.put("testSuite.name", 10.0f);
+    fields.put("testSuite.description", 3.0f);
+    fields.put("entityLink", 3.0f);
+    fields.put("entityFQN", 10.0f);
+    return fields;
   }
 }

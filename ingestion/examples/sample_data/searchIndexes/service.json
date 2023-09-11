@@ -4,9 +4,12 @@
   "serviceConnection": {
     "config": {
       "type": "ElasticSearch",
-      "hostPort": "localhost:9200"
+      "hostPort": "http://localhost:9200"
     }
   },
   "sourceConfig": {
+    "config": {
+      "type": "SearchMetadata"
+    }
   }
 }
