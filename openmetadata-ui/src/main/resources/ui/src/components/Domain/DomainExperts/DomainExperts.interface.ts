@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Domain } from 'generated/entity/domains/domain';
 
-import { TabSpecificField } from '../enums/entity.enum';
-
-// eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.VIEW_DEFINITION},${TabSpecificField.DOMAIN}`;
+export interface DomainExpertsProps {
+  domain: Domain;
+  isVersionsView?: boolean;
+  editPermission?: boolean;
+}

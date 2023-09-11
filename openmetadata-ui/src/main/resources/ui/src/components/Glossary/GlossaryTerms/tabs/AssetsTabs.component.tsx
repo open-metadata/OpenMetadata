@@ -78,7 +78,7 @@ const AssetsTabs = forwardRef(
       container: 0,
       topic: 0,
       dashboard: 0,
-      glossary: 0,
+      glossaryTerm: 0,
     } as Record<AssetsUnion, number>);
     const [activeFilter, setActiveFilter] = useState<SearchIndex>(
       SearchIndex.TABLE
@@ -93,7 +93,7 @@ const AssetsTabs = forwardRef(
 
     const queryParam = useMemo(() => {
       if (type !== AssetsOfEntity.GLOSSARY) {
-        return `(domain:"${fqn}")`;
+        return `(domain.fullyQualifiedName:"${fqn}")`;
       } else {
         return `(tags.tagFQN:"${glossaryName}")`;
       }
@@ -138,7 +138,7 @@ const AssetsTabs = forwardRef(
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
               [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
-              [EntityType.GLOSSARY]:
+              [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY
                   ? glossaryResponse.data.hits.total.value
                   : 0,
