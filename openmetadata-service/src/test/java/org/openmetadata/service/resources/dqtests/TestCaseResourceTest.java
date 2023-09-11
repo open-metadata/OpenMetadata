@@ -20,6 +20,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -29,6 +30,8 @@ import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -890,6 +893,124 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(TestUtils.dateToTimestamp("2023-08-16"), storedTestCase.getTestCaseResult().getTimestamp());
   }
 
+  @Test
+  public void test_listTestCaseByExecutionTime(TestInfo test) throws IOException, ParseException {
+    // if we have have no test cases create some
+    for (int i = 0; i < 10; i++) {
+      createAndCheckEntity(createRequest(test, i), ADMIN_AUTH_HEADERS);
+    }
+    ResultList<TestCase> nonExecutionSortedTestCases = getTestCases(10, null, null, "*", false, ADMIN_AUTH_HEADERS);
+
+    TestCase lastTestCaseInList =
+        nonExecutionSortedTestCases
+            .getData()
+            .get(nonExecutionSortedTestCases.getData().size() - 1); // we'll take the latest one in the list
+    TestCase firstTestCaseInList = nonExecutionSortedTestCases.getData().get(0); // we'll take the first one in the list
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    LocalDate today = LocalDate.now();
+    String todayString = today.format(formatter);
+    for (int i = 11; i <= 15; i++) {
+      TestCaseResult testCaseResult =
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp("2023-01-" + i));
+      putTestCaseResult(firstTestCaseInList.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    }
+    putTestCaseResult(
+        lastTestCaseInList.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp(todayString)),
+        ADMIN_AUTH_HEADERS);
+
+    ResultList<TestCase> executionSortedTestCases = getTestCases(10, null, null, "*", true, ADMIN_AUTH_HEADERS);
+    assertEquals(lastTestCaseInList.getId(), executionSortedTestCases.getData().get(0).getId());
+    assertEquals(
+        lastTestCaseInList.getId(),
+        nonExecutionSortedTestCases.getData().get(nonExecutionSortedTestCases.getData().size() - 1).getId());
+  }
+
+  @Test
+  void test_listTestCaseByExecutionTimePagination_200(TestInfo test) throws IOException, ParseException {
+    // Create a number of entities between 5 and 20 inclusive
+    Random rand = new Random();
+    int maxEntities = rand.nextInt(16) + 5;
+
+    List<TestCase> createdTestCase = new ArrayList<>();
+    for (int i = 0; i < maxEntities; i++) {
+      createdTestCase.add(createEntity(createRequest(test, i + 1), ADMIN_AUTH_HEADERS));
+    }
+
+    TestCase firstTestCase = createdTestCase.get(0);
+    TestCase lastTestCase = createdTestCase.get(maxEntities - 1);
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    LocalDate today = LocalDate.now();
+    putTestCaseResult(
+        lastTestCase.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp(today.format(formatter))),
+        ADMIN_AUTH_HEADERS);
+    putTestCaseResult(
+        firstTestCase.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp(today.minusYears(10).format(formatter))),
+        ADMIN_AUTH_HEADERS);
+
+    Random random = new Random();
+
+    // List all entities and use it for checking pagination
+    ResultList<TestCase> allEntities = getTestCases(1000000, null, null, "*", true, ADMIN_AUTH_HEADERS);
+    int totalRecords = allEntities.getData().size();
+
+    // List entity with "limit" set from 1 to maxEntities size with random jumps (to reduce the test time)
+    // Each time compare the returned list with allTables list to make sure right results are returned
+    for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
+      String after = null;
+      String before;
+      int pageCount = 0;
+      int indexInAllTables = 0;
+      ResultList<TestCase> forwardPage;
+      ResultList<TestCase> backwardPage;
+      boolean foundDeleted = false;
+      do { // For each limit (or page size) - forward scroll till the end
+        forwardPage = getTestCases(limit, null, after, "*", true, ADMIN_AUTH_HEADERS);
+        after = forwardPage.getPaging().getAfter();
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+        if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
+          assertNull(before);
+        } else {
+          // Make sure scrolling back based on before cursor returns the correct result
+          backwardPage = getTestCases(limit, before, null, "*", true, ADMIN_AUTH_HEADERS);
+          assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+        }
+
+        indexInAllTables += forwardPage.getData().size();
+        pageCount++;
+      } while (after != null);
+
+      // We have now reached the last page - test backward scroll till the beginning
+      pageCount = 0;
+      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+      do {
+        forwardPage = getTestCases(limit, before, null, "*", true, ADMIN_AUTH_HEADERS);
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+        pageCount++;
+        indexInAllTables -= forwardPage.getData().size();
+      } while (before != null);
+    }
+  }
+
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);
@@ -945,6 +1066,25 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     if (includeAll) {
       target = target.queryParam("includeAllTests", true);
       target = target.queryParam("include", "all");
+    }
+    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
+  }
+
+  public ResultList<TestCase> getTestCases(
+      Integer limit,
+      String before,
+      String after,
+      String fields,
+      Boolean orderByLastExecutionDate,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection();
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = before != null ? target.queryParam("before", before) : target;
+    target = after != null ? target.queryParam("after", after) : target;
+    target = target.queryParam("fields", fields);
+    if (orderByLastExecutionDate) {
+      target = target.queryParam("orderByLastExecutionDate", true);
     }
     return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
   }

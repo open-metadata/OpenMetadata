@@ -461,6 +461,74 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  @Override
+  @Transaction
+  public ResultList<TestCase> listAfter(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
+    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
+      return super.listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+    int total = dao.listCount(filter);
+    List<TestCase> testCases = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      String decodedAfter = after == null ? "0" : RestUtil.decodeCursor(after);
+      Integer rankAfter = Integer.parseInt(decodedAfter);
+      List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
+          daoCollection.testCaseDAO().listAfterTsOrder(filter, limitParam + 1, rankAfter);
+
+      for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
+        TestCase entity = setFieldsInternal(JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
+        entity = clearFieldsInternal(entity, fields);
+        testCases.add(withHref(uriInfo, entity));
+      }
+
+      String beforeCursor;
+      String afterCursor = null;
+      beforeCursor = after == null ? null : testCaseRecords.get(0).getRank().toString();
+      if (testCaseRecords.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+        testCases.remove(limitParam);
+        testCaseRecords.remove(limitParam);
+        afterCursor = testCaseRecords.get(limitParam - 1).getRank().toString();
+      }
+      return getResultList(testCases, beforeCursor, afterCursor, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return getResultList(testCases, null, null, total);
+    }
+  }
+
+  @Override
+  @Transaction
+  public ResultList<TestCase> listBefore(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
+    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
+      return super.listBefore(uriInfo, fields, filter, limitParam, before);
+    }
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    Integer rankBefore = Integer.parseInt(RestUtil.decodeCursor(before));
+    List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
+        daoCollection.testCaseDAO().listBeforeTsOrder(filter, limitParam + 1, rankBefore);
+
+    List<TestCase> testCases = new ArrayList<>();
+    for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
+      TestCase entity = setFieldsInternal(JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
+      entity = clearFieldsInternal(entity, fields);
+      testCases.add(withHref(uriInfo, entity));
+    }
+    int total = dao.listCount(filter);
+
+    String beforeCursor = null;
+    String afterCursor;
+    if (testCases.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      testCaseRecords.remove(0);
+      testCases.remove(0);
+      beforeCursor = testCaseRecords.get(0).getRank().toString();
+    }
+    afterCursor = testCaseRecords.get(testCases.size() - 1).getRank().toString();
+    return getResultList(testCases, beforeCursor, afterCursor, total);
+  }
+
   public class TestUpdater extends EntityUpdater {
     public TestUpdater(TestCase original, TestCase updated, Operation operation) {
       super(original, updated, operation);
