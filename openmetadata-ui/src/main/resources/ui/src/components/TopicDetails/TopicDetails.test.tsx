@@ -59,6 +59,7 @@ const topicDetailsProps: TopicDetailsProps = {
   createThread: jest.fn(),
   topicPermissions: DEFAULT_ENTITY_PERMISSION,
   handleToggleDelete: jest.fn(),
+  onUpdateVote: jest.fn(),
 };
 
 const mockParams = {

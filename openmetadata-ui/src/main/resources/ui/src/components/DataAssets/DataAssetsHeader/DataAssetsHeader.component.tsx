@@ -29,7 +29,10 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
+import Voting from 'components/Voting/Voting.component';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { SERVICE_TYPES } from 'constants/Services.constant';
@@ -41,7 +44,7 @@ import {
   ThreadType,
 } from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -106,6 +109,7 @@ export const DataAssetsHeader = ({
   allowSoftDelete = true,
   afterDeleteAction,
   dataAsset,
+  onUpdateVote,
   onOwnerUpdate,
   onTierUpdate,
   permissions,
@@ -116,7 +120,7 @@ export const DataAssetsHeader = ({
   onRestoreDataAsset,
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
-  const USERId = getCurrentUserId();
+  const USER_ID = getCurrentUserId();
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
@@ -145,11 +149,11 @@ export const DataAssetsHeader = ({
 
   const hasFollowers = 'followers' in dataAsset;
 
-  const { entityName, tier, isFollowing, version, followers } = useMemo(
+  const { entityName, tier, isFollowing, version, followers, votes } = useMemo(
     () => ({
       isFollowing: hasFollowers
         ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
-            ({ id }) => id === USERId
+            ({ id }) => id === USER_ID
           )
         : false,
       followers: hasFollowers
@@ -159,9 +163,27 @@ export const DataAssetsHeader = ({
       tier: getTierTags(dataAsset.tags ?? []),
       entityName: getEntityName(dataAsset),
       version: dataAsset.version,
+      votes: (dataAsset as DataAssetsWithFollowersField).votes,
     }),
-    [dataAsset, USERId]
+    [dataAsset, USER_ID]
   );
+
+  const voteStatus = useMemo(() => {
+    if (isUndefined(votes)) {
+      return QueryVoteType.unVoted;
+    }
+
+    const upVoters = votes.upVoters ?? [];
+    const downVoters = votes.downVoters ?? [];
+
+    if (upVoters.some((user) => user.id === USER_ID)) {
+      return QueryVoteType.votedUp;
+    } else if (downVoters.some((user) => user.id === USER_ID)) {
+      return QueryVoteType.votedDown;
+    } else {
+      return QueryVoteType.unVoted;
+    }
+  }, [votes, USER_ID]);
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
     useState<boolean>(false);
@@ -290,6 +312,10 @@ export const DataAssetsHeader = ({
     }
   }, [isDataAssetsWithServiceField, dataAsset]);
 
+  const handleVoteChange = (data: VotingDataProps) => {
+    onUpdateVote && onUpdateVote(data, dataAsset.id ?? '');
+  };
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -357,6 +383,13 @@ export const DataAssetsHeader = ({
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
               <ButtonGroup size="small">
+                {onUpdateVote && (
+                  <Voting
+                    voteStatus={voteStatus}
+                    votes={votes}
+                    onUpdateVote={handleVoteChange}
+                  />
+                )}
                 {!excludeEntityService && (
                   <Button
                     className="w-16 p-0"
