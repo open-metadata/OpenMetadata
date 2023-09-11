@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;

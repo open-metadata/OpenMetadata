@@ -10,9 +10,9 @@
 #  limitations under the License.
 
 """Test Ometa Dataframe utility tests"""
+import os
 import unittest
 from unittest.mock import patch
-import os
 
 import pyarrow.parquet as pq
 
