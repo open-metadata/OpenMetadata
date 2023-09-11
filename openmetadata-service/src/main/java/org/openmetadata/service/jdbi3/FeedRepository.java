@@ -48,7 +48,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -57,7 +56,9 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Reaction;
@@ -120,7 +121,6 @@ public class FeedRepository {
     AFTER
   }
 
-  @Transaction
   public int getNextTaskId() {
     dao.feedDAO().updateTaskId();
     return dao.feedDAO().getTaskId();
@@ -130,12 +130,25 @@ public class FeedRepository {
     @Getter protected final Thread thread;
     @Getter @Setter protected final EntityLink about;
     @Getter @Setter protected EntityInterface aboutEntity;
-    @Getter private final EntityReference createdBy;
+    @Getter private EntityReference createdBy;
 
     ThreadContext(Thread thread) {
       this.thread = thread;
       this.about = EntityLink.parse(thread.getAbout());
       this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+      this.createdBy = Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
+      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+    }
+
+    ThreadContext(Thread thread, ChangeEvent event) {
+      this.thread = thread;
+      this.about = EntityLink.parse(thread.getAbout());
+      if (event.getEventType().equals(EventType.ENTITY_DELETED)) {
+        String json = (String) event.getEntity();
+        this.aboutEntity = JsonUtils.readValue(json, Entity.getEntityClassFromType(event.getEntityType()));
+      } else {
+        this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+      }
       this.createdBy = Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
       thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     }
@@ -187,9 +200,17 @@ public class FeedRepository {
     return new ThreadContext(thread);
   }
 
-  @Transaction
+  private ThreadContext getThreadContext(Thread thread, ChangeEvent event) {
+    return new ThreadContext(thread, event);
+  }
+
   public Thread create(Thread thread) {
     ThreadContext threadContext = getThreadContext(thread);
+    return createThread(threadContext);
+  }
+
+  public Thread create(Thread thread, ChangeEvent event) {
+    ThreadContext threadContext = getThreadContext(thread, event);
     return createThread(threadContext);
   }
 
@@ -229,7 +250,6 @@ public class FeedRepository {
     storeMentions(thread, thread.getMessage());
   }
 
-  @Transaction
   private Thread createThread(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
     if (thread.getType() == ThreadType.Task) {
@@ -363,7 +383,6 @@ public class FeedRepository {
                         null));
   }
 
-  @Transaction
   public Thread addPostToThread(String id, Post post, String userName) {
     // Validate the user posting the message
     UUID fromUserId = Entity.getEntityReferenceByName(USER, post.getFrom(), NON_DELETED).getId();
@@ -395,7 +414,6 @@ public class FeedRepository {
     return post.get();
   }
 
-  @Transaction
   public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
@@ -410,7 +428,6 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     deleteThreadInternal(thread.getId().toString());
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
@@ -428,7 +445,6 @@ public class FeedRepository {
     dao.feedDAO().delete(id);
   }
 
-  @Transaction
   public void deleteByAbout(UUID entityId) {
     List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
     for (String threadId : threadIds) {
@@ -440,7 +456,6 @@ public class FeedRepository {
     }
   }
 
-  @Transaction
   public ThreadCount getThreadsCount(FeedFilter filter, String link) {
     List<List<String>> result;
     if (link == null) {
@@ -498,7 +513,6 @@ public class FeedRepository {
   }
 
   /** List threads based on the filters and limits in the order of the updated timestamp. */
-  @Transaction
   public ResultList<Thread> list(FeedFilter filter, String link, int limitPosts, String userId, int limit) {
     int total;
     List<Thread> threads;
@@ -599,7 +613,6 @@ public class FeedRepository {
             null);
   }
 
-  @Transaction
   public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch) {
     // Apply JSON patch to the original post to get the updated post
     Post updated = JsonUtils.applyPatch(post, patch, Post.class);
@@ -624,7 +637,6 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updated, change);
   }
 
-  @Transaction
   public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original thread that can be updated during PATCH operation
     Thread original = get(id.toString());

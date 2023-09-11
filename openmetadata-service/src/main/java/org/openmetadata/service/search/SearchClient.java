@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,14 +27,10 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
-import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType;
@@ -78,64 +73,15 @@ public interface SearchClient {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void updateSearchForEntityCreated(ElasticSearchIndexType indexType, String entityType, ChangeEvent event)
-      throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
+  void updateSearchEntityCreated(EntityInterface entity);
 
-  default void updateSearchForEntityUpdated(
-      SearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
+  void updateSearchEntityDeleted(EntityInterface entity, String script, String field);
 
-  void updateEntity(ChangeEvent event) throws IOException;
+  void deleteEntityAndRemoveRelationships(EntityInterface entity, String script, String field);
 
-  void updateUser(ChangeEvent event) throws IOException;
+  void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete, String field);
 
-  void updateTeam(ChangeEvent event) throws IOException;
-
-  void updateGlossaryTerm(ChangeEvent event) throws IOException;
-
-  void updateGlossary(ChangeEvent event) throws IOException;
-
-  void updateTag(ChangeEvent event) throws IOException;
-
-  void updateDatabase(ChangeEvent event) throws IOException;
-
-  void updateDatabaseSchema(ChangeEvent event) throws IOException;
-
-  void updateDatabaseService(ChangeEvent event) throws IOException;
-
-  void updatePipelineService(ChangeEvent event) throws IOException;
-
-  void updateMlModelService(ChangeEvent event) throws IOException;
-
-  void updateStorageService(ChangeEvent event) throws IOException;
-
-  void updateMessagingService(ChangeEvent event) throws IOException;
-
-  void updateDashboardService(ChangeEvent event) throws IOException;
-
-  void updateClassification(ChangeEvent event) throws IOException;
-
-  default void updateTestCase(ChangeEvent event) throws IOException {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(Entity.TEST_CASE);
-    // creating a new test case will return a TestCase entity while bulk adding test cases will return
-    // the logical test suite entity with the newly added test cases
-    EntityInterface entityInterface = (EntityInterface) event.getEntity();
-    if (entityInterface instanceof TestCase) {
-      processTestCase((TestCase) entityInterface, event, indexType);
-    } else {
-      addTestCaseFromLogicalTestSuite((TestSuite) entityInterface, event, indexType);
-    }
-  }
-
-  void updateTestSuite(ChangeEvent event) throws IOException;
-
-  void processTestCase(TestCase testCase, ChangeEvent event, ElasticSearchIndexType indexType) throws IOException;
-
-  void addTestCaseFromLogicalTestSuite(TestSuite testSuite, ChangeEvent event, ElasticSearchIndexType indexType)
-      throws IOException;
+  void updateSearchEntityUpdated(EntityInterface entity, String script, String field);
 
   void close();
 
@@ -174,21 +120,21 @@ public interface SearchClient {
       String dataReportIndex)
       throws IOException, ParseException;
 
-  default void getScriptWithParams(ChangeEvent event, String script, Map<String, Object> fieldParams) {
-    ChangeDescription changeDescription = event.getChangeDescription();
+  default void getScriptWithParams(EntityInterface entity, StringBuilder script, Map<String, Object> fieldAddParams) {
+    ChangeDescription changeDescription = entity.getChangeDescription();
 
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
-    Map<String, Object> fieldAddParams = new HashMap<>();
-    fieldAddParams.put("updatedAt", event.getTimestamp());
+    fieldAddParams.put("updatedAt", entity.getUpdatedAt());
     scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
+        List<LinkedHashMap<String, Object>> entityReferencesMap =
+            (List<LinkedHashMap<String, Object>>) fieldChange.getNewValue();
         List<String> newFollowers = new ArrayList<>();
-        for (EntityReference follower : entityReferences) {
-          newFollowers.add(follower.getId().toString());
+        for (LinkedHashMap<String, Object> entityReferenceMap : entityReferencesMap) {
+          newFollowers.add(entityReferenceMap.get("id").toString());
         }
         fieldAddParams.put(fieldChange.getName(), newFollowers);
         scriptTxt.append("ctx._source.followers.addAll(params.followers);");
@@ -198,9 +144,10 @@ public interface SearchClient {
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
-        for (EntityReference follower : entityReferences) {
-          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
+        List<LinkedHashMap<String, Object>> entityReferencesMap =
+            (List<LinkedHashMap<String, Object>>) fieldChange.getOldValue();
+        for (LinkedHashMap<String, Object> entityReferenceMap : entityReferencesMap) {
+          fieldAddParams.put(fieldChange.getName(), entityReferenceMap.get("id").toString());
         }
         scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
@@ -212,7 +159,8 @@ public interface SearchClient {
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
       }
-      if (event.getEntityType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+      if (entity.getEntityReference().getType().equals(QUERY)
+          && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
         fieldAddParams.put(
             fieldChange.getName(),
             JsonUtils.convertValue(
@@ -220,15 +168,14 @@ public interface SearchClient {
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
       }
       if (fieldChange.getName().equalsIgnoreCase("votes")) {
-        Map<String, Object> doc = JsonUtils.getMap(event.getEntity());
+        Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
         scriptTxt.append("ctx._source.votes = params.votes;");
       }
     }
 
     // Set to the Output variables
-    script = scriptTxt.toString();
-    fieldParams = fieldAddParams;
+    script.append(scriptTxt);
   }
 
   default String getIndexMapping(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang)

@@ -31,6 +31,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ChartRepository extends EntityRepository<Chart> {
   public ChartRepository(CollectionDAO dao) {
     super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override

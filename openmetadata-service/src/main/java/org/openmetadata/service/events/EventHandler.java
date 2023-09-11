@@ -15,11 +15,11 @@ package org.openmetadata.service.events;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 
 public interface EventHandler {
-  void init(OpenMetadataApplicationConfig config, Jdbi jdbi);
+  void init(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider jdbi);
 
   Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext);
 

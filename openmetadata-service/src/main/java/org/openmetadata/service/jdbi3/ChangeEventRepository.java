@@ -29,7 +29,6 @@ public class ChangeEventRepository {
     this.dao = dao.changeEventDAO();
   }
 
-  @Transaction
   public List<ChangeEvent> list(
       long timestamp,
       List<String> entityCreatedList,
@@ -49,6 +48,11 @@ public class ChangeEventRepository {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
     }
     return changeEvents;
+  }
+
+  @Transaction
+  public void insert(ChangeEvent event) {
+    dao.insert(JsonUtils.pojoToJson(event));
   }
 
   @Transaction

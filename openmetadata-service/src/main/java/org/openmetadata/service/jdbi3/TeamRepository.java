@@ -39,6 +39,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.UNEXPEC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -73,6 +74,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -86,6 +88,7 @@ public class TeamRepository extends EntityRepository<Team> {
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -220,6 +223,29 @@ public class TeamRepository extends EntityRepository<Team> {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
     return teamCsv.importCsv(csv, dryRun);
+  }
+
+  @Override
+  public void deleteFromSearch(Team entity, String changeType) {
+    if (supportsSearchIndex) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, Team.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "parents.fullyQualifiedName");
+      } else {
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, Team.class), "", "parents.fullyQualifiedName");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(Team entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, Team.class), false, "parents.fullyQualifiedName");
+    }
   }
 
   private List<EntityReference> getInheritedRoles(Team team) {

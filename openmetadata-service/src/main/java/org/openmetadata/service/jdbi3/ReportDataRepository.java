@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.service.util.JsonUtils;
@@ -19,7 +18,6 @@ public class ReportDataRepository {
     this.daoCollection = dao;
   }
 
-  @Transaction
   public Response addReportData(ReportData reportData) {
     reportData.setId(UUID.randomUUID());
     daoCollection

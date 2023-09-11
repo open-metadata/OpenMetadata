@@ -56,7 +56,6 @@ const BotDetails: FC<BotsDetailProps> = ({
   updateBotsDetails,
   revokeTokenHandler,
   botPermission,
-  onEmailChange,
   updateUserDetails,
 }) => {
   const [displayName, setDisplayName] = useState(botData.displayName);
@@ -340,17 +339,13 @@ const BotDetails: FC<BotsDetailProps> = ({
               {isAuthMechanismEdit ? (
                 <AuthMechanismForm
                   authenticationMechanism={authenticationMechanism}
-                  botData={botData}
-                  botUser={botUserData}
                   isUpdating={isUpdating}
                   onCancel={() => setIsAuthMechanismEdit(false)}
-                  onEmailChange={onEmailChange}
                   onSave={handleAuthMechanismUpdate}
                 />
               ) : (
                 <AuthMechanism
                   authenticationMechanism={authenticationMechanism}
-                  botUser={botUserData}
                   hasPermission={editAllPermission}
                   onEdit={handleAuthMechanismEdit}
                   onTokenRevoke={() => setIsRevokingToken(true)}
@@ -360,11 +355,8 @@ const BotDetails: FC<BotsDetailProps> = ({
           ) : (
             <AuthMechanismForm
               authenticationMechanism={{} as AuthenticationMechanism}
-              botData={botData}
-              botUser={botUserData}
               isUpdating={isUpdating}
               onCancel={() => setIsAuthMechanismEdit(false)}
-              onEmailChange={onEmailChange}
               onSave={handleAuthMechanismUpdate}
             />
           )}

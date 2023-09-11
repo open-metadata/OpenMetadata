@@ -60,6 +60,7 @@ export enum AssetsType {
   PIPELINE = 'pipeline',
   MLMODEL = 'mlmodel',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  STORED_PROCEDURE = 'storedProcedure',
 }
 
 export enum ChangeType {
