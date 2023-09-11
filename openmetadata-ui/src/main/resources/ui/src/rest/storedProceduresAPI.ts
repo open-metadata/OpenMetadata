@@ -21,7 +21,7 @@ import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
-interface ListStoredProcedureParams {
+export interface ListStoredProcedureParams {
   databaseSchema?: string;
   fields?: string;
   after?: string;
