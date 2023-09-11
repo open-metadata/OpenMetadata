@@ -89,6 +89,15 @@ Superset only supports basic or ldap authentication through APIs so if you have 
 
 **provider**: Choose between `db`(default) or `ldap` mode of Authentication provider for the Superset service. This parameter is used internally to connect to Superset's REST API.
 
+**verifySSL**:
+Client SSL verification. Make sure to configure the SSLConfig if enabled.
+Possible values:
+- `validate`: Validate the certificate using the public certificate (recommended).
+- `ignore`: Ignore the certification validation (not recommended for production).
+- `no-ssl`: SSL validation is not needed.
+
+**certificatePath**: CA certificate path in the instance where the ingestion run. E.g., `/path/to/public.cert`. Will be used if Verify SSL is set to `validate`.
+
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
@@ -179,6 +188,9 @@ source:
         username: admin
         password: admin
         provider: db # or provider: ldap
+        # verifySSL: no-ssl / ignore / validate
+        # sslConfig:
+        #   certificatePath: CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.
 
 ```
 ```yaml {% srNumber=2 %}

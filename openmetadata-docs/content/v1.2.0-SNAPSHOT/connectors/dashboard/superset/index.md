@@ -63,6 +63,16 @@ Superset only supports basic or ldap authentication through APIs so if you have 
 - **Username**: Username to connect to Superset, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Superset to fetch the metadata.
 - **Password**: Password of the user account to connect with Superset.
 - **Provider**: Choose between `db`(default) or `ldap` mode of Authentication provider for the Superset service. This parameter is used internally to connect to Superset's REST API.
+- **Verify SSL**:
+Client SSL verification. Make sure to configure the SSLConfig if enabled.
+Possible values:
+  * `validate`: Validate the certificate using the public certificate (recommended).
+  * `ignore`: Ignore the certification validation (not recommended for production).
+  * `no-ssl`: SSL validation is not needed.
+
+- **SSL Config**: Client SSL configuration in case we are connection to a host with SSL enabled.
+
+- **Certificate Path**: CA certificate path in the instance where the ingestion run. E.g., `/path/to/public.cert`. Will be used if Verify SSL is set to `validate`.
 
 #### For MySQL Connection
 
