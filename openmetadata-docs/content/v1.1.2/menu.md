@@ -579,8 +579,28 @@ site_menu:
     url: /how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata/delete-service-connection
   - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users
     url: /how-to-guides/quick-start-guide-for-admins/teams-and-users
-  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Organise Teams and Users
-    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/how-to-organise-teams-and-users
+  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / Team Structure in OpenMetadata
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/team-structure-openmetadata
+  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Add a Team
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-team
+  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Invite Users to OpenMetadata
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/invite-users
+  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Add Users to Teams
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-users
+  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Change the Team Type
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/change-team-type
+  - category: How to Guides / User Guide for Data Stewards
+    url: /how-to-guides/user-guide-for-data-stewards
+  - category: How to Guides / User Guide for Data Stewards / Understanding the Basics of OpenMetadata
+    url: /how-to-guides/user-guide-for-data-stewards/basics-openmetadata
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Follow a Data Asset
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
   - category: How to Guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
   - category: How to Guides / Feature configurations
