@@ -168,10 +168,7 @@ const BlockEditor: FC<BlockEditorProps> = ({
           getFrontEndFormat(content)
         );
         editor.commands.setContent(htmlContent);
-        editor.commands.setHardBreak();
-        editor.commands.enter();
       }
-      editor.commands.focus(undefined, { scrollIntoView: true });
     });
   }, [content, editor]);
 
