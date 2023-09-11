@@ -127,6 +127,7 @@ class DashboardServiceTopology(ServiceTopology):
                 context="dataModel",
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
+                ack_sink=False,
             )
         ],
     )

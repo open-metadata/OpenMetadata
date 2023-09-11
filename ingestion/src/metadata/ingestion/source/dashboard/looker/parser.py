@@ -12,6 +12,8 @@
 .lkml files parser
 """
 import fnmatch
+import glob
+import os
 import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -28,9 +30,13 @@ from metadata.ingestion.source.dashboard.looker.models import (
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
 
+
+from ingestion.src.metadata.readers.file.api_reader import ApiReader
+
 logger = ingestion_logger()
 
 EXTENSIONS = (".lkml", ".lookml")
+IMPORTED_PROJECTS_DIR = "imported_projects"
 
 
 class LkmlParser:
@@ -56,7 +62,7 @@ class LkmlParser:
         no. Then keep parsing `includes` until the response is yes.
     """
 
-    def __init__(self, reader: Reader):
+    def __init__(self, reader: Reader, remote_import_path: Includes = None):
         self._views_cache: Dict[ViewName, LookMlView] = {}
         self._visited_files: Dict[Includes, List[Includes]] = {}
 
@@ -66,6 +72,7 @@ class LkmlParser:
         self.reader = reader
 
         self._file_tree: Optional[List[Includes]] = None
+        self.remote_import_path = remote_import_path
 
     @property
     def file_tree(self) -> List[Includes]:
@@ -90,9 +97,9 @@ class LkmlParser:
             return self._visited_files[path]
 
         # If the path starts with //, we will ignore it for now
-        if path.startswith("//"):
-            logger.info(f"We do not support external includes yet. Skipping {path}")
-            return []
+        # if path.startswith("//"):
+        #     logger.info(f"We do not support external includes yet. Skipping {path}")
+        #     return []
 
         try:
             return self._process_file(path)
@@ -119,7 +126,7 @@ class LkmlParser:
         self.parsed_files[path] = file
 
         # Cache everything
-        expanded_includes = self._expand_includes(lkml_file.includes)
+        expanded_includes = self._expand_includes(lkml_file.includes, path)
         self._visited_files[path] = expanded_includes
         for view in lkml_file.views:
             view.source_file = path
@@ -128,7 +135,7 @@ class LkmlParser:
         return expanded_includes
 
     def _expand_includes(
-        self, includes: Optional[List[Includes]]
+        self, includes: Optional[List[Includes]], parent: Includes = None
     ) -> Optional[List[Includes]]:
         """
         If we have * in includes, expand them based on the file tree
@@ -136,9 +143,17 @@ class LkmlParser:
         if not includes:
             return includes
 
-        return [expanded for path in includes for expanded in self._expand(path)]
+        return [
+            expanded for path in includes for expanded in self._expand(path, parent)
+        ]
 
-    def _expand(self, path: Includes) -> List[Includes]:
+    @staticmethod
+    def _is_remote_import(path):
+        if not path:
+            return False
+        return IMPORTED_PROJECTS_DIR in path
+
+    def _expand(self, path: Includes, parent: Includes = None) -> List[Includes]:
         """
         Match files in tree if there's any * in the include
         """
@@ -153,7 +168,11 @@ class LkmlParser:
             # Nothing matched, we cannot find the file
             logger.warning(f"We could not match any file from the include {path}")
             return []
-
+        if self._is_remote_import(parent):
+            dirname = os.path.dirname(parent)
+            if path.startswith("/"):
+                return [Includes(self.remote_import_path + path)]
+            return [Includes(dirname + "/" + path)]
         return [path]
 
     def _read_file(self, path: Includes) -> str:
@@ -191,6 +210,7 @@ class LkmlParser:
         cache the views and return the list of includes to parse if
         we still don't find the view afterwards
         """
+        logger.info(f"LkmlParser::find_view: view_name = {view_name}")
         cached_view = self.get_view_from_cache(view_name)
         if cached_view:
             return cached_view
@@ -210,7 +230,10 @@ class LkmlParser:
         """
         Customize string repr for logs
         """
-        return (
-            f"Parser at [{self.reader.credentials.repositoryOwner.__root__}/"
-            f"{self.reader.credentials.repositoryName.__root__}]"
-        )
+        if isinstance(self.reader, ApiReader):
+            return (
+                f"Parser at [{self.reader.credentials.repositoryOwner.__root__}/"
+                f"{self.reader.credentials.repositoryName.__root__}]"
+            )
+        else:
+            return f"Parser at [{self.reader}]"

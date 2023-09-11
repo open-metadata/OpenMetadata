@@ -18,10 +18,14 @@ Supports:
 Notes:
 - Filtering is applied on the Dashboard title or ID, if the title is missing
 """
-
+import os
 import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, cast
+import lkml
+import giturlparse
+
 
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
@@ -49,7 +53,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, DataModel
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )
@@ -95,6 +99,16 @@ from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
+from ingestion.src.metadata.ingestion.source.dashboard.looker.models import (
+    LookMLRepo,
+    LookMLManifest,
+)
+from ingestion.src.metadata.ingestion.source.dashboard.looker.parser import (
+    IMPORTED_PROJECTS_DIR,
+)
+from ingestion.src.metadata.ingestion.source.dashboard.looker.utils import _clone_repo
+from ingestion.src.metadata.readers.file.local import LocalReader
+
 logger = ingestion_logger()
 
 
@@ -112,6 +126,9 @@ GET_DASHBOARD_FIELDS = [
     "folder",
     "user_id",  # Use as owner
 ]
+
+TEMP_FOLDER_DIRECTORY = os.path.join(os.getcwd(), "tmp")
+REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
 
 
 def clean_dashboard_name(name: str) -> str:
@@ -152,6 +169,8 @@ class LookerSource(DashboardServiceSource):
         self._repo_credentials: Optional[ReadersCredentials] = None
         self._reader_class: Optional[Type[Reader]] = None
         self._project_parsers: Optional[Dict[str, LkmlParser]] = None
+        self._main_lookml_repo: Optional[LookMLRepo] = None
+        self._main__lookml_manifest: Optional[LookMLManifest] = None
 
     @classmethod
     def create(
@@ -164,6 +183,51 @@ class LookerSource(DashboardServiceSource):
                 f"Expected LookerConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    @staticmethod
+    def __init_repo(credentials) -> "LookMLRepo":
+        repo_name = "{}/{}".format(
+            credentials.repositoryOwner.__root__,
+            credentials.repositoryName.__root__,
+        )
+        repo_path = "{}/{}".format(
+            REPO_TMP_LOCAL_PATH,
+            credentials.repositoryName.__root__,
+        )
+        _clone_repo(repo_name, repo_path, credentials.token.__root__.get_secret_value())
+        return LookMLRepo(name=repo_name, path=repo_path)
+
+    def __read_manifest(
+        self, credentials, path="manifest.lkml"
+    ) -> Optional[LookMLManifest]:
+        file_path = "{}/{}".format(self._main_lookml_repo.path, path)
+        if not os.path.isfile(file_path):
+            return None
+        with open(file_path, "r") as f:
+            manifest = LookMLManifest.parse_obj(lkml.load(f))
+            if manifest and manifest.remote_dependency:
+                remote_name = manifest.remote_dependency["name"]
+                remote_git_url = manifest.remote_dependency["url"]
+
+                url_parsed = giturlparse.parse(remote_git_url)
+                _clone_repo(
+                    f"{url_parsed.owner}/{url_parsed.repo}",
+                    "{}/{}".format(
+                        self._main_lookml_repo.path,
+                        f"{IMPORTED_PROJECTS_DIR}/{remote_name}",
+                    ),
+                    credentials.token.__root__.get_secret_value(),
+                )
+
+            return manifest
+
+    def prepare(self):
+        if self.service_connection.gitCredentials and isinstance(
+            self.service_connection.gitCredentials, GitHubCredentials
+        ):
+            credentials = self.service_connection.gitCredentials
+            self._main_lookml_repo = self.__init_repo(credentials)
+            self._main__lookml_manifest = self.__read_manifest(credentials)
 
     @property
     def parser(self) -> Optional[Dict[str, LkmlParser]]:
@@ -191,11 +255,17 @@ class LookerSource(DashboardServiceSource):
             all_projects: Set[str] = {model.project_name for model in all_lookml_models}
             self._project_parsers: Dict[str, LkmlParser] = {
                 project_name: LkmlParser(
-                    reader=self.reader(
-                        credentials=self.get_lookml_project_credentials(
-                            project_name=project_name
-                        )
-                    )
+                    # reader=self.reader(
+                    #     credentials=self.get_lookml_project_credentials(
+                    #         project_name=project_name
+                    #     )
+                    # )
+                    reader=self.reader(Path(self._main_lookml_repo.path)),
+                    remote_import_path=Includes(
+                        IMPORTED_PROJECTS_DIR
+                        + "/"
+                        + self._main__lookml_manifest.remote_dependency["name"]
+                    ),
                 )
                 for project_name in all_projects
             }
@@ -226,7 +296,8 @@ class LookerSource(DashboardServiceSource):
             if self.service_connection.gitCredentials and isinstance(
                 self.service_connection.gitCredentials, GitHubCredentials
             ):
-                self._reader_class = GitHubReader
+                # self._reader_class = GitHubReader
+                self._reader_class = LocalReader
 
             if self.service_connection.gitCredentials and isinstance(
                 self.service_connection.gitCredentials, BitBucketCredentials
@@ -427,6 +498,22 @@ class LookerSource(DashboardServiceSource):
                         project=explore.project_name,
                     )
                 )
+                fqn_datamodel = fqn.build(
+                    self.metadata,
+                    DataModel,
+                    service_name=self.context.dashboard_service.name.__root__,
+                    data_model_name=build_datamodel_name(explore.model_name, view.name),
+                )
+                logger.info(
+                    f"LookerSource::_process_view: data_model_name = {fqn_datamodel}"
+                )
+
+                a = self.metadata.get_by_name(
+                    entity=self.context.dataModel,
+                    fqn=fqn_datamodel,
+                    fields=["*"],
+                )
+                logger.info(f"LookerSource::_process_view: a = {a}")
 
                 yield from self.add_view_lineage(view, explore)
 

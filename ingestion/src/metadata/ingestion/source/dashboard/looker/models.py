@@ -48,3 +48,13 @@ class LkmlFile(BaseModel):
 
     includes: List[Includes] = Field([], description="Full include list")
     views: List[LookMlView] = Field([], description="Views we want to parse")
+
+
+class LookMLRepo(BaseModel):
+    name: str = Field(None, description="Repository name")
+    path: str = Field(None, description="RepositoryPath")
+
+
+class LookMLManifest(BaseModel):
+    project_name: str = Field(None, description="LookML project name")
+    remote_dependency: dict = Field(None, description="Remote dependency information")
