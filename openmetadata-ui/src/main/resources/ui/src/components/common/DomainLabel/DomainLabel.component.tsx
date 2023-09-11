@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { compare } from 'fast-json-patch';
 import { EntityReference } from 'generated/entity/type';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getAPIfromSource,
@@ -34,6 +34,7 @@ const DomainLabel = ({
   entityId,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
+  const [activeDomain, setActiveDomain] = useState<EntityReference>();
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference) => {
@@ -51,7 +52,10 @@ const DomainLabel = ({
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);
-          await api(entityId, jsonPatch);
+          const res = await api(entityId, jsonPatch);
+
+          // update the domain details here
+          setActiveDomain(res.domain);
         }
       } catch (err) {
         // Handle errors as needed
@@ -61,8 +65,12 @@ const DomainLabel = ({
     [entityType, entityFqn]
   );
 
+  useEffect(() => {
+    setActiveDomain(domain);
+  }, [domain]);
+
   const label = useMemo(() => {
-    if (domain) {
+    if (activeDomain) {
       return (
         <>
           <Space>
@@ -70,11 +78,12 @@ const DomainLabel = ({
               <span className="text-grey-muted">{`${t(
                 'label.domain'
               )}: `}</span>
-              <span className="font-medium">{getEntityName(domain)}</span>
+              <span className="font-medium">{getEntityName(activeDomain)}</span>
             </Typography.Text>
             {hasPermission && (
               <DomainSelectableList
                 hasPermission={Boolean(hasPermission)}
+                selectedDomain={activeDomain}
                 onUpdate={handleDomainSave}
               />
             )}
@@ -85,7 +94,7 @@ const DomainLabel = ({
     }
 
     return null;
-  }, [domain, hasPermission]);
+  }, [activeDomain, hasPermission]);
 
   return label;
 };

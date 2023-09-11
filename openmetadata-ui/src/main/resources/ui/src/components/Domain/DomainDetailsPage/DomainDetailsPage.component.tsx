@@ -272,6 +272,7 @@ const DomainDetailsPage = ({
 
   const handleAssetSave = () => {
     assetTabRef.current?.refreshAssets();
+    activeTab !== 'assets' && handleTabChange('assets');
   };
 
   const handleAssetClick = useCallback((asset) => {

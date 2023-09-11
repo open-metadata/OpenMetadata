@@ -10,33 +10,46 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, PopoverProps, Tooltip } from 'antd';
+import { Button, Popover, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/type';
-import React, { ReactNode, useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getDomainList } from 'rest/domainAPI';
 import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
 import { formatDomainsResponse } from 'utils/APIUtils';
-import { getEntityReferenceListFromEntities } from 'utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from 'utils/EntityUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
+import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
-interface DomainSelectableListProps {
-  onUpdate: (domain: EntityReference) => void;
-  children?: ReactNode;
-  hasPermission: boolean;
-  popoverProps?: PopoverProps;
-}
+export const DomainListItemRenderer = (props: EntityReference) => {
+  return (
+    <div className="d-flex items-center gap-2">
+      <DomainIcon
+        color={DE_ACTIVE_COLOR}
+        height={20}
+        name="folder"
+        width={20}
+      />
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
+    </div>
+  );
+};
 
 const DomainSelectableList = ({
   onUpdate,
   children,
   hasPermission,
   popoverProps,
+  selectedDomain,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -65,17 +78,9 @@ const DomainSelectableList = ({
       }
     } else {
       try {
-        const { data, paging } = await getUsers(
-          '',
-          PAGE_SIZE_MEDIUM,
-          after
-            ? {
-                after,
-              }
-            : undefined,
-          undefined,
-          false
-        );
+        const { data, paging } = await getDomainList({
+          limit: PAGE_SIZE_MEDIUM,
+        });
         const filterData = getEntityReferenceListFromEntities(
           data,
           EntityType.DOMAIN
@@ -101,12 +106,13 @@ const DomainSelectableList = ({
       destroyTooltipOnHide
       content={
         <SelectableList
+          customTagRenderer={DomainListItemRenderer}
           fetchOptions={fetchOptions}
           multiSelect={false}
           searchPlaceholder={t('label.search-for-type', {
-            type: t('label.user'),
+            type: t('label.domain'),
           })}
-          selectedItems={[]}
+          selectedItems={selectedDomain ? [selectedDomain] : []}
           onCancel={() => setPopupVisible(false)}
           onUpdate={handleUpdate}
         />
