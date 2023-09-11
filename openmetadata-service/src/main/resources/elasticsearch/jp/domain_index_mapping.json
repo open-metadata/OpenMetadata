@@ -43,6 +43,9 @@
       "id": {
         "type": "text"
       },
+      "domainType": {
+        "type": "text"
+      },
       "name": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
@@ -61,8 +64,19 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "serviceType": {
-        "type": "keyword"
+      "displayName": {
+        "type": "text",
+        "analyzer": "om_analyzer_jp",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
@@ -74,71 +88,6 @@
           }
         }
       },
-      "displayName": {
-        "type": "keyword",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
-      },
-      "pipelines": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "tags": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
       "version": {
         "type": "float"
       },
@@ -147,6 +96,9 @@
         "format": "epoch_second"
       },
       "updatedBy": {
+        "type": "text"
+      },
+      "href": {
         "type": "text"
       },
       "owner": {
@@ -195,48 +147,8 @@
           }
         }
       },
-      "href": {
-        "type": "text"
-      },
-      "deleted": {
-        "type": "text"
-      },
-      "domain" : {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
+      "experts": {
+        "type": "keyword"
       }
     }
   }
