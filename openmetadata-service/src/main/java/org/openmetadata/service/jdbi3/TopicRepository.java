@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Topic;
@@ -65,6 +64,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public TopicRepository(CollectionDAO dao) {
     super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -161,7 +161,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     return topic;
   }
 
-  @Transaction
   public Topic addSampleData(UUID topicId, TopicSampleData sampleData) {
     // Validate the request content
     Topic topic = daoCollection.topicDAO().findEntityById(topicId);

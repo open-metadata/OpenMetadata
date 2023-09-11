@@ -1033,6 +1033,9 @@
       "description": "File format in case of file/datalake tables.",
       "$ref" : "#/definitions/fileFormat"
     },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"

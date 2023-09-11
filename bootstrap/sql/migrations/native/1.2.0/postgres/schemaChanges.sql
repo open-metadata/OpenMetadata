@@ -78,3 +78,15 @@ CREATE TABLE IF NOT EXISTS table_entity_extension (
     json JSONB NOT NULL,
     PRIMARY KEY (id, extension)
 );
+
+-- Add index on fromId and fromEntity columns
+CREATE INDEX from_entity_type_index ON entity_relationship (fromId, fromEntity);
+
+-- Add index on toId and toEntity columns
+CREATE INDEX to_entity_type_index ON entity_relationship (toId, toEntity);
+
+ALTER TABLE tag DROP CONSTRAINT IF EXISTS tag_fqnhash_key;
+
+ALTER TABLE tag ADD CONSTRAINT unique_fqnHash UNIQUE (fqnHash);
+
+ALTER TABLE tag ADD CONSTRAINT tag_pk PRIMARY KEY (id);

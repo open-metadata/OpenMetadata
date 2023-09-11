@@ -179,7 +179,7 @@ public final class RestUtil {
 
   public static class DeleteResponse<T> {
     @Getter private final T entity;
-    private final String changeType;
+    @Getter private final String changeType;
 
     public DeleteResponse(T entity, String changeType) {
       this.entity = entity;

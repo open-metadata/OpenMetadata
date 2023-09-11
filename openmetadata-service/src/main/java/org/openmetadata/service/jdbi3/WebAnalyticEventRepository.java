@@ -5,7 +5,6 @@ import static org.openmetadata.service.Entity.WEB_ANALYTIC_EVENT;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
@@ -46,7 +45,6 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     // No relationships to store beyond what is stored in the super class
   }
 
-  @Transaction
   public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) {
     webAnalyticEventData.setEventId(UUID.randomUUID());
     storeTimeSeries(
@@ -58,7 +56,6 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     return Response.ok(webAnalyticEventData).build();
   }
 
-  @Transaction
   public void deleteWebAnalyticEventData(WebAnalyticEventType name, Long timestamp) {
     deleteExtensionBeforeTimestamp(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);
   }

@@ -30,6 +30,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -122,6 +123,14 @@ export const AuthProvider = ({
 
   let silentSignInRetries = 0;
   const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
+
+  const userConfig = useMemo(
+    () =>
+      getUserManagerConfig({
+        ...(authConfig as Record<string, string>),
+      }),
+    [authConfig]
+  );
 
   const onLoginHandler = () => {
     setLoading(true);
@@ -558,9 +567,7 @@ export const AuthProvider = ({
           <OidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
-            userConfig={getUserManagerConfig({
-              ...(authConfig as Record<string, string>),
-            })}
+            userConfig={userConfig}
             onLoginFailure={handleFailedLogin}
             onLoginSuccess={handleSuccessfulLogin}
             onLogoutSuccess={handleSuccessfulLogout}>

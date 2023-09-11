@@ -19,24 +19,16 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.index.engine.DocumentMissingException;
-import org.elasticsearch.rest.RestStatus;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.schema.system.EventPublisherJob.Status;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -45,15 +37,15 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SearchEventPublisher extends AbstractEventPublisher {
-  private final SearchClient searchClient;
-  private final CollectionDAO dao;
+  private static SearchClient searchClient;
+  private static CollectionDAO dao;
 
   public SearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize());
-    this.dao = dao;
+    SearchEventPublisher.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();
-    this.searchClient = IndexUtil.getSearchClient(esConfig, dao);
+    searchClient = IndexUtil.getSearchClient(esConfig, dao);
     SearchIndexDefinition esIndexDefinition = new SearchIndexDefinition(searchClient);
     esIndexDefinition.createIndexes(esConfig);
   }
@@ -65,111 +57,7 @@ public class SearchEventPublisher extends AbstractEventPublisher {
 
   @Override
   public void publish(EventList events) throws EventPublisherException {
-    for (ChangeEvent event : events.getData()) {
-      String entityType = event.getEntityType();
-      String contextInfo =
-          event.getEntity() != null ? String.format("Entity Info : %s", JsonUtils.pojoToJson(event.getEntity())) : null;
-      try {
-        switch (entityType) {
-          case Entity.TABLE:
-          case Entity.DASHBOARD:
-          case Entity.TOPIC:
-          case Entity.PIPELINE:
-          case Entity.MLMODEL:
-          case Entity.CONTAINER:
-          case Entity.QUERY:
-            searchClient.updateEntity(event);
-            break;
-          case Entity.USER:
-            searchClient.updateUser(event);
-            break;
-          case Entity.TEAM:
-            searchClient.updateTeam(event);
-            break;
-          case Entity.GLOSSARY_TERM:
-            searchClient.updateGlossaryTerm(event);
-            break;
-          case Entity.GLOSSARY:
-            searchClient.updateGlossary(event);
-            break;
-          case Entity.DATABASE:
-            searchClient.updateDatabase(event);
-            break;
-          case Entity.DATABASE_SCHEMA:
-            searchClient.updateDatabaseSchema(event);
-            break;
-          case Entity.DASHBOARD_SERVICE:
-            searchClient.updateDashboardService(event);
-            break;
-          case Entity.DATABASE_SERVICE:
-            searchClient.updateDatabaseService(event);
-            break;
-          case Entity.MESSAGING_SERVICE:
-            searchClient.updateMessagingService(event);
-            break;
-          case Entity.PIPELINE_SERVICE:
-            searchClient.updatePipelineService(event);
-            break;
-          case Entity.MLMODEL_SERVICE:
-            searchClient.updateMlModelService(event);
-            break;
-          case Entity.STORAGE_SERVICE:
-            searchClient.updateStorageService(event);
-            break;
-          case Entity.TAG:
-            searchClient.updateTag(event);
-            break;
-          case Entity.CLASSIFICATION:
-            searchClient.updateClassification(event);
-            break;
-          case Entity.TEST_CASE:
-            searchClient.updateTestCase(event);
-            break;
-          case Entity.TEST_SUITE:
-            searchClient.updateTestSuite(event);
-            break;
-          default:
-            LOG.warn("Ignoring Entity Type {}", entityType);
-        }
-      } catch (DocumentMissingException ex) {
-        LOG.error("Missing Document", ex);
-        updateElasticSearchFailureStatus(
-            contextInfo,
-            Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
-      } catch (ElasticsearchException e) {
-        LOG.error("failed to update ES doc");
-        LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
-          LOG.error("Error in publishing to ElasticSearch");
-          updateElasticSearchFailureStatus(
-              contextInfo,
-              Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          throw new SearchRetriableException(e.getMessage());
-        } else {
-          updateElasticSearchFailureStatus(
-              contextInfo,
-              Status.ACTIVE_WITH_ERROR,
-              String.format(
-                  "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
-                  e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
-          LOG.error(e.getMessage(), e);
-        }
-      } catch (IOException ie) {
-        updateElasticSearchFailureStatus(
-            contextInfo,
-            Status.ACTIVE_WITH_ERROR,
-            String.format(
-                "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
-                ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
-        throw new EventPublisherException(ie.getMessage());
-      }
-    }
+    // publishing search directly form Entity Repository
   }
 
   @Override
@@ -178,7 +66,8 @@ public class SearchEventPublisher extends AbstractEventPublisher {
     LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 
-  public void updateElasticSearchFailureStatus(String context, EventPublisherJob.Status status, String failureMessage) {
+  public static void updateElasticSearchFailureStatus(
+      String context, EventPublisherJob.Status status, String failureMessage) {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
