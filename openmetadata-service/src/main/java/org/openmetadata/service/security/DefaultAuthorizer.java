@@ -19,10 +19,10 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmi
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -32,7 +32,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class DefaultAuthorizer implements Authorizer {
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi dbi) {
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO dao) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
   }
 

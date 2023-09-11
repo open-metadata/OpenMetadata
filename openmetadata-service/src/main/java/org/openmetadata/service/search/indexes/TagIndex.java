@@ -1,6 +1,12 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -31,5 +37,15 @@ public class TagIndex implements ElasticSearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TAG);
     return doc;
+  }
+
+  public static Map<String, Float> getFields() {
+    Map<String, Float> fields = new HashMap<>();
+    fields.put(FIELD_NAME, 10.0f);
+    fields.put(FIELD_DISPLAY_NAME, 10.0f);
+    fields.put(FIELD_NAME_NGRAM, 1.0f);
+    fields.put("classification.name", 1.0f);
+    fields.put(FIELD_DESCRIPTION, 3.0f);
+    return fields;
   }
 }

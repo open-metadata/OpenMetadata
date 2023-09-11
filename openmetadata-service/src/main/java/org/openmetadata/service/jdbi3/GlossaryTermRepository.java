@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
@@ -50,6 +51,8 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
@@ -65,6 +68,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -190,6 +194,29 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   protected void postDelete(GlossaryTerm entity) {
     // Cleanup all the tag labels using this glossary term
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
+  }
+
+  @Override
+  public void deleteFromSearch(GlossaryTerm entity, String changeType) {
+    if (supportsSearchIndex) {
+      String scriptTxt =
+          "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
+      } else {
+        searchClient.deleteEntityAndRemoveRelationships(
+            JsonUtils.deepCopy(entity, GlossaryTerm.class), scriptTxt, "tags.tagFQN");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(GlossaryTerm entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, GlossaryTerm.class), false, "tags.tagFQN");
+    }
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {
