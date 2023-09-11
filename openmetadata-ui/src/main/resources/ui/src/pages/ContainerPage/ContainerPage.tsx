@@ -105,7 +105,7 @@ const ContainerPage = () => {
     try {
       const response = await getContainerByName(
         containerFQN,
-        'parent,dataModel,owner,tags,followers,extension',
+        'parent,dataModel,owner,tags,followers,extension,domain',
         Include.All
       );
       addToRecentViewed({

@@ -666,6 +666,26 @@ export const getTestConnectionName = (connectionType: string) => {
   })}`;
 };
 
+export const getServiceCategoryFromEntityType = (
+  entityType: EntityType
+): string => {
+  switch (entityType) {
+    case EntityType.DASHBOARD_SERVICE:
+      return ServiceCategory.DASHBOARD_SERVICES;
+    case EntityType.MESSAGING_SERVICE:
+      return ServiceCategory.MESSAGING_SERVICES;
+    case EntityType.PIPELINE_SERVICE:
+      return ServiceCategory.PIPELINE_SERVICES;
+    case EntityType.MLMODEL_SERVICE:
+      return ServiceCategory.ML_MODEL_SERVICES;
+    case EntityType.STORAGE_SERVICE:
+      return ServiceCategory.STORAGE_SERVICES;
+    case EntityType.DATABASE_SERVICE:
+    default:
+      return ServiceCategory.DATABASE_SERVICES;
+  }
+};
+
 export const getEntityTypeFromServiceCategory = (
   serviceCategory: ServiceTypes
 ) => {

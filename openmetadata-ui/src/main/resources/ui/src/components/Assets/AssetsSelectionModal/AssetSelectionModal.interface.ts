@@ -21,6 +21,12 @@ import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
+import { DashboardService } from 'generated/entity/services/dashboardService';
+import { DatabaseService } from 'generated/entity/services/databaseService';
+import { MessagingService } from 'generated/entity/services/messagingService';
+import { MlmodelService } from 'generated/entity/services/mlmodelService';
+import { PipelineService } from 'generated/entity/services/pipelineService';
+import { StorageService } from 'generated/entity/services/storageService';
 
 export interface AssetSelectionModalProps {
   entityFqn: string;
@@ -39,7 +45,13 @@ export type AssetsUnion =
   | EntityType.CONTAINER
   | EntityType.GLOSSARY_TERM
   | EntityType.DATABASE_SCHEMA
-  | EntityType.DATABASE;
+  | EntityType.DATABASE
+  | EntityType.DASHBOARD_SERVICE
+  | EntityType.MESSAGING_SERVICE
+  | EntityType.PIPELINE_SERVICE
+  | EntityType.MLMODEL_SERVICE
+  | EntityType.STORAGE_SERVICE
+  | EntityType.DATABASE_SERVICE;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -51,4 +63,10 @@ export type MapPatchAPIResponse = {
   [EntityType.GLOSSARY_TERM]: GlossaryTerm;
   [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
   [EntityType.DATABASE]: Database;
+  [EntityType.DASHBOARD_SERVICE]: DashboardService;
+  [EntityType.MESSAGING_SERVICE]: MessagingService;
+  [EntityType.PIPELINE_SERVICE]: PipelineService;
+  [EntityType.MLMODEL_SERVICE]: MlmodelService;
+  [EntityType.STORAGE_SERVICE]: StorageService;
+  [EntityType.DATABASE_SERVICE]: DatabaseService;
 };
