@@ -374,6 +374,21 @@ class LookerSource(DashboardServiceSource):
                         f"Error fetching LookML Explore [{explore_nav.name}] in model [{lookml_model.name}] - {err}"
                     )
 
+    def _build_data_model(self, data_model_name):
+        fqn_datamodel = fqn.build(
+            self.metadata,
+            DashboardDataModel,
+            service_name=self.context.dashboard_service.name.__root__,
+            data_model_name=data_model_name,
+        )
+
+        _datamodel = self.metadata.get_by_name(
+            entity=DashboardDataModel,
+            fqn=fqn_datamodel,
+            fields=["*"],
+        )
+        return _datamodel
+
     def yield_bulk_datamodel(
         self, model: LookmlModelExplore
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -401,6 +416,9 @@ class LookerSource(DashboardServiceSource):
                     project=model.project_name,
                 )
                 yield Either(right=explore_datamodel)
+
+                # build datamodel by our hand since ack_sink=False
+                self.context.dataModel = self._build_data_model(datamodel_name)
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
@@ -498,22 +516,9 @@ class LookerSource(DashboardServiceSource):
                         project=explore.project_name,
                     )
                 )
-                fqn_datamodel = fqn.build(
-                    self.metadata,
-                    DataModel,
-                    service_name=self.context.dashboard_service.name.__root__,
-                    data_model_name=build_datamodel_name(explore.model_name, view.name),
+                self.context.dataModel = self._build_data_model(
+                    build_datamodel_name(explore.model_name, view.name)
                 )
-                logger.info(
-                    f"LookerSource::_process_view: data_model_name = {fqn_datamodel}"
-                )
-
-                a = self.metadata.get_by_name(
-                    entity=self.context.dataModel,
-                    fqn=fqn_datamodel,
-                    fields=["*"],
-                )
-                logger.info(f"LookerSource::_process_view: a = {a}")
 
                 yield from self.add_view_lineage(view, explore)
 
