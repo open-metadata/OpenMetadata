@@ -49,6 +49,7 @@ import javax.json.JsonPatch;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
@@ -483,6 +484,15 @@ public final class JsonUtils {
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
+  }
+
+  @SneakyThrows
+  public static <T> T deepCopy(T original, Class<T> clazz) {
+    // Serialize the original object to JSON
+    String json = pojoToJson(original);
+
+    // Deserialize the JSON back into a new object of the specified class
+    return OBJECT_MAPPER.readValue(json, clazz);
   }
 
   static class SortedNodeFactory extends JsonNodeFactory {

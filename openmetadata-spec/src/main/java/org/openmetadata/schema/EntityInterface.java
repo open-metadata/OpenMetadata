@@ -160,6 +160,10 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
+  default void setVotes(Votes vote) {
+    /* no-op implementation to be overridden */
+  }
+
   <T extends EntityInterface> T withHref(URI href);
 
   @JsonIgnore

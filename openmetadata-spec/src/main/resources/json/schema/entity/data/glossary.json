@@ -95,6 +95,9 @@
     "domain" : {
       "description": "Domain the Glossary belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
     }
   },
   "required": ["id", "name", "description"],
