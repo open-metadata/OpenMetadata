@@ -1,11 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.List;
+import java.util.Map;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.List;
-import java.util.Map;
 
 public class DomainIndex implements ElasticSearchIndex {
 
