@@ -63,7 +63,7 @@ import org.openmetadata.service.util.ReIndexingHandler;
 @Path("/v1/search")
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "search")
+@Collection(name = "elasticsearch")
 public class SearchResource {
   private final CollectionDAO dao;
   private final Authorizer authorizer;

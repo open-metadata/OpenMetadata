@@ -93,7 +93,10 @@ public class SearchIndexDefinition {
     SEARCH_SERVICE_SEARCH_INDEX(
         Entity.SEARCH_SERVICE, "search_service_search_index", "/elasticsearch/%s/search_service_index_mapping.json"),
 
-    SEARCH_INDEX_SEARCH(Entity.SEARCH_INDEX, "search_index", "/elasticsearch/%s/search_index_mapping.json"),
+    SEARCH_ENTITY_INDEX_SEARCH(
+        Entity.SEARCH_INDEX, "search_entity_index", "/elasticsearch/%s/search_entity_index_mapping.json"),
+    STORAGE_SERVICE_INDEX(
+        Entity.SEARCH_INDEX, "storage_service_index", "/elasticsearch/%s/storage_service_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",

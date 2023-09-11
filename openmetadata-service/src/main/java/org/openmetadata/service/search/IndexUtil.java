@@ -1,15 +1,5 @@
 package org.openmetadata.service.search;
 
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyStoreException;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import javax.net.ssl.SSLContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -22,6 +12,17 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
 import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
 import org.openmetadata.service.util.SSLUtil;
+
+import javax.net.ssl.SSLContext;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStoreException;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 @Slf4j
 public class IndexUtil {
@@ -124,7 +125,7 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.CONTAINER) || type.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+    } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
       return SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return SearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
@@ -139,7 +140,7 @@ public class IndexUtil {
     } else if (type.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.SEARCH_INDEX)) {
-      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_INDEX_SEARCH;
+      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_ENTITY_INDEX_SEARCH;
     } else if (type.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_SERVICE_SEARCH_INDEX;
     }

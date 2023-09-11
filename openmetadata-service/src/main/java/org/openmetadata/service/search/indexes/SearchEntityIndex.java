@@ -5,13 +5,13 @@ import java.util.Map;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.JsonUtils;
 
-public class SearchIndex implements ElasticSearchIndex {
+public class SearchEntityIndex implements ElasticSearchIndex {
 
   final org.openmetadata.schema.entity.data.SearchIndex searchIndex;
 
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public SearchIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex) {
+  public SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex) {
     this.searchIndex = searchIndex;
   }
 

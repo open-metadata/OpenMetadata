@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -43,8 +44,9 @@ import org.openmetadata.service.search.indexes.MlModelServiceIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
-import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
+import org.openmetadata.service.search.indexes.StorageServiceIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TeamIndex;
@@ -106,9 +108,11 @@ public class SearchIndexFactory {
       case Entity.SEARCH_SERVICE:
         return new SearchServiceIndex((SearchService) entity);
       case Entity.SEARCH_INDEX:
-        return new SearchIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
+        return new SearchEntityIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
       case Entity.PIPELINE_SERVICE:
         return new PipelineServiceIndex((PipelineService) entity);
+      case Entity.STORAGE_SERVICE:
+        return new StorageServiceIndex((StorageService) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
