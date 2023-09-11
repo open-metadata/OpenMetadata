@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from 'enums/entity.enum';
+import { EntityReference } from 'generated/entity/type';
 
-import { TabSpecificField } from '../enums/entity.enum';
-
-// eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.VIEW_DEFINITION},${TabSpecificField.DOMAIN}`;
+export type DomainLabelProps = {
+  hasPermission: boolean;
+  domain: EntityReference | undefined;
+  entityType: EntityType;
+  entityFqn: string;
+  entityId: string;
+};
