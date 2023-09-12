@@ -153,7 +153,7 @@ describe('Test UserListPage component', () => {
     expect(searchAPI.mock.calls[0]).toEqual([
       'test',
       1,
-      15,
+      25,
       'isBot:false',
       '',
       '',
@@ -200,7 +200,7 @@ describe('Test UserListPage component', () => {
     expect(searchAPI.mock.calls[0]).toEqual([
       'test',
       1,
-      15,
+      25,
       'isAdmin:true isBot:false',
       '',
       '',

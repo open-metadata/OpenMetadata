@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Radio, Row } from 'antd';
-import Col from 'antd/es/grid/col';
+import { Col, Radio, Row } from 'antd';
 import { ReactComponent as GridIcon } from 'assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from 'assets/svg/ic-list.svg';
 import Searchbar from 'components/common/searchbar/Searchbar';
@@ -49,10 +48,10 @@ export const ListView = <T extends object = any>({
           value={currentView}
           onChange={(e) => setCurrentView(e.target.value)}>
           <Radio.Button value={ListViewOptions.CARD}>
-            <Icon component={GridIcon} />
+            <Icon component={GridIcon} data-testid="grid" />
           </Radio.Button>
           <Radio.Button value={ListViewOptions.TABLE}>
-            <Icon component={ListIcon} />
+            <Icon component={ListIcon} data-testid="list" />
           </Radio.Button>
         </Radio.Group>
       </Col>

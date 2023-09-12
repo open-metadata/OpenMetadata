@@ -21,6 +21,10 @@ jest.mock('components/common/Table/Table', () => {
   return jest.fn(() => <p>Table</p>);
 });
 
+jest.mock('components/common/searchbar/Searchbar', () => {
+  return jest.fn().mockImplementation(() => <p>Searchbar</p>);
+});
+
 describe('ListView component', () => {
   it('should render toggle button for card and table', async () => {
     render(
@@ -36,8 +40,9 @@ describe('ListView component', () => {
       />
     );
 
-    expect(await screen.findByText('label.card')).toBeInTheDocument();
-    expect(await screen.findByText('label.table')).toBeInTheDocument();
+    expect(await screen.findByText('Searchbar')).toBeInTheDocument();
+    expect(await screen.findByTestId('grid')).toBeInTheDocument();
+    expect(await screen.findByTestId('list')).toBeInTheDocument();
   });
 
   it('should render table by default', async () => {
@@ -71,12 +76,11 @@ describe('ListView component', () => {
       />
     );
     await act(async () => {
-      fireEvent.click(await screen.findByText('label.card'));
+      fireEvent.click(await screen.findByTestId('grid'));
     });
 
     expect(mockCardRenderer).toHaveBeenCalledWith({ name: 'test' });
 
-    expect(await screen.findByText('Table')).toBeInTheDocument();
     expect(await screen.findByText('Card')).toBeInTheDocument();
   });
 });
