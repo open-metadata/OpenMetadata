@@ -167,7 +167,9 @@ const BlockEditor: FC<BlockEditorProps> = ({
         const htmlContent = MarkdownToHTMLConverter.makeHtml(
           getFrontEndFormat(content)
         );
-        editor.commands.setContent(htmlContent);
+        editor.commands.setContent(htmlContent, false, {
+          preserveWhitespace: true,
+        });
       }
     });
   }, [content, editor]);
