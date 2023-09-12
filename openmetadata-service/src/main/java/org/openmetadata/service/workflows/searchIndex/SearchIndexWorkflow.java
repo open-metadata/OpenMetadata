@@ -46,7 +46,6 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexDefinition;
@@ -138,8 +137,6 @@ public class SearchIndexWorkflow implements Runnable {
       sendUpdates();
       // Remove list from active jobs
       ReIndexingHandler.getInstance().removeCompletedJob(jobData.getId());
-      // Close the Handle
-      JdbiUnitOfWorkProvider.getInstance().getHandleManager().clear();
     }
   }
 
