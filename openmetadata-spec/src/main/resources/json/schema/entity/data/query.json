@@ -91,6 +91,14 @@
       "description": "Date on which the query ran.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
+    "usedBy" : {
+      "description": "List of users who ran the query but does not exist in OpenMetadata.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
     "tags": {
       "description": "Tags for this SQL query.",
       "type": "array",
