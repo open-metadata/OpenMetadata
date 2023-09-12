@@ -31,13 +31,13 @@ export interface BlockEditorProps {
   content?: string;
   editable?: boolean;
   // will be call with markdown content
-  onSave?: (content: string) => void;
+  onChange?: (content: string) => void;
 }
 
 const BlockEditor: FC<BlockEditorProps> = ({
   content = '',
   editable = true,
-  onSave,
+  onChange,
 }) => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
@@ -50,7 +50,7 @@ const BlockEditor: FC<BlockEditorProps> = ({
 
       const backendFormat = getBackendFormat(markdown);
 
-      onSave?.(backendFormat);
+      onChange?.(backendFormat);
     },
   });
 
