@@ -30,6 +30,7 @@ export enum SearchIndex {
   SEARCH_SERVICE = 'search_service_search_index',
   DASHBOARD_SERCVICE = 'dashboard_service_search_index',
   ML_MODEL_SERVICE = 'mlmodel_service_search_index',
+  DOMAIN = 'domain_search_index',
 }
 
 export type ServiceSearchIndexUnion =

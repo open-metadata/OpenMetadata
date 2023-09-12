@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { ReactComponent as IconUser } from 'assets/svg/user.svg';
 import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
@@ -41,11 +41,21 @@ export const OwnerLabel = ({
 
   const profilePicture = useMemo(() => {
     if (isUndefined(owner)) {
-      return <Icon component={IconUser} data-testid="no-owner-icon" />;
+      return (
+        <Icon
+          component={IconUser}
+          data-testid="no-owner-icon"
+          style={{ fontSize: '18px' }}
+        />
+      );
     }
 
     return owner.type === OwnerType.TEAM ? (
-      <Icon component={IconTeamsGrey} data-testid="team-owner-icon" />
+      <Icon
+        component={IconTeamsGrey}
+        data-testid="team-owner-icon"
+        style={{ fontSize: '18px' }}
+      />
     ) : (
       <ProfilePicture
         displayName={displayName}
@@ -53,13 +63,13 @@ export const OwnerLabel = ({
         key="profile-picture"
         name={owner.name ?? ''}
         type="circle"
-        width="24"
+        width="18"
       />
     );
   }, [owner]);
 
   return (
-    <Space data-testid="owner-label" size={8}>
+    <div className="d-flex gap-2 items-center" data-testid="owner-label">
       {profilePicture}
 
       {displayName ? (
@@ -87,6 +97,6 @@ export const OwnerLabel = ({
           onUpdate={onUpdate}
         />
       )}
-    </Space>
+    </div>
   );
 };

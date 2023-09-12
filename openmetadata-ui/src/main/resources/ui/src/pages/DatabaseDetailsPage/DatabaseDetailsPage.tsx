@@ -208,7 +208,11 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(databaseFQN, ['owner', 'tags'], Include.All)
+    getDatabaseDetailsByFQN(
+      databaseFQN,
+      ['owner', 'tags', 'domain'],
+      Include.All
+    )
       .then((res) => {
         if (res) {
           const { description, id, name, serviceType } = res;

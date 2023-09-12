@@ -17,7 +17,11 @@ import { configOptions, PAGE_SIZE } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
-import { ServiceResponse, ServicesType } from '../interface/service.interface';
+import {
+  DomainSupportedServiceTypes,
+  ServiceResponse,
+  ServicesType,
+} from '../interface/service.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 import { searchData } from './miscAPI';
@@ -80,6 +84,21 @@ export const getServiceByFQN = async (
   return response.data;
 };
 
+export const getDomainSupportedServiceByFQN = async (
+  serviceCat: string,
+  fqn: string,
+  arrQueryFields: string | string[] = ''
+) => {
+  const url = getURLWithQueryFields(
+    `/services/${serviceCat}/name/${fqn}`,
+    arrQueryFields
+  );
+
+  const response = await APIClient.get<DomainSupportedServiceTypes>(url);
+
+  return response.data;
+};
+
 export const postService = async (
   serviceCat: string,
   options: ServicesUpdateRequest
@@ -113,6 +132,19 @@ export const patchService = async (
   const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<ServicesType>
+  >(`/services/${serviceCat}/${id}`, options, configOptions);
+
+  return response.data;
+};
+
+export const patchDomainSupportedService = async (
+  serviceCat: string,
+  id: string,
+  options: ServicesUpdateRequest
+) => {
+  const response = await APIClient.patch<
+    ServicesUpdateRequest,
+    AxiosResponse<DomainSupportedServiceTypes>
   >(`/services/${serviceCat}/${id}`, options, configOptions);
 
   return response.data;

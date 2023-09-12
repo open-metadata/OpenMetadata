@@ -575,7 +575,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const response = await getServiceByFQN(
         serviceCategory,
         serviceFQN,
-        'owner,tags'
+        'owner,tags,domain'
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);

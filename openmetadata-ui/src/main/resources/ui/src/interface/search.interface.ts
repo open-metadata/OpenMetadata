@@ -14,6 +14,7 @@
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Query } from 'generated/entity/data/query';
+import { Domain } from 'generated/entity/domains/domain';
 import { DashboardService } from 'generated/entity/services/dashboardService';
 import { DatabaseService } from 'generated/entity/services/databaseService';
 import { MessagingService } from 'generated/entity/services/messagingService';
@@ -80,6 +81,8 @@ export interface TeamSearchSource extends SearchSourceBase, Team {} // extends E
 
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
 
+export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
+
 export interface DashboardDataModelSearchSource
   extends SearchSourceBase,
     DashboardDataModel {} // extends EntityInterface
@@ -135,7 +138,8 @@ export type ExploreSearchSource =
   | PipelineServiceSearchSource
   | MlModelServiceSearchSource
   | MessagingServiceSearchSource
-  | SearchServiceSearchSource;
+  | SearchServiceSearchSource
+  | DomainSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
@@ -156,6 +160,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
+  [SearchIndex.DOMAIN]: DomainSearchSource;
 };
 
 export type SearchRequest<

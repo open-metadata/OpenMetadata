@@ -14,7 +14,6 @@
 import { Button } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
-import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
@@ -72,15 +71,15 @@ const AssetsTabs = forwardRef(
     }: Props,
     ref
   ) => {
-    const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
+    const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
       table: 0,
       pipeline: 0,
       mlmodel: 0,
       container: 0,
       topic: 0,
       dashboard: 0,
-      glossary: 0,
-    } as Record<AssetsUnion, number>);
+      glossaryTerm: 0,
+    } as Record<EntityType, number>);
     const [activeFilter, setActiveFilter] = useState<SearchIndex>(
       SearchIndex.TABLE
     );
@@ -94,7 +93,7 @@ const AssetsTabs = forwardRef(
 
     const queryParam = useMemo(() => {
       if (type !== AssetsOfEntity.GLOSSARY) {
-        return `(domain:"${fqn}")`;
+        return `(domain.fullyQualifiedName:"${fqn}")`;
       } else {
         return `(tags.tagFQN:"${glossaryName}")`;
       }
@@ -139,13 +138,13 @@ const AssetsTabs = forwardRef(
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
               [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
-              [EntityType.GLOSSARY]:
+              [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY
                   ? glossaryResponse.data.hits.total.value
                   : 0,
             };
 
-            setItemCount(counts);
+            setItemCount(counts as Record<EntityType, number>);
 
             find(counts, (count, key) => {
               if (count > 0) {
