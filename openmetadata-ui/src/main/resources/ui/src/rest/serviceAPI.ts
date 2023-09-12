@@ -185,17 +185,19 @@ export const searchService = async ({
   searchIndex,
   currentPage = 1,
   limit = PAGE_SIZE,
+  filters,
 }: {
   search?: string;
   searchIndex: SearchIndex | SearchIndex[];
   limit?: number;
   currentPage?: number;
+  filters?: string;
 }) => {
   const response = await searchData(
     search ?? WILD_CARD_CHAR,
     currentPage,
     limit,
-    '',
+    filters ?? '',
     '',
     '',
     searchIndex

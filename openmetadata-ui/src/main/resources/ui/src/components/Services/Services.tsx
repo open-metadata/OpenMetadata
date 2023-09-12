@@ -13,7 +13,7 @@
 
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
@@ -31,7 +31,7 @@ import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/type';
 import { usePaging } from 'hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from 'interface/search.interface';
-import { isEmpty, map, startCase } from 'lodash';
+import { isEmpty, isNil, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -77,6 +77,8 @@ const Services = ({ serviceName }: ServicesProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [serviceTypeFilter, setServiceTypeFilter] =
+    useState<Array<ServicesType['serviceType']>>();
   const {
     paging,
     handlePagingChange,
@@ -110,17 +112,19 @@ const Services = ({ serviceName }: ServicesProps) => {
       currentPage,
       after,
       before,
+      filters,
     }: {
       search?: string;
       limit?: number;
       currentPage?: number;
       after?: string;
       before?: string;
+      filters?: string;
     }) => {
       setIsLoading(true);
       try {
         let services = [];
-        if (search) {
+        if (search || filters) {
           const {
             hits: { hits, total },
           } = await searchService({
@@ -128,6 +132,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             searchIndex,
             limit: pageSize,
             currentPage,
+            filters,
           });
 
           services = hits.map(
@@ -212,14 +217,21 @@ const Services = ({ serviceName }: ServicesProps) => {
   const noDataPlaceholder = useMemo(
     () =>
       addServicePermission ? (
-        <ErrorPlaceHolder
-          className="mt-24"
-          doc={CONNECTORS_DOCS}
-          heading={servicesDisplayName[serviceName]}
-          permission={addServicePermission}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddServiceClick}
-        />
+        isNil(searchTerm) && isNil(serviceTypeFilter) ? (
+          <ErrorPlaceHolder
+            className="mt-24"
+            doc={CONNECTORS_DOCS}
+            heading={servicesDisplayName[serviceName]}
+            permission={addServicePermission}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={handleAddServiceClick}
+          />
+        ) : (
+          <ErrorPlaceHolder
+            className="mt-24"
+            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+          />
+        )
       ) : (
         <ErrorPlaceHolder
           className="mt-24"
@@ -230,6 +242,8 @@ const Services = ({ serviceName }: ServicesProps) => {
       addServicePermission,
       servicesDisplayName,
       serviceName,
+      searchTerm,
+      serviceTypeFilter,
       addServicePermission,
       handleAddServiceClick,
     ]
@@ -289,6 +303,8 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       filterDropdown: ColumnFilter,
       filterIcon: FilterIcon,
+      filtered: !isNil(serviceTypeFilter),
+      filteredValue: serviceTypeFilter,
       filters: serviceTypeFilters,
       onFilter: (value: string | number | boolean, record) =>
         record.serviceType === value,
@@ -382,6 +398,18 @@ const Services = ({ serviceName }: ServicesProps) => {
     setSearchTerm('');
   }, [serviceName]);
 
+  const handleTableChange: TableProps<ServicesType>['onChange'] = (
+    _pagination,
+    filters
+  ) => {
+    const serviceType = filters.serviceType as ServicesType['serviceType'][];
+    setServiceTypeFilter(serviceType);
+    getServiceDetails({
+      limit: pageSize,
+      filters: serviceType ? `serviceType:${serviceType.join(',')}` : undefined,
+    });
+  };
+
   return (
     <Row
       className="justify-center m-b-md"
@@ -432,6 +460,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             },
             pagination: false,
             size: 'small',
+            onChange: handleTableChange,
           }}
         />
       </Col>
