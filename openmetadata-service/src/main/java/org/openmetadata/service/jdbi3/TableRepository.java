@@ -13,32 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toUnmodifiableList;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.getEntity;
-import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
-import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
-
 import com.google.common.collect.Streams;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
@@ -84,6 +59,32 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toUnmodifiableList;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
+import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
@@ -256,6 +257,7 @@ public class TableRepository extends EntityRepository<Table> {
             table.getId().toString(), TABLE_LIFE_CYCLE_EXTENSION, "lifeCycle", JsonUtils.pojoToJson(currentLifeCycle));
 
     table.setLifeCycle(currentLifeCycle);
+    postUpdate(table);
     return table.withLifeCycle(currentLifeCycle);
   }
 
