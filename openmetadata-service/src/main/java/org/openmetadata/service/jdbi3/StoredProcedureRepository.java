@@ -15,8 +15,8 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class StoredProcedureRepository extends EntityRepository<StoredProcedure> {
-  static final String PATCH_FIELDS = "storedProcedureCode";
-  static final String UPDATE_FIELDS = "storedProcedureCode";
+  static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
+  static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
   public StoredProcedureRepository(CollectionDAO dao) {
     super(
@@ -112,6 +112,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     @Override
     public void entitySpecificUpdate() {
       recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }
