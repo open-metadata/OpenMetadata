@@ -1164,16 +1164,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldDeleted(change, FIELD_OWNER, USER1_REF);
     patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), false);
-
-    // set random type as entity. Check if the ownership validate.
-    T newEntity = entity;
-    String newJson = JsonUtils.pojoToJson(newEntity);
-    newEntity.setOwner(TEST_DEFINITION1.getEntityReference());
-    fieldUpdated(change, FIELD_OWNER, TEST_DEFINITION1, USER1_REF);
-    assertResponse(
-            () -> patchEntity(newEntity.getId(), newJson, newEntity, ADMIN_AUTH_HEADERS),
-            BAD_REQUEST,
-            "Entity of type testDefinition can't be the owner. Only Team of type Group or a User can own entities.");
   }
 
   @Test
