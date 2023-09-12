@@ -971,7 +971,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             ScriptType.INLINE,
             Script.DEFAULT_SCRIPT_LANG,
             String.format(scriptTxt, entity.getId().toString(), entity.getOwner().toString()),
-            new HashMap<>());
+            JsonUtils.getMap(entity.getOwner()));
     updateByQueryRequest.setScript(script);
     try {
       updateElasticSearchByQuery(updateByQueryRequest);

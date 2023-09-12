@@ -124,7 +124,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void postUpdate(DatabaseSchema entity) {
     if (supportsSearchIndex) {
       if (entity.getOwner() != null){
-        String scriptTxt = "for (int i = 0; i < ctx._source.length; i++) { if (ctx._source.databaseSchema.id == '%s') { if (ctx._source.owner == null) { ctx._source.put('owner', '%s')}}}";
+        String scriptTxt = "for (int i = 0; i < ctx._source.length; i++) { if (ctx._source.databaseSchema.id == '%s') { ctx._source.put('owner', params)}}";
         searchClient.updateSearchByQuery(JsonUtils.deepCopy(entity, DatabaseSchema.class),scriptTxt,"databaseSchema.id");
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
