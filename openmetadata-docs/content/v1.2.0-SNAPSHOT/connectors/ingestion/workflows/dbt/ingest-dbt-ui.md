@@ -52,6 +52,8 @@ OpenMetadata connects to the AWS s3 bucket via the credentials provided and scan
 
 The name of the s3 bucket and prefix path to the folder in which the dbt files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
 
+Follow the link [here](/connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects) for instructions on setting up multiple dbt projects.
+
 {% image
   src="/images/v1.2.0/features/ingestion/workflows/dbt/aws-s3.png"
   alt="aws-s3-bucket"
@@ -67,6 +69,8 @@ The name of the GCS bucket and prefix path to the folder in which the dbt files 
 
 GCS credentials can be stored in two ways:
 **1.** Entering the credentials directly into the form
+
+Follow the link [here](/connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects) for instructions on setting up multiple dbt projects.
 
 {% image
   src="/images/v1.2.0/features/ingestion/workflows/dbt/gcp-bucket-form.png"
