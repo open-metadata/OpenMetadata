@@ -77,7 +77,7 @@ public class SearchResource {
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
-      ReIndexingHandler.initialize(searchClient, dao);
+      ReIndexingHandler.initialize(searchClient);
     }
   }
 

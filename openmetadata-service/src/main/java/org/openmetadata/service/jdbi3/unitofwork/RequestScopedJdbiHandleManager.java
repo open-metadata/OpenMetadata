@@ -6,7 +6,6 @@ import org.jdbi.v3.core.Jdbi;
 
 @Slf4j
 class RequestScopedJdbiHandleManager implements JdbiHandleManager {
-
   private final Jdbi dbi;
 
   @SuppressWarnings("ThreadLocalUsage")
@@ -14,6 +13,11 @@ class RequestScopedJdbiHandleManager implements JdbiHandleManager {
 
   public RequestScopedJdbiHandleManager(Jdbi dbi) {
     this.dbi = dbi;
+  }
+
+  @Override
+  public Jdbi getJdbi() {
+    return dbi;
   }
 
   @Override
