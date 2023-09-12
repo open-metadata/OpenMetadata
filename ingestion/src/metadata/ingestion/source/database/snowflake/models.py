@@ -35,7 +35,9 @@ class SnowflakeStoredProcedure(BaseModel):
     owner: Optional[str] = Field(..., alias="OWNER")
     language: str = Field(..., alias="LANGUAGE")
     definition: str = Field(..., alias="DEFINITION")
-    signature: Optional[str] = Field(..., alias="SIGNATURE")
+    signature: Optional[str] = Field(
+        ..., alias="SIGNATURE", description="Used to build the source URL"
+    )
     comment: Optional[str] = Field(..., alias="COMMENT")
 
     # Update the signature to clean it up on read
