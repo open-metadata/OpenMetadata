@@ -462,7 +462,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  @Transaction
   public ResultList<TestCase> listAfter(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
@@ -499,7 +498,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  @Transaction
   public ResultList<TestCase> listBefore(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
     if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
