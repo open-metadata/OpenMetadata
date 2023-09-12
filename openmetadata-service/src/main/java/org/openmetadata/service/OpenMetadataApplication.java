@@ -194,7 +194,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
-    registerResources(catalogConfig, environment, jdbi, jdbiUnitOfWorkProvider, daoObject);
+    registerResources(catalogConfig, environment, jdbi, jdbiUnitOfWorkProvider);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbiUnitOfWorkProvider);
@@ -442,14 +442,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config,
       Environment environment,
       Jdbi jdbi,
-      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
-      CollectionDAO daoObject) {
+      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
     List<String> extensionResources =
         config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
     CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance()
-        .registerResources(
-            jdbi, jdbiUnitOfWorkProvider, environment, config, daoObject, authorizer, authenticatorHandler);
+        .registerResources(jdbi, jdbiUnitOfWorkProvider, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

@@ -1,14 +1,14 @@
 package org.openmetadata.service.jdbi3.unitofwork;
 
 import com.google.common.reflect.Reflection;
-import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 
 @Slf4j
 @SuppressWarnings({"UnstableApiUsage", "rawtypes", "unchecked"})
 public class JdbiUnitOfWorkProvider {
-
+  private static JdbiUnitOfWorkProvider instance;
+  private static volatile boolean initialized = false;
   private final JdbiHandleManager handleManager;
 
   private JdbiUnitOfWorkProvider(JdbiHandleManager handleManager) {
@@ -16,13 +16,25 @@ public class JdbiUnitOfWorkProvider {
   }
 
   public static JdbiUnitOfWorkProvider withDefault(Jdbi dbi) {
-    JdbiHandleManager handleManager = new RequestScopedJdbiHandleManager(dbi);
-    return new JdbiUnitOfWorkProvider(handleManager);
+    return initialize(new RequestScopedJdbiHandleManager(dbi));
   }
 
   public static JdbiUnitOfWorkProvider withLinked(Jdbi dbi) {
-    JdbiHandleManager handleManager = new LinkedRequestScopedJdbiHandleManager(dbi);
-    return new JdbiUnitOfWorkProvider(handleManager);
+    return initialize(new LinkedRequestScopedJdbiHandleManager(dbi));
+  }
+
+  public static JdbiUnitOfWorkProvider getInstance() {
+    return instance;
+  }
+
+  private static JdbiUnitOfWorkProvider initialize(JdbiHandleManager handleManager) {
+    if (!initialized) {
+      instance = new JdbiUnitOfWorkProvider(handleManager);
+      initialized = true;
+    } else {
+      LOG.info("Reindexing Handler is already initialized");
+    }
+    return instance;
   }
 
   public JdbiHandleManager getHandleManager() {

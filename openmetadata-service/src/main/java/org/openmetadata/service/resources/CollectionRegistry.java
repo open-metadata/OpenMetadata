@@ -162,7 +162,6 @@ public final class CollectionRegistry {
       JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
       Environment environment,
       OpenMetadataApplicationConfig config,
-      CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
     // Build list of ResourceDescriptors
@@ -170,7 +169,7 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        Object resource = createResource(jdbi, resourceClass, daoObject, config, authorizer, authenticatorHandler);
+        Object resource = createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -234,7 +233,6 @@ public final class CollectionRegistry {
   private static Object createResource(
       Jdbi jdbi,
       String resourceClass,
-      CollectionDAO daoObject,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
@@ -242,14 +240,18 @@ public final class CollectionRegistry {
           InstantiationException {
 
     // Decorate Collection DAO
-    Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
+    Objects.requireNonNull(jdbi, "Jdbi must not be null");
 
     Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
+    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+
     // Create the resource identified by resourceClass
     try {
-      resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
+      resource =
+          clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class)
+              .newInstance(jdbi.onDemand(CollectionDAO.class), authorizer);
     } catch (NoSuchMethodException e) {
       try {
         resource =
