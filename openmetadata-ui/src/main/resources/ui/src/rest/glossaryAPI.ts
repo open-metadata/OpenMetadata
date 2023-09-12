@@ -157,11 +157,10 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
-    `/glossaryTerms/${id}`,
-    patch,
-    configOptions
-  );
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${id}`, patch, configOptions);
 
   return response.data;
 };
