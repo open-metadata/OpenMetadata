@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -839,6 +840,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   @Test
   public void test_testCaseResultState(TestInfo test) throws IOException, ParseException {
     TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    UUID testSuiteId = testCase.getTestSuite().getId();
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
 
     String dateStr = "2023-08-";
     List<TestCaseResult> testCaseResults = new ArrayList<>();
@@ -852,19 +855,43 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       testCaseResults.add(testCaseResult);
     }
 
-    // check that result is state is the latest
+    // check that result state is the latest
     TestCase storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    TestSuite storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+    ResultSummary testSuiteResultSummary =
+        storedTestSuite.getTestCaseResultSummary().stream()
+            .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+            .findFirst()
+            .get();
     assertEquals(TestUtils.dateToTimestamp("2023-08-15"), storedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEquals(TestUtils.dateToTimestamp("2023-08-15"), testSuiteResultSummary.getTimestamp());
 
     // delete latest and check that result is the  new latest (i.e. the 14th)
     deleteTestCaseResult(testCase.getFullyQualifiedName(), TestUtils.dateToTimestamp("2023-08-15"), ADMIN_AUTH_HEADERS);
     storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+    testSuiteResultSummary =
+        storedTestSuite.getTestCaseResultSummary().stream()
+            .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+            .findFirst()
+            .get();
     assertEquals(TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // delete the 13h and check that result is still the 14th
     deleteTestCaseResult(testCase.getFullyQualifiedName(), TestUtils.dateToTimestamp("2023-08-13"), ADMIN_AUTH_HEADERS);
+    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+    testSuiteResultSummary =
+        storedTestSuite.getTestCaseResultSummary().stream()
+            .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+            .findFirst()
+            .get();
     storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
     assertEquals(TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // Patch the test case result adding the resolved status
     TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
@@ -890,7 +917,37 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTimestamp(TestUtils.dateToTimestamp(dateStr + 16));
     putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+    testSuiteResultSummary =
+        storedTestSuite.getTestCaseResultSummary().stream()
+            .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+            .findFirst()
+            .get();
     assertEquals(TestUtils.dateToTimestamp("2023-08-16"), storedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEquals(TestUtils.dateToTimestamp("2023-08-16"), testSuiteResultSummary.getTimestamp());
+
+    // Add a new test case
+    CreateTestCase create = createRequest(test, 3);
+    create.withEntityLink(testCase.getEntityLink()).withTestSuite(testCase.getTestSuite().getFullyQualifiedName());
+    TestCase testCase1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    for (int i = 19; i <= 20; i++) {
+      putTestCaseResult(
+          testCase1.getFullyQualifiedName(),
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i)),
+          ADMIN_AUTH_HEADERS);
+    }
+
+    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+    assertEquals(2, storedTestSuite.getTestCaseResultSummary().size());
+
+    deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+    assertEquals(1, storedTestSuite.getTestCaseResultSummary().size());
   }
 
   @Test
