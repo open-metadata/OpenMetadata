@@ -25,10 +25,13 @@
     "profileSample": {
       "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
       "type": "number",
-      "default": null
+      "default": null,
+      "title": "Profile Sample"
     },
     "profileSampleType": {
-      "$ref": "../entity/data/table.json#/definitions/profileSampleType"
+      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
+      "title": "Profile Sample Type"
+
     }
   },
   "required": ["type", "entityFullyQualifiedName"],
