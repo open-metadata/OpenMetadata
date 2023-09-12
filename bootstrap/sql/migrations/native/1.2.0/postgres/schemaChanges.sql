@@ -90,3 +90,14 @@ ALTER TABLE tag DROP CONSTRAINT IF EXISTS tag_fqnhash_key;
 ALTER TABLE tag ADD CONSTRAINT unique_fqnHash UNIQUE (fqnHash);
 
 ALTER TABLE tag ADD CONSTRAINT tag_pk PRIMARY KEY (id);
+
+
+-- rename viewParsingTimeoutLimit for queryParsingTimeoutLimit
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+  json::jsonb #- '{sourceConfig,config,viewParsingTimeoutLimit}',
+  '{sourceConfig,config,queryParsingTimeoutLimit}',
+  (json #> '{sourceConfig,config,viewParsingTimeoutLimit}')::jsonb,
+  true
+)
+WHERE json #>> '{pipelineType}' = 'metadata';
