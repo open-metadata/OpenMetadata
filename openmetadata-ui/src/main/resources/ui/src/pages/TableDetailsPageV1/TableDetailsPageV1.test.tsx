@@ -193,7 +193,7 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition'
+      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,votes'
     );
   });
 
@@ -212,7 +212,7 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,usageSummary,testSuite'
+      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,votes,usageSummary,testSuite'
     );
   });
 
@@ -229,7 +229,7 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition'
+      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,votes'
     );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -312,7 +312,7 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition'
+      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,votes'
     );
 
     expect(await screen.findByText('testSchemaTab')).toBeInTheDocument();

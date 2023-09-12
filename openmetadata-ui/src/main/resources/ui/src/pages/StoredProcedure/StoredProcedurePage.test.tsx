@@ -159,7 +159,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      'owner, followers, tags, extension, votes'
     );
   });
 
@@ -178,7 +178,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      'owner, followers, tags, extension, votes'
     );
   });
 
@@ -209,7 +209,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      'owner, followers, tags, extension, votes'
     );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -236,7 +236,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      'owner, followers, tags, extension, votes'
     );
 
     expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();
