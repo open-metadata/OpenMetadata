@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -486,6 +487,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return copy(new Query(), create, user)
         .withTags(create.getTags())
         .withQuery(create.getQuery())
+        .withChecksum(EntityUtil.hash(create.getQuery()))
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
         .withUsers(getEntityReferences(USER, create.getUsers()))

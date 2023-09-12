@@ -6,11 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.*;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.*;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,6 +15,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -63,7 +60,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
             .withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
-    QUERY = "select * from sales";
+    QUERY = "select * from %s";
     QUERY_CHECKSUM = EntityUtil.hash(QUERY);
   }
 
@@ -74,7 +71,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .withOwner(USER1_REF)
         .withUsers(List.of(USER2.getName()))
         .withQueryUsedIn(List.of(TABLE_REF))
-        .withQuery(QUERY)
+        .withQuery(String.format(QUERY, RandomStringUtils.random(10, true, false)))
         .withDuration(0.0)
         .withQueryDate(1673857635064L);
   }
@@ -199,13 +196,13 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     CreateQuery create = createRequest("sensitiveQuery");
     create.withTags(List.of(PII_SENSITIVE_TAG_LABEL));
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
+    String createQuery = create.getQuery();
     // Owner (USER1_REF) can see the results
-    ResultList<Query> queries = getQueries(100, "*", false, authHeaders(USER1_REF.getName()));
-    queries.getData().forEach(query -> assertEquals(query.getQuery(), QUERY));
+    ResultList<Query> queries = getQueries(1, "*", false, authHeaders(USER1_REF.getName()));
+    queries.getData().forEach(query -> assertEquals(query.getQuery(), createQuery));
 
     // Another user won't see the PII query body
-    ResultList<Query> maskedQueries = getQueries(100, "*", false, authHeaders(USER2_REF.getName()));
+    ResultList<Query> maskedQueries = getQueries(1, "*", false, authHeaders(USER2_REF.getName()));
     maskedQueries
         .getData()
         .forEach(
@@ -216,6 +213,27 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
                 assertEquals(query.getQuery(), QUERY);
               }
             });
+  }
+
+  @Test
+  void test_duplicateQueryFail() throws IOException {
+    String query = "select * from test";
+    CreateQuery create = createRequest("duplicateQuery");
+    create.setQuery(query);
+    Query createdQuery = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    CreateQuery create1 = createRequest("query2");
+    create.setQuery("select * from dim_address");
+    Query createdQuery2 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
+    CreateQuery postDuplicateCreate = createRequest("duplicateQuery1");
+    postDuplicateCreate.setQuery(query);
+    String origJson = JsonUtils.pojoToJson(query);
+    Query updatedQuery = getEntity(createdQuery.getId(), ADMIN_AUTH_HEADERS);
+    updatedQuery.setQuery("select * from dim_address");
+    assertResponse(
+            () -> createEntity(postDuplicateCreate, ADMIN_AUTH_HEADERS), Response.Status.CONFLICT, "Entity already exists");
+    assertResponse(
+            () ->   patchEntity(updatedQuery.getId(),  origJson, updatedQuery, ADMIN_AUTH_HEADERS), Response.Status.CONFLICT,"Entity already exists" );
+
   }
 
   public ResultList<Query> getQueries(Integer limit, String fields, Boolean includeAll, Map<String, String> authHeaders)
