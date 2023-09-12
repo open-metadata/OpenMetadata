@@ -15,6 +15,10 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Tuple
 
+from sqlalchemy import sql
+from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
+from sqlalchemy.engine.reflection import Inspector
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -54,9 +58,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,
 )
-from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine.reflection import Inspector
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 

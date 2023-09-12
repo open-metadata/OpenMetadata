@@ -32,9 +32,7 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.greenplum.queries import (
-    GREENPLUM_GET_DATABASE,
-)
+from metadata.ingestion.source.database.greenplum.queries import GREENPLUM_GET_DATABASE
 
 
 def get_connection(connection: GreenplumConnection) -> Engine:
