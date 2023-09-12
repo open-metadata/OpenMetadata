@@ -28,7 +28,7 @@ import { showErrorToast } from 'utils/ToastUtils';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import { DomainLabelProps } from './DomainLabel.interface';
 
-const DomainLabel = ({
+export const DomainLabel = ({
   hasPermission,
   domain,
   entityType,
@@ -105,5 +105,3 @@ const DomainLabel = ({
 
   return label;
 };
-
-export default DomainLabel;

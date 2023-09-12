@@ -22,7 +22,7 @@ import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import DomainLabel from 'components/common/DomainLabel/DomainLabel.component';
+import { DomainLabel } from 'components/common/DomainLabel/DomainLabel.component';
 import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from 'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';

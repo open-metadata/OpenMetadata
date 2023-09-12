@@ -61,7 +61,7 @@ const DomainSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          'isBot:false',
+          '',
           '',
           '',
           SearchIndex.DOMAIN
