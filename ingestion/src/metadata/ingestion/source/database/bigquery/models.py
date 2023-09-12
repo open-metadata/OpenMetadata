@@ -13,7 +13,7 @@ BigQuery models
 """
 from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.utils.logger import ingestion_logger

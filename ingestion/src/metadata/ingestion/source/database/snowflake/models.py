@@ -42,7 +42,7 @@ class SnowflakeStoredProcedure(BaseModel):
 
     # Update the signature to clean it up on read
     @validator("signature")
-    def clean_signature(cls, v) -> Optional[str]:
+    def clean_signature(cls, signature) -> Optional[str]:
         """
         A signature may look like `(TABLE_NAME VARCHAR, NAME VARCHAR)`
         We want it to keep only `(VARCHAR, VARCHAR).
@@ -50,7 +50,7 @@ class SnowflakeStoredProcedure(BaseModel):
         This is needed to build the source URL of the procedure
         """
         try:
-            clean_signature = v.replace("(", "").replace(")", "")
+            clean_signature = signature.replace("(", "").replace(")", "")
             if not clean_signature:
                 return None
 
@@ -60,4 +60,4 @@ class SnowflakeStoredProcedure(BaseModel):
             return f"({','.join(clean_signature_list)})"
         except Exception as exc:
             logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")
-            return v
+            return signature

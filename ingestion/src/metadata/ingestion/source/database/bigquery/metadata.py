@@ -12,10 +12,11 @@
 We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
+import re
 import traceback
 from collections import defaultdict
 from functools import lru_cache
-from typing import Dict, Iterable, List, Optional, Tuple, re
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
