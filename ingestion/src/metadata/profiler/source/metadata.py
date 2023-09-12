@@ -52,6 +52,10 @@ class ProfilerSourceAndEntity(BaseModel):
     profiler_source: ProfilerSource
     entity: Table
 
+    def __str__(self):
+        """Return the information of the table being profiler"""
+        return f"Table [{self.entity.name.__root__}]"
+
 
 class OpenMetadataSource(Source):
     """
