@@ -107,6 +107,7 @@ export enum TabSpecificField {
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
   VOTES = 'votes',
+  DOMAIN = 'domain',
 }
 
 export enum FqnPart {

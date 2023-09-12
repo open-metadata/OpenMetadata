@@ -211,7 +211,7 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(
       databaseFQN,
-      ['owner', 'tags', 'votes'],
+      ['owner', 'tags', 'domain', 'votes'],
       Include.All
     )
       .then((res) => {

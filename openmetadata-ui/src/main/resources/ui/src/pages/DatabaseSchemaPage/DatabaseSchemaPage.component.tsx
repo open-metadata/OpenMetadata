@@ -205,7 +205,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setIsSchemaDetailsLoading(true);
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
-        ['owner', 'usageSummary', 'tags', 'votes'],
+        ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
         'include=all'
       );
       const { description: schemaDescription = '' } = response;

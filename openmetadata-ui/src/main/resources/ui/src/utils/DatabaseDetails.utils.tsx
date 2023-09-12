@@ -30,7 +30,7 @@ import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { getUsagePercentile } from 'utils/TableUtils';
 
-export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}`;
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN}`;
 
 export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   {
