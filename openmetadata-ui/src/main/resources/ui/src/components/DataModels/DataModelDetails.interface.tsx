@@ -30,7 +30,7 @@ export interface DataModelDetailsProps {
   handleUpdateTier: (tier?: string) => Promise<void>;
   handleUpdateDescription: (value: string) => Promise<void>;
   handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
-  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onUpdateDataModel: (
     updatedDataModel: DashboardDataModel,
     key: keyof DashboardDataModel

@@ -18,7 +18,7 @@ import { ReactComponent as ThumbsUpFilled } from '../../assets/svg/thumbs-up-fil
 import { ReactComponent as ThumbsUpOutline } from '../../assets/svg/thumbs-up-outline.svg';
 import { VotingProps } from './voting.interface';
 
-const Voting = ({ votes, voteStatus, onUpdateVote }: VotingProps) => {
+const Voting = ({ votes, deleted, voteStatus, onUpdateVote }: VotingProps) => {
   const handleVoteChange = (type: QueryVoteType) => {
     let updatedVoteType;
     if (voteStatus === type) {
@@ -35,6 +35,7 @@ const Voting = ({ votes, voteStatus, onUpdateVote }: VotingProps) => {
       <Button
         className="w-16 p-0 flex-center"
         data-testid="up-vote-btn"
+        disabled={deleted}
         icon={
           voteStatus === QueryVoteType.votedUp ? (
             <ThumbsUpFilled color="#008376" height={15} width={15} />
@@ -50,6 +51,7 @@ const Voting = ({ votes, voteStatus, onUpdateVote }: VotingProps) => {
       <Button
         className="w-16 p-0 flex-center"
         data-testid="down-vote-btn"
+        disabled={deleted}
         icon={
           voteStatus === QueryVoteType.votedDown ? (
             <ThumbsUpFilled

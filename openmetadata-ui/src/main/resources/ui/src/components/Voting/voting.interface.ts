@@ -16,6 +16,7 @@ import { Votes } from 'generated/type/votes';
 
 export interface VotingProps {
   votes?: Votes;
+  deleted?: boolean;
   voteStatus: QueryVoteType;
   onUpdateVote: (updatedVoteType: VotingDataProps) => void;
 }

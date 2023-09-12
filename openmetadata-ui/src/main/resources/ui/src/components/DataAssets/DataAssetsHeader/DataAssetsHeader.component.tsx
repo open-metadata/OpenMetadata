@@ -149,24 +149,26 @@ export const DataAssetsHeader = ({
 
   const hasFollowers = 'followers' in dataAsset;
 
-  const { entityName, tier, isFollowing, version, followers, votes } = useMemo(
-    () => ({
-      isFollowing: hasFollowers
-        ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
-            ({ id }) => id === USER_ID
-          )
-        : false,
-      followers: hasFollowers
-        ? (dataAsset as DataAssetsWithFollowersField).followers?.length
-        : 0,
+  const { entityName, tier, isFollowing, version, followers, votes, deleted } =
+    useMemo(
+      () => ({
+        isFollowing: hasFollowers
+          ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
+              ({ id }) => id === USER_ID
+            )
+          : false,
+        followers: hasFollowers
+          ? (dataAsset as DataAssetsWithFollowersField).followers?.length
+          : 0,
 
-      tier: getTierTags(dataAsset.tags ?? []),
-      entityName: getEntityName(dataAsset),
-      version: dataAsset.version,
-      votes: (dataAsset as DataAssetsWithFollowersField).votes,
-    }),
-    [dataAsset, USER_ID]
-  );
+        tier: getTierTags(dataAsset.tags ?? []),
+        entityName: getEntityName(dataAsset),
+        version: dataAsset.version,
+        deleted: dataAsset.deleted,
+        votes: (dataAsset as DataAssetsWithFollowersField).votes,
+      }),
+      [dataAsset, USER_ID]
+    );
 
   const voteStatus = useMemo(() => {
     if (isUndefined(votes)) {
@@ -313,7 +315,7 @@ export const DataAssetsHeader = ({
   }, [isDataAssetsWithServiceField, dataAsset]);
 
   const handleVoteChange = (data: VotingDataProps) => {
-    onUpdateVote && onUpdateVote(data, dataAsset.id ?? '');
+    onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
   return (
@@ -385,6 +387,7 @@ export const DataAssetsHeader = ({
               <ButtonGroup size="small">
                 {onUpdateVote && (
                   <Voting
+                    deleted={deleted}
                     voteStatus={voteStatus}
                     votes={votes}
                     onUpdateVote={handleVoteChange}
@@ -411,6 +414,7 @@ export const DataAssetsHeader = ({
                   <Button
                     className="w-16 p-0"
                     data-testid="entity-follow-button"
+                    disabled={deleted}
                     icon={
                       <Icon
                         component={isFollowing ? StarFilledIcon : StarIcon}

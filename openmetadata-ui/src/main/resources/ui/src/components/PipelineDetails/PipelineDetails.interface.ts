@@ -29,5 +29,5 @@ export interface PipeLineDetailsProp {
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
   handleToggleDelete: () => void;
-  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }
