@@ -14,6 +14,7 @@
 import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -333,11 +334,13 @@ function ServiceVersionPage() {
   }, [serviceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails({
-        [cursorType]: paging[cursorType as keyof typeof paging],
-      });
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails({
+          [cursorType]: paging[cursorType as keyof typeof paging],
+        });
+        setCurrentPage(currentPage);
+      }
     },
     [paging, getOtherDetails]
   );

@@ -15,6 +15,7 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
@@ -48,7 +49,7 @@ interface UserListV1Props {
   currentPage: number;
   isDataLoading: boolean;
   showDeletedUser: boolean;
-  onPagingChange: (cursorValue: string | number, activePage?: number) => void;
+  onPagingChange: NextPreviousProps['pagingHandler'];
   onShowDeletedUserChange: (value: boolean) => void;
   onSearch: (text: string) => void;
   afterDeleteAction: () => void;

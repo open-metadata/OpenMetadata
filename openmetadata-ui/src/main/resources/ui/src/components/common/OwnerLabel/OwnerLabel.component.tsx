@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Space, Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { ReactComponent as IconUser } from 'assets/svg/user.svg';
@@ -40,11 +41,11 @@ export const OwnerLabel = ({
 
   const profilePicture = useMemo(() => {
     if (isUndefined(owner)) {
-      return <IconUser data-testid="no-owner-icon" height={18} width={18} />;
+      return <Icon component={IconUser} data-testid="no-owner-icon" />;
     }
 
     return owner.type === OwnerType.TEAM ? (
-      <IconTeamsGrey data-testid="team-owner-icon" height={18} width={18} />
+      <Icon component={IconTeamsGrey} data-testid="team-owner-icon" />
     ) : (
       <ProfilePicture
         displayName={displayName}

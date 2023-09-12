@@ -13,6 +13,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
@@ -156,21 +157,21 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       setIsLoading(false);
     }
   };
-  const handlePagingClick = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePagingClick = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (searchValue) {
-      searchTestCases(cursorValue as number);
+      searchTestCases(currentPage as number);
     } else {
       const { paging } = testCase;
-      if (isString(cursorValue)) {
+      if (isString(cursorType)) {
         fetchTestCases({
-          [cursorValue]: paging?.[cursorValue as keyof Paging],
+          [cursorType]: paging?.[cursorType as keyof Paging],
         });
       }
     }
-    activePage && setCurrentPage(activePage);
+    setCurrentPage(currentPage);
   };
 
   useEffect(() => {

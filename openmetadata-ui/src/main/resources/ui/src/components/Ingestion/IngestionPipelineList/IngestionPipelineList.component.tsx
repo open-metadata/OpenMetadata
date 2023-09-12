@@ -15,6 +15,7 @@ import Tooltip from 'antd/es/tooltip';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import cronstrue from 'cronstrue';
@@ -192,11 +193,16 @@ export const IngestionPipelineList = ({
     }
   };
 
-  const handlePageChange = (cursor: string | number, activePage?: number) => {
-    const pagingString = `&${cursor}=${pipelinePaging[cursor as keyof Paging]}`;
+  const handlePageChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      const pagingString = `&${cursorType}=${pipelinePaging[cursorType]}`;
 
-    fetchPipelines({ cursor: pagingString, limit: pageSize });
-    setCurrentPage(activePage ?? 1);
+      fetchPipelines({ cursor: pagingString, limit: pageSize });
+      setCurrentPage(currentPage);
+    }
   };
 
   useEffect(() => {

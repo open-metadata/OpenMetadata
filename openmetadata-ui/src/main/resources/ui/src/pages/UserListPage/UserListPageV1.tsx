@@ -12,12 +12,13 @@
  */
 
 import { AxiosError } from 'axios';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
+import { getUsers, UsersQueryParams } from 'rest/userAPI';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -59,20 +60,13 @@ const UserListPageV1 = () => {
     setCurrentPage(INITIAL_PAGING_VALUE);
   };
 
-  const fetchUsersList = async (
-    isAdmin: boolean | undefined = undefined,
-    param = {} as Record<string, string>,
-    limit = PAGE_SIZE_MEDIUM
-  ) => {
+  const fetchUsersList = async (params: UsersQueryParams) => {
     setIsDataLoading(true);
     try {
-      const { data, paging } = await getUsers(
-        'profile,teams,roles',
-        limit,
-        param,
-        isAdmin,
-        false
-      );
+      const { data, paging } = await getUsers({
+        ...params,
+        fields: 'profile,teams,roles',
+      });
       if (data) {
         setUserList(data);
         setPaging(paging);
@@ -93,7 +87,8 @@ const UserListPageV1 = () => {
   };
 
   const handleFetch = () => {
-    fetchUsersList(isAdminPage, {
+    fetchUsersList({
+      isAdmin: isAdminPage,
       include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
     });
   };
@@ -152,17 +147,18 @@ const UserListPageV1 = () => {
     );
   };
 
-  const handlePagingChange = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePagingChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (searchValue) {
-      setCurrentPage(cursorValue as number);
-      getSearchedUsers(searchValue, cursorValue as number);
-    } else {
-      setCurrentPage(activePage as number);
-      fetchUsersList(isAdminPage, {
-        [cursorValue]: paging[cursorValue as keyof Paging] as string,
+      setCurrentPage(currentPage as number);
+      getSearchedUsers(searchValue, currentPage as number);
+    } else if (cursorType && paging[cursorType]) {
+      setCurrentPage(currentPage);
+      fetchUsersList({
+        isAdmin: isAdminPage,
+        [cursorType]: paging[cursorType],
         include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
       });
     }
@@ -172,7 +168,8 @@ const UserListPageV1 = () => {
     setCurrentPage(INITIAL_PAGING_VALUE);
     setSearchValue('');
     setShowDeletedUser(value);
-    fetchUsersList(isAdminPage, {
+    fetchUsersList({
+      isAdmin: isAdminPage,
       include: value ? Include.Deleted : Include.NonDeleted,
     });
   };
@@ -209,7 +206,9 @@ const UserListPageV1 = () => {
         getSearchedUsers(userSearchTerm, 1);
         setIsDataLoading(false);
       } else {
-        fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);
+        fetchUsersList({
+          isAdmin: tab === GlobalSettingOptions.ADMINS || undefined,
+        });
       }
     } else {
       setIsDataLoading(false);

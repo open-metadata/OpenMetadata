@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Radio, Row } from 'antd';
 import Col from 'antd/es/grid/col';
+import { ReactComponent as GridIcon } from 'assets/svg/ic-grid.svg';
+import { ReactComponent as ListIcon } from 'assets/svg/ic-list.svg';
+import Searchbar from 'components/common/searchbar/Searchbar';
 import Table from 'components/common/Table/Table';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +25,7 @@ import { ListViewOptions, ListViewProps } from './ListView.interface';
 export const ListView = <T extends object = any>({
   tableprops,
   cardRenderer,
+  searchProps: { search, onSearch },
 }: ListViewProps<T>) => {
   const [currentView, setCurrentView] = useState<ListViewOptions>(
     ListViewOptions.TABLE
@@ -29,15 +34,25 @@ export const ListView = <T extends object = any>({
 
   return (
     <Row gutter={[16, 16]}>
-      <Col className="text-right" span={24}>
+      <Col span={10}>
+        <Searchbar
+          removeMargin
+          placeholder={t('label.search-entity', {
+            entity: t('label.service-plural'),
+          })}
+          searchValue={search}
+          onSearch={onSearch}
+        />
+      </Col>
+      <Col className="text-right" span={14}>
         <Radio.Group
           value={currentView}
           onChange={(e) => setCurrentView(e.target.value)}>
           <Radio.Button value={ListViewOptions.CARD}>
-            {t('label.card')}
+            <Icon component={GridIcon} />
           </Radio.Button>
           <Radio.Button value={ListViewOptions.TABLE}>
-            {t('label.table')}
+            <Icon component={ListIcon} />
           </Radio.Button>
         </Radio.Group>
       </Col>

@@ -78,17 +78,10 @@ export const UserTeamSelectableList = ({
       }
     } else {
       try {
-        const { data, paging } = await getUsers(
-          '',
-          PAGE_SIZE_MEDIUM,
-          after
-            ? {
-                after,
-              }
-            : undefined,
-          undefined,
-          false
-        );
+        const { data, paging } = await getUsers({
+          limit: PAGE_SIZE_MEDIUM,
+          after: after ?? undefined,
+        });
         const filterData = getEntityReferenceListFromEntities(
           data,
           EntityType.USER

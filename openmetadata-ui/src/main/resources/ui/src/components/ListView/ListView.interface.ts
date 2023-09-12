@@ -13,9 +13,15 @@
 import { TableProps } from 'antd';
 import { ReactNode } from 'react';
 
+interface SearchProps {
+  onSearch: (search: string) => void;
+  search?: string;
+}
+
 export interface ListViewProps<T> {
   tableprops: TableProps<T>;
   cardRenderer: (data: T) => ReactNode;
+  searchProps: SearchProps;
 }
 
 export enum ListViewOptions {

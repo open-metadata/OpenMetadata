@@ -26,6 +26,7 @@ import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import TestConnection from 'components/common/TestConnection/TestConnection';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -732,16 +733,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const dataModelPagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails(
-        {
-          [cursorType]:
-            dataModelPaging[cursorType as keyof typeof dataModelPaging],
-        },
-        true
-      );
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails(
+          {
+            [cursorType]:
+              dataModelPaging[cursorType as keyof typeof dataModelPaging],
+          },
+          true
+        );
 
-      setDataModelCurrentPage(activePage ?? 1);
+        setDataModelCurrentPage(currentPage);
+      }
     },
     [getOtherDetails, dataModelPaging]
   );
@@ -922,11 +925,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const pagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails({
-        [cursorType]: paging[cursorType as keyof typeof paging],
-      });
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails({
+          [cursorType]: paging[cursorType],
+        });
+        setCurrentPage(currentPage);
+      }
     },
     [paging, getOtherDetails]
   );

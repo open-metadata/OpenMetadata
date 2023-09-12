@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import PageHeader from 'components/header/PageHeader.component';
 import { ALERTS_DOCS } from 'constants/docs.constants';
@@ -81,12 +82,15 @@ const AlertsPage = () => {
     }
   }, [fetchAlerts]);
 
-  const onPageChange = useCallback((after: string | number, page?: number) => {
-    if (after) {
-      fetchAlerts(after + '');
-      page && setCurrentPage(page);
-    }
-  }, []);
+  const onPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchAlerts(cursorType + '');
+        setCurrentPage(currentPage);
+      }
+    },
+    []
+  );
 
   const columns = useMemo(
     () => [

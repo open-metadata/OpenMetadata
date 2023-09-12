@@ -16,20 +16,26 @@ import Card from 'antd/lib/card/Card';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { ListView } from 'components/ListView/ListView.component';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import {
   getServiceDetailsPath,
+  PAGE_SIZE,
   pagingObject,
-  SERVICE_VIEW_CAP,
 } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
+import { EntityReference } from 'generated/entity/type';
+import { usePaging } from 'hooks/paging/usePaging';
+import { DatabaseServiceSearchSource } from 'interface/search.interface';
 import { isEmpty, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getServices } from 'rest/serviceAPI';
+import { getServices, searchService } from 'rest/serviceAPI';
 import { getServiceLogo, showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { FilterIcon } from 'utils/TableUtils';
@@ -43,7 +49,6 @@ import {
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
-import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
@@ -71,51 +76,106 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-
-  const [currentPage, setCurrentPage] = useState<number>(1);
-
+  const [searchTerm, setSearchTerm] = useState('');
+  const {
+    paging,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+    pageSize,
+    handlePageSizeChange,
+  } = usePaging();
   const { permissions } = usePermissionProvider();
 
-  const getServiceDetails = async (type: string) => {
-    setIsLoading(true);
-    try {
-      const { data, paging } = await getServices(type, SERVICE_VIEW_CAP);
-
-      setServiceDetails(
-        type === ServiceCategory.METADATA_SERVICES
-          ? data.filter(
-              (service) => service.fullyQualifiedName !== OPEN_METADATA
-            )
-          : data
-      );
-      setPaging(paging);
-    } catch (error) {
-      setServiceDetails([]);
-      setPaging(pagingObject);
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.service-plural') })
-      );
-    } finally {
-      setIsLoading(false);
+  const searchIndex = useMemo(() => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return SearchIndex.DATABASE_SERVICE;
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return SearchIndex.DASHBOARD_SERCVICE;
+      case ServiceCategory.MESSAGING_SERVICES:
+        return SearchIndex.MESSAGING_SERVICE;
+      case ServiceCategory.PIPELINE_SERVICES:
+        return SearchIndex.PIPELINE_SERVICE;
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return SearchIndex.ML_MODEL_SERVICE;
     }
-  };
 
-  const handlePageChange = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `${serviceName}?${cursorType}=${
-      paging[cursorType as keyof Paging]
-    }`;
-    setCurrentPage(activePage || 1);
-    getServiceDetails(pagingString);
-  };
-
-  useEffect(() => {
-    getServiceDetails(serviceName);
+    return SearchIndex.DATABASE_SERVICE;
   }, [serviceName]);
+
+  const getServiceDetails = useCallback(
+    async ({
+      search,
+      currentPage,
+      after,
+      before,
+    }: {
+      search?: string;
+      limit?: number;
+      currentPage?: number;
+      after?: string;
+      before?: string;
+    }) => {
+      setIsLoading(true);
+      try {
+        let services = [];
+        if (search) {
+          const {
+            hits: { hits, total },
+          } = await searchService({
+            search,
+            searchIndex,
+            limit: pageSize,
+            currentPage,
+          });
+
+          services = hits.map(
+            ({ _source }) => _source as DatabaseServiceSearchSource
+          );
+          handlePagingChange({ total: total.value });
+        } else {
+          const { data, paging } = await getServices({
+            serviceName,
+            limit: pageSize,
+            after,
+            before,
+          });
+
+          services = data;
+          handlePagingChange(paging);
+        }
+
+        setServiceDetails(
+          serviceName === ServiceCategory.METADATA_SERVICES
+            ? services.filter(
+                (service) => service.fullyQualifiedName !== OPEN_METADATA
+              )
+            : services
+        );
+      } catch (error) {
+        setServiceDetails([]);
+        handlePagingChange(pagingObject);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.service-plural') })
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [searchIndex, serviceName]
+  );
+
+  const handleServicePageChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      getServiceDetails({ [cursorType]: paging[cursorType] });
+    }
+    handlePageChange(currentPage);
+  };
 
   const addServicePermission = useMemo(
     () =>
@@ -192,16 +252,18 @@ const Services = ({ serviceName }: ServicesProps) => {
       key: 'name',
       width: 200,
       render: (name, record) => (
-        <Link
-          className="d-flex gap-2 items-center"
-          data-testid={`service-name-${name}`}
-          to={getServiceDetailsPath(
-            encodeURIComponent(record.fullyQualifiedName ?? record.name),
-            serviceName
-          )}>
+        <div className="d-flex gap-2 items-center">
           {getServiceLogo(record.serviceType || '', 'w-4')}
-          {getEntityName(record)}
-        </Link>
+          <Link
+            className="max-two-lines"
+            data-testid={`service-name-${name}`}
+            to={getServiceDetailsPath(
+              encodeURIComponent(record.fullyQualifiedName ?? record.name),
+              serviceName
+            )}>
+            {getEntityName(record)}
+          </Link>
+        </div>
       ),
     },
     {
@@ -234,6 +296,13 @@ const Services = ({ serviceName }: ServicesProps) => {
         <span className="font-normal text-grey-body">{serviceType}</span>
       ),
     },
+    {
+      title: t('label.owner'),
+      dataIndex: 'owner',
+      key: 'owner',
+      width: 200,
+      render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+    },
   ];
 
   const serviceCardRenderer = (service: ServicesType) => {
@@ -265,6 +334,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   data-testid="service-description">
                   {service.description ? (
                     <RichTextEditorPreviewer
+                      className="max-two-lines"
                       enableSeeMoreVariant={false}
                       markdown={service.description}
                     />
@@ -297,9 +367,24 @@ const Services = ({ serviceName }: ServicesProps) => {
     );
   };
 
+  const handleServiceSearch = useCallback(
+    async (search: string) => {
+      setSearchTerm(search);
+    },
+    [getServiceDetails]
+  );
+
+  useEffect(() => {
+    getServiceDetails({ search: searchTerm, limit: pageSize });
+  }, [searchIndex, pageSize, serviceName, searchTerm]);
+
+  useEffect(() => {
+    setSearchTerm('');
+  }, [serviceName]);
+
   return (
     <Row
-      className="justify-center"
+      className="justify-center m-b-md"
       data-testid="services-container"
       gutter={[16, 16]}>
       <Col span={24}>
@@ -332,6 +417,10 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          searchProps={{
+            onSearch: handleServiceSearch,
+            search: searchTerm,
+          }}
           tableprops={{
             bordered: true,
             columns,
@@ -349,10 +438,12 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         {showPagination(paging) && (
           <NextPrevious
+            showPageSize
             currentPage={currentPage}
-            pageSize={SERVICE_VIEW_CAP}
+            pageSize={PAGE_SIZE}
             paging={paging}
-            pagingHandler={handlePageChange}
+            pagingHandler={handleServicePageChange}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>

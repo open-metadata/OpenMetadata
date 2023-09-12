@@ -23,6 +23,7 @@ import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Table from 'components/common/Table/Table';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
@@ -72,7 +73,7 @@ export interface ClassificationDetailsProps {
   tags?: Tag[];
   isEditClassification?: boolean;
   disableEditButton?: boolean;
-  handlePageChange: (cursorType: string | number, activePage?: number) => void;
+  handlePageChange: NextPreviousProps['pagingHandler'];
   handleAfterDeleteAction?: () => void;
   handleEditTagClick?: (selectedTag: Tag) => void;
   handleActionDeleteTag?: (record: Tag) => void;

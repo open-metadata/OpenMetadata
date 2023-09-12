@@ -15,6 +15,7 @@ import React from 'react';
 import { ListView } from './ListView.component';
 
 const mockCardRenderer = jest.fn().mockImplementation(() => <>Card</>);
+const mockOnSearch = jest.fn();
 
 jest.mock('components/common/Table/Table', () => {
   return jest.fn(() => <p>Table</p>);
@@ -25,6 +26,9 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        searchProps={{
+          onSearch: mockOnSearch,
+        }}
         tableprops={{
           columns: [],
           dataSource: [],
@@ -40,6 +44,9 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        searchProps={{
+          onSearch: mockOnSearch,
+        }}
         tableprops={{
           columns: [],
           dataSource: [],
@@ -54,6 +61,9 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        searchProps={{
+          onSearch: mockOnSearch,
+        }}
         tableprops={{
           columns: [],
           dataSource: [{ name: 'test' }],

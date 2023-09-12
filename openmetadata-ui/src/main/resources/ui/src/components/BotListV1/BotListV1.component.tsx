@@ -15,6 +15,7 @@ import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
@@ -159,8 +160,8 @@ const BotListV1 = ({
    *
    * @param cursorValue - represents pagination value
    */
-  const handlePageChange = (cursorValue: string | number) => {
-    setCurrentPage(cursorValue as number);
+  const handlePageChange = ({ currentPage }: PagingHandlerParams) => {
+    setCurrentPage(currentPage);
   };
 
   /**
