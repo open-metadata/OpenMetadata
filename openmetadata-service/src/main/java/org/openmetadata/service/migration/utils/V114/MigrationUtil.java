@@ -1,7 +1,6 @@
 package org.openmetadata.service.migration.utils.V114;
 
-import static org.openmetadata.service.Entity.TEST_CASE;
-import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.groupTestCasesByTable;
 
 import java.util.ArrayList;
@@ -85,6 +84,25 @@ public class MigrationUtil {
         if (!relationWithExecutableTestSuiteExists) {
           testSuiteRepository.addRelationship(
               executableTestSuite.getId(), testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+        }
+      }
+
+      // check from table -> nativeTestSuite there should only one relation
+      List<CollectionDAO.EntityRelationshipRecord> testSuiteRels =
+          testSuiteRepository.findToRecords(
+              executableTestSuite.getExecutableEntityReference().getId(), TABLE, Relationship.CONTAINS, TEST_SUITE);
+      for (CollectionDAO.EntityRelationshipRecord testSuiteRel : testSuiteRels) {
+        try {
+          TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
+        } catch (EntityNotFoundException ex) {
+          // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
+          // delete the relation
+          testSuiteRepository.deleteRelationship(
+              executableTestSuite.getExecutableEntityReference().getId(),
+              TABLE,
+              testSuiteRel.getId(),
+              TEST_SUITE,
+              Relationship.CONTAINS);
         }
       }
     }
