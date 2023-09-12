@@ -89,6 +89,12 @@ const UserPage = withSuspenseFallback(
   React.lazy(() => import('pages/UserPage/UserPage.component'))
 );
 
+const DomainVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('components/Domain/DomainVersion/DomainVersion.component')
+  )
+);
+
 const GlossaryVersionPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -359,6 +365,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_VERSION}
       />
+      <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
       <Route
         exact
         component={() => <GlossaryVersionPage isGlossary />}

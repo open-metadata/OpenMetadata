@@ -22,6 +22,7 @@ import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { DomainLabel } from 'components/common/DomainLabel/DomainLabel.component';
 import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from 'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -35,6 +36,7 @@ import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { SERVICE_TYPES } from 'constants/Services.constant';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
+import { Table } from 'generated/entity/data/table';
 import {
   Thread,
   ThreadTaskStatus,
@@ -313,6 +315,14 @@ export const DataAssetsHeader = ({
             </Col>
             <Col span={24}>
               <div className="d-flex no-wrap">
+                <DomainLabel
+                  domain={(dataAsset as Table).domain}
+                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
+                  entityId={dataAsset.id ?? ''}
+                  entityType={entityType}
+                  hasPermission={permissions.EditAll || permissions.EditOwner}
+                />
+                <Divider className="self-center m-x-sm" type="vertical" />
                 <OwnerLabel
                   hasPermission={permissions.EditAll || permissions.EditOwner}
                   owner={dataAsset?.owner}
