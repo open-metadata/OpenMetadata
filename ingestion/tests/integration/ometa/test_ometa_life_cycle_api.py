@@ -146,15 +146,15 @@ class OMetaLifeCycleTest(TestCase):
 
         cls.life_cycle = LifeCycleProperties(
             created=Created(
-                created_at=1693569600,
+                created_at=1693569600000,
                 created_by=cls.created_user_ref,
             ),
             updated=Updated(
-                updated_at=1693665000,
+                updated_at=1693665000000,
                 updated_by=cls.updated_user_ref,
             ),
-            accessed=Accessed(accessed_at=1693755900),
-            deleted=Deleted(deleted_at=1693845000),
+            accessed=Accessed(accessed_at=1693755900000),
+            deleted=Deleted(deleted_at=1693845000000),
         )
 
     @classmethod
@@ -227,12 +227,12 @@ class OMetaLifeCycleTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
         new_accessed = Accessed(
-            accessed_at=1694015100,
+            accessed_at=1694015100000,
             accessed_by=self.updated_user_ref,
         )
 
         new_updated = Updated(
-            updated_at=1693578600,
+            updated_at=1693578600000,
             updated_by=self.updated_user_ref,
         )
 
