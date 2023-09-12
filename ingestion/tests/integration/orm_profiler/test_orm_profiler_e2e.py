@@ -58,6 +58,7 @@ ingestion_config = {
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
+        "loggerLevel": "DEBUG",
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",

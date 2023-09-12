@@ -76,6 +76,7 @@ data_insight_config = {
         "config": {"es_host": "localhost", "es_port": 9200, "recreate_indexes": False},
     },
     "workflowConfig": {
+        "loggerLevel": "DEBUG",
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
