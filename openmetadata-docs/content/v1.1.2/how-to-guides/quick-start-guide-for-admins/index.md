@@ -10,4 +10,4 @@ Admin users have access to manage all the data assets. They can manage all the f
 Get started with OpenMetadata with just **three quick and easy steps**.
 1. [Ingest your Data from Multiple Sources.](/how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata)
 2. [Create Teams](/how-to-guides/quick-start-guide-for-admins/teams-and-users).
-3. Add Users to Start Collaborating on Data.
+3. [Invite Users to Start Collaborating on Data](/how-to-guides/quick-start-guide-for-admins/teams-and-users/invite-users).
