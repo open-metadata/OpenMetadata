@@ -90,7 +90,7 @@ const DomainDetailsPage = ({
   loading,
   onUpdate,
   onDelete,
-  isVersionsView,
+  isVersionsView = false,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -140,31 +140,24 @@ const DomainDetailsPage = ({
     ];
   }, [domainFqn]);
 
-  const name = useMemo(
-    () =>
-      isVersionsView
-        ? getEntityVersionByField(
-            domain.changeDescription as ChangeDescription,
-            EntityField.NAME,
-            domain.name
-          )
-        : domain.name,
+  const [name, displayName] = useMemo(() => {
+    if (isVersionsView) {
+      const updatedName = getEntityVersionByField(
+        domain.changeDescription as ChangeDescription,
+        EntityField.NAME,
+        domain.name
+      );
+      const updatedDisplayName = getEntityVersionByField(
+        domain.changeDescription as ChangeDescription,
+        EntityField.DISPLAYNAME,
+        domain.displayName
+      );
 
-    [domain, isVersionsView]
-  );
-
-  const displayName = useMemo(
-    () =>
-      isVersionsView
-        ? getEntityVersionByField(
-            domain.changeDescription as ChangeDescription,
-            EntityField.DISPLAYNAME,
-            domain.displayName
-          )
-        : domain.displayName,
-
-    [domain, isVersionsView]
-  );
+      return [updatedName, updatedDisplayName];
+    } else {
+      return [domain.name, domain.displayName];
+    }
+  }, [domain, isVersionsView]);
 
   const editDisplayNamePermission = useMemo(() => {
     return domainPermission.EditAll || domainPermission.EditDisplayName;
@@ -217,7 +210,7 @@ const DomainDetailsPage = ({
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getDomainPath(encodeURIComponent(domainFqn))
+      ? getDomainPath(domainFqn)
       : getDomainVersionsPath(
           encodeURIComponent(domainFqn),
           toString(domain.version)

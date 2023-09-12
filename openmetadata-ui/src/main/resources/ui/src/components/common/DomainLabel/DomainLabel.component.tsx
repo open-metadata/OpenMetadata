@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { compare } from 'fast-json-patch';
@@ -73,36 +73,33 @@ const DomainLabel = ({
 
   const label = useMemo(() => {
     return (
-      <>
-        <Space>
-          <Typography.Text className="self-center text-xs whitespace-nowrap">
-            <span className="text-grey-muted">{`${t('label.domain')}: `}</span>
+      <Space>
+        <Typography.Text className="self-center text-xs whitespace-nowrap">
+          <span className="text-grey-muted">{`${t('label.domain')}: `}</span>
+        </Typography.Text>
+        {activeDomain ? (
+          <Link
+            className="text-primary font-medium text-xs no-underline"
+            data-testid="owner-link"
+            to={getDomainPath(activeDomain.fullyQualifiedName)}>
+            {getEntityName(activeDomain)}
+          </Link>
+        ) : (
+          <Typography.Text
+            className="font-medium text-xs"
+            data-testid="owner-link">
+            {t('label.no-entity', { entity: t('label.domain') })}
           </Typography.Text>
-          {activeDomain ? (
-            <Link
-              className="text-primary font-medium text-xs no-underline"
-              data-testid="owner-link"
-              to={getDomainPath(activeDomain.fullyQualifiedName)}>
-              {getEntityName(activeDomain)}
-            </Link>
-          ) : (
-            <Typography.Text
-              className="font-medium text-xs"
-              data-testid="owner-link">
-              {t('label.no-entity', { entity: t('label.domain') })}
-            </Typography.Text>
-          )}
+        )}
 
-          {hasPermission && (
-            <DomainSelectableList
-              hasPermission={Boolean(hasPermission)}
-              selectedDomain={activeDomain}
-              onUpdate={handleDomainSave}
-            />
-          )}
-        </Space>
-        <Divider className="self-center m-x-sm" type="vertical" />
-      </>
+        {hasPermission && (
+          <DomainSelectableList
+            hasPermission={Boolean(hasPermission)}
+            selectedDomain={activeDomain}
+            onUpdate={handleDomainSave}
+          />
+        )}
+      </Space>
     );
   }, [activeDomain, hasPermission]);
 

@@ -210,7 +210,6 @@ const DomainPage = () => {
       {activeDomain && (
         <DomainDetailsPage
           domain={activeDomain}
-          isVersionsView={false}
           loading={isMainContentLoading}
           onDelete={handleDomainDelete}
           onUpdate={handleDomainUpdate}

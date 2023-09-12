@@ -52,7 +52,7 @@ import { DocumentationTabProps } from './DocumentationTab.interface';
 const DocumentationTab = ({
   domain,
   onUpdate,
-  isVersionsView,
+  isVersionsView = false,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -96,7 +96,7 @@ const DocumentationTab = ({
     }, [permissions, isVersionsView]);
 
   const getOwner = useCallback(
-    (ownerDisplayName: string | ReactNode, owner?: EntityReference) => {
+    (ownerDisplayName: ReactNode, owner?: EntityReference) => {
       if (owner) {
         return (
           <>
