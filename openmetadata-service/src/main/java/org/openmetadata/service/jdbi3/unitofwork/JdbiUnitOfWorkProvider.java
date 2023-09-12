@@ -33,7 +33,7 @@ public class JdbiUnitOfWorkProvider {
       instance = new JdbiUnitOfWorkProvider(handleManager);
       initialized = true;
     } else {
-      LOG.info("Reindexing Handler is already initialized");
+      LOG.info("JdbiUnitOfWorkProvider is already initialized");
     }
     return instance;
   }

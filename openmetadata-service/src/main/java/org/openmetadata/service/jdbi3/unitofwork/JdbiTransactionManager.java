@@ -23,7 +23,7 @@ public class JdbiTransactionManager {
       instance = new JdbiTransactionManager(handleManager);
       initialized = true;
     } else {
-      LOG.info("Reindexing Handler is already initialized");
+      LOG.info("Jdbi Transaction Manager is already initialized");
     }
   }
 
