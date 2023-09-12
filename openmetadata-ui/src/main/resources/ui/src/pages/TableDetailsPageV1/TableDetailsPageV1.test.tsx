@@ -21,6 +21,9 @@ const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
+const COMMON_API_FIELDS =
+  'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,domain';
+
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
@@ -191,10 +194,7 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition'
-    );
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', COMMON_API_FIELDS);
   });
 
   it('TableDetailsPageV1 should fetch table details with all the permitted fields', async () => {
@@ -212,7 +212,7 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,usageSummary,testSuite'
+      `${COMMON_API_FIELDS},usageSummary,testSuite`
     );
   });
 
@@ -227,10 +227,7 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition'
-    );
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', COMMON_API_FIELDS);
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByText('label.schema')).toBeInTheDocument();
@@ -310,10 +307,7 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition'
-    );
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', COMMON_API_FIELDS);
 
     expect(await screen.findByText('testSchemaTab')).toBeInTheDocument();
   });

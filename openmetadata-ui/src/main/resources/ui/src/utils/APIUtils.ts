@@ -12,6 +12,7 @@
  */
 
 import { Tag } from 'generated/entity/classification/tag';
+import { Domain } from 'generated/entity/domains/domain';
 import { get, isArray, isObject, transform } from 'lodash';
 import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
@@ -112,6 +113,25 @@ export const formatTeamsResponse = (
       isJoinable: d._source.isJoinable,
       teamType: d._source.teamType,
       href: d._source.href,
+    };
+  });
+};
+
+export const formatDomainsResponse = (
+  hits: SearchResponse<SearchIndex.DOMAIN>['hits']['hits']
+): Domain[] => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName,
+      description: d._source.description,
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      type: d._source.entityType,
+      id: d._source.id,
+      href: d._source.href,
+      domainType: d._source.domainType,
+      experts: d._source.experts,
+      parent: d._source.parent,
     };
   });
 };

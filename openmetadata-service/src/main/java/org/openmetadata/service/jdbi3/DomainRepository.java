@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
@@ -34,6 +37,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public DomainRepository(CollectionDAO dao) {
     super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -102,6 +106,23 @@ public class DomainRepository extends EntityRepository<Domain> {
     } else { // Sub domain
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
+    }
+  }
+
+  @Override
+  public void deleteFromSearch(Domain entity, String changeType) {
+    if (supportsSearchIndex) {
+      String scriptTxt =
+          "for (int i = 0; i < ctx._source.domain.length; i++) { if (ctx._source.domain[i].fullyQualifiedName == '%s') { ctx._source.domain.remove(i) }}";
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, Domain.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "domain.fullyQualifiedName");
+      } else {
+        searchClient.deleteEntityAndRemoveRelationships(
+            JsonUtils.deepCopy(entity, Domain.class), scriptTxt, "domain.fullyQualifiedName");
+      }
     }
   }
 
