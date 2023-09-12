@@ -30,7 +30,6 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import Voting from 'components/Voting/Voting.component';
 import { VotingDataProps } from 'components/Voting/voting.interface';
@@ -46,7 +45,7 @@ import {
   ThreadType,
 } from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -54,7 +53,11 @@ import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getContainerByName } from 'rest/storageAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from 'utils/DataAssetsHeader.utils';
-import { getEntityFeedLink, getEntityName } from 'utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+  getEntityVoteStatus,
+} from 'utils/EntityUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -172,22 +175,10 @@ export const DataAssetsHeader = ({
       [dataAsset, USER_ID]
     );
 
-  const voteStatus = useMemo(() => {
-    if (isUndefined(votes)) {
-      return QueryVoteType.unVoted;
-    }
-
-    const upVoters = votes.upVoters ?? [];
-    const downVoters = votes.downVoters ?? [];
-
-    if (upVoters.some((user) => user.id === USER_ID)) {
-      return QueryVoteType.votedUp;
-    } else if (downVoters.some((user) => user.id === USER_ID)) {
-      return QueryVoteType.votedDown;
-    } else {
-      return QueryVoteType.unVoted;
-    }
-  }, [votes, USER_ID]);
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(USER_ID, votes),
+    [votes, USER_ID]
+  );
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
     useState<boolean>(false);
