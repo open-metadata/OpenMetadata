@@ -112,4 +112,7 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     'orderedList',
     'strike',
   ],
+  parseOptions: {
+    preserveWhitespace: 'full',
+  },
 };
