@@ -449,6 +449,18 @@ class SnowflakeSource(CommonDbSourceService):
             logger.debug(f"Failed to fetch current account due to: {exc}")
         return None
 
+    def _get_source_url_root(
+        self, database_name: Optional[str] = None, schema_name: Optional[str] = None
+    ) -> str:
+        url = (
+            f"https://app.snowflake.com/{self.region.lower()}"
+            f"/{self.account.lower()}/#/data/databases/{database_name}"
+        )
+        if schema_name:
+            url = f"{url}/schemas/{schema_name}"
+
+        return url
+
     def get_source_url(
         self,
         database_name: Optional[str] = None,
@@ -462,14 +474,11 @@ class SnowflakeSource(CommonDbSourceService):
         try:
             if self.account and self.region:
                 tab_type = "view" if table_type == TableType.View else "table"
-                url = (
-                    f"https://app.snowflake.com/{self.region.lower()}"
-                    f"/{self.account.lower()}/#/data/databases/{database_name}"
+                url = self._get_source_url_root(
+                    database_name=database_name, schema_name=schema_name
                 )
-                if schema_name:
-                    url = f"{url}/schemas/{schema_name}"
-                    if table_name:
-                        url = f"{url}/{tab_type}/{table_name}"
+                if table_name:
+                    url = f"{url}/{tab_type}/{table_name}"
                 return url
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -539,10 +548,11 @@ class SnowflakeSource(CommonDbSourceService):
                     ),
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
                     sourceUrl=SourceUrl(
-                        __root__=f"https://app.snowflake.com/{self.region.lower()}"
-                        f"/{self.account.lower()}/#/data/databases/{self.context.database.name.__root__}"
-                        f"/schema/{self.context.database_schema.name.__root__}"
-                        f"/{stored_procedure.name}{quote(stored_procedure.signature)}"
+                        __root__=self._get_source_url_root(
+                            database_name=self.context.database.name.__root__,
+                            schema_name=self.context.database_schema.name.__root__,
+                        )
+                        + f"/{stored_procedure.name}{quote(stored_procedure.signature)}"
                     ),
                 )
             )
