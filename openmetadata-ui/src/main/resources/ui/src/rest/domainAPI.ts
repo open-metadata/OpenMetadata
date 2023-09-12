@@ -12,12 +12,12 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Include } from 'generated/type/include';
-import { PagingResponse } from 'Models';
-
 import { Operation } from 'fast-json-patch';
 import { CreateDomain } from 'generated/api/domains/createDomain';
 import { Domain } from 'generated/entity/domains/domain';
+import { EntityHistory } from 'generated/type/entityHistory';
+import { Include } from 'generated/type/include';
+import { PagingResponse } from 'Models';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
@@ -75,6 +75,20 @@ export const getDomainByName = async (
     arrQueryFields
   );
 
+  const response = await APIClient.get<Domain>(url);
+
+  return response.data;
+};
+
+export const getDomainVersionsList = async (id: string) => {
+  const url = `${BASE_URL}/${id}/versions`;
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDomainVersionData = async (id: string, version: string) => {
+  const url = `${BASE_URL}/${id}/versions/${version}`;
   const response = await APIClient.get<Domain>(url);
 
   return response.data;

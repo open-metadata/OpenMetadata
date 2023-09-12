@@ -17,6 +17,7 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import DomainExperts from 'components/Domain/DomainExperts/DomainExperts.component';
 import DomainTypeSelectForm from 'components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
@@ -27,69 +28,75 @@ import {
   getUserPath,
   NO_DATA_PLACEHOLDER,
 } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
 import { Domain, DomainType } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
-import { EntityReference } from 'generated/entity/type';
-import { cloneDeep, includes, isEqual } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { ChangeDescription, EntityReference } from 'generated/entity/type';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
+import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+  getDiffValue,
+  getEntityVersionByField,
+} from 'utils/EntityVersionUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import '../../domain.less';
 import { DocumentationTabProps } from './DocumentationTab.interface';
 
-const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
+const DocumentationTab = ({
+  domain,
+  onUpdate,
+  isVersionsView = false,
+}: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [editDomainType, setEditDomainType] = useState(false);
 
-  const editDescriptionPermission = useMemo(
-    () =>
-      checkPermission(
+  const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
+    useMemo(() => {
+      if (isVersionsView) {
+        return {
+          editDescriptionPermission: false,
+          editOwnerPermission: false,
+          editAllPermission: false,
+        };
+      }
+
+      const editDescription = checkPermission(
         Operation.EditDescription,
         ResourceEntity.DOMAIN,
         permissions
-      ) ||
-      checkPermission(Operation.EditAll, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
+      );
 
-  const editOwnerPermission = useMemo(
-    () =>
-      checkPermission(
+      const editOwner = checkPermission(
         Operation.EditOwner,
         ResourceEntity.DOMAIN,
         permissions
-      ) ||
-      checkPermission(Operation.EditAll, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
+      );
 
-  const editAllPermission = useMemo(
-    () =>
-      checkPermission(Operation.EditAll, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
+      const editAll = checkPermission(
+        Operation.EditAll,
+        ResourceEntity.DOMAIN,
+        permissions
+      );
 
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (domain.description !== updatedHTML) {
-      const updatedTableDetails = {
-        ...domain,
-        description: updatedHTML,
+      return {
+        editDescriptionPermission: editDescription || editAll,
+        editOwnerPermission: editOwner || editAll,
+        editAllPermission: editAll,
       };
-      onUpdate(updatedTableDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
-    }
-  };
+    }, [permissions, isVersionsView]);
 
   const getOwner = useCallback(
-    (owner?: EntityReference) => {
+    (ownerDisplayName: ReactNode, owner?: EntityReference) => {
       if (owner) {
         return (
           <>
@@ -106,34 +113,94 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
                   ? getTeamAndUserDetailsPath(owner.name ?? '')
                   : getUserPath(owner.name ?? '')
               }>
-              {getEntityName(owner)}
+              {ownerDisplayName}
             </Link>
           </>
         );
       }
-      if (!editOwnerPermission) {
+      if (!(editOwnerPermission || editAllPermission)) {
         return <div>{NO_DATA_PLACEHOLDER}</div>;
       }
 
       return null;
     },
-    [editOwnerPermission]
+    [editOwnerPermission, editAllPermission]
   );
 
-  const getExpert = useCallback((expert: EntityReference) => {
-    return (
-      <Space className="m-r-xss" key={expert.id} size={4}>
-        <ProfilePicture
-          displayName={getEntityName(expert)}
-          id={expert.id}
-          name={expert.name ?? ''}
-          textClass="text-xs"
-          width="20"
-        />
-        <Link to={getUserPath(expert.name ?? '')}>{getEntityName(expert)}</Link>
-      </Space>
-    );
-  }, []);
+  const getUserNames = useCallback(
+    (glossaryData: Domain) => {
+      if (isVersionsView) {
+        const ownerDiff = getDiffByFieldName(
+          EntityField.OWNER,
+          glossaryData.changeDescription as ChangeDescription
+        );
+
+        const oldOwner = JSON.parse(
+          getChangedEntityOldValue(ownerDiff) ?? '{}'
+        );
+        const newOwner = JSON.parse(
+          getChangedEntityNewValue(ownerDiff) ?? '{}'
+        );
+
+        const shouldShowDiff =
+          !isEmpty(ownerDiff.added) ||
+          !isEmpty(ownerDiff.deleted) ||
+          !isEmpty(ownerDiff.updated);
+
+        if (shouldShowDiff) {
+          if (!isEmpty(ownerDiff.added)) {
+            const ownerName = getDiffValue('', getEntityName(newOwner));
+
+            return getOwner(ownerName, newOwner);
+          }
+
+          if (!isEmpty(ownerDiff.deleted)) {
+            const ownerName = getDiffValue(getEntityName(oldOwner), '');
+
+            return getOwner(ownerName, oldOwner);
+          }
+
+          if (!isEmpty(ownerDiff.updated)) {
+            const ownerName = getDiffValue(
+              getEntityName(oldOwner),
+              getEntityName(newOwner)
+            );
+
+            return getOwner(ownerName, newOwner);
+          }
+        }
+      }
+
+      return getOwner(getEntityName(glossaryData.owner), glossaryData.owner);
+    },
+    [isVersionsView, getOwner]
+  );
+
+  const description = useMemo(
+    () =>
+      isVersionsView
+        ? getEntityVersionByField(
+            domain.changeDescription as ChangeDescription,
+            EntityField.DESCRIPTION,
+            domain.description
+          )
+        : domain.description,
+
+    [domain, isVersionsView]
+  );
+
+  const onDescriptionUpdate = async (updatedHTML: string) => {
+    if (domain.description !== updatedHTML) {
+      const updatedTableDetails = {
+        ...domain,
+        description: updatedHTML,
+      };
+      onUpdate(updatedTableDetails);
+      setIsDescriptionEditable(false);
+    } else {
+      setIsDescriptionEditable(false);
+    }
+  };
 
   const handleUpdatedOwner = (newOwner: Domain['owner']) => {
     const updatedData = {
@@ -149,7 +216,12 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
       const oldExperts = data.filter((d) => includes(domain.experts, d));
       const newExperts = data
         .filter((d) => !includes(domain.experts, d))
-        .map((d) => ({ id: d.id, type: d.type }));
+        .map((d) => ({
+          id: d.id,
+          type: d.type,
+          name: d.name,
+          displayName: d.displayName,
+        }));
       updatedDomain = {
         ...updatedDomain,
         experts: [...oldExperts, ...newExperts],
@@ -172,7 +244,7 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
     <Row>
       <Col className="border-right p-md domain-content-container" span={18}>
         <DescriptionV1
-          description={domain.description}
+          description={description}
           entityName={getEntityName(domain)}
           entityType={EntityType.DOMAIN}
           hasEditAccess={editDescriptionPermission}
@@ -207,7 +279,7 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
             </div>
 
             <Space className="m-r-xss" size={4}>
-              {getOwner(domain.owner)}
+              {getUserNames(domain)}
             </Space>
 
             {!domain.owner && editOwnerPermission && (
@@ -252,9 +324,11 @@ const DocumentationTab = ({ domain, onUpdate }: DocumentationTabProps) => {
                   </UserSelectableList>
                 )}
             </div>
-            <Space wrap data-testid="domain-expert-name-label" size={6}>
-              {domain.experts?.map((expert) => getExpert(expert))}
-            </Space>
+            <DomainExperts
+              domain={domain}
+              editPermission={editAllPermission}
+              isVersionsView={isVersionsView}
+            />
             <div>
               {editOwnerPermission &&
                 domain.experts &&

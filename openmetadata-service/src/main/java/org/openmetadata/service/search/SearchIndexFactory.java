@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -35,6 +36,7 @@ import org.openmetadata.service.search.indexes.DashboardServiceIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.DatabaseServiceIndex;
+import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.ElasticSearchIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
@@ -109,6 +111,8 @@ public class SearchIndexFactory {
         return new SearchIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
       case Entity.PIPELINE_SERVICE:
         return new PipelineServiceIndex((PipelineService) entity);
+      case Entity.DOMAIN:
+        return new DomainIndex((Domain) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }

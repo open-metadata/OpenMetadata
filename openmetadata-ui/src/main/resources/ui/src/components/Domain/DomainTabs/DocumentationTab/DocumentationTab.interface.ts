@@ -15,4 +15,5 @@ import { Domain } from 'generated/entity/domains/domain';
 export interface DocumentationTabProps {
   domain: Domain;
   onUpdate: (value: Domain) => Promise<void>;
+  isVersionsView?: boolean;
 }
