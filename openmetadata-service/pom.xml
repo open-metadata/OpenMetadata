@@ -731,7 +731,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/v1.2.0-SNAPSHOT/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.2-SNAPSHOT/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>
