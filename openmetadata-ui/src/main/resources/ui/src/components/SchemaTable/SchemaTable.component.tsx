@@ -11,16 +11,20 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
+import { PRIMERY_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
+  groupBy,
   isEmpty,
   isUndefined,
   lowerCase,
@@ -28,6 +32,7 @@ import {
   reduce,
   sortBy,
   toLower,
+  uniqBy,
 } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -46,7 +51,11 @@ import {
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
+import {
+  SchemaTableProps,
+  TableCellRendered,
+  TagFilterOptions,
+} from './SchemaTable.interface';
 
 const SchemaTable = ({
   tableColumns,
@@ -270,6 +279,58 @@ const SchemaTable = ({
     );
   };
 
+  const extractTags = (item: Column, allTags: TagFilterOptions[]) => {
+    if (item?.tags?.length) {
+      item.tags.forEach((tag) => {
+        allTags.push({
+          text: tag.tagFQN,
+          value: tag.tagFQN,
+          source: tag.source,
+        });
+      });
+    }
+
+    if (item?.children?.length) {
+      item.children.forEach((child) => {
+        extractTags(child, allTags);
+      });
+    }
+  };
+
+  const getAllTags = (data: Column[]) => {
+    return data.reduce((allTags, item) => {
+      extractTags(item, allTags);
+
+      return allTags;
+    }, [] as TagFilterOptions[]);
+  };
+
+  const searchTagInData = (data: Column, tagToSearch: string) => {
+    if (data.tags && data.tags.some((tag) => tag.tagFQN === tagToSearch)) {
+      return true;
+    }
+
+    if (data.children?.length) {
+      for (const child of data.children) {
+        if (searchTagInData(child, tagToSearch)) {
+          return true;
+        }
+      }
+      setExpandedRowKeys((pre) => [...pre, data?.fullyQualifiedName ?? '']);
+    }
+
+    return false;
+  };
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(data);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [data]);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -316,6 +377,11 @@ const SchemaTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 250,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -330,13 +396,21 @@ const SchemaTable = ({
             onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: (value, record) => searchTagInData(record, value as string),
       },
       {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
-        key: 'tags',
+        key: 'glossary',
         accessor: 'tags',
         width: 250,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -351,6 +425,9 @@ const SchemaTable = ({
             onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: (value, record) => searchTagInData(record, value as string),
       },
     ],
     [
@@ -364,6 +441,7 @@ const SchemaTable = ({
       renderDescription,
       handleTagSelection,
       onThreadLinkSelect,
+      tagFilter,
     ]
   );
   const expandableConfig: ExpandableConfig<Column> = useMemo(
@@ -390,6 +468,12 @@ const SchemaTable = ({
       setSearchedColumns(searchCols);
     }
   }, [searchText, sortByOrdinalPosition]);
+
+  useEffect(() => {
+    setExpandedRowKeys(() =>
+      data.map((value) => value?.fullyQualifiedName ?? '')
+    );
+  }, [data]);
 
   return (
     <>
