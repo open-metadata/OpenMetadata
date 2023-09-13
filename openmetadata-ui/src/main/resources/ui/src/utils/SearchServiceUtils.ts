@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { COMMON_UI_SCHEMA } from 'constants/Services.constant';
 import { SearchServiceType } from 'generated/entity/services/searchService';
 import customSearchConnection from 'jsons/connectionSchemas/connections/search/customSearchConnection.json';
