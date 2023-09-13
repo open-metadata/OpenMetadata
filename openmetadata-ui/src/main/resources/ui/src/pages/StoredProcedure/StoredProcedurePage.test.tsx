@@ -22,7 +22,8 @@ const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-const API_FIELDS = 'owner, followers, tags, extension, domain';
+const API_FIELDS = `owner, followers, 
+tags, extension, domain, votes`;
 
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({

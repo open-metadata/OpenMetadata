@@ -52,6 +52,7 @@ jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
 
 const mockOnUpdate = jest.fn();
 const mockOnDelete = jest.fn();
+const mockOnUpdateVote = jest.fn();
 
 describe('GlossaryHeader component', () => {
   it('should render name of Glossary', () => {
@@ -60,6 +61,7 @@ describe('GlossaryHeader component', () => {
         isGlossary
         permissions={DEFAULT_ENTITY_PERMISSION}
         selectedData={{ displayName: 'glossaryTest' } as Glossary}
+        updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}

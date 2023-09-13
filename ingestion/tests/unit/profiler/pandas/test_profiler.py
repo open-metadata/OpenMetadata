@@ -69,11 +69,27 @@ class ProfilerTest(TestCase):
 
     import pandas as pd
 
+    col_names = [
+        "name",
+        "fullname",
+        "nickname",
+        "comments",
+        "age",
+        "dob",
+        "tob",
+        "doe",
+        "json",
+        "array",
+    ]
+
     root_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
-    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
-
+    df1 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
+    )
+    df2 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
+    )
     table_entity = Table(
         id=uuid4(),
         name="user",
@@ -93,7 +109,7 @@ class ProfilerTest(TestCase):
     @mock.patch.object(
         PandasProfilerInterface,
         "_convert_table_to_list_of_dataframe_objects",
-        return_value=[df1, df2],
+        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def setUpClass(cls, mock_get_connection, mocked_dfs):
         cls.datalake_profiler_interface = PandasProfilerInterface(
@@ -118,8 +134,8 @@ class ProfilerTest(TestCase):
 
         profile = simple.get_profile()
 
-        assert profile.tableProfile.rowCount == 5
-        assert profile.tableProfile.columnCount == 8
+        assert profile.tableProfile.rowCount == 6
+        assert profile.tableProfile.columnCount == 10
 
         age_profile = next(
             (
@@ -132,35 +148,36 @@ class ProfilerTest(TestCase):
 
         assert age_profile == ColumnProfile(
             name="age",
-            valuesCount=4,
+            timestamp=age_profile.timestamp,
+            valuesCount=4.0,
             valuesPercentage=None,
             validCount=None,
             duplicateCount=None,
-            nullCount=1.0,
-            nullProportion=0.2,
-            uniqueCount=4.0,
-            uniqueProportion=1.0,
+            nullCount=2.0,
+            nullProportion=0.3333333333333333,
+            missingPercentage=None,
+            missingCount=None,
+            uniqueCount=2.0,
+            uniqueProportion=0.5,
+            distinctCount=3.0,
+            distinctProportion=0.75,
             min=30.0,
-            max=45.0,
+            max=32.0,
             minLength=None,
             maxLength=None,
-            mean=35.25,
-            sum=141.0,
-            stddev=6.849574196011505,
+            mean=31.0,
+            sum=124.0,
+            stddev=0.816496580927726,
             variance=None,
-            distinctCount=4.0,
-            distinctProportion=1.0,
-            median=33.0,
-            timestamp=age_profile.timestamp,
+            median=31.0,
             firstQuartile=30.5,
-            thirdQuartile=40.0,
-            interQuartileRange=9.5,
-            nonParametricSkew=0.3284875724552587,
+            thirdQuartile=31.5,
+            interQuartileRange=1.0,
+            nonParametricSkew=0.0,
             histogram=Histogram(
-                boundaries=["30.00 to 41.97", "41.97 and up"], frequencies=[3, 1]
+                boundaries=["30.00 to 31.26", "31.26 and up"], frequencies=[3, 1]
             ),
-            missingCount=None,
-            missingPercentage=None,
+            customMetricsProfile=None,
         )
 
     def test_required_metrics(self):

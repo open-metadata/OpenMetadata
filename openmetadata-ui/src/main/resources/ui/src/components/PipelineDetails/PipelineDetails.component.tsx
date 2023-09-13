@@ -83,6 +83,7 @@ const PipelineDetails = ({
   taskUpdateHandler,
   versionHandler,
   pipelineFQN,
+  onUpdateVote,
   onExtensionUpdate,
   handleToggleDelete,
 }: PipeLineDetailsProp) => {
@@ -750,6 +751,7 @@ const PipelineDetails = ({
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestorePipeline}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>
