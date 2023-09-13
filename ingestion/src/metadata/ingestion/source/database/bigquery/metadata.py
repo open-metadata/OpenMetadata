@@ -614,6 +614,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
+            region=self.service_connection.usageLocation,
         )
         queries_dict = self.procedure_queries_dict(
             query=query,
