@@ -254,3 +254,109 @@ export const mockEntityPermissions = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
+
+export const mockStoredProcedure = {
+  data: [
+    {
+      id: '5c225b39-0a20-4157-8085-5b22d0beea95',
+      name: 'update_dim_address_table',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.update_dim_address_table',
+      description: 'This stored procedure updates dim_address table',
+      storedProcedureCode: {
+        code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
+      },
+      version: 0.1,
+      updatedAt: 1694001765000,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/storedProcedures/5c225b39-0a20-4157-8085-5b22d0beea95',
+      databaseSchema: {
+        id: '6745cd0c-e9d7-423e-80cc-accc3629811c',
+        type: 'databaseSchema',
+        name: 'shopify',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        description:
+          'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/databaseSchemas/6745cd0c-e9d7-423e-80cc-accc3629811c',
+      },
+      database: {
+        id: 'a5f8e3b5-a23d-4d3c-9fca-ce7449493c5b',
+        type: 'database',
+        name: 'ecommerce_db',
+        fullyQualifiedName: 'sample_data.ecommerce_db',
+        description:
+          'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/databases/a5f8e3b5-a23d-4d3c-9fca-ce7449493c5b',
+      },
+      service: {
+        id: '7ac73a36-67f0-451e-a042-e91fb24ee6f1',
+        type: 'databaseService',
+        name: 'sample_data',
+        fullyQualifiedName: 'sample_data',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/services/databaseServices/7ac73a36-67f0-451e-a042-e91fb24ee6f1',
+      },
+      serviceType: 'CustomDatabase',
+      deleted: false,
+      followers: [],
+      tags: [],
+    },
+    {
+      id: '4651cccf-6c8a-49fc-804f-41a81bf6898b',
+      name: 'update_orders_table',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.update_orders_table',
+      description:
+        'This stored procedure is written java script to update the orders table',
+      storedProcedureCode: {
+        code: `create or replace procedure read_result_set()\n  returns float not null\n  language javascript\n 
+         as     \n  $$  \n    var my_sql_command = "select * from table1";\n    var statement1 = snowflake.
+         createStatement( {sqlText: my_sql_command} );\n    var result_set1 = statement1.execute();\n    // Loop
+          through the results, processing one row at a time... \n    while (result_set1.next())  {\n     
+              var column1 = result_set1.getColumnValue(1);\n       var column2 = result_set1.getColumnValue(2);\n  
+                   // Do something with the retrieved values...\n       }\n  return 0.0; // Replace with something more useful.\n  $$\n  ;`,
+      },
+      version: 0.1,
+      updatedAt: 1694001765116,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/storedProcedures/4651cccf-6c8a-49fc-804f-41a81bf6898b',
+      databaseSchema: {
+        id: '6745cd0c-e9d7-423e-80cc-accc3629811c',
+        type: 'databaseSchema',
+        name: 'shopify',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        description:
+          'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/databaseSchemas/6745cd0c-e9d7-423e-80cc-accc3629811c',
+      },
+      database: {
+        id: 'a5f8e3b5-a23d-4d3c-9fca-ce7449493c5b',
+        type: 'database',
+        name: 'ecommerce_db',
+        fullyQualifiedName: 'sample_data.ecommerce_db',
+        description:
+          'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/databases/a5f8e3b5-a23d-4d3c-9fca-ce7449493c5b',
+      },
+      service: {
+        id: '7ac73a36-67f0-451e-a042-e91fb24ee6f1',
+        type: 'databaseService',
+        name: 'sample_data',
+        fullyQualifiedName: 'sample_data',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/services/databaseServices/7ac73a36-67f0-451e-a042-e91fb24ee6f1',
+      },
+      serviceType: 'CustomDatabase',
+      deleted: false,
+      followers: [],
+      tags: [],
+    },
+  ],
+  paging: {
+    total: 2,
+  },
+};
