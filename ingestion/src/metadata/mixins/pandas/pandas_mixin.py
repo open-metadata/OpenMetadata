@@ -91,7 +91,9 @@ class PandasInterfaceMixin:
             config_source=service_connection_config.configSource,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=table.name.__root__, bucket_name=table.databaseSchema.name
+                key=table.name.__root__,
+                bucket_name=table.databaseSchema.name,
+                file_extension=table.fileFormat,
             ),
             is_profiler=True,
         )

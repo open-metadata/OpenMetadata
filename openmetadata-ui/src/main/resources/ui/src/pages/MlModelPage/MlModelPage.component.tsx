@@ -17,6 +17,7 @@ import Loader from 'components/Loader/Loader';
 import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
@@ -30,6 +31,7 @@ import {
   getMlModelByFQN,
   patchMlModelDetails,
   removeFollower,
+  updateMlModelVotes,
 } from 'rest/mlModelAPI';
 import { getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
@@ -275,6 +277,16 @@ const MlModelPage = () => {
     });
   };
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateMlModelVotes(id, data);
+      const details = await getMlModelByFQN(mlModelFqn, defaultFields);
+      setMlModelDetail(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
@@ -309,6 +321,7 @@ const MlModelPage = () => {
       updateMlModelFeatures={updateMlModelFeatures}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };
