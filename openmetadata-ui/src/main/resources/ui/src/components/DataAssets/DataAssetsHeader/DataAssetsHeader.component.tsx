@@ -388,7 +388,7 @@ export const DataAssetsHeader = ({
               <ButtonGroup size="small">
                 {onUpdateVote && (
                   <Voting
-                    deleted={deleted}
+                    disabled={deleted}
                     voteStatus={voteStatus}
                     votes={votes}
                     onUpdateVote={handleVoteChange}

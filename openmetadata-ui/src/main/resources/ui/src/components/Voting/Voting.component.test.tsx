@@ -15,17 +15,18 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import React from 'react';
 import Voting from './Voting.component';
+import { VotingProps } from './voting.interface';
 
 const mockOnUpdateVote = jest.fn();
 
-const mockProps = {
+const mockProps: VotingProps = {
   votes: {
     upVotes: 0,
     downVotes: 0,
     upVoters: [],
     downVoters: [],
   },
-  deleted: false,
+  disabled: false,
   voteStatus: QueryVoteType.unVoted,
   onUpdateVote: mockOnUpdateVote,
 };
@@ -110,5 +111,12 @@ describe('Voting component test', () => {
     expect(mockOnUpdateVote).toHaveBeenCalledWith({
       updatedVoteType: QueryVoteType.unVoted,
     });
+  });
+
+  it('voting button should be disabled as per props', async () => {
+    render(<Voting {...mockProps} disabled />);
+
+    expect(await screen.findByTestId('up-vote-btn')).toBeDisabled();
+    expect(await screen.findByTestId('down-vote-btn')).toBeDisabled();
   });
 });
