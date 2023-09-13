@@ -10,8 +10,10 @@
 #  limitations under the License.
 
 # Build stage
+ARG RI_VERSION="1.1.5"
 FROM alpine:3.15 AS build
-ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/1.1.4-release/openmetadata-1.1.4.tar.gz"
+ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
+
 RUN mkdir -p /opt/openmetadata && \
     wget ${RELEASE_URL} && \
     tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
