@@ -155,7 +155,7 @@ class OpenMetadataValidationAction(ValidationAction):
         if isinstance(batch_spec, SqlAlchemyDatasourceBatchSpec):
             return batch_spec
         raise ValueError(
-            f"Type `{type(batch_spec).__name__,}` is not supported."
+            f"Type test`{type(batch_spec).__name__,}` is not supported."
             " Make sur you ran your expectations against a relational database",
         )
 
