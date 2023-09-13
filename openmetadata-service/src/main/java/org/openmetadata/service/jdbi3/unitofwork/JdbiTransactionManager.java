@@ -8,12 +8,27 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Handles;
 
 @Slf4j
-public class JdbiTransactionAspect {
+public class JdbiTransactionManager {
+  private static JdbiTransactionManager instance;
+  private static volatile boolean initialized = false;
   private final JdbiHandleManager handleManager;
   private final Set<Integer> IN_TRANSACTION_HANDLES = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  public JdbiTransactionAspect(JdbiHandleManager handleManager) {
+  private JdbiTransactionManager(JdbiHandleManager handleManager) {
     this.handleManager = handleManager;
+  }
+
+  public static void initialize(JdbiHandleManager handleManager) {
+    if (!initialized) {
+      instance = new JdbiTransactionManager(handleManager);
+      initialized = true;
+    } else {
+      LOG.info("Jdbi Transaction Manager is already initialized");
+    }
+  }
+
+  public static JdbiTransactionManager getInstance() {
+    return instance;
   }
 
   public void begin(boolean autoCommit) {
@@ -79,7 +94,13 @@ public class JdbiTransactionAspect {
   }
 
   public void terminateHandle() {
+    if (IN_TRANSACTION_HANDLES.contains(handleManager.get().hashCode())) {
+      handleManager.clear();
+    }
     IN_TRANSACTION_HANDLES.remove(handleManager.get().hashCode());
-    handleManager.clear();
+  }
+
+  public boolean containsHandle(int hashCode) {
+    return IN_TRANSACTION_HANDLES.contains(hashCode);
   }
 }

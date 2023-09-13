@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -49,29 +48,23 @@ import org.openmetadata.service.socket.WebSocketManager;
 @Slf4j
 public class NotificationHandler {
   private final ObjectMapper mapper;
-
-  private final JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider;
   private final ExecutorService threadScheduler;
 
-  public NotificationHandler(JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
+  public NotificationHandler() {
     this.mapper = new ObjectMapper();
     this.threadScheduler = Executors.newFixedThreadPool(1);
-    this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
   }
 
   public void processNotifications(ContainerResponseContext responseContext) {
     threadScheduler.submit(
         () -> {
           try {
-            Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
-            handle.getConnection().setAutoCommit(true);
-            CollectionDAO collectionDAO =
-                (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
+            CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
             handleNotifications(responseContext, collectionDAO);
           } catch (Exception ex) {
             LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
           } finally {
-            jdbiUnitOfWorkProvider.getHandleManager().clear();
+            JdbiUnitOfWorkProvider.getInstance().getHandleManager().clear();
           }
         });
   }
