@@ -136,15 +136,14 @@ function TableSummary({
         results: { ...INITIAL_TEST_RESULT_SUMMARY },
       };
       data.forEach((test) => {
-        if (test.entityFQN === entityDetails?.fullyQualifiedName) {
-          tableTests.tests.push(test);
+        tableTests.tests.push(test);
 
-          updateTestResults(
-            tableTests.results,
-            test.testCaseResult?.testCaseStatus || ''
-          );
-        }
+        updateTestResults(
+          tableTests.results,
+          test.testCaseResult?.testCaseStatus || ''
+        );
       });
+
       setTableTests(tableTests);
     } catch (error) {
       showErrorToast(error as AxiosError);

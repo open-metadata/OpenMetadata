@@ -513,6 +513,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
         .withUsers(getEntityReferences(USER, create.getUsers()))
         .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
-        .withQueryDate(create.getQueryDate());
+        .withQueryDate(create.getQueryDate())
+        .withTriggeredBy(create.getTriggeredBy())
+        .withProcessedLineage(create.getProcessedLineage());
   }
 }

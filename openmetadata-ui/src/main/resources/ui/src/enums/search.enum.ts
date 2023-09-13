@@ -26,4 +26,5 @@ export enum SearchIndex {
   TEST_CASE = 'test_case_search_index',
   DATABASE_SCHEMA = 'database_schema_search_index',
   DATABASE = 'database_search_index',
+  DOMAIN = 'domain_search_index',
 }
