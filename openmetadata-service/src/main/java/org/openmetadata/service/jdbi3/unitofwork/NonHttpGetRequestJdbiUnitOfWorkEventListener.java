@@ -8,11 +8,7 @@ import org.glassfish.jersey.server.monitoring.RequestEventListener;
 @Slf4j
 class NonHttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListener {
 
-  private final JdbiTransactionAspect transactionAspect;
-
-  NonHttpGetRequestJdbiUnitOfWorkEventListener(JdbiHandleManager handleManager) {
-    this.transactionAspect = new JdbiTransactionAspect(handleManager);
-  }
+  NonHttpGetRequestJdbiUnitOfWorkEventListener() {}
 
   @Override
   public void onEvent(RequestEvent event) {
@@ -23,13 +19,13 @@ class NonHttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListen
     boolean isTransactional = isTransactional(event);
     if (isTransactional) {
       if (type == RequestEvent.Type.RESOURCE_METHOD_START) {
-        transactionAspect.begin(false);
+        JdbiTransactionManager.getInstance().begin(false);
       } else if (type == RequestEvent.Type.RESP_FILTERS_START) {
-        transactionAspect.commit();
+        JdbiTransactionManager.getInstance().commit();
       } else if (type == RequestEvent.Type.ON_EXCEPTION) {
-        transactionAspect.rollback();
+        JdbiTransactionManager.getInstance().rollback();
       } else if (type == RequestEvent.Type.FINISHED) {
-        transactionAspect.terminateHandle();
+        JdbiTransactionManager.getInstance().terminateHandle();
       }
     }
   }

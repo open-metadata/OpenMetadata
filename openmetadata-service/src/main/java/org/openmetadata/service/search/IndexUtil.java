@@ -142,6 +142,8 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_INDEX_SEARCH;
     } else if (type.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_SERVICE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DOMAIN)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DOMAIN_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }

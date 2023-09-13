@@ -469,8 +469,8 @@ export const DOMAIN_1 = {
   updatedDescription:
     'This is the updated description for Cypress for testing domain creation',
   experts: 'Aaron Johnson',
-  owner: 'Aaron Johnson',
-  updatedOwner: 'Angel Smith',
+  owner: 'Aaron Singh',
+  updatedOwner: 'Aaron Johnson',
   domainType: 'Source-aligned',
   dataProducts: [
     {

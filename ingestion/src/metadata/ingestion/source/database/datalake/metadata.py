@@ -15,10 +15,15 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import traceback
 from typing import Iterable, Tuple
+from typing import Any, Iterable, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -57,6 +62,11 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
 )
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    QueryByProcedure,
+)
+from metadata.ingestion.source.database.datalake.columns import clean_dataframe
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
@@ -367,6 +377,27 @@ class DatalakeSource(DatabaseServiceSource):
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """We don't bring tag information"""
+
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Not implemented"""
+
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Not implemented"""
 
     def standardize_table_name(
         self, schema: str, table: str  # pylint: disable=unused-argument

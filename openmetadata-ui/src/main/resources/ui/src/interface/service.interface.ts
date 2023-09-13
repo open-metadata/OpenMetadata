@@ -83,6 +83,14 @@ export interface EditObj {
   id?: string;
 }
 
+export type DomainSupportedServiceTypes =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | StorageService;
+
 export type ServicesType =
   | DatabaseService
   | MessagingService

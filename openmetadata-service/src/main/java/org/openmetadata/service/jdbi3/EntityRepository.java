@@ -416,7 +416,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Clone the entity from the cache and reset all the fields that are not already set
     // Cloning is necessary to ensure different threads making a call to this method don't
     // overwrite the fields of the entity being returned
-    T entityClone = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entityClass);
+    T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
@@ -461,7 +461,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Clone the entity from the cache and reset all the fields that are not already set
     // Cloning is necessary to ensure different threads making a call to this method don't
     // overwrite the fields of the entity being returned
-    T entityClone = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entityClass);
+    T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
@@ -1931,7 +1931,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(
           FIELD_EXPERTS,
-          Entity.DATA_PRODUCT,
+          entityType,
           original.getId(),
           Relationship.EXPERT,
           Entity.USER,

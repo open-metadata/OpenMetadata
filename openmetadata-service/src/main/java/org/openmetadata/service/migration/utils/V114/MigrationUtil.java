@@ -1,7 +1,6 @@
 package org.openmetadata.service.migration.utils.V114;
 
-import static org.openmetadata.service.Entity.TEST_CASE;
-import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.groupTestCasesByTable;
 
 import java.util.ArrayList;
@@ -41,7 +40,8 @@ public class MigrationUtil {
     List<TestSuite> testSuites =
         testSuiteRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {
-      if (suite.getExecutableEntityReference() != null) {
+      if (suite.getExecutableEntityReference() != null
+          && (!suite.getExecutable() || !suite.getFullyQualifiedName().contains("testSuite"))) {
         String tableFQN = suite.getExecutableEntityReference().getFullyQualifiedName();
         String suiteFQN = tableFQN + ".testSuite";
         suite.setName(suiteFQN);
@@ -69,11 +69,11 @@ public class MigrationUtil {
               TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(existingTestSuiteRel.getId());
               if (existingTestSuite.getExecutable()
                   && existingTestSuite.getFullyQualifiedName().equals(executableTestSuiteFQN)) {
-                // remove the existing relation
+                // There is a native test suite associated with this testCase.
                 relationWithExecutableTestSuiteExists = true;
               }
             } catch (EntityNotFoundException ex) {
-              // if testsuite cannot be retrieved but the relation exists, then this is orphaned realtion, we will
+              // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
               // delete the relation
               testSuiteRepository.deleteRelationship(
                   existingTestSuiteRel.getId(), TEST_SUITE, testCase.getId(), TEST_CASE, Relationship.CONTAINS);
@@ -84,6 +84,25 @@ public class MigrationUtil {
         if (!relationWithExecutableTestSuiteExists) {
           testSuiteRepository.addRelationship(
               executableTestSuite.getId(), testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+        }
+      }
+
+      // check from table -> nativeTestSuite there should only one relation
+      List<CollectionDAO.EntityRelationshipRecord> testSuiteRels =
+          testSuiteRepository.findToRecords(
+              executableTestSuite.getExecutableEntityReference().getId(), TABLE, Relationship.CONTAINS, TEST_SUITE);
+      for (CollectionDAO.EntityRelationshipRecord testSuiteRel : testSuiteRels) {
+        try {
+          TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
+        } catch (EntityNotFoundException ex) {
+          // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
+          // delete the relation
+          testSuiteRepository.deleteRelationship(
+              executableTestSuite.getExecutableEntityReference().getId(),
+              TABLE,
+              testSuiteRel.getId(),
+              TEST_SUITE,
+              Relationship.CONTAINS);
         }
       }
     }

@@ -12,14 +12,19 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from typing import Iterable, List, Optional, Set, Tuple
+from datetime import datetime
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -28,6 +33,8 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -75,6 +82,23 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
+
+
+class QueryByProcedure(BaseModel):
+    """
+    Query(ies) executed by each stored procedure
+    """
+
+    procedure_id: str = Field(..., alias="PROCEDURE_ID")
+    query_id: str = Field(..., alias="QUERY_ID")
+    query_type: str = Field(..., alias="QUERY_TYPE")
+    procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
+    procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
+    procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
+    query_start_time: datetime = Field(..., alias="QUERY_START_TIME")
+    query_duration: float = Field(..., alias="QUERY_DURATION")
+    query_text: str = Field(..., alias="QUERY_TEXT")
+    query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -130,7 +154,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 consumer=["database_service", "database"],
             ),
         ],
-        children=["table"],
+        children=["table", "stored_procedure"],
         post_process=["mark_tables_as_deleted"],
     )
     table = TopologyNode(
@@ -148,6 +172,36 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_life_cycle_data",
                 ack_sink=False,
                 nullable=True,
+            ),
+        ],
+    )
+    stored_procedure = TopologyNode(
+        producer="get_stored_procedures",
+        stages=[
+            NodeStage(
+                type_=StoredProcedure,
+                context="stored_procedure",
+                processor="yield_stored_procedure",
+                consumer=["database_service", "database", "database_schema"],
+            ),
+        ],
+        children=["stored_procedure_queries"],
+    )
+    stored_procedure_queries = TopologyNode(
+        producer="get_stored_procedure_queries",
+        stages=[
+            NodeStage(
+                type_=AddLineageRequest,  # TODO: Fix context management for multiple types
+                processor="yield_procedure_lineage",
+                context="stored_procedure_query_lineage",  # Used to flag if the query has had processed lineage
+                nullable=True,
+                ack_sink=False,
+            ),
+            NodeStage(
+                type_=Query,
+                processor="yield_procedure_query",
+                nullable=True,
+                ack_sink=False,
             ),
         ],
     )
@@ -273,6 +327,32 @@ class DatabaseServiceSource(
 
         Also, update the self.inspector value to the current db.
         """
+
+    @abstractmethod
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """List stored procedures to process"""
+
+    @abstractmethod
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Process the stored procedure information"""
+
+    @abstractmethod
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """List the queries associated to a stored procedure"""
+
+    @abstractmethod
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Process the stored procedure query"""
+
+    @abstractmethod
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Add procedure lineage from its query"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
