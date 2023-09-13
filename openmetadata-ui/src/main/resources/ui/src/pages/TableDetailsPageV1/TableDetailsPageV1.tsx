@@ -37,6 +37,7 @@ import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -69,6 +70,7 @@ import {
   patchTableDetails,
   removeFollower,
   restoreTable,
+  updateTablesVotes,
 } from 'rest/tableAPI';
 import {
   addToRecentViewed,
@@ -862,6 +864,16 @@ const TableDetailsPageV1 = () => {
     }
   };
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateTablesVotes(id, data);
+      const details = await getTableDetailsByFQN(tableFqn, defaultFields);
+      setTableDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   if (loading) {
     return <Loader />;
   }
@@ -895,6 +907,7 @@ const TableDetailsPageV1 = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreTable}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
         </Col>

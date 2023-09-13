@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { EntityHistory } from 'generated/type/entityHistory';
@@ -30,6 +31,8 @@ const configOptions = {
   headers: { 'Content-type': 'application/json' },
 };
 
+const BASE_URL = '/containers';
+
 export const getContainers = async (args: {
   service: string;
   fields: string;
@@ -42,7 +45,7 @@ export const getContainers = async (args: {
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(`/containers`, {
+  }>(`${BASE_URL}`, {
     params: {
       ...rest,
       ...paging,
@@ -58,7 +61,7 @@ export const getContainerByName = async (
   include: Include = Include.All
 ) => {
   const response = await APIClient.get<Container>(
-    `containers/name/${name}?fields=${fields}`,
+    `${BASE_URL}/name/${name}?fields=${fields}`,
     {
       params: {
         include,
@@ -71,7 +74,7 @@ export const getContainerByName = async (
 
 export const patchContainerDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Container>>(
-    `/containers/${id}`,
+    `${BASE_URL}/${id}`,
     data,
     configOptionsForPatch
   );
@@ -85,7 +88,7 @@ export const addContainerFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/containers/${id}/followers`, userId, configOptions);
+  >(`${BASE_URL}/${id}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -94,7 +97,7 @@ export const restoreContainer = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Container>
-  >('/containers/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
 
   return response.data;
 };
@@ -105,13 +108,13 @@ export const removeContainerFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/containers/${id}/followers/${userId}`, configOptions);
+  >(`${BASE_URL}/${id}/followers/${userId}`, configOptions);
 
   return response.data;
 };
 
 export const getContainerVersions = async (id: string) => {
-  const url = `/containers/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
@@ -119,7 +122,7 @@ export const getContainerVersions = async (id: string) => {
 };
 
 export const getContainerVersion = async (id: string, version: string) => {
-  const url = `/containers/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Container>(url);
 
@@ -132,12 +135,21 @@ export const getContainerByFQN = async (
   include = 'all'
 ) => {
   const url = getURLWithQueryFields(
-    `/containers/name/${fqn}`,
+    `${BASE_URL}/name/${fqn}`,
     arrQueryFields,
     `include=${include}`
   );
 
   const response = await APIClient.get<Container>(url);
+
+  return response.data;
+};
+
+export const updateContainerVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Container>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

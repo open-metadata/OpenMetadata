@@ -19,12 +19,23 @@ import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { Operation } from 'fast-json-patch';
 import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
-import { getGlossariesByName, patchGlossaries } from 'rest/glossaryAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from 'rest/databaseAPI';
+import { getGlossaryTermByFQN, patchGlossaryTerm } from 'rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
+import {
+  getDomainSupportedServiceByFQN,
+  patchDomainSupportedService,
+} from 'rest/serviceAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
+import { getServiceCategoryFromEntityType } from 'utils/ServiceUtils';
 
 export const getAPIfromSource = (
   source: AssetsUnion
@@ -45,8 +56,23 @@ export const getAPIfromSource = (
       return patchTopicDetails;
     case EntityType.CONTAINER:
       return patchContainerDetails;
-    case EntityType.GLOSSARY:
-      return patchGlossaries;
+    case EntityType.GLOSSARY_TERM:
+      return patchGlossaryTerm;
+    case EntityType.DATABASE_SCHEMA:
+      return patchDatabaseSchemaDetails;
+    case EntityType.DATABASE:
+      return patchDatabaseDetails;
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.DATABASE_SERVICE:
+      return (id, queryFields) => {
+        const serviceCat = getServiceCategoryFromEntityType(source);
+
+        return patchDomainSupportedService(serviceCat, id, queryFields);
+      };
   }
 };
 
@@ -69,8 +95,23 @@ export const getEntityAPIfromSource = (
       return getTopicByFqn;
     case EntityType.CONTAINER:
       return getContainerByName;
-    case EntityType.GLOSSARY:
-      return getGlossariesByName;
+    case EntityType.GLOSSARY_TERM:
+      return getGlossaryTermByFQN;
+    case EntityType.DATABASE_SCHEMA:
+      return getDatabaseSchemaDetailsByFQN;
+    case EntityType.DATABASE:
+      return getDatabaseDetailsByFQN;
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.DATABASE_SERVICE:
+      return (id, queryFields) => {
+        const serviceCat = getServiceCategoryFromEntityType(source);
+
+        return getDomainSupportedServiceByFQN(serviceCat, id, queryFields);
+      };
   }
 };
 

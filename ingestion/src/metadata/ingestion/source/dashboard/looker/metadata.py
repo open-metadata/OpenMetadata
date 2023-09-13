@@ -129,7 +129,6 @@ def build_datamodel_name(model_name: str, explore_name: str) -> str:
     return clean_dashboard_name(model_name + "_" + explore_name)
 
 
-# pylint: disable=too-many-public-methods
 class LookerSource(DashboardServiceSource):
     """
     Looker Source Class.

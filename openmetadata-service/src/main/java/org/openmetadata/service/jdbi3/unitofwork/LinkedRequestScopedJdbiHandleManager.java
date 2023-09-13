@@ -32,6 +32,11 @@ class LinkedRequestScopedJdbiHandleManager implements JdbiHandleManager {
   }
 
   @Override
+  public Jdbi getJdbi() {
+    return dbi;
+  }
+
+  @Override
   public Handle get() {
     String parent = substringBetween(Thread.currentThread().getName());
     Handle handle;
@@ -50,6 +55,12 @@ class LinkedRequestScopedJdbiHandleManager implements JdbiHandleManager {
       LOG.debug("Reusing parent thread handle [{}] for [{}]", handle.hashCode(), Thread.currentThread().getId());
     }
     return handle;
+  }
+
+  @Override
+  public boolean handleExists() {
+    // TODO
+    return false;
   }
 
   @Override

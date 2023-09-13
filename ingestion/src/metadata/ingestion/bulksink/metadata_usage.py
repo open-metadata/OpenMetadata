@@ -57,6 +57,7 @@ from metadata.utils.life_cycle_utils import (
     init_empty_life_cycle_properties,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp
 
 logger = ingestion_logger()
 
@@ -125,9 +126,9 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
-                    date=datetime.fromtimestamp(int(value_dict["usage_date"])).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    date=datetime.fromtimestamp(
+                        convert_timestamp(value_dict["usage_date"])
+                    ).strftime("%Y-%m-%d"),
                     count=value_dict["usage_count"],
                 )
                 self.metadata.publish_table_usage(
@@ -360,34 +361,40 @@ class MetadataUsageBulkSink(BulkSink):
                     user = self.metadata.get_entity_reference(
                         entity=User, fqn=create_query.users[0]
                     )
+                elif create_query.usedBy:
+                    user = create_query.usedBy[0]
                 query_type = get_query_type(create_query=create_query)
                 if query_type == Created and (
                     not life_cycle.created
-                    or life_cycle.created.created_at < create_query.queryDate
+                    or life_cycle.created.created_at.__root__
+                    < create_query.queryDate.__root__
                 ):
                     life_cycle.created = Created(
-                        created_at=create_query.queryDate, created_by=user
+                        created_at=create_query.queryDate.__root__, created_by=user
                     )
                 elif query_type == Updated and (
                     not life_cycle.updated
-                    or life_cycle.updated.updated_at < create_query.queryDate
+                    or life_cycle.updated.updated_at.__root__
+                    < create_query.queryDate.__root__
                 ):
                     life_cycle.updated = Updated(
-                        updated_at=create_query.queryDate, updated_by=user
+                        updated_at=create_query.queryDate.__root__, updated_by=user
                     )
                 elif query_type == Deleted and (
                     not life_cycle.deleted
-                    or life_cycle.deleted.deleted_at < create_query.queryDate
+                    or life_cycle.deleted.deleted_at.__root__
+                    < create_query.queryDate.__root__
                 ):
                     life_cycle.deleted = Deleted(
-                        deleted_at=create_query.queryDate, deleted_by=user
+                        deleted_at=create_query.queryDate.__root__, deleted_by=user
                     )
                 elif query_type == Accessed and (
                     not life_cycle.accessed
-                    or life_cycle.accessed.accessed_at < create_query.queryDate
+                    or life_cycle.accessed.accessed_at.__root__
+                    < create_query.queryDate.__root__
                 ):
                     life_cycle.accessed = Accessed(
-                        accessed_at=create_query.queryDate, accessed_by=user
+                        accessed_at=create_query.queryDate.__root__, accessed_by=user
                     )
             self.metadata.ingest_life_cycle_data(
                 entity=table_entity, life_cycle_data=life_cycle
