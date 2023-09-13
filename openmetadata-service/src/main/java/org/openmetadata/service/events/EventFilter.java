@@ -52,7 +52,7 @@ public class EventFilter implements ContainerResponseFilter {
         @SuppressWarnings("unchecked")
         EventHandler eventHandler =
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
-        eventHandler.init(config, provider);
+        eventHandler.init(config);
         eventHandlers.add(eventHandler);
         LOG.info("Added event handler {}", eventHandlerClassName);
       }

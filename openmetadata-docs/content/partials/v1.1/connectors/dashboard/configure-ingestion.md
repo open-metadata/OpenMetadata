@@ -10,7 +10,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.1.2/connectors/configure-metadata-ingestion-dashboard.png"
+  src="/images/v1.1/connectors/configure-metadata-ingestion-dashboard.png"
   alt="Configure Metadata Ingestion"
   caption="Configure Metadata Ingestion Page" /%}
 
