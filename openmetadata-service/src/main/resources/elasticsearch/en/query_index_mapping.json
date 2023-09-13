@@ -40,6 +40,18 @@
       "id": {
         "type": "keyword"
       },
+      "checksum": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "processedLineage": {
+        "type": "boolean"
+      },
       "name": {
         "type": "text",
         "fields": {
