@@ -523,9 +523,6 @@ class CommonDbSourceService(
         """
         return table
 
-    def yield_table_tag(self) -> Iterable[OMetaTagAndClassification]:
-        pass
-
     def get_source_url(
         self,
         database_name: Optional[str] = None,
