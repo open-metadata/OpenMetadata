@@ -38,23 +38,26 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
   }
 
   private Object handleInvocation(Method method, Object[] args) throws Throwable {
-    Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
-    LOG.debug(
-        "{}.{} [{}] Thread Id [{}] with handle id [{}]",
-        method.getDeclaringClass().getSimpleName(),
-        method.getName(),
-        underlying.getSimpleName(),
-        Thread.currentThread().getId(),
-        handle.hashCode());
-
     if (CollectionDAO.class.isAssignableFrom(underlying) && method.isAnnotationPresent(CreateSqlObject.class)) {
       return getWrappedInstanceForDaoClass(method.getReturnType());
     } else {
-      if (!JdbiTransactionManager.getInstance().containsHandle(handle.hashCode())) {
+      Object dao;
+      if (JdbiUnitOfWorkProvider.getInstance().getHandleManager().handleExists()) {
+        Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
+        LOG.debug(
+            "{}.{} [{}] Thread Id [{}] with handle id [{}]",
+            method.getDeclaringClass().getSimpleName(),
+            method.getName(),
+            underlying.getSimpleName(),
+            Thread.currentThread().getId(),
+            handle.hashCode());
+
+        dao = handle.attach(underlying);
+      } else {
         // This is non-transactional request
-        handle.getConnection().setAutoCommit(true);
+        dao = JdbiUnitOfWorkProvider.getInstance().getHandleManager().getJdbi().onDemand(underlying);
       }
-      Object dao = handle.attach(underlying);
+
       try {
         return method.invoke(dao, args);
       } catch (Exception ex) {
