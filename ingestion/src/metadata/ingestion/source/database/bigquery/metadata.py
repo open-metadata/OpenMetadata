@@ -64,7 +64,6 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.models import (
     STORED_PROC_LANGUAGE_MAP,
     BigQueryStoredProcedure,
