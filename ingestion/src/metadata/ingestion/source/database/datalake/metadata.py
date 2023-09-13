@@ -14,7 +14,6 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import json
 import traceback
-from typing import Iterable, Tuple
 from typing import Any, Iterable, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -58,15 +57,13 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.storage.storage_service import (
-    OPENMETADATA_TEMPLATE_FILE_NAME,
-)
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     QueryByProcedure,
 )
-from metadata.ingestion.source.database.datalake.columns import clean_dataframe
+from metadata.ingestion.source.storage.storage_service import (
+    OPENMETADATA_TEMPLATE_FILE_NAME,
+)
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
