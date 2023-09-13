@@ -401,7 +401,7 @@ const SchemaTable = ({
           const { displayName } = record;
 
           return (
-            <div className="d-flex flex-column gap-2  hover-icon-group">
+            <Space className="hover-icon-group m-0" direction="vertical">
               <Space
                 align="center"
                 className="w-max-90 vertical-align-inherit"
@@ -435,7 +435,7 @@ const SchemaTable = ({
                 component={IconEdit}
                 onClick={() => handleEditDisplayNameClick(record)}
               />
-            </div>
+            </Space>
           );
         },
       },
@@ -572,7 +572,7 @@ const SchemaTable = ({
             entity: t('label.column'),
           })}: "${editColumnDisplayName?.name}"`}
           visible={Boolean(editColumnDisplayName)}
-          onCancel={closeEditColumnModal}
+          onCancel={() => setEditColumnDisplayName(undefined)}
           onSave={handleEditDisplayName}
         />
       )}
