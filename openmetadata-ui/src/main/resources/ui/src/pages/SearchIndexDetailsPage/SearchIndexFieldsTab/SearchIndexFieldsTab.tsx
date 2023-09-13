@@ -96,7 +96,7 @@ function SearchIndexFieldsTab({
 
   return (
     <>
-      <Row justify="space-between">
+      <Row align="middle" justify="space-between">
         <Col className="w-1/2">
           <Searchbar
             removeMargin
