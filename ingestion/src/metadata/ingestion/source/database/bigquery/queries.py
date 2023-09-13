@@ -31,7 +31,7 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE")
-  AND query NOT LIKE '/*%%{"app": "OpenMetadata", %%}%%*/%%'
+  AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
   AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
   LIMIT {result_limit}
 """
@@ -100,6 +100,8 @@ Q_HISTORY AS (
     total_slot_ms/1000 as duration
   FROM `region-us`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
   WHERE statement_type <> 'SCRIPT'
+    AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND start_time >= '{start_date}' 
     AND job_type = "QUERY"
     AND state = "DONE"
