@@ -468,7 +468,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         {showPagination(paging) && (
           <NextPrevious
-            showPageSize
             currentPage={currentPage}
             pageSize={PAGE_SIZE}
             paging={paging}

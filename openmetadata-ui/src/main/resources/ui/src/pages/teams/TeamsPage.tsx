@@ -44,8 +44,7 @@ import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
   LIST_SIZE,
-  PAGE_SIZE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
@@ -227,7 +226,12 @@ const TeamsPage = () => {
     loadPage = true
   ) => {
     loadPage && setIsDataLoading((isDataLoading) => ++isDataLoading);
-    getUsers({ fields: 'teams,roles', limit: PAGE_SIZE, team, ...paging })
+    getUsers({
+      fields: 'teams,roles',
+      limit: PAGE_SIZE_BASE,
+      team,
+      ...paging,
+    })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -387,7 +391,7 @@ const TeamsPage = () => {
     searchData(
       text,
       currentPage,
-      PAGE_SIZE_MEDIUM,
+      PAGE_SIZE_BASE,
       `(teams.id:${selectedTeam?.id})`,
       '',
       '',

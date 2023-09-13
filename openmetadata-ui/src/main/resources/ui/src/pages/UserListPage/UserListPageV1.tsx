@@ -22,7 +22,7 @@ import { getUsers, UsersQueryParams } from 'rest/userAPI';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
@@ -64,8 +64,10 @@ const UserListPageV1 = () => {
     setIsDataLoading(true);
     try {
       const { data, paging } = await getUsers({
-        ...params,
+        isBot: false,
+        limit: PAGE_SIZE_BASE,
         fields: 'profile,teams,roles',
+        ...params,
       });
       if (data) {
         setUserList(data);
@@ -108,7 +110,7 @@ const UserListPageV1 = () => {
       searchData(
         text,
         currentPage,
-        PAGE_SIZE_MEDIUM,
+        PAGE_SIZE_BASE,
         filters,
         '',
         '',

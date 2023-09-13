@@ -26,11 +26,12 @@ import {
   EventSubscription,
   ProviderType,
 } from 'generated/events/eventSubscription';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getAllAlerts } from 'rest/alertsAPI';
+import { showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
@@ -219,9 +220,7 @@ const AlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          {Boolean(
-            !isNil(alertsPaging.after) || !isNil(alertsPaging.before)
-          ) && (
+          {showPagination(alertsPaging) && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={PAGE_SIZE_MEDIUM}

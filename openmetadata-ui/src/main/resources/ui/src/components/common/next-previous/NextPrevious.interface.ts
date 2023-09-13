@@ -29,7 +29,6 @@ interface BasicProps {
 }
 
 export interface PagingProps {
-  showPageSize: true;
   pageSizeOptions?: number[];
   onShowSizeChange: (page: number) => void;
 }

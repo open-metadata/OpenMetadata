@@ -26,7 +26,7 @@ import { updateUser } from 'rest/userAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { CreateUser } from '../../generated/api/teams/createUser';
@@ -211,7 +211,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
   return (
     <Row
-      className="user-listing"
+      className="user-listing p-b-md"
       data-testid="user-list-v1-component"
       gutter={[16, 16]}>
       <Col span={12}>
@@ -269,11 +269,11 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={24}>
-        {paging.total > PAGE_SIZE_MEDIUM && (
+        {paging.total > PAGE_SIZE_BASE && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchTerm)}
-            pageSize={PAGE_SIZE_MEDIUM}
+            pageSize={PAGE_SIZE_BASE}
             paging={paging}
             pagingHandler={onPagingChange}
           />

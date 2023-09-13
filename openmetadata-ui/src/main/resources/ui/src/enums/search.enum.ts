@@ -32,11 +32,3 @@ export enum SearchIndex {
   ML_MODEL_SERVICE = 'mlmodel_service_search_index',
   DOMAIN = 'domain_search_index',
 }
-
-export type ServiceSearchIndexUnion =
-  | SearchIndex.DATABASE_SERVICE
-  | SearchIndex.MESSAGING_SERVICE
-  | SearchIndex.PIPELINE_SERVICE
-  | SearchIndex.SEARCH_SERVICE
-  | SearchIndex.DASHBOARD_SERCVICE
-  | SearchIndex.ML_MODEL_SERVICE;

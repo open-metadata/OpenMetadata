@@ -579,7 +579,7 @@ const TagsPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         const pagination = {
-          [cursorType]: paging[cursorType as keyof Paging] as string,
+          [cursorType]: paging[cursorType],
           total: paging.total,
         } as Paging;
 

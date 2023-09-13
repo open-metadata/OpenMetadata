@@ -203,7 +203,7 @@ const PoliciesListPage = () => {
     setIsLoading(true);
     try {
       const data = await getPolicies(
-        'owner,location,roles,teams',
+        'roles',
         paging?.after,
         paging?.before,
         PAGE_SIZE_MEDIUM
@@ -224,9 +224,14 @@ const PoliciesListPage = () => {
     history.push(ROUTES.ADD_POLICY);
   };
 
-  const handlePaging = ({ currentPage }: PagingHandlerParams) => {
+  const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
     setCurrentPage(currentPage);
-    fetchPolicies(paging);
+    if (cursorType && paging) {
+      fetchPolicies({
+        [cursorType]: paging[cursorType],
+        total: paging?.total,
+      } as Paging);
+    }
   };
 
   useEffect(() => {

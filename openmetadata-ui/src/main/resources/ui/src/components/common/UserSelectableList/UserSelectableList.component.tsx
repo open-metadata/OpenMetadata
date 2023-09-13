@@ -66,6 +66,7 @@ export const UserSelectableList = ({
         const { data, paging } = await getUsers({
           limit: PAGE_SIZE_MEDIUM,
           after: after ?? undefined,
+          isBot: false,
         });
         const filterData = getEntityReferenceListFromEntities(
           data,

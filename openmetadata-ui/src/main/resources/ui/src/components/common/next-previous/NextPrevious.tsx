@@ -18,7 +18,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import {
-  PAGE_SIZE,
+  PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from 'constants/constants';
@@ -41,9 +41,8 @@ const NextPrevious: FC<NextPreviousProps> = ({
 }: NextPreviousProps) => {
   const { t } = useTranslation();
   const {
-    pageSizeOptions = [PAGE_SIZE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
     onShowSizeChange,
-    showPageSize,
   } = (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = () => {
@@ -112,14 +111,14 @@ const NextPrevious: FC<NextPreviousProps> = ({
         <span> {t('label.next')}</span>
         <ArrowRightOutlined />
       </Button>
-      {showPageSize && (
+      {onShowSizeChange && (
         <Dropdown
           menu={{
             items: pageSizeOptions.map((size) => ({
               label: `${size} / Page`,
               value: size,
               key: size,
-              onClick: () => onShowSizeChange && onShowSizeChange(size),
+              onClick: () => onShowSizeChange(size),
             })),
           }}>
           <Button onClick={(e) => e.preventDefault()}>

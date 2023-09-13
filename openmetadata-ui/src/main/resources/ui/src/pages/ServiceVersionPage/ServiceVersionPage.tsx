@@ -337,7 +337,7 @@ function ServiceVersionPage() {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getOtherDetails({
-          [cursorType]: paging[cursorType as keyof typeof paging],
+          [cursorType]: paging[cursorType],
         });
         setCurrentPage(currentPage);
       }

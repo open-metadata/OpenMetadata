@@ -737,8 +737,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       if (cursorType) {
         getOtherDetails(
           {
-            [cursorType]:
-              dataModelPaging[cursorType as keyof typeof dataModelPaging],
+            [cursorType]: dataModelPaging[cursorType],
           },
           true
         );
@@ -1055,7 +1054,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
       })}>

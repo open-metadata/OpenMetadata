@@ -23,7 +23,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Paging } from 'generated/type/paging';
+import { usePaging } from 'hooks/paging/usePaging';
 import { isNil, map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,16 +43,24 @@ export const IngestionPipelineList = ({
   serviceName: string;
 }) => {
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
-  const [pipelinePaging, setPipelinePaging] = useState<Paging>({ total: 0 });
+
   const [selectedPipelines, setSelectedPipelines] =
     useState<Array<IngestionPipeline>>();
   const [selectedRowKeys, setSelectedRowKeys] = useState<Array<React.Key>>([]);
   const [deploying, setDeploying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [pipelineTypeFilter, setPipelineTypeFilter] =
     useState<PipelineType[]>();
-  const [pageSize, setPageSize] = useState(10);
+
+  const {
+    currentPage,
+    handlePageChange,
+    paging,
+    handlePagingChange,
+    pageSize,
+    handlePageSizeChange,
+  } = usePaging();
+
   const { t } = useTranslation();
 
   const renderNameField = (_: string, record: IngestionPipeline) => {
@@ -185,7 +193,7 @@ export const IngestionPipelineList = ({
       });
 
       setPipelines(data);
-      setPipelinePaging(paging);
+      handlePagingChange(paging);
     } catch {
       // Error
     } finally {
@@ -193,15 +201,15 @@ export const IngestionPipelineList = ({
     }
   };
 
-  const handlePageChange = ({
+  const handlePipelinePageChange = ({
     cursorType,
     currentPage,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      const pagingString = `&${cursorType}=${pipelinePaging[cursorType]}`;
+      const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
       fetchPipelines({ cursor: pagingString, limit: pageSize });
-      setCurrentPage(currentPage);
+      handlePageChange(currentPage);
     }
   };
 
@@ -221,8 +229,8 @@ export const IngestionPipelineList = ({
     });
   };
 
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
+  const handlePipelinePageSizeChange = (size: number) => {
+    handlePageSizeChange(size);
     fetchPipelines({ pipelineType: pipelineTypeFilter, limit: size });
   };
 
@@ -263,14 +271,13 @@ export const IngestionPipelineList = ({
         />
       </Col>
       <Col span={24}>
-        {showPagination(pipelinePaging) && (
+        {showPagination(paging) && (
           <NextPrevious
-            showPageSize
             currentPage={currentPage}
             pageSize={pageSize}
-            paging={pipelinePaging}
-            pagingHandler={handlePageChange}
-            onShowSizeChange={handlePageSizeChange}
+            paging={paging}
+            pagingHandler={handlePipelinePageChange}
+            onShowSizeChange={handlePipelinePageSizeChange}
           />
         )}
       </Col>

@@ -50,6 +50,7 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
         columns={column}
         data-testid="skeleton-table"
         dataSource={dataSource}
+        expandable={undefined}
       />
     );
   }

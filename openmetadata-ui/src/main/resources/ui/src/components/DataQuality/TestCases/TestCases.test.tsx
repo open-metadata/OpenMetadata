@@ -128,7 +128,7 @@ describe('TestCases component', () => {
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fetchSource: false,
       pageNumber: 1,
-      pageSize: 15,
+      pageSize: 10,
       query: 'sale',
       searchIndex: 'test_case_search_index',
     });

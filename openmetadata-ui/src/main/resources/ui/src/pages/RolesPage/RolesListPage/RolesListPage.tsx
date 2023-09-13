@@ -202,7 +202,7 @@ const RolesListPage = () => {
     setIsLoading(true);
     try {
       const data = await getRoles(
-        'policies,teams,users',
+        'policies',
         paging?.after,
         paging?.before,
         undefined,
@@ -226,9 +226,14 @@ const RolesListPage = () => {
     history.push(ROUTES.ADD_ROLE);
   };
 
-  const handlePaging = ({ currentPage }: PagingHandlerParams) => {
+  const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
     setCurrentPage(currentPage);
-    fetchRoles(paging);
+    if (cursorType && paging) {
+      fetchRoles({
+        [cursorType]: paging[cursorType],
+        total: paging.total,
+      } as Paging);
+    }
   };
 
   useEffect(() => {

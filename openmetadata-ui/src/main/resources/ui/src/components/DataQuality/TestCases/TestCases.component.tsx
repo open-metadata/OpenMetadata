@@ -21,12 +21,10 @@ import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { TestCase } from 'generated/tests/testCase';
-import { Paging } from 'generated/type/paging';
 import {
   SearchHitBody,
   TestCaseSearchSource,
 } from 'interface/search.interface';
-import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
@@ -165,9 +163,9 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       searchTestCases(currentPage as number);
     } else {
       const { paging } = testCase;
-      if (isString(cursorType)) {
+      if (cursorType) {
         fetchTestCases({
-          [cursorType]: paging?.[cursorType as keyof Paging],
+          [cursorType]: paging?.[cursorType],
         });
       }
     }
