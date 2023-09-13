@@ -453,6 +453,15 @@ export const getAddQueryPath = (entityFqn: string) => {
   return path;
 };
 
+export const getDomainVersionsPath = (domainName: string, version: string) => {
+  let path = ROUTES.DOMAIN_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, domainName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
 export const getGlossaryVersionsPath = (
   glossaryName: string,
   version: string

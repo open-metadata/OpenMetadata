@@ -59,6 +59,7 @@ const DataModelDetails = ({
   handleColumnUpdateDataModel,
   onUpdateDataModel,
   handleToggleDelete,
+  onUpdateVote,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -361,6 +362,7 @@ const DataModelDetails = ({
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreDataModel}
             onTierUpdate={handleUpdateTier}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

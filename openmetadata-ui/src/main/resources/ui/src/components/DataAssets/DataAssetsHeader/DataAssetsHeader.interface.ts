@@ -13,6 +13,7 @@
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
@@ -84,6 +85,7 @@ export type DataAssetsHeaderProps = {
   onFollowClick?: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
+  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic

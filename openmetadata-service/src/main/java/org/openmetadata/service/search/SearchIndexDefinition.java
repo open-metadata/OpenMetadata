@@ -57,6 +57,12 @@ public class SearchIndexDefinition {
         Entity.TEST_SUITE, "test_suite_search_index", "/elasticsearch/%s/test_suite_index_mapping.json"),
 
     CHART_INDEX_SEARCH_INDEX(Entity.CHART, "chart_search_index", "/elasticsearch/%s/chart_index_mapping.json"),
+    STORED_PROCEDURE_SEARCH_INDEX(
+        Entity.STORED_PROCEDURE,
+        "stored_procedure_search_index",
+        "/elasticsearch/%s/stored_procedure_index_mapping.json"),
+    DATA_PRODUCTS_SEARCH_INDEX(
+        Entity.DATA_PRODUCT, "data_products_search_index", "/elasticsearch/%s/data_products_index_mapping.json"),
 
     DASHBOARD_DATA_MODEL_SEARCH_INDEX(
         Entity.DASHBOARD_DATA_MODEL,
@@ -97,6 +103,7 @@ public class SearchIndexDefinition {
         Entity.SEARCH_INDEX, "search_entity_index", "/elasticsearch/%s/search_entity_index_mapping.json"),
     STORAGE_SERVICE_INDEX(
         Entity.SEARCH_INDEX, "storage_service_index", "/elasticsearch/%s/storage_service_index_mapping.json"),
+    DOMAIN_SEARCH_INDEX(Entity.DOMAIN, "domain_search_index", "/elasticsearch/%s/domain_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",

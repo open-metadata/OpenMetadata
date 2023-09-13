@@ -16,6 +16,7 @@ source:
       markDeletedTables: true
       includeTables: true
       includeViews: true
+      includeStoredProcedures: false
       type: DatabaseMetadata
       schemaFilterPattern:
         excludes:

@@ -60,7 +60,6 @@ import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconDrag from '../assets/svg/drag.svg';
-import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
@@ -216,7 +215,6 @@ export const Icons = {
   GITHUB_ICON: 'github-icon',
   AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
-  EDIT_BLACK: 'icon-edit-black',
   EDIT_PRIMARY: 'icon-edit-primary',
   EDIT_OUTLINE_PRIMARY: 'icon-edit-outline-primary',
   EXPLORE: 'icon-explore',
@@ -835,10 +833,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
 
       break;
 
-    case Icons.EDIT_BLACK:
-      IconComponent = IconEditBlack;
-
-      break;
     case Icons.EDIT_PRIMARY:
       IconComponent = IconEditPrimary;
 

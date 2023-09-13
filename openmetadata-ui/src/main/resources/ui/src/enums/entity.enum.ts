@@ -106,6 +106,8 @@ export enum TabSpecificField {
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
+  VOTES = 'votes',
+  DOMAIN = 'domain',
 }
 
 export enum FqnPart {

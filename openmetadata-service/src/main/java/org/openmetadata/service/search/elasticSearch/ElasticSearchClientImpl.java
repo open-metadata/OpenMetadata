@@ -342,10 +342,14 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(searchSourceBuilder.query())
-            .must(QueryBuilders.termQuery("deleted", request.deleted())));
+    if (request.getIndex().equalsIgnoreCase("domain_search_index")) {
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
+    } else {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+    }
 
     if (!nullOrEmpty(request.getSortFieldParam())) {
       searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));

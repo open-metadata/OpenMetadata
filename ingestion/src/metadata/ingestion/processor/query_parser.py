@@ -28,6 +28,7 @@ from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -47,6 +48,8 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         start_date = start_time.__root__.date()
         start_time = datetime.datetime.strptime(str(start_date.isoformat()), "%Y-%m-%d")
 
+    start_time = convert_timestamp_to_milliseconds(int(start_time.timestamp()))
+
     lineage_parser = LineageParser(record.query, dialect=dialect)
 
     if not lineage_parser.involved_tables:
@@ -61,7 +64,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         query_type=record.query_type,
         exclude_usage=record.exclude_usage,
         userName=record.userName,
-        date=int(start_time.timestamp()),
+        date=start_time,
         serviceName=record.serviceName,
         duration=record.duration,
     )

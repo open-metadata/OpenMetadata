@@ -28,6 +28,7 @@ import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
+import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import { EntityField } from 'constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -44,6 +45,7 @@ import {
 } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Votes } from 'generated/type/votes';
 import i18next from 'i18next';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import {
@@ -1396,4 +1398,27 @@ export const getEntityThreadLink = (
   );
 
   return thread[0]?.entityLink;
+};
+
+/**
+ * Take entity vote and userId as input and return name for vote status type
+ * @param votes - entity votes
+ * @param userId - current user id
+ * @returns - vote status type
+ */
+export const getEntityVoteStatus = (userId: string, votes?: Votes) => {
+  if (isUndefined(votes)) {
+    return QueryVoteType.unVoted;
+  }
+
+  const upVoters = votes.upVoters ?? [];
+  const downVoters = votes.downVoters ?? [];
+
+  if (upVoters.some((user) => user.id === userId)) {
+    return QueryVoteType.votedUp;
+  } else if (downVoters.some((user) => user.id === userId)) {
+    return QueryVoteType.votedDown;
+  } else {
+    return QueryVoteType.unVoted;
+  }
 };

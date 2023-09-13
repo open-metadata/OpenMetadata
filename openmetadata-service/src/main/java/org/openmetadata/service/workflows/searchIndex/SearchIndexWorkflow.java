@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
@@ -74,8 +75,8 @@ public class SearchIndexWorkflow implements Runnable {
   private final CollectionDAO dao;
   private volatile boolean stopped = false;
 
-  public SearchIndexWorkflow(CollectionDAO dao, SearchClient client, EventPublisherJob request) {
-    this.dao = dao;
+  public SearchIndexWorkflow(SearchClient client, EventPublisherJob request) {
+    this.dao = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
     this.jobData = request;
     request
         .getEntities()
