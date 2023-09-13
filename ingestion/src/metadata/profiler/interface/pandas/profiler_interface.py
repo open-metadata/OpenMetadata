@@ -31,7 +31,6 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.datalake.datalake_utils import fetch_col_types, fetch_dataframe
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -109,7 +108,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-
 
     def _compute_table_metrics(
         self,
