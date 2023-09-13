@@ -56,6 +56,7 @@ from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
+from metadata.ingestion.models.size import OMetaSizeData
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
@@ -413,6 +414,14 @@ class MetadataRestSink(Sink):
         self.metadata.ingest_life_cycle_data(
             entity=record.entity, life_cycle_data=record.life_cycle_properties
         )
+        return Either(right=record)
+
+    @_run_dispatch.register
+    def write_size_data(self, record: OMetaSizeData) -> Either[Entity]:
+        """
+        Ingest the size data
+        """
+        self.metadata.ingest_size_data(entity=record.entity, size=record.size)
         return Either(right=record)
 
     @_run_dispatch.register

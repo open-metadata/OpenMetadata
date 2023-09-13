@@ -160,6 +160,9 @@ public interface CollectionDAO {
   DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
 
   @CreateSqlObject
+  TableExtensionTimeSeriesDAO tableExtensionTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -3233,6 +3236,13 @@ public interface CollectionDAO {
     @Override
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
+    }
+  }
+
+  interface TableExtensionTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "table_extension_time_series";
     }
   }
 

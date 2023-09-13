@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.Size;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
@@ -101,6 +102,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_LIFE_CYCLE_EXTENSION = "table.lifeCycle";
+
+  public static final String TABLE_SIZE_EXTENSION = "table.size";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_COLUMN_EXTENSION = "table.column.";
   public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
@@ -258,6 +261,20 @@ public class TableRepository extends EntityRepository<Table> {
     table.setLifeCycle(currentLifeCycle);
     postUpdate(table);
     return table.withLifeCycle(currentLifeCycle);
+  }
+
+  public Table addSize(String fqn, Size size) {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityByName(fqn);
+    table.setService(getContainer(table.getId()));
+
+    daoCollection
+        .tableExtensionTimeSeriesDao()
+        .insert(table.getFullyQualifiedName(), TABLE_SIZE_EXTENSION, "size", JsonUtils.pojoToJson(size));
+    TableProfile tableProfile =
+        new TableProfile().withTimestamp(size.getTimestamp()).withSizeInByte(size.getSizeInByte());
+    postUpdate(table);
+    return table.withProfile(tableProfile);
   }
 
   public Table addSampleData(UUID tableId, TableData tableData) {

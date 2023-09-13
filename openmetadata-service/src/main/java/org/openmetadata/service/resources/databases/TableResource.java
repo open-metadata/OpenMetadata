@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Size;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -950,6 +951,31 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_LIFE_CYCLE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     Table table = repository.addLifeCycle(fqn, lifeCycle);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{fqn}/size")
+  @Operation(
+      operationId = "addSizeData",
+      summary = "Add size data",
+      description = "Add size data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The table with the new size updates",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Table addSize(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the table", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
+      @Valid Size size) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SIZE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    Table table = repository.addSize(fqn, size);
     return addHref(uriInfo, table);
   }
 

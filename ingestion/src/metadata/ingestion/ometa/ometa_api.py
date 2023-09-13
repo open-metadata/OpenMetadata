@@ -46,6 +46,7 @@ from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMix
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
+from metadata.ingestion.ometa.mixins.size_mixin import SizeMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
@@ -109,6 +110,7 @@ class OpenMetadata(
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
     LifeCycleMixin,
+    SizeMixin,
     Generic[T, C],
 ):
     """

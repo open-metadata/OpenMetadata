@@ -60,6 +60,7 @@ from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.size import OMetaSizeData
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -170,6 +171,13 @@ class DatabaseServiceTopology(ServiceTopology):
                 type_=OMetaLifeCycleData,
                 context="life_cycle",
                 processor="yield_life_cycle_data",
+                ack_sink=False,
+                nullable=True,
+            ),
+            NodeStage(
+                type_=OMetaSizeData,
+                context="size",
+                processor="yield_table_size_data",
                 ack_sink=False,
                 nullable=True,
             ),
@@ -511,6 +519,11 @@ class DatabaseServiceSource(
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
         Get the life cycle data of the table
+        """
+
+    def yield_table_size_data(self, _) -> Iterable[Either[OMetaSizeData]]:
+        """
+        Get the size data of the table
         """
 
     def test_connection(self) -> None:

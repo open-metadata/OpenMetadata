@@ -1,0 +1,79 @@
+{
+  "tableSizeData": [
+      {
+        "fqn": "sample_data.ecommerce_db.shopify.dim_address",
+        "size_data": [
+          {
+            "timestamp": 1693563680000,
+            "sizeInByte": 1200.5
+          },
+          {
+            "timestamp": 1693650080000,
+            "sizeInByte": 1424.5
+          },
+          {
+            "timestamp": 1693736480000,
+            "sizeInByte": 1500
+          },
+          {
+            "timestamp": 1693995680000,
+            "sizeInByte": 1600
+          },
+          {
+            "timestamp": 1694341280000,
+            "sizeInByte": 3000
+          }
+        ]
+      },
+      {
+        "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+        "size_data": [
+          {
+            "timestamp": 1691662880000,
+            "sizeInByte": 4000.5
+          },
+          {
+            "timestamp": 1691835680000,
+            "sizeInByte": 3024
+          },
+          {
+            "timestamp": 1691922080000,
+            "sizeInByte": 5619.82
+          },
+          {
+            "timestamp": 1692008480000,
+            "sizeInByte": 5801
+          },
+          {
+            "timestamp": 1692354080000,
+            "sizeInByte": 6110.3
+          }
+        ]
+      },
+      {
+        "fqn": "sample_data.ecommerce_db.shopify.dim_location",
+        "size_data": [
+          {
+            "timestamp": 1692354080000,
+            "sizeInByte": 9000.5
+          },
+          {
+            "timestamp": 1692526880000,
+            "sizeInByte": 9024
+          },
+          {
+            "timestamp": 1692613280000,
+            "sizeInByte": 9619.82
+          },
+          {
+            "timestamp": 1693045280000,
+            "sizeInByte": 10000
+          },
+          {
+            "timestamp": 1693304480000,
+            "sizeInByte": 12000
+          }
+        ]
+      }
+  ]
+}

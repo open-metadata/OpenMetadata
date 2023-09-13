@@ -149,7 +149,7 @@ SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT() AS account"
 
 SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent(
     """
-select created, deleted from snowflake.account_usage.tables
+select created, deleted, bytes from snowflake.account_usage.tables
 where table_name = '{table_name}'
 and table_schema = '{schema_name}'
 and table_catalog = '{database_name}'

@@ -11,6 +11,7 @@
 """
 Snowflake source module
 """
+import datetime
 import json
 import re
 import traceback
@@ -55,12 +56,14 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import Created, Deleted
+from metadata.generated.schema.type.size import Size
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.size import OMetaSizeData
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -491,6 +494,7 @@ class SnowflakeSource(CommonDbSourceService):
         Get the life cycle data of the table
         """
         table = self.context.table
+        self.context.table_size_in_bytes = None
         try:
             results = self.engine.execute(
                 SNOWFLAKE_LIFE_CYCLE_QUERY.format(
@@ -513,11 +517,43 @@ class SnowflakeSource(CommonDbSourceService):
                         entity=table, life_cycle_properties=life_cycle
                     )
                 )
+
+                # we get the table size information in the same query
+                # and yield it in the next step
+                if row[2] is not None:
+                    self.context.table_size_in_bytes = row[2]
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=table.name.__root__,
                     error=f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
+
+    def yield_table_size_data(self, _) -> Iterable[Either[OMetaSizeData]]:
+        """
+        Get the size data of the table
+        """
+        try:
+            table = self.context.table
+            if self.context.table_size_in_bytes is not None:
+                yield Either(
+                    right=OMetaSizeData(
+                        entity=table,
+                        size=Size(
+                            timestamp=convert_timestamp_to_milliseconds(
+                                datetime.datetime.now().timestamp()
+                            ),
+                            sizeInByte=self.context.table_size_in_bytes,
+                        ),
+                    )
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=table.name.__root__,
+                    error=f"Unable to get the table size data for table {table.name.__root__}: {exc}",
                     stack_trace=traceback.format_exc(),
                 )
             )

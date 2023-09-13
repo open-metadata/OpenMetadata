@@ -93,3 +93,14 @@ SET json = JSON_INSERT(
     JSON_EXTRACT(json, '$.sourceConfig.config.viewParsingTimeoutLimit')
 )
 WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
+
+
+-- create table_extension_time_series
+CREATE TABLE IF NOT EXISTS `table_extension_time_series` (
+  `extension` varchar(100) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `jsonSchema` varchar(50) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `json` json NOT NULL,
+  `timestamp` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.timestamp'))) VIRTUAL NOT NULL,
+  `entityFQNHash` varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  UNIQUE KEY `entity_extension_time_series_constraint` (`entityFQNHash`,`extension`,`timestamp`)
+);

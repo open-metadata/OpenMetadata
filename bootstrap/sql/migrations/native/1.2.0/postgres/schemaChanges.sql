@@ -101,3 +101,14 @@ SET json = jsonb_set(
   true
 )
 WHERE json #>> '{pipelineType}' = 'metadata';
+
+
+-- create table_extension_time_series
+CREATE TABLE IF NOT EXISTS table_extension_time_series (
+	"extension" varchar(100) NOT NULL,
+	jsonschema varchar(50) NOT NULL,
+	"json" jsonb NOT NULL,
+	"timestamp" int8 NOT NULL GENERATED ALWAYS AS ((json ->> 'timestamp'::text)::bigint) STORED,
+	entityfqnhash varchar(768) NOT NULL,
+	CONSTRAINT table_extension_time_series_constraint UNIQUE (entityfqnhash, extension, "timestamp")
+);

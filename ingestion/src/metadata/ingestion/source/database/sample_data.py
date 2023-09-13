@@ -99,12 +99,14 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import Accessed, Created, Deleted, Updated
 from metadata.generated.schema.type.schema import Topic as TopicSchema
+from metadata.generated.schema.type.size import Size
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
+from metadata.ingestion.models.size import OMetaSizeData
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
@@ -514,6 +516,14 @@ class SampleDataSource(
             )
         )
 
+        self.size_data = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/size/tableSize.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -551,6 +561,7 @@ class SampleDataSource(
         yield from self.ingest_test_case_results()
         yield from self.ingest_logical_test_suite()
         yield from self.ingest_life_cycle()
+        yield from self.ingest_size_data()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -1428,6 +1439,16 @@ class SampleDataSource(
                 entity=table, life_cycle_properties=life_cycle_properties
             )
             yield Either(right=life_cycle_request)
+
+    def ingest_size_data(self) -> Iterable[Either[OMetaSizeData]]:
+        """Iterate over all the table size data and ingest them"""
+        for table_size_data in self.size_data["tableSizeData"]:
+            table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_size_data["fqn"],
+            )
+            for size in table_size_data["size_data"]:
+                yield Either(right=OMetaSizeData(entity=table, size=Size(**size)))
 
     def close(self):
         """Nothing to close"""
