@@ -30,6 +30,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -52,14 +53,17 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { ListDataModelParams } from 'rest/dashboardAPI';
 import {
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
   restoreDatabaseSchema,
+  updateDatabaseSchemaVotes,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
-import { getStoredProceduresList } from 'rest/storedProceduresAPI';
+import {
+  getStoredProceduresList,
+  ListStoredProcedureParams,
+} from 'rest/storedProceduresAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
@@ -204,7 +208,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setIsSchemaDetailsLoading(true);
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
-        ['owner', 'usageSummary', 'tags', 'domain'],
+        ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
         'include=all'
       );
       const { description: schemaDescription = '' } = response;
@@ -219,7 +223,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [databaseSchemaFQN]);
 
   const fetchStoreProcedureDetails = useCallback(
-    async (params?: ListDataModelParams) => {
+    async (params?: ListStoredProcedureParams) => {
       try {
         setStoredProcedure((prev) => ({ ...prev, isLoading: true }));
         const { data, paging } = await getStoredProceduresList({
@@ -663,6 +667,20 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
   ];
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDatabaseSchemaVotes(id, data);
+      const response = await getDatabaseSchemaDetailsByFQN(
+        databaseSchemaFQN,
+        ['owner', 'usageSummary', 'tags', 'votes'],
+        'include=all'
+      );
+      setDatabaseSchema(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   if (isPermissionsLoading) {
     return <Loader />;
   }
@@ -703,6 +721,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 onOwnerUpdate={handleUpdateOwner}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
+                onUpdateVote={updateVote}
                 onVersionClick={versionHandler}
               />
             )}
