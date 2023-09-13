@@ -25,7 +25,6 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
@@ -33,8 +32,9 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_col_types, fetch_dataframe
 from metadata.utils.logger import profiler_interface_registry_logger
-from metadata.utils.sqa_like_column import SQALikeColumn, Type
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = profiler_interface_registry_logger()
 
@@ -90,6 +90,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             file_fqn=DatalakeTableSchemaWrapper(
                 key=self.table_entity.name.__root__,
                 bucket_name=self.table_entity.databaseSchema.name,
+                file_extension=self.table_entity.fileFormat,
             ),
             is_profiler=True,
         )
@@ -108,6 +109,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
+
 
     def _compute_table_metrics(
         self,
@@ -354,7 +356,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             return [
                 SQALikeColumn(
                     column_name,
-                    Type(DatalakeSource.fetch_col_types(df, column_name)),
+                    fetch_col_types(df, column_name),
                 )
                 for column_name in df.columns
             ]

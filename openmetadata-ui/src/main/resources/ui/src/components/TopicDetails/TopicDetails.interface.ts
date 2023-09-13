@@ -12,6 +12,7 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
 import { SchemaType } from '../../generated/type/schema';
@@ -24,6 +25,7 @@ export interface TopicDetailsProps {
   followTopicHandler: () => Promise<void>;
   unFollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
   handleToggleDelete: () => void;
 }
