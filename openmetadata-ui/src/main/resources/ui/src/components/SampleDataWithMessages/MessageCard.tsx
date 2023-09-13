@@ -25,7 +25,7 @@ const MessageCard = ({ message }: { message: string }) => {
     <Card
       data-testid="message-card"
       onClick={() => setIsExpanded((pre) => !pre)}>
-      <Row align="top" gutter={[8, 8]}>
+      <Row align="top" gutter={16} wrap={false}>
         <Col className="cursor-pointer">
           {isExpanded ? (
             <UpOutlined className="text-xs" />
@@ -33,30 +33,30 @@ const MessageCard = ({ message }: { message: string }) => {
             <DownOutlined className="text-xs" />
           )}
         </Col>
-        {isExpanded ? (
-          <Col>
-            <Button
-              className="active"
-              data-testid="value"
-              id="sampleData-value">
-              {t('label.value')}
-            </Button>
-            <SchemaEditor
-              className="m-t-xs"
-              editorClass="topic-sample-data"
-              options={{
-                styleActiveLine: false,
-              }}
-              value={message.replace(/'/g, '"')}
-            />
-          </Col>
-        ) : (
-          <Col>
+        <Col flex="auto">
+          {isExpanded ? (
+            <>
+              <Button
+                className="active"
+                data-testid="value"
+                id="sampleData-value">
+                {t('label.value')}
+              </Button>
+              <SchemaEditor
+                className="m-t-xs"
+                editorClass="topic-sample-data"
+                options={{
+                  styleActiveLine: false,
+                }}
+                value={message.replace(/'/g, '"')}
+              />
+            </>
+          ) : (
             <Typography.Text ellipsis className="text-primary">
               {message}
             </Typography.Text>
-          </Col>
-        )}
+          )}
+        </Col>
       </Row>
     </Card>
   );

@@ -321,7 +321,7 @@ function SearchIndexDetailsPage() {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={searchIndexDetails?.description}
-              entityFqn={searchIndexId}
+              entityFqn={searchIndexFQN}
               entityName={entityName}
               entityType={EntityType.SEARCH_INDEX}
               hasEditAccess={
