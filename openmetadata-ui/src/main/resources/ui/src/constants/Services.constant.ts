@@ -401,6 +401,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
+  SearchServiceType.OpenSearch,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
