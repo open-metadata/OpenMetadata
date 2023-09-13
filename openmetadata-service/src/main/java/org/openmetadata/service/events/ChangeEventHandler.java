@@ -25,7 +25,6 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -35,7 +34,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.JsonUtils;
@@ -46,12 +44,9 @@ public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
   private NotificationHandler notificationHandler;
 
-  private JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider;
-
-  public void init(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
+  public void init(OpenMetadataApplicationConfig config) {
     this.mapper = new ObjectMapper();
-    this.notificationHandler = new NotificationHandler(jdbiUnitOfWorkProvider);
-    this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
+    this.notificationHandler = new NotificationHandler();
   }
 
   @SneakyThrows
@@ -60,10 +55,7 @@ public class ChangeEventHandler implements EventHandler {
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
-      Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
-      handle.getConnection().setAutoCommit(true);
-      CollectionDAO collectionDAO =
-          (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
+      CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
       FeedRepository feedRepository = new FeedRepository(collectionDAO);
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
@@ -110,8 +102,6 @@ public class ChangeEventHandler implements EventHandler {
       }
     } catch (Exception e) {
       LOG.error("Failed to capture the change event for method {} due to ", method, e);
-    } finally {
-      jdbiUnitOfWorkProvider.getHandleManager().clear();
     }
     return null;
   }

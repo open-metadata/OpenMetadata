@@ -51,14 +51,16 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { ListDataModelParams } from 'rest/dashboardAPI';
 import {
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
   restoreDatabaseSchema,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
-import { getStoredProceduresList } from 'rest/storedProceduresAPI';
+import {
+  getStoredProceduresList,
+  ListStoredProcedureParams,
+} from 'rest/storedProceduresAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
@@ -218,7 +220,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [databaseSchemaFQN]);
 
   const fetchStoreProcedureDetails = useCallback(
-    async (params?: ListDataModelParams) => {
+    async (params?: ListStoredProcedureParams) => {
       try {
         setStoredProcedure((prev) => ({ ...prev, isLoading: true }));
         const { data, paging } = await getStoredProceduresList({

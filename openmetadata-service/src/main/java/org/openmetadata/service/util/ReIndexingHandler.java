@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -63,10 +65,10 @@ public class ReIndexingHandler {
     return instance;
   }
 
-  public static void initialize(SearchClient client, CollectionDAO daoObject) {
+  public static void initialize(SearchClient client) {
     if (!initialized) {
       searchClient = client;
-      dao = daoObject;
+      dao = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
       taskQueue = new ArrayBlockingQueue<>(5);
       threadScheduler = new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, taskQueue);
       instance = new ReIndexingHandler();
@@ -117,7 +119,7 @@ public class ReIndexingHandler {
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
         // Create Job
-        SearchIndexWorkflow job = new SearchIndexWorkflow(dao, searchClient, jobData);
+        SearchIndexWorkflow job = new SearchIndexWorkflow(searchClient, jobData);
         threadScheduler.submit(job);
         REINDEXING_JOB_MAP.put(jobData.getId(), job);
         return jobData;

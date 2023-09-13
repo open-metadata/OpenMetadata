@@ -256,6 +256,7 @@ public class TableRepository extends EntityRepository<Table> {
             table.getId().toString(), TABLE_LIFE_CYCLE_EXTENSION, "lifeCycle", JsonUtils.pojoToJson(currentLifeCycle));
 
     table.setLifeCycle(currentLifeCycle);
+    postUpdate(table);
     return table.withLifeCycle(currentLifeCycle);
   }
 
