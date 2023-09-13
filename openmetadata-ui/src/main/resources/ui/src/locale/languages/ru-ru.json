@@ -380,6 +380,7 @@
     "february": "Февраль",
     "feed-lowercase": "фид",
     "feed-plural": "Фиды",
+    "field": "Field",
     "field-change": "Изменить поле",
     "field-invalid": "{{field}} недействительно",
     "field-plural": "Поля",
