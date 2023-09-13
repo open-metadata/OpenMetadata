@@ -30,8 +30,8 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   {filters}
   AND job_type = "QUERY"
   AND state = "DONE"
-  AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
-  AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE")
+  AND query NOT LIKE '/*%%{"app": "OpenMetadata", %%}%%*/%%'
   AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
   LIMIT {result_limit}
 """
@@ -55,4 +55,73 @@ BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
     select table_name, table_type from {}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
     """
+)
+
+BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT 
+  routine_name as name,
+  routine_definition as definition,
+  external_language as language
+FROM test_omd.INFORMATION_SCHEMA.ROUTINES
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
+  AND routine_catalog = '{database_name}'
+  AND routine_schema = '{schema_name}'
+    """
+)
+
+BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+WITH SP_HISTORY AS (
+  SELECT
+    job_id,
+    query AS query_text,
+    start_time,
+    end_time,
+    user_email as user_name
+  FROM `region-us`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+  WHERE statement_type = 'SCRIPT'
+    AND start_time >= '{start_date}'
+    AND job_type = "QUERY"
+    AND state = "DONE"
+    AND error_result is NULL
+    AND query LIKE 'CALL%%'
+),
+Q_HISTORY AS (
+  SELECT
+    job_id,
+    project_id as database_name,
+    user_email as user_name,
+    statement_type as query_type,
+    start_time,
+    end_time,
+    query as query_text,
+    null as schema_name,
+    total_slot_ms/1000 as duration
+  FROM `region-us`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+  WHERE statement_type <> 'SCRIPT'
+    AND start_time >= '{start_date}' 
+    AND job_type = "QUERY"
+    AND state = "DONE"
+    AND error_result is NULL
+)
+SELECT
+  SP.job_id as procedure_id,
+  Q.job_id as query_id,
+  Q.query_type as query_type,
+  SP.query_text as procedure_text,
+  Q.query_text as query_text,
+  SP.start_time as procedure_start_time,
+  SP.end_time as procedure_end_time,
+  Q.start_time as query_start_time,
+  Q.end_time as query_end_time,
+  Q.duration as query_duration,
+  Q.user_name as query_user_name
+FROM SP_HISTORY SP
+JOIN Q_HISTORY Q
+  ON Q.start_time between SP.start_time and SP.end_time
+  AND Q.end_time between SP.start_time and SP.end_time
+  AND Q.user_name = SP.user_name
+ORDER BY procedure_start_time DESC
+"""
 )

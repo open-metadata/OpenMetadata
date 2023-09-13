@@ -557,7 +557,8 @@ class SnowflakeSource(CommonDbSourceService):
                             database_name=self.context.database.name.__root__,
                             schema_name=self.context.database_schema.name.__root__,
                         )
-                        + f"/{stored_procedure.name}{quote(stored_procedure.signature)}"
+                        + f"/procedure/{stored_procedure.name}"
+                        + f"{quote(stored_procedure.signature) if stored_procedure.signature else ''}"
                     ),
                 )
             )
