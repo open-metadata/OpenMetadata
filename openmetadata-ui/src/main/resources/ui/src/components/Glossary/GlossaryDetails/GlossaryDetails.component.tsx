@@ -15,6 +15,7 @@ import { Col, Row, Space } from 'antd';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
@@ -33,6 +34,7 @@ type props = {
   glossaryTerms: GlossaryTerm[];
   termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
+  updateVote?: (data: VotingDataProps) => Promise<void>;
   handleGlossaryDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
@@ -43,6 +45,7 @@ const GlossaryDetails = ({
   permissions,
   glossary,
   updateGlossary,
+  updateVote,
   handleGlossaryDelete,
   glossaryTerms,
   termsLoading,
@@ -117,6 +120,7 @@ const GlossaryDetails = ({
           isVersionView={isVersionView}
           permissions={permissions}
           selectedData={{ ...glossary, displayName, name }}
+          updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}

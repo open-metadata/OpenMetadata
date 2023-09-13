@@ -20,6 +20,7 @@ import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
@@ -38,6 +39,8 @@ import {
   getGlossaryTermByFQN,
   patchGlossaries,
   patchGlossaryTerm,
+  updateGlossaryTermVotes,
+  updateGlossaryVotes,
 } from 'rest/glossaryAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
@@ -117,7 +120,7 @@ const GlossaryPage = () => {
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
-        fields: 'owner,tags,reviewers',
+        fields: 'owner,tags,reviewers,votes',
         limit: PAGE_SIZE_LARGE,
       });
       setGlossaries(data);
@@ -149,7 +152,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner,children'
+        'relatedTerms,reviewers,tags,owner,children,votes'
       );
       setSelectedData(response);
     } catch (error) {
@@ -207,6 +210,23 @@ const GlossaryPage = () => {
       if (selectedData?.name !== updatedData.name) {
         history.push(getGlossaryPath(response.fullyQualifiedName));
         fetchGlossaryList();
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateVote = async (data: VotingDataProps) => {
+    try {
+      const isGlossaryEntity =
+        Fqn.split(selectedData?.fullyQualifiedName).length <= 1;
+
+      if (isGlossaryEntity) {
+        await updateGlossaryVotes(selectedData?.id ?? '', data);
+        fetchGlossaryList();
+      } else {
+        await updateGlossaryTermVotes(selectedData?.id ?? '', data);
+        fetchGlossaryTermDetails();
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -353,6 +373,7 @@ const GlossaryPage = () => {
           isVersionsView={false}
           selectedData={selectedData as Glossary}
           updateGlossary={updateGlossary}
+          updateVote={updateVote}
           onAssetClick={handleAssetClick}
           onGlossaryDelete={handleGlossaryDelete}
           onGlossaryTermDelete={handleGlossaryTermDelete}

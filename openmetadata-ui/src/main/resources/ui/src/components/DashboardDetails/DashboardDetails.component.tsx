@@ -71,6 +71,7 @@ const DashboardDetails = ({
   chartTagUpdateHandler,
   versionHandler,
   createThread,
+  onUpdateVote,
   onDashboardUpdate,
   handleToggleDelete,
 }: DashboardDetailsProps) => {
@@ -701,6 +702,7 @@ const DashboardDetails = ({
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestoreDashboard}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

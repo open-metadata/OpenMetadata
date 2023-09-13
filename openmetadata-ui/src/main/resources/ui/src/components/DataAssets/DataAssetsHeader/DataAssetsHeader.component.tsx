@@ -31,6 +31,8 @@ import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
+import Voting from 'components/Voting/Voting.component';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { SERVICE_TYPES } from 'constants/Services.constant';
@@ -51,7 +53,11 @@ import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getContainerByName } from 'rest/storageAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from 'utils/DataAssetsHeader.utils';
-import { getEntityFeedLink, getEntityName } from 'utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+  getEntityVoteStatus,
+} from 'utils/EntityUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -108,6 +114,7 @@ export const DataAssetsHeader = ({
   allowSoftDelete = true,
   afterDeleteAction,
   dataAsset,
+  onUpdateVote,
   onOwnerUpdate,
   onTierUpdate,
   permissions,
@@ -118,7 +125,7 @@ export const DataAssetsHeader = ({
   onRestoreDataAsset,
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
-  const USERId = getCurrentUserId();
+  const USER_ID = getCurrentUserId();
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
@@ -147,22 +154,30 @@ export const DataAssetsHeader = ({
 
   const hasFollowers = 'followers' in dataAsset;
 
-  const { entityName, tier, isFollowing, version, followers } = useMemo(
-    () => ({
-      isFollowing: hasFollowers
-        ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
-            ({ id }) => id === USERId
-          )
-        : false,
-      followers: hasFollowers
-        ? (dataAsset as DataAssetsWithFollowersField).followers?.length
-        : 0,
+  const { entityName, tier, isFollowing, version, followers, votes, deleted } =
+    useMemo(
+      () => ({
+        isFollowing: hasFollowers
+          ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
+              ({ id }) => id === USER_ID
+            )
+          : false,
+        followers: hasFollowers
+          ? (dataAsset as DataAssetsWithFollowersField).followers?.length
+          : 0,
 
-      tier: getTierTags(dataAsset.tags ?? []),
-      entityName: getEntityName(dataAsset),
-      version: dataAsset.version,
-    }),
-    [dataAsset, USERId]
+        tier: getTierTags(dataAsset.tags ?? []),
+        entityName: getEntityName(dataAsset),
+        version: dataAsset.version,
+        deleted: dataAsset.deleted,
+        votes: (dataAsset as DataAssetsWithFollowersField).votes,
+      }),
+      [dataAsset, USER_ID]
+    );
+
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(USER_ID, votes),
+    [votes, USER_ID]
   );
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
@@ -292,6 +307,10 @@ export const DataAssetsHeader = ({
     }
   }, [isDataAssetsWithServiceField, dataAsset]);
 
+  const handleVoteChange = (data: VotingDataProps) => {
+    onUpdateVote?.(data, dataAsset.id ?? '');
+  };
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -367,6 +386,14 @@ export const DataAssetsHeader = ({
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
               <ButtonGroup size="small">
+                {onUpdateVote && (
+                  <Voting
+                    disabled={deleted}
+                    voteStatus={voteStatus}
+                    votes={votes}
+                    onUpdateVote={handleVoteChange}
+                  />
+                )}
                 {!excludeEntityService && (
                   <Button
                     className="w-16 p-0"
@@ -388,6 +415,7 @@ export const DataAssetsHeader = ({
                   <Button
                     className="w-16 p-0"
                     data-testid="entity-follow-button"
+                    disabled={deleted}
                     icon={
                       <Icon
                         component={isFollowing ? StarFilledIcon : StarIcon}
