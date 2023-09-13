@@ -311,7 +311,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private boolean shouldUpdateResultSummary(ResultSummary storedResultSummary, Long timestamp, boolean isDeleted) {
-    return storedResultSummary == null || !isDeleted || timestamp >= storedResultSummary.getTimestamp();
+    return storedResultSummary == null || timestamp >= storedResultSummary.getTimestamp();
   }
 
   // Stores the test case result with the test case entity for the latest execution
