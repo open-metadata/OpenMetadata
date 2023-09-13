@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#  pylint: disable=arguments-differ
 
 """
 Interfaces with database for all database engine
@@ -40,7 +41,6 @@ from metadata.profiler.orm.functions.table_metric_construct import (
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
-from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
@@ -153,18 +153,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             handle_query_exception(msg, exc, session)
         return None
 
-    @valuedispatch
-    def _get_metrics(self, *args, **kwargs):
-        """Generic getter method for metrics. To be used with
-        specific dispatch methods
-        """
-        logger.warning("Could not get metric. No function registered.")
-
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Table.value)
-    def _(
+    def _compute_table_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
         runner: QueryRunner,
         session,
@@ -180,7 +170,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         # pylint: disable=protected-access
-
         try:
             dialect = runner._session.get_bind().dialect.name
             row = table_metric_construct_factory.construct(
@@ -201,15 +190,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             session.rollback()
             raise RuntimeError(exc)
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Static.value)
-    def _(
+    def _compute_static_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
         runner: QueryRunner,
+        column,
         session,
-        column: Column,
         *args,
         **kwargs,
     ):
@@ -247,16 +233,15 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             handle_query_exception(msg, exc, session)
         return None
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Query.value)
-    def _(
+    def _compute_query_metrics(
         self,
-        metric_type: str,
         metric: Metrics,
         runner: QueryRunner,
+        column,
         session,
-        column: Column,
         sample,
+        *args,
+        **kwargs,
     ):
         """Given a list of metrics, compute the given results
         and returns the values
@@ -267,6 +252,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
+
         try:
             col_metric = metric(column)
             metric_query = col_metric.query(sample=sample, session=session)
@@ -284,15 +270,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             handle_query_exception(msg, exc, session)
         return None
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Window.value)
-    def _(
+    def _compute_window_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
         runner: QueryRunner,
+        column,
         session,
-        column: Column,
         *args,
         **kwargs,
     ):
@@ -305,6 +288,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
+
         if not metrics:
             return None
         try:
@@ -327,11 +311,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return dict(row)
         return None
 
-    @_get_metrics.register(MetricTypes.System.value)
-    def _(
+    def _compute_system_metrics(
         self,
-        metric_type: str,
-        metric: Metrics,
+        metrics: Metrics,
         runner: QueryRunner,
         session,
         *args,
@@ -348,7 +330,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         try:
-            rows = metric().sql(session, conn_config=self.service_connection_config)
+            rows = metrics().sql(session, conn_config=self.service_connection_config)
             return rows
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
@@ -412,8 +394,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
 
             try:
-                row = self._get_metrics(
-                    metric_type.value,
+                row = self._get_metric_fn[metric_type.value](
                     metrics,
                     runner=runner,
                     session=session,
