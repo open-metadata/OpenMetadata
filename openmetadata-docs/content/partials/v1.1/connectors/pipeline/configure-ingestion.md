@@ -10,7 +10,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.1.2/connectors/configure-metadata-ingestion-pipeline.png"
+src="/images/v1.1/connectors/configure-metadata-ingestion-pipeline.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 

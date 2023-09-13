@@ -12,4 +12,5 @@
  */
 import { TabSpecificField } from 'enums/entity.enum';
 
-export const STORED_PROCEDURE_DEFAULT_FIELDS = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.EXTENSION}, ${TabSpecificField.DOMAIN}`;
+export const STORED_PROCEDURE_DEFAULT_FIELDS = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, 
+${TabSpecificField.TAGS}, ${TabSpecificField.EXTENSION}, ${TabSpecificField.DOMAIN}, ${TabSpecificField.VOTES}`;

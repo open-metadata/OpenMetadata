@@ -20,7 +20,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.AuditLog;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
@@ -28,7 +27,7 @@ import org.slf4j.MarkerFactory;
 public class AuditEventHandler implements EventHandler {
   private final Marker auditMarker = MarkerFactory.getMarker("AUDIT");
 
-  public void init(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider provider) {
+  public void init(OpenMetadataApplicationConfig config) {
     // Nothing to do
   }
 

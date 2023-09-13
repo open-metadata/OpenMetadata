@@ -71,7 +71,8 @@ class UniqueCount(QueryMetric):
         try:
             counter = Counter()
             for df in dfs:
-                counter.update(df[self.col.name].dropna().to_list())
+                df_col_value = df[self.col.name].dropna().to_list()
+                counter.update(df_col_value)
             return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(
