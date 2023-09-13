@@ -257,6 +257,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_DOMAIN);
     }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
+    if (supportsDataProducts) {
+      this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+      this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+    }
   }
 
   /**

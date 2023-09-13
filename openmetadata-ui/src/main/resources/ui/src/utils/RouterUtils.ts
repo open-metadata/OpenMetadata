@@ -453,6 +453,18 @@ export const getAddQueryPath = (entityFqn: string) => {
   return path;
 };
 
+export const getDataProductVersionsPath = (
+  dataProductFqn: string,
+  version: string
+) => {
+  let path = ROUTES.DATA_PRODUCT_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, dataProductFqn)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
 export const getDomainVersionsPath = (domainName: string, version: string) => {
   let path = ROUTES.DOMAIN_VERSION;
   path = path

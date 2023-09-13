@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Tabs } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { AssetsFilterOptions } from 'constants/Assets.constants';
 import { PAGE_SIZE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
@@ -44,15 +43,11 @@ import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { AssetsOfEntity } from './AssetsTabs.interface';
-
-interface Props {
-  onAddAsset: () => void;
-  permissions: OperationPermission;
-  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
-  isSummaryPanelOpen: boolean;
-  type?: AssetsOfEntity;
-}
+import {
+  AssetsOfEntity,
+  AssetsTabsProps,
+  AssetsViewType,
+} from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -67,7 +62,8 @@ const AssetsTabs = forwardRef(
       isSummaryPanelOpen,
       onAddAsset,
       type = AssetsOfEntity.GLOSSARY,
-    }: Props,
+      viewType = AssetsViewType.PILLS,
+    }: AssetsTabsProps,
     ref
   ) => {
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
@@ -90,9 +86,28 @@ const AssetsTabs = forwardRef(
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedCard, setSelectedCard] = useState<SourceType>();
 
+    const tabs = useMemo(() => {
+      return AssetsFilterOptions.map((option) => {
+        return {
+          label: (
+            <TabsLabel
+              count={itemCount[option.key]}
+              id={option.key}
+              isActive={activeFilter === option.value}
+              name={option.label}
+            />
+          ),
+          key: option.value,
+          value: option.value,
+        };
+      });
+    }, [itemCount]);
+
     const queryParam = useMemo(() => {
-      if (type !== AssetsOfEntity.GLOSSARY) {
+      if (type === AssetsOfEntity.DOMAIN) {
         return `(domain.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
       } else {
         return `(tags.tagFQN:"${glossaryName}")`;
       }
@@ -219,6 +234,51 @@ const AssetsTabs = forwardRef(
       [activeFilter, currentPage]
     );
 
+    const assetsHeader = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return AssetsFilterOptions.map((option) => {
+          const buttonStyle =
+            activeFilter === option.value
+              ? {
+                  ghost: true,
+                  type: 'primary' as ButtonType,
+                  style: { background: 'white' },
+                }
+              : {};
+
+          return itemCount[option.key] > 0 ? (
+            <Button
+              {...buttonStyle}
+              className="m-r-sm m-b-sm"
+              key={option.value}
+              onClick={() => {
+                setCurrentPage(1);
+                setActiveFilter(option.value);
+              }}>
+              {startCase(option.label)}{' '}
+              <span className="p-l-xs">
+                {getCountBadge(
+                  itemCount[option.key],
+                  '',
+                  activeFilter === option.value
+                )}
+              </span>
+            </Button>
+          ) : null;
+        });
+      } else {
+        return (
+          <Tabs
+            items={tabs}
+            onChange={(value) => {
+              setCurrentPage(1);
+              setActiveFilter(value as SearchIndex);
+            }}
+          />
+        );
+      }
+    }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+
     useEffect(() => {
       fetchAssets({ index: activeFilter, page: currentPage });
     }, [activeFilter, currentPage]);
@@ -250,39 +310,16 @@ const AssetsTabs = forwardRef(
     }
 
     return (
-      <div className="p-md assets-tab-container" data-testid="table-container">
-        {AssetsFilterOptions.map((option) => {
-          const buttonStyle =
-            activeFilter === option.value
-              ? {
-                  ghost: true,
-                  type: 'primary' as ButtonType,
-                  style: { background: 'white' },
-                }
-              : {};
+      <div
+        className={classNames(
+          'assets-tab-container',
+          viewType === AssetsViewType.PILLS ? 'p-md' : ''
+        )}
+        data-testid="table-container">
+        {assetsHeader}
 
-          return itemCount[option.key] > 0 ? (
-            <Button
-              {...buttonStyle}
-              className="m-r-sm m-b-sm"
-              key={option.value}
-              onClick={() => {
-                setCurrentPage(1);
-                setActiveFilter(option.value);
-              }}>
-              {startCase(option.label)}{' '}
-              <span className="p-l-xs">
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter === option.value
-                )}
-              </span>
-            </Button>
-          ) : null;
-        })}
         {data.length ? (
-          <>
+          <div className="assets-data-container">
             {data.map(({ _source, _id = '' }, index) => (
               <ExploreSearchCard
                 className={classNames(
@@ -307,7 +344,7 @@ const AssetsTabs = forwardRef(
                 }
               />
             )}
-          </>
+          </div>
         ) : (
           <div className="m-t-xlg">
             <ErrorPlaceHolder

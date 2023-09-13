@@ -73,6 +73,7 @@ export enum ResourceEntity {
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   EVENT_SUBSCRIPTION = 'eventsubscription',
   DOMAIN = 'domain',
+  DATA_PRODUCT = 'dataProduct',
   STORED_PROCEDURE = 'storedProcedure',
 }
 

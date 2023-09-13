@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
 
-export interface DomainExpertsProps {
-  entity: Domain | DataProduct;
+export interface DataProductsDetailsPageProps {
+  dataProduct: DataProduct;
   isVersionsView?: boolean;
-  editPermission?: boolean;
+  onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
+  onDelete: () => void;
 }

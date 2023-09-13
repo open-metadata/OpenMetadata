@@ -10,11 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
+@import (reference) url('../../../styles/variables.less');
 
-export interface DomainExpertsProps {
-  entity: Domain | DataProduct;
-  isVersionsView?: boolean;
-  editPermission?: boolean;
+.data-product-content-container {
+  height: @data-product-page-height;
+  overflow-y: auto;
+}
+.data-product-details {
+  .assets-tab-container {
+    border: 1px solid @border-color;
+    border-radius: 10px;
+    .ant-tabs-nav {
+      margin-bottom: 0;
+    }
+    .ant-tabs-tab {
+      margin-left: 24px;
+    }
+    .assets-data-container {
+      padding: 12px 18px;
+      max-height: 440px;
+      overflow-y: auto;
+    }
+  }
 }
