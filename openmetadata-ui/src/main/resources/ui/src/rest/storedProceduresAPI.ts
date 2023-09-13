@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { EntityHistory } from 'generated/type/entityHistory';
@@ -158,6 +159,18 @@ export const restoreStoredProcedures = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<StoredProcedure>
   >(`${URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const updateStoredProcedureVotes = async (
+  id: string,
+  data: QueryVote
+) => {
+  const response = await APIClient.put<
+    QueryVote,
+    AxiosResponse<StoredProcedure>
+  >(`${URL}/${id}/vote`, data);
 
   return response.data;
 };

@@ -25,6 +25,9 @@ from metadata.readers.dataframe.dsv import CSVDataFrameReader, TSVDataFrameReade
 from metadata.readers.dataframe.json import JSONDataFrameReader
 from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 from metadata.readers.models import ConfigSource
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 class SupportedTypes(Enum):
@@ -48,7 +51,7 @@ DF_READER_MAP = {
 }
 
 
-def get_reader(
+def get_df_reader(
     type_: SupportedTypes, config_source: ConfigSource, client: Optional[Any]
 ) -> DataFrameReader:
     """
