@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from 'enums/service.enum';
+import { ServiceCategoryPlural } from 'enums/service.enum';
 import { SearchIndexMappingLanguage } from 'generated/configuration/elasticSearchConfiguration';
 import { t } from 'i18next';
 import { map, startCase } from 'lodash';
@@ -77,7 +77,14 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     value: 'testCase',
     label: t('label.test-case'),
   },
-  ...map(ServiceCategory, (value) => ({ value, label: startCase(value) })),
+  {
+    value: 'domain',
+    label: t('label.domain'),
+  },
+  ...map(ServiceCategoryPlural, (key, value) => ({
+    value,
+    label: startCase(key),
+  })),
   {
     value: 'chart',
     label: 'Chart',

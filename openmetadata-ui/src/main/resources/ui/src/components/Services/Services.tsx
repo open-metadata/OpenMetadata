@@ -391,8 +391,14 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   useEffect(() => {
-    getServiceDetails({ search: searchTerm, limit: pageSize });
-  }, [searchIndex, pageSize, serviceName, searchTerm]);
+    getServiceDetails({
+      search: searchTerm,
+      limit: pageSize,
+      filters: serviceTypeFilter
+        ? `(serviceType:${serviceTypeFilter.map((type) => type).join(' OR ')})`
+        : undefined,
+    });
+  }, [searchIndex, pageSize, serviceName, searchTerm, serviceTypeFilter]);
 
   useEffect(() => {
     setSearchTerm('');
@@ -402,12 +408,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     _pagination,
     filters
   ) => {
-    const serviceType = filters.serviceType as ServicesType['serviceType'][];
-    setServiceTypeFilter(serviceType);
-    getServiceDetails({
-      limit: pageSize,
-      filters: serviceType ? `serviceType:${serviceType.join(',')}` : undefined,
-    });
+    setServiceTypeFilter(filters.serviceType as ServicesType['serviceType'][]);
   };
 
   return (
