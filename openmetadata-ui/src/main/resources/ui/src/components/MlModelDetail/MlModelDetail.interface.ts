@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -28,4 +29,5 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
   createThread: (data: CreateThread) => void;
   handleToggleDelete: () => void;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

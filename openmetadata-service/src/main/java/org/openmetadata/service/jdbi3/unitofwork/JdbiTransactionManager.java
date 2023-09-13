@@ -94,13 +94,9 @@ public class JdbiTransactionManager {
   }
 
   public void terminateHandle() {
-    if (IN_TRANSACTION_HANDLES.contains(handleManager.get().hashCode())) {
+    if (handleManager.handleExists()) {
+      IN_TRANSACTION_HANDLES.remove(handleManager.get().hashCode());
       handleManager.clear();
     }
-    IN_TRANSACTION_HANDLES.remove(handleManager.get().hashCode());
-  }
-
-  public boolean containsHandle(int hashCode) {
-    return IN_TRANSACTION_HANDLES.contains(hashCode);
   }
 }

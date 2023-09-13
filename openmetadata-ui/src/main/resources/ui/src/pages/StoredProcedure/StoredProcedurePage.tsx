@@ -32,6 +32,7 @@ import {
 import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -60,6 +61,7 @@ import {
   patchStoredProceduresDetails,
   removeStoredProceduresFollower,
   restoreStoredProcedures,
+  updateStoredProcedureVotes,
 } from 'rest/storedProceduresAPI';
 import {
   addToRecentViewed,
@@ -614,6 +616,19 @@ const StoredProcedurePage = () => {
     ]
   );
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateStoredProcedureVotes(id, data);
+      const details = await getStoredProceduresDetailsByFQN(
+        storedProcedureFQN,
+        STORED_PROCEDURE_DEFAULT_FIELDS
+      );
+      setStoredProcedure(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (storedProcedureFQN) {
       fetchResourcePermission();
@@ -662,6 +677,7 @@ const StoredProcedurePage = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreStoredProcedures}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
         </Col>

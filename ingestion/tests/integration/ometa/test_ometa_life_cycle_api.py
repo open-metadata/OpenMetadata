@@ -12,7 +12,6 @@
 """
 OpenMetadata high-level API Table Life Cycle test
 """
-import datetime
 import uuid
 from unittest import TestCase
 
@@ -147,27 +146,15 @@ class OMetaLifeCycleTest(TestCase):
 
         cls.life_cycle = LifeCycleProperties(
             created=Created(
-                created_at=datetime.datetime(
-                    2023, 9, 1, 12, 0, tzinfo=datetime.timezone.utc
-                ),
+                created_at=1693569600000,
                 created_by=cls.created_user_ref,
             ),
             updated=Updated(
-                updated_at=datetime.datetime(
-                    2023, 9, 2, 14, 30, 0, tzinfo=datetime.timezone.utc
-                ),
+                updated_at=1693665000000,
                 updated_by=cls.updated_user_ref,
             ),
-            accessed=Accessed(
-                accessed_at=datetime.datetime(
-                    2023, 9, 3, 15, 45, 0, tzinfo=datetime.timezone.utc
-                )
-            ),
-            deleted=Deleted(
-                deleted_at=datetime.datetime(
-                    2023, 9, 4, 16, 30, 0, tzinfo=datetime.timezone.utc
-                )
-            ),
+            accessed=Accessed(accessed_at=1693755900000),
+            deleted=Deleted(deleted_at=1693845000000),
         )
 
     @classmethod
@@ -240,16 +227,12 @@ class OMetaLifeCycleTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
         new_accessed = Accessed(
-            accessed_at=datetime.datetime(
-                2023, 9, 6, 15, 45, 0, tzinfo=datetime.timezone.utc
-            ),
+            accessed_at=1694015100000,
             accessed_by=self.updated_user_ref,
         )
 
         new_updated = Updated(
-            updated_at=datetime.datetime(
-                2023, 9, 1, 14, 30, 0, tzinfo=datetime.timezone.utc
-            ),
+            updated_at=1693578600000,
             updated_by=self.updated_user_ref,
         )
 

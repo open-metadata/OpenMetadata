@@ -9,6 +9,8 @@ public interface JdbiHandleManager {
 
   Handle get();
 
+  boolean handleExists();
+
   void clear();
 
   default ThreadFactory createThreadFactory() {

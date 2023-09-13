@@ -96,9 +96,12 @@ class QueryByProcedure(BaseModel):
     procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
     procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
     query_start_time: datetime = Field(..., alias="QUERY_START_TIME")
-    query_duration: float = Field(..., alias="QUERY_DURATION")
+    query_duration: Optional[float] = Field(None, alias="QUERY_DURATION")
     query_text: str = Field(..., alias="QUERY_TEXT")
     query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 class DatabaseServiceTopology(ServiceTopology):
