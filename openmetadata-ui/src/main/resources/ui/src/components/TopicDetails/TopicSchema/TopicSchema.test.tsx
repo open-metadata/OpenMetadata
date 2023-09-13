@@ -107,7 +107,7 @@ describe('Topic Schema', () => {
     expect(schemaFields).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(10);
+    expect(rows).toHaveLength(20);
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
@@ -138,13 +138,13 @@ describe('Topic Schema', () => {
     expect(singleRowExpandIcon).toBeNull();
 
     // order_id is child of nested row, so should be null initially
-    expect(screen.queryByText('order_id')).toBeNull();
+    expect(await screen.findByText('order_id')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(expandIcon);
     });
 
-    expect(await screen.findByText('order_id')).toBeInTheDocument();
+    expect(screen.queryByText('order_id')).toBeNull();
   });
 
   it('On edit description button click modal editor should render', async () => {

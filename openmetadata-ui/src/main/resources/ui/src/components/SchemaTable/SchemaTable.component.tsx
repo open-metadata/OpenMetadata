@@ -38,9 +38,10 @@ import {
   toLower,
   uniqBy,
 } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -55,11 +56,7 @@ import {
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  SchemaTableProps,
-  TableCellRendered,
-  TagFilterOptions,
-} from './SchemaTable.interface';
+import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = ({
   tableColumns,
@@ -290,58 +287,6 @@ const SchemaTable = ({
     );
   };
 
-  const extractTags = (item: Column, allTags: TagFilterOptions[]) => {
-    if (item?.tags?.length) {
-      item.tags.forEach((tag) => {
-        allTags.push({
-          text: tag.tagFQN,
-          value: tag.tagFQN,
-          source: tag.source,
-        });
-      });
-    }
-
-    if (item?.children?.length) {
-      item.children.forEach((child) => {
-        extractTags(child, allTags);
-      });
-    }
-  };
-
-  const getAllTags = (data: Column[]) => {
-    return data.reduce((allTags, item) => {
-      extractTags(item, allTags);
-
-      return allTags;
-    }, [] as TagFilterOptions[]);
-  };
-
-  const searchTagInData = (data: Column, tagToSearch: string) => {
-    if (data.tags && data.tags.some((tag) => tag.tagFQN === tagToSearch)) {
-      return true;
-    }
-
-    if (data.children?.length) {
-      for (const child of data.children) {
-        if (searchTagInData(child, tagToSearch)) {
-          return true;
-        }
-      }
-      setExpandedRowKeys((pre) => [...pre, data?.fullyQualifiedName ?? '']);
-    }
-
-    return false;
-  };
-
-  const tagFilter = useMemo(() => {
-    const tags = getAllTags(data);
-
-    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
-      TagSource,
-      TagFilterOptions[]
-    >;
-  }, [data]);
-
   const expandableConfig: ExpandableConfig<Column> = useMemo(
     () => ({
       ...getTableExpandableConfig<Column>(),
@@ -387,6 +332,15 @@ const SchemaTable = ({
       setEditColumnDisplayName(undefined);
     }
   };
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(data);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [data]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -483,7 +437,7 @@ const SchemaTable = ({
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: (value, record) => searchTagInData(record, value as string),
+        onFilter: searchTagInData,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -512,7 +466,7 @@ const SchemaTable = ({
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: (value, record) => searchTagInData(record, value as string),
+        onFilter: searchTagInData,
       },
     ],
     [

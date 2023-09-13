@@ -13,12 +13,7 @@
 
 import { ReactNode } from 'react';
 import { ThreadType } from '../../generated/api/feed/createThread';
-import {
-  Column,
-  ColumnJoins,
-  Table,
-  TagSource,
-} from '../../generated/entity/data/table';
+import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
 
 export interface SchemaTableProps {
   tableColumns: Column[];
@@ -48,9 +43,3 @@ export interface EditColumnTag {
   column: Column;
   index: number;
 }
-
-export type TagFilterOptions = {
-  text: string;
-  value: string;
-  source: TagSource;
-};
