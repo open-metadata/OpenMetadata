@@ -90,6 +90,9 @@ const Services = ({ serviceName }: ServicesProps) => {
   const { permissions } = usePermissionProvider();
 
   const searchIndex = useMemo(() => {
+    setSearchTerm('');
+    setServiceTypeFilter([]);
+
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
         return SearchIndex.DATABASE_SERVICE;
@@ -124,7 +127,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       setIsLoading(true);
       try {
         let services = [];
-        if (search || filters) {
+        if (search || !isEmpty(filters)) {
           const {
             hits: { hits, total },
           } = await searchService({
@@ -303,11 +306,9 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       filterDropdown: ColumnFilter,
       filterIcon: FilterIcon,
-      filtered: !isNil(serviceTypeFilter),
+      filtered: !isEmpty(serviceTypeFilter),
       filteredValue: serviceTypeFilter,
       filters: serviceTypeFilters,
-      onFilter: (value: string | number | boolean, record) =>
-        record.serviceType === value,
       render: (serviceType) => (
         <span className="font-normal text-grey-body">{serviceType}</span>
       ),
@@ -394,15 +395,14 @@ const Services = ({ serviceName }: ServicesProps) => {
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
-      filters: serviceTypeFilter
-        ? `(serviceType:${serviceTypeFilter.map((type) => type).join(' OR ')})`
-        : undefined,
+      filters:
+        serviceTypeFilter && serviceTypeFilter.length
+          ? `(${serviceTypeFilter
+              .map((type) => `serviceType:${type}`)
+              .join(' ')})`
+          : undefined,
     });
   }, [searchIndex, pageSize, serviceName, searchTerm, serviceTypeFilter]);
-
-  useEffect(() => {
-    setSearchTerm('');
-  }, [serviceName]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
