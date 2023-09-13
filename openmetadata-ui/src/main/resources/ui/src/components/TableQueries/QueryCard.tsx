@@ -14,7 +14,7 @@
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
+import { getTableTabPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
 import { EntityType } from 'enums/entity.enum';
 import { useClipboard } from 'hooks/useClipBoard';
@@ -23,7 +23,7 @@ import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { customFormatDateTime } from 'utils/date-time/DateTimeUtils';
 import { parseSearchParams } from 'utils/Query/QueryUtils';
 import { getQueryPath } from 'utils/RouterUtils';
@@ -177,16 +177,7 @@ const QueryCard: FC<QueryCardProp> = ({
               {duration && (
                 <>
                   <Text>{duration}</Text>
-                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
                 </>
-              )}
-              {query.updatedBy && (
-                <Text>
-                  {`${t('label.by-lowercase')} `}
-                  <Link to={getUserPath(query.updatedBy)}>
-                    {query.updatedBy}
-                  </Link>
-                </Text>
               )}
             </Space>
           }

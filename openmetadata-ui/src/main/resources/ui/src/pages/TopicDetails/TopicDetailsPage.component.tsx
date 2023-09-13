@@ -122,6 +122,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.FOLLOWERS,
         TabSpecificField.TAGS,
         TabSpecificField.EXTENSION,
+        TabSpecificField.DOMAIN,
       ]);
       const { id, fullyQualifiedName, serviceType } = res;
 
