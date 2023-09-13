@@ -793,7 +793,6 @@ const SEARCH_SERVICE_DETAILS_FOR_VERSION_TEST = {
     config: {
       type: 'ElasticSearch',
       hostPort: 'elasticsearch:9200',
-      scheme: 'http',
       authType: {
         username: 'admin',
         password: 'admin',
