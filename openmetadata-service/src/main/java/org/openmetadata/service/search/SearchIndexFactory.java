@@ -13,8 +13,10 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -33,6 +35,7 @@ import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DashboardServiceIndex;
+import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.DatabaseServiceIndex;
@@ -47,6 +50,7 @@ import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
+import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TeamIndex;
@@ -113,6 +117,10 @@ public class SearchIndexFactory {
         return new PipelineServiceIndex((PipelineService) entity);
       case Entity.DOMAIN:
         return new DomainIndex((Domain) entity);
+      case Entity.STORED_PROCEDURE:
+        return new StoredProcedureIndex((StoredProcedure) entity);
+      case Entity.DATA_PRODUCT:
+        return new DataProductIndex((DataProduct) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
