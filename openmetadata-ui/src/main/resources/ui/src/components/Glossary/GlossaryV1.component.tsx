@@ -57,6 +57,7 @@ const GlossaryV1 = ({
   selectedData,
   onGlossaryTermUpdate,
   updateGlossary,
+  updateVote,
   onGlossaryDelete,
   onGlossaryTermDelete,
   isVersionsView,
@@ -318,6 +319,7 @@ const GlossaryV1 = ({
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
             updateGlossary={updateGlossary}
+            updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term)
             }
@@ -336,6 +338,7 @@ const GlossaryV1 = ({
             permissions={glossaryTermPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
+            updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term)
             }
