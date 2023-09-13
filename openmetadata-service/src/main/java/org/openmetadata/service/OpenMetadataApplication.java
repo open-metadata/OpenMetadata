@@ -87,6 +87,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiTransactionManager;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkApplicationEventListener;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.migration.Migration;
@@ -142,9 +143,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
-    CollectionDAO daoObject =
-        (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
-    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(jdbiUnitOfWorkProvider, new HashSet<>()));
+    CollectionDAO daoObject = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+    JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
+    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);

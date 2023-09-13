@@ -109,6 +109,7 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
@@ -500,9 +501,13 @@ class SnowflakeSource(CommonDbSourceService):
             ).all()
             for row in results:
                 life_cycle = init_empty_life_cycle_properties()
-                life_cycle.created = Created(created_at=row[0])
+                life_cycle.created = Created(
+                    created_at=convert_timestamp_to_milliseconds(row[0].timestamp())
+                )
                 if row[1]:
-                    life_cycle.deleted = Deleted(deleted_at=row[1])
+                    life_cycle.deleted = Deleted(
+                        deleted_at=convert_timestamp_to_milliseconds(row[1].timestamp())
+                    )
                 yield Either(
                     right=OMetaLifeCycleData(
                         entity=table, life_cycle_properties=life_cycle
