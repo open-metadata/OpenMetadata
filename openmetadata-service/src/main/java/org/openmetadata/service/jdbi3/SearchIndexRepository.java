@@ -59,6 +59,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public SearchIndexRepository(CollectionDAO dao) {
     super(
         SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override

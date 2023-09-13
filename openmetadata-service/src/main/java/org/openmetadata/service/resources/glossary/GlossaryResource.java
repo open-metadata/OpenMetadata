@@ -61,7 +61,6 @@ import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.Reindex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -73,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "glossaries", order = 6) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
-  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain";
+  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain,extension";
 
   public GlossaryResource(CollectionDAO dao, Authorizer authorizer) {
     super(Glossary.class, new GlossaryRepository(dao), authorizer);
@@ -424,7 +423,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/name/{name}/import")
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
-  @Reindex(jobName = "reIndexGlossary", entities = "glossaryTerm")
   @Operation(
       operationId = "importGlossary",
       summary = "Import glossary terms from CSV to create, and update glossary terms",

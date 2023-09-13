@@ -87,3 +87,7 @@ class ProfilerResponse(ConfigModel):
     profile: CreateTableProfileRequest
     sample_data: Optional[TableData] = None
     column_tags: Optional[List[PatchColumnTagResponse]] = None
+
+    def __str__(self):
+        """Return the table name being processed"""
+        return f"Table [{self.table.name.__root__}]"

@@ -21,25 +21,29 @@
     "searchIndexFilterPattern": {
       "title": "Search Index Filter Pattern",
       "description": "Regex to only fetch search indexes that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Search Index Filter Pattern"
     },
     "markDeletedSearchIndexes": {
       "title": "Mark Deleted Search Indexes",
       "description": "Optional configuration to soft delete search indexes in OpenMetadata if the source search indexes are deleted. Also, if the search index is deleted, all the associated entities like lineage, etc., with that search index will be deleted",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Mark Deleted Search Index"
     },
     "includeSampleData": {
       "title": "Include Sample Data",
       "description": "Optional configuration to turn off fetching sample data for search index.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Include Sample Data"
     },
     "sampleSize": {
       "title": "Sample Size",
       "description": "No. of records of sample data we want to ingest.",
       "default": 10,
-      "type": "integer"
+      "type": "integer",
+      "title": "Sample Size"
     }
   },
   "additionalProperties": false

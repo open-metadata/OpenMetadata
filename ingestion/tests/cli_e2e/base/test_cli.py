@@ -91,9 +91,9 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub(" ", output_clean)
-        regex = r"Source Status:%(log)s(.*?)%(log)sSink Status: .*" % REGEX_AUX
-        output_clean = re.findall(regex, output_clean.strip())
-        return Status.parse_obj(literal_eval(output_clean[0].strip()))
+        regex = r"Source Status:%(log)s(.*?)%(log)s.* Status: .*" % REGEX_AUX
+        output_clean_regex = re.findall(regex, output_clean.strip())
+        return Status.parse_obj(literal_eval(output_clean_regex[0].strip()))
 
     @staticmethod
     def extract_sink_status(output) -> Status:
@@ -101,13 +101,9 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub("", output_clean)
-        if re.match(".* Processor Status: .*", output_clean):
-            regex = r"Sink Status:%(log)s(.*?)%(log)sProcessor Status: .*" % REGEX_AUX
-            output_clean = re.findall(regex, output_clean.strip())[0].strip()
-        else:
-            regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX
-            output_clean = re.findall(regex, output_clean.strip())[0].strip()
-        return Status.parse_obj(literal_eval(output_clean))
+        regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX
+        output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
+        return Status.parse_obj(literal_eval(output_clean_regex))
 
     @staticmethod
     def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):

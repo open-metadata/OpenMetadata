@@ -11,24 +11,32 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { TagSource } from 'generated/type/schema';
-import { cloneDeep, isEmpty, isUndefined, map, sortBy, toLower } from 'lodash';
+import { LabelType, State, TagSource } from 'generated/type/schema';
+import {
+  cloneDeep,
+  isEmpty,
+  isUndefined,
+  lowerCase,
+  map,
+  reduce,
+  set,
+  sortBy,
+  toLower,
+} from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  searchInFields,
-  updateFieldDescription,
-  updateFieldTags,
-} from 'utils/CommonUtils';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -37,6 +45,7 @@ import {
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
 import {
+  getDataTypeString,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
@@ -61,6 +70,10 @@ const SchemaTable = ({
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
+  const [editColumn, setEditColumn] = useState<Column>();
+
+  const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
     [tableColumns]
@@ -71,26 +84,94 @@ const SchemaTable = ({
     [searchedColumns]
   );
 
-  const [editColumn, setEditColumn] = useState<{
-    column: Column;
-    index: number;
-  }>();
-
-  const handleEditColumn = (column: Column, index: number): void => {
-    setEditColumn({ column, index });
+  const handleEditColumn = (column: Column): void => {
+    setEditColumn(column);
   };
   const closeEditColumnModal = (): void => {
     setEditColumn(undefined);
   };
 
+  const updateColumnFields = ({
+    fqn,
+    field,
+    value,
+    columns,
+  }: {
+    fqn: string;
+    field: keyof Column;
+    value?: string;
+    columns: Column[];
+  }) => {
+    columns?.forEach((col) => {
+      if (col.fullyQualifiedName === fqn) {
+        set(col, field, value);
+      } else {
+        updateColumnFields({
+          fqn,
+          field,
+          value,
+          columns: col.children as Column[],
+        });
+      }
+    });
+  };
+
+  const getUpdatedTags = (
+    column: Column,
+    newColumnTags: Array<EntityTags>
+  ): TagLabel[] => {
+    const prevTagsFqn = column?.tags?.map((tag) => tag.tagFQN);
+
+    return reduce(
+      newColumnTags,
+      (acc: Array<EntityTags>, cv: TagOption) => {
+        if (prevTagsFqn?.includes(cv.fqn)) {
+          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.fqn);
+
+          return [...acc, prev];
+        } else {
+          return [
+            ...acc,
+            {
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+              source: cv.source,
+              tagFQN: cv.fqn,
+            },
+          ];
+        }
+      },
+      []
+    );
+  };
+
+  const updateColumnTags = (
+    tableCols: Column[],
+    changedColFQN: string,
+    newColumnTags: Array<TagOption>
+  ) => {
+    tableCols?.forEach((col) => {
+      if (col.fullyQualifiedName === changedColFQN) {
+        col.tags = getUpdatedTags(col, newColumnTags);
+      } else {
+        updateColumnTags(
+          col?.children as Column[],
+          changedColFQN,
+          newColumnTags
+        );
+      }
+    });
+  };
+
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (!isUndefined(editColumn) && editColumn.column.fullyQualifiedName) {
+    if (editColumn && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
-      updateFieldDescription<Column>(
-        editColumn.column.fullyQualifiedName,
-        columnDescription,
-        tableCols
-      );
+      updateColumnFields({
+        fqn: editColumn.fullyQualifiedName,
+        value: columnDescription,
+        field: 'description',
+        columns: tableCols,
+      });
       await onUpdate(tableCols);
       setEditColumn(undefined);
     } else {
@@ -108,42 +189,65 @@ const SchemaTable = ({
     }));
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateFieldTags<Column>(
+      updateColumnTags(
+        tableCols,
         editColumnTag.fullyQualifiedName ?? '',
-        newSelectedTags,
-        tableCols
+        newSelectedTags
       );
       await onUpdate(tableCols);
     }
   };
 
-  const handleUpdate = (column: Column, index: number) => {
-    handleEditColumn(column, index);
+  const searchInColumns = (table: Column[], searchText: string): Column[] => {
+    const searchedValue: Column[] = table.reduce((searchedCols, column) => {
+      const isContainData =
+        lowerCase(column.name).includes(searchText) ||
+        lowerCase(column.description).includes(searchText) ||
+        lowerCase(getDataTypeString(column.dataType)).includes(searchText);
+
+      if (isContainData) {
+        return [...searchedCols, column];
+      } else if (!isUndefined(column.children)) {
+        const searchedChildren = searchInColumns(column.children, searchText);
+        if (searchedChildren.length > 0) {
+          return [
+            ...searchedCols,
+            {
+              ...column,
+              children: searchedChildren,
+            },
+          ];
+        }
+      }
+
+      return searchedCols;
+    }, [] as Column[]);
+
+    return searchedValue;
+  };
+
+  const handleUpdate = (column: Column) => {
+    handleEditColumn(column);
   };
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
     dataTypeDisplay,
     record
   ) => {
-    const displayValue = isEmpty(dataTypeDisplay)
-      ? record.name
-      : dataTypeDisplay;
-
-    if (isEmpty(displayValue)) {
-      return <>{NO_DATA_PLACEHOLDER}</>;
-    }
-
     return (
       <>
-        {isReadOnly ||
-        (displayValue && displayValue.length < 25 && !isReadOnly) ? (
-          toLower(displayValue)
+        {dataTypeDisplay ? (
+          isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
+            toLower(dataTypeDisplay)
+          ) : (
+            <Tooltip title={toLower(dataTypeDisplay)}>
+              <Typography.Text ellipsis className="cursor-pointer">
+                {dataTypeDisplay || record.dataType}
+              </Typography.Text>
+            </Tooltip>
+          )
         ) : (
-          <Tooltip title={toLower(displayValue)}>
-            <Typography.Text ellipsis className="cursor-pointer">
-              {displayValue}
-            </Typography.Text>
-          </Tooltip>
+          '--'
         )}
       </>
     );
@@ -166,7 +270,7 @@ const SchemaTable = ({
           hasEditPermission={hasDescriptionEditAccess}
           index={index}
           isReadOnly={isReadOnly}
-          onClick={() => handleUpdate(record, index)}
+          onClick={() => handleUpdate(record)}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         {getFrequentlyJoinedColumns(
@@ -178,6 +282,52 @@ const SchemaTable = ({
     );
   };
 
+  const expandableConfig: ExpandableConfig<Column> = useMemo(
+    () => ({
+      ...getTableExpandableConfig<Column>(),
+      rowExpandable: (record) => !isEmpty(record.children),
+      expandedRowKeys,
+      onExpand: (expanded, record) => {
+        setExpandedRowKeys(
+          expanded
+            ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
+            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+        );
+      },
+    }),
+    [expandedRowKeys]
+  );
+
+  useEffect(() => {
+    if (!searchText) {
+      setSearchedColumns(sortByOrdinalPosition);
+    } else {
+      const searchCols = searchInColumns(sortByOrdinalPosition, searchText);
+      setSearchedColumns(searchCols);
+    }
+  }, [searchText, sortByOrdinalPosition]);
+
+  const handleEditDisplayNameClick = (record: Column) => {
+    setEditColumnDisplayName(record);
+  };
+
+  const handleEditDisplayName = ({ displayName }: EntityName) => {
+    if (editColumnDisplayName && editColumnDisplayName.fullyQualifiedName) {
+      const tableCols = cloneDeep(tableColumns);
+      updateColumnFields({
+        fqn: editColumnDisplayName.fullyQualifiedName,
+        value: isEmpty(displayName) ? undefined : displayName,
+        field: 'displayName',
+        columns: tableCols,
+      });
+      onUpdate(tableCols).then(() => {
+        setEditColumnDisplayName(undefined);
+      });
+    } else {
+      setEditColumnDisplayName(undefined);
+    }
+  };
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -187,19 +337,47 @@ const SchemaTable = ({
         accessor: 'name',
         width: 180,
         fixed: 'left',
-        render: (name: Column['name'], record: Column) => (
-          <Space
-            align="start"
-            className="w-max-90 vertical-align-inherit"
-            size={2}>
-            {prepareConstraintIcon({
-              columnName: name,
-              columnConstraint: record.constraint,
-              tableConstraints,
-            })}
-            <span className="break-word">{getEntityName(record)}</span>
-          </Space>
-        ),
+        render: (name: Column['name'], record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <div className="d-flex flex-column gap-2  hover-icon-group">
+              <Space
+                align="center"
+                className="w-max-90 vertical-align-inherit"
+                size={2}>
+                {prepareConstraintIcon({
+                  columnName: name,
+                  columnConstraint: record.constraint,
+                  tableConstraints,
+                })}
+                <div>
+                  {/* If we do not have displayName name only be shown in the bold from the below code */}
+                  {!isEmpty(displayName) ? (
+                    <Typography.Text
+                      className="m-b-0 d-block text-grey-muted"
+                      data-testid="column-name">
+                      {name}
+                    </Typography.Text>
+                  ) : null}
+
+                  {/* It will render displayName fallback to name */}
+                  <Typography.Text
+                    className="m-b-0 d-block"
+                    data-testid="column-display-name"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(record)}
+                  </Typography.Text>
+                </div>
+              </Space>
+              <Icon
+                className="hover-cell-icon text-left"
+                component={IconEdit}
+                onClick={() => handleEditDisplayNameClick(record)}
+              />
+            </div>
+          );
+        },
       },
       {
         title: t('label.type'),
@@ -274,33 +452,6 @@ const SchemaTable = ({
       onThreadLinkSelect,
     ]
   );
-  const expandableConfig: ExpandableConfig<Column> = useMemo(
-    () => ({
-      ...getTableExpandableConfig<Column>(),
-      rowExpandable: (record) => !isEmpty(record.children),
-      expandedRowKeys,
-      onExpand: (expanded, record) => {
-        setExpandedRowKeys(
-          expanded
-            ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
-            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
-        );
-      },
-    }),
-    [expandedRowKeys]
-  );
-
-  useEffect(() => {
-    if (!searchText) {
-      setSearchedColumns(sortByOrdinalPosition);
-    } else {
-      const searchCols = searchInFields<Column>(
-        sortByOrdinalPosition,
-        searchText
-      );
-      setSearchedColumns(searchCols);
-    }
-  }, [searchText, sortByOrdinalPosition]);
 
   return (
     <>
@@ -323,12 +474,23 @@ const SchemaTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumn.column.name}"`}
+          })}: "${editColumn.name}"`}
           placeholder={t('message.enter-column-description')}
-          value={editColumn.column.description as string}
+          value={editColumn.description as string}
           visible={Boolean(editColumn)}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
+        />
+      )}
+      {editColumnDisplayName && (
+        <EntityNameModal
+          entity={editColumnDisplayName}
+          title={`${t('label.edit-entity', {
+            entity: t('label.column'),
+          })}: "${editColumnDisplayName?.name}"`}
+          visible={Boolean(editColumnDisplayName)}
+          onCancel={closeEditColumnModal}
+          onSave={handleEditDisplayName}
         />
       )}
     </>

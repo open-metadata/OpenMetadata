@@ -64,6 +64,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public TopicRepository(CollectionDAO dao) {
     super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override

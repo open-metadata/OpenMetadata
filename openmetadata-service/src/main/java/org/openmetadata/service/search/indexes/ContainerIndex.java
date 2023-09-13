@@ -1,6 +1,16 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
@@ -56,5 +66,24 @@ public class ContainerIndex implements ColumnIndex {
     doc.put("entityType", Entity.CONTAINER);
     doc.put("serviceType", container.getServiceType());
     return doc;
+  }
+
+  public static Map<String, Float> getFields() {
+    Map<String, Float> fields = new HashMap<>();
+    fields.put(FIELD_DISPLAY_NAME, 15.0f);
+    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
+    fields.put(FIELD_NAME, 15.0f);
+    fields.put(FIELD_DESCRIPTION, 1.0f);
+    fields.put(FIELD_DESCRIPTION_NGRAM, 1.0f);
+    fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
+    fields.put(NAME_KEYWORD, 25.0f);
+    fields.put("dataModel.columns.name", 2.0f);
+    fields.put(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f);
+    fields.put("dataModel.columns.name.ngram", 1.0f);
+    fields.put("dataModel.columns.displayName", 2.0f);
+    fields.put("dataModel.columns.displayName.ngram", 1.0f);
+    fields.put("dataModel.columns.description", 1.0f);
+    fields.put("dataModel.columns.children.name", 2.0f);
+    return fields;
   }
 }
