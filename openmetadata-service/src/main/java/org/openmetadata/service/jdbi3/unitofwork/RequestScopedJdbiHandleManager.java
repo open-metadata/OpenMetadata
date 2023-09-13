@@ -31,6 +31,11 @@ class RequestScopedJdbiHandleManager implements JdbiHandleManager {
   }
 
   @Override
+  public boolean handleExists() {
+    return threadLocal.get() != null;
+  }
+
+  @Override
   public void clear() {
     Handle handle = threadLocal.get();
     if (handle != null) {

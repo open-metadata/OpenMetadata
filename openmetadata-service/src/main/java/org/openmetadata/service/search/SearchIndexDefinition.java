@@ -57,6 +57,12 @@ public class SearchIndexDefinition {
         Entity.TEST_SUITE, "test_suite_search_index", "/elasticsearch/%s/test_suite_index_mapping.json"),
 
     CHART_INDEX_SEARCH_INDEX(Entity.CHART, "chart_search_index", "/elasticsearch/%s/chart_index_mapping.json"),
+    STORED_PROCEDURE_SEARCH_INDEX(
+        Entity.STORED_PROCEDURE,
+        "stored_procedure_search_index",
+        "/elasticsearch/%s/stored_procedure_index_mapping.json"),
+    DATA_PRODUCTS_SEARCH_INDEX(
+        Entity.DATA_PRODUCT, "data_products_search_index", "/elasticsearch/%s/data_products_index_mapping.json"),
 
     DASHBOARD_DATA_MODEL_SEARCH_INDEX(
         Entity.DASHBOARD_DATA_MODEL,

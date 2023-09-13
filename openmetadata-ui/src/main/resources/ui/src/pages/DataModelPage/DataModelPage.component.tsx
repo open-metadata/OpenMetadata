@@ -21,6 +21,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
@@ -44,6 +45,7 @@ import {
   getDataModelsByName,
   patchDataModelDetails,
   removeDataModelFollower,
+  updateDataModelVotes,
 } from 'rest/dataModelsAPI';
 import { postThread } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityMissingError } from 'utils/CommonUtils';
@@ -125,7 +127,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers',
+        'owner,tags,followers,votes',
         Include.All
       );
       setDataModelData(response);
@@ -301,6 +303,20 @@ const DataModelsPage = () => {
     });
   };
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDataModelVotes(id, data);
+      const details = await getDataModelsByName(
+        dashboardDataModelFQN,
+        'owner,tags,followers,votes',
+        Include.All
+      );
+      setDataModelData(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -342,6 +358,7 @@ const DataModelsPage = () => {
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
       onUpdateDataModel={handleUpdateDataModel}
+      onUpdateVote={updateVote}
     />
   );
 };

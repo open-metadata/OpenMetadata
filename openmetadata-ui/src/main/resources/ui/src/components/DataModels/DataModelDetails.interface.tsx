@@ -12,6 +12,7 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Column } from 'generated/entity/data/table';
@@ -29,6 +30,7 @@ export interface DataModelDetailsProps {
   handleUpdateTier: (tier?: string) => Promise<void>;
   handleUpdateDescription: (value: string) => Promise<void>;
   handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onUpdateDataModel: (
     updatedDataModel: DashboardDataModel,
     key: keyof DashboardDataModel

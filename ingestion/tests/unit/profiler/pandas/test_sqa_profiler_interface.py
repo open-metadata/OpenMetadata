@@ -64,10 +64,26 @@ class PandasInterfaceTest(TestCase):
 
     import pandas as pd
 
+    col_names = [
+        "name",
+        "fullname",
+        "nickname",
+        "comments",
+        "age",
+        "dob",
+        "tob",
+        "doe",
+        "json",
+        "array",
+    ]
     root_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
-    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
+    df1 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
+    )
+    df2 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
+    )
 
     table_entity = Table(
         id=uuid4(),
@@ -88,7 +104,7 @@ class PandasInterfaceTest(TestCase):
     @mock.patch.object(
         PandasProfilerInterface,
         "_convert_table_to_list_of_dataframe_objects",
-        return_value=[df1, df2],
+        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def setUp(cls, mock_get_connection, mocked_dfs) -> None:
         cls.datalake_profiler_interface = PandasProfilerInterface(
@@ -202,8 +218,8 @@ class PandasInterfaceTest(TestCase):
             tableProfile=table_profile, columnProfile=column_profile
         )
 
-        assert profile_request.tableProfile.columnCount == 8
-        assert profile_request.tableProfile.rowCount == 5
+        assert profile_request.tableProfile.columnCount == 10
+        assert profile_request.tableProfile.rowCount == 6
         name_column_profile = [
             profile
             for profile in profile_request.columnProfile
@@ -214,5 +230,5 @@ class PandasInterfaceTest(TestCase):
             for profile in profile_request.columnProfile
             if profile.name == "age"
         ][0]
-        assert name_column_profile.nullCount == 0.0
-        assert age_column_profile.median == 33.0
+        assert name_column_profile.nullCount == 2.0
+        assert age_column_profile.median == 31.0

@@ -31,6 +31,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -59,6 +60,7 @@ import {
   getDatabaseSchemas,
   patchDatabaseDetails,
   restoreDatabase,
+  updateDatabaseVotes,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
@@ -256,7 +258,7 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(
       databaseFQN,
-      ['owner', 'tags', 'domain'],
+      ['owner', 'tags', 'domain', 'votes'],
       Include.All
     )
       .then((res) => {
@@ -727,6 +729,20 @@ const DatabaseDetails: FunctionComponent = () => {
     ]
   );
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDatabaseVotes(id, data);
+      const details = await getDatabaseDetailsByFQN(
+        databaseFQN,
+        ['owner', 'tags', 'votes'],
+        Include.All
+      );
+      setDatabase(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     fetchDatabaseSchemas();
   }, [showDeletedSchemas]);
@@ -762,6 +778,7 @@ const DatabaseDetails: FunctionComponent = () => {
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreDatabase}
               onTierUpdate={handleUpdateTier}
+              onUpdateVote={updateVote}
               onVersionClick={versionHandler}
             />
           </Col>
