@@ -133,6 +133,7 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -2427,6 +2428,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
       assertEquals(expected.toString(), actual.toString());
+    } else if (fieldName.equals("domainType")) { // Custom properties related extension field changes
+      assertEquals(expected, DomainType.fromValue(actual.toString()));
     } else {
       // All the other fields
       assertEquals(expected, actual, "Field name " + fieldName);

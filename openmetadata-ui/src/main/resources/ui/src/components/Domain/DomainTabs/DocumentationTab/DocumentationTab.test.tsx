@@ -22,6 +22,7 @@ const mockOnUpdate = jest.fn();
 const defaultProps = {
   domain: MOCK_DOMAIN,
   onUpdate: mockOnUpdate,
+  isVersionsView: false,
 };
 
 jest.mock('components/common/description/DescriptionV1', () => {

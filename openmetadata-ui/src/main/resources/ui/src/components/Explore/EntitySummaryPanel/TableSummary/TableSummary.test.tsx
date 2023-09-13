@@ -12,9 +12,11 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { MOCK_TEST_CASE } from 'mocks/TestSuite.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
+import { getListTestCase } from 'rest/testAPI';
 import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
@@ -177,5 +179,25 @@ describe('TableSummary component tests', () => {
     expect(testsPassedValue).toContainHTML('00');
     expect(testsAbortedValue).toContainHTML('00');
     expect(testsFailedValue).toContainHTML('00');
+  });
+
+  it('column test case count should appear', async () => {
+    (getListTestCase as jest.Mock).mockImplementation(() => ({
+      data: MOCK_TEST_CASE,
+    }));
+    (getLatestTableProfileByFqn as jest.Mock).mockImplementationOnce(() => ({
+      ...mockTableEntityDetails,
+      profile: { rowCount: 30, columnCount: 2, timestamp: 38478857 },
+    }));
+    await act(async () => {
+      render(<TableSummary entityDetails={mockTableEntityDetails} />);
+    });
+    const testsPassedValue = screen.getByTestId('test-passed-value');
+    const testsAbortedValue = screen.getByTestId('test-aborted-value');
+    const testsFailedValue = screen.getByTestId('test-failed-value');
+
+    expect(testsPassedValue).toContainHTML('03');
+    expect(testsAbortedValue).toContainHTML('01');
+    expect(testsFailedValue).toContainHTML('01');
   });
 });

@@ -11,12 +11,9 @@ import org.glassfish.jersey.server.monitoring.RequestEventListener;
 
 @Slf4j
 public class JdbiUnitOfWorkApplicationEventListener implements ApplicationEventListener {
-
-  private final JdbiUnitOfWorkProvider unitOfWorkProvider;
   private final Set<String> excludedPaths;
 
-  public JdbiUnitOfWorkApplicationEventListener(JdbiUnitOfWorkProvider unitOfWorkProvider, Set<String> excludedPaths) {
-    this.unitOfWorkProvider = unitOfWorkProvider;
+  public JdbiUnitOfWorkApplicationEventListener(Set<String> excludedPaths) {
     this.excludedPaths = excludedPaths;
   }
 
@@ -33,8 +30,8 @@ public class JdbiUnitOfWorkApplicationEventListener implements ApplicationEventL
       return null;
     }
     if (event.getContainerRequest().getMethod().equals(HttpMethod.GET)) {
-      return new HttpGetRequestJdbiUnitOfWorkEventListener(unitOfWorkProvider.getHandleManager());
+      return new HttpGetRequestJdbiUnitOfWorkEventListener();
     }
-    return new NonHttpGetRequestJdbiUnitOfWorkEventListener(unitOfWorkProvider.getHandleManager());
+    return new NonHttpGetRequestJdbiUnitOfWorkEventListener();
   }
 }

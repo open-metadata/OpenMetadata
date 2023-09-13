@@ -32,6 +32,11 @@ class LinkedRequestScopedJdbiHandleManager implements JdbiHandleManager {
   }
 
   @Override
+  public Jdbi getJdbi() {
+    return dbi;
+  }
+
+  @Override
   public Handle get() {
     String parent = substringBetween(Thread.currentThread().getName());
     Handle handle;

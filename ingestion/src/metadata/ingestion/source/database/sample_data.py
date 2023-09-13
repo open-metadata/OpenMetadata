@@ -97,10 +97,12 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.lifeCycle import Accessed, Created, Deleted, Updated
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
@@ -119,6 +121,7 @@ from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -503,6 +506,14 @@ class SampleDataSource(
             )
         )
 
+        self.life_cycle_data = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/lifecycle/lifeCycle.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -539,6 +550,7 @@ class SampleDataSource(
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
         yield from self.ingest_logical_test_suite()
+        yield from self.ingest_life_cycle()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -1362,6 +1374,60 @@ class SampleDataSource(
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
                     yield Either(right=test_case_result_req)
+
+    def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:
+        """Iterate over all the life cycle data and ingest them"""
+        for life_cycle in self.life_cycle_data["lifeCycleData"]:
+            table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=life_cycle["fqn"],
+            )
+            life_cycle_data = life_cycle["lifeCycle"]
+            life_cycle_properties = init_empty_life_cycle_properties()
+            created_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["created"]["created_by"]
+            )
+            life_cycle_properties.created = Created(
+                created_at=life_cycle_data["created"]["created_at"],
+                created_by=created_by
+                if created_by
+                else life_cycle_data["created"]["created_by"],
+            )
+
+            updated_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["updated"]["updated_by"]
+            )
+            life_cycle_properties.updated = Updated(
+                updated_at=life_cycle_data["updated"]["updated_at"],
+                updated_by=updated_by
+                if updated_by
+                else life_cycle_data["updated"]["updated_by"],
+            )
+
+            accessed_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["accessed"]["accessed_by"]
+            )
+            life_cycle_properties.accessed = Accessed(
+                accessed_at=life_cycle_data["accessed"]["accessed_at"],
+                accessed_by=accessed_by
+                if accessed_by
+                else life_cycle_data["accessed"]["accessed_by"],
+            )
+
+            deleted_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["deleted"]["deleted_by"]
+            )
+            life_cycle_properties.deleted = Deleted(
+                deleted_at=life_cycle_data["deleted"]["deleted_at"],
+                deleted_by=deleted_by
+                if deleted_by
+                else life_cycle_data["deleted"]["deleted_by"],
+            )
+
+            life_cycle_request = OMetaLifeCycleData(
+                entity=table, life_cycle_properties=life_cycle_properties
+            )
+            yield Either(right=life_cycle_request)
 
     def close(self):
         """Nothing to close"""
