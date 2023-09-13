@@ -13,10 +13,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
   private static final Object[] NO_ARGS = {};
   private final Class<T> underlying;
-  private final JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider;
 
-  public ManagedHandleInvocationHandler(JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider, Class<T> underlying) {
-    this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
+  public ManagedHandleInvocationHandler(Class<T> underlying) {
     this.underlying = underlying;
   }
 
@@ -40,7 +38,7 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
   }
 
   private Object handleInvocation(Method method, Object[] args) throws Throwable {
-    Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
+    Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
     LOG.debug(
         "{}.{} [{}] Thread Id [{}] with handle id [{}]",
         method.getDeclaringClass().getSimpleName(),
@@ -50,8 +48,12 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
         handle.hashCode());
 
     if (CollectionDAO.class.isAssignableFrom(underlying) && method.isAnnotationPresent(CreateSqlObject.class)) {
-      return getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, method.getReturnType());
+      return getWrappedInstanceForDaoClass(method.getReturnType());
     } else {
+      if (!JdbiTransactionManager.getInstance().containsHandle(handle.hashCode())) {
+        // This is non-transactional request
+        handle.getConnection().setAutoCommit(true);
+      }
       Object dao = handle.attach(underlying);
       try {
         return method.invoke(dao, args);

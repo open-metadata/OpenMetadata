@@ -1,0 +1,67 @@
+{
+    "lifeCycleData": [
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.dim_address",
+            "lifeCycle": {
+                "created": {
+                  "created_at": 1662900600000,
+                  "created_by": "Alice"
+                },
+                "updated": {
+                  "updated_at": 1662986700000,
+                  "updated_by": "Bob"
+                },
+                "accessed": {
+                  "accessed_at": 1663071300000,
+                  "accessed_by": "Charlie"
+                },
+                "deleted": {
+                  "deleted_at": 1663155600000,
+                  "deleted_by": "David"
+                }
+            }
+        },
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+            "lifeCycle": {
+                "created": {
+                  "created_at": 1693579104000,
+                  "created_by": "aaron_johnson0"
+                },
+                "updated": {
+                  "updated_at": 1693665504000,
+                  "updated_by": "amber_green0"
+                },
+                "accessed": {
+                  "accessed_at": 1693838304000,
+                  "accessed_by": "alex_pollard9"
+                },
+                "deleted": {
+                  "deleted_at": 1693924704000,
+                  "deleted_by": "aaron_johnson0"
+                }
+            }
+        },
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.dim_location",
+            "lifeCycle": {
+                "created": {
+                  "created_at": 1688567904000,
+                  "created_by": "anthony_wall4"
+                },
+                "updated": {
+                  "updated_at": 1688827104000,
+                  "updated_by": "Alice"
+                },
+                "accessed": {
+                  "accessed_at": 1688654304000,
+                  "accessed_by": "David"
+                },
+                "deleted": {
+                  "deleted_at": 1688999904000,
+                  "deleted_by": "anthony_wall4"
+                }
+            }
+        }
+    ]
+}
