@@ -1,5 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.resources.EntityResource.searchClient;
+
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.StorageConnection;
@@ -7,8 +9,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 public class StorageServiceRepository extends ServiceEntityRepository<StorageService, StorageConnection> {
   public StorageServiceRepository(CollectionDAO dao) {
