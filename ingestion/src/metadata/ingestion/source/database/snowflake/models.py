@@ -13,9 +13,12 @@ Snowflake models
 """
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 STORED_PROC_LANGUAGE_MAP = {
     "PYTHON": Language.Python,
@@ -32,5 +35,33 @@ class SnowflakeStoredProcedure(BaseModel):
     owner: Optional[str] = Field(..., alias="OWNER")
     language: str = Field(..., alias="LANGUAGE")
     definition: str = Field(..., alias="DEFINITION")
-    signature: Optional[str] = Field(..., alias="SIGNATURE")
+    signature: Optional[str] = Field(
+        ..., alias="SIGNATURE", description="Used to build the source URL"
+    )
     comment: Optional[str] = Field(..., alias="COMMENT")
+
+    # Update the signature to clean it up on read
+    @validator("signature")
+    def clean_signature(  # pylint: disable=no-self-argument
+        cls, signature
+    ) -> Optional[str]:
+        """
+        pylint: keeping the approach from pydantic docs
+
+        A signature may look like `(TABLE_NAME VARCHAR, NAME VARCHAR)`
+        We want it to keep only `(VARCHAR, VARCHAR).
+
+        This is needed to build the source URL of the procedure
+        """
+        try:
+            clean_signature = signature.replace("(", "").replace(")", "")
+            if not clean_signature:
+                return None
+
+            signature_list = clean_signature.split(",")
+            clean_signature_list = [elem.split(" ")[-1] for elem in signature_list]
+
+            return f"({','.join(clean_signature_list)})"
+        except Exception as exc:
+            logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")
+            return signature
