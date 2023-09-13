@@ -55,6 +55,8 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
         dao = handle.attach(underlying);
       } else {
         // This is non-transactional request
+        Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
+        handle.getConnection().setAutoCommit(true);
         dao = JdbiUnitOfWorkProvider.getInstance().getHandleManager().getJdbi().onDemand(underlying);
       }
 
