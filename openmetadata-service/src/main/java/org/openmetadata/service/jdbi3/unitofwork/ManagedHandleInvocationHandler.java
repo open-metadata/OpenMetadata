@@ -42,6 +42,7 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
       return getWrappedInstanceForDaoClass(method.getReturnType());
     } else {
       Object dao;
+      Object result;
       if (JdbiUnitOfWorkProvider.getInstance().getHandleManager().handleExists()) {
         Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
         LOG.debug(
@@ -53,18 +54,24 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
             handle.hashCode());
 
         dao = handle.attach(underlying);
+        result = invokeMethod(method, dao, args);
       } else {
         // This is non-transactional request
-        Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
+        Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandleManager().getJdbi().open();
         handle.getConnection().setAutoCommit(true);
-        dao = JdbiUnitOfWorkProvider.getInstance().getHandleManager().getJdbi().onDemand(underlying);
+        dao = handle.attach(underlying);
+        result = invokeMethod(method, dao, args);
+        handle.close();
       }
+      return result;
+    }
+  }
 
-      try {
-        return method.invoke(dao, args);
-      } catch (Exception ex) {
-        throw ex.getCause();
-      }
+  private Object invokeMethod(Method method, Object dao, Object[] args) throws Throwable {
+    try {
+      return method.invoke(dao, args);
+    } catch (Exception ex) {
+      throw ex.getCause();
     }
   }
 
