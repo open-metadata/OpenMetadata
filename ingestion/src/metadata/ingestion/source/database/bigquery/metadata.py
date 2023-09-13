@@ -53,7 +53,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
-    MultipleProjectId,
     SingleProjectId,
 )
 from metadata.generated.schema.type.basic import SourceUrl, SqlQuery, Timestamp
@@ -225,9 +224,9 @@ class BigquerySource(CommonDbSourceService):
         return cls(config, metadata_config)
 
     @staticmethod
-    def set_project_id():
+    def set_project_id() -> List[str]:
         _, project_ids = auth.default()
-        return project_ids
+        return project_ids if isinstance(project_ids, list) else [project_ids]
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -247,7 +246,9 @@ class BigquerySource(CommonDbSourceService):
                 type_=_bigquery_table_types.get(table_type, TableType.Regular),
             )
             for table_name, table_type in self.engine.execute(
-                BIGQUERY_TABLE_AND_TYPE.format(schema_name)
+                BIGQUERY_TABLE_AND_TYPE.format(
+                    project_id=self.client.project, schema_name=schema_name
+                )
             )
             or []
         ]
@@ -351,12 +352,41 @@ class BigquerySource(CommonDbSourceService):
                 )
         yield Either(right=database_schema_request_obj)
 
+    def get_table_obj(self, table_name: str):
+        schema_name = self.context.database_schema.name.__root__
+        database = self.context.database.name.__root__
+        bq_table_fqn = fqn._build(database, schema_name, table_name)
+        return self.client.get_table(bq_table_fqn)
+
+    def yield_table_tag_details(self, table_name_and_type: Tuple[str, str]):
+        table_name, _ = table_name_and_type
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, value in table_obj.labels.items():
+                yield from get_ometa_tag_and_classification(
+                    tags=[value],
+                    classification_name=key,
+                    tag_description="Bigquery Table Label",
+                    classification_description="",
+                )
+
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
         is properly informed
         """
-        return []
+        table_tag_labels = super().get_tag_labels(table_name) or []
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, _ in table_obj.labels.items():
+                tag_label = get_tag_label(
+                    metadata=self.metadata,
+                    tag_name=key,
+                    classification_name=key,
+                )
+                if tag_label:
+                    table_tag_labels.append(tag_label)
+        return table_tag_labels
 
     def get_column_tag_labels(
         self, table_name: str, column: dict
@@ -402,42 +432,27 @@ class BigquerySource(CommonDbSourceService):
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        if hasattr(
-            self.service_connection.credentials.gcpConfig, "projectId"
-        ) and isinstance(
-            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
-        ):
-            for project_id in self.project_ids:
-                database_name = project_id
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=database_name,
-                )
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else database_name,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered out")
-                    continue
-
+        for project_id in self.project_ids:
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.database_service.name.__root__,
+                database_name=project_id,
+            )
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                database_fqn if self.source_config.useFqnForFiltering else project_id,
+            ):
+                self.status.filter(database_fqn, "Database Filtered out")
+            else:
                 try:
-                    self.set_inspector(database_name=database_name)
-                    self.project_id = (  # pylint: disable=attribute-defined-outside-init
-                        database_name
-                    )
-                    yield database_name
+                    self.set_inspector(database_name=project_id)
+                    yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error trying to connect to database {database_name}: {exc}"
+                        f"Error trying to connect to database {project_id}: {exc}"
                     )
-        else:
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -445,7 +460,9 @@ class BigquerySource(CommonDbSourceService):
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.context.database.name.__root__}.{schema_name}.{table_name}"
+                    fqn._build(
+                        self.context.database.name.__root__, schema_name, table_name
+                    )
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -463,7 +480,7 @@ class BigquerySource(CommonDbSourceService):
         check if the table is partitioned table and return the partition details
         """
         database = self.context.database.name.__root__
-        table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
+        table = self.client.get_table(fqn._build(database, schema_name, table_name))
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
                 table_partition = TablePartition(
