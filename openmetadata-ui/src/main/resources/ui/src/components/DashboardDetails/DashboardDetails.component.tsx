@@ -490,6 +490,7 @@ const DashboardDetails = ({
         width: 300,
         filterIcon: (filtered: boolean) => (
           <FilterOutlined
+            data-testid="tag-filter"
             style={{ color: filtered ? PRIMERY_COLOR : undefined }}
           />
         ),
@@ -521,6 +522,7 @@ const DashboardDetails = ({
         width: 300,
         filterIcon: (filtered: boolean) => (
           <FilterOutlined
+            data-testid="glossary-filter"
             style={{ color: filtered ? PRIMERY_COLOR : undefined }}
           />
         ),

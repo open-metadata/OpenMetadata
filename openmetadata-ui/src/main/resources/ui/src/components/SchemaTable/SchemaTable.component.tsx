@@ -418,6 +418,7 @@ const SchemaTable = ({
         width: 250,
         filterIcon: (filtered: boolean) => (
           <FilterOutlined
+            data-testid="tag-filter"
             style={{ color: filtered ? PRIMERY_COLOR : undefined }}
           />
         ),
@@ -447,6 +448,7 @@ const SchemaTable = ({
         width: 250,
         filterIcon: (filtered: boolean) => (
           <FilterOutlined
+            data-testid="glossary-filter"
             style={{ color: filtered ? PRIMERY_COLOR : undefined }}
           />
         ),
