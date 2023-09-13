@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#  pylint: disable=arguments-differ
 
 """
 Interfaces with database for all database engine
@@ -140,6 +141,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self,
         metrics: List[Metrics],
         runner: List,
+        column,
         *args,
         **kwargs,
     ):
@@ -153,8 +155,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             dictionnary of results
         """
         import pandas as pd  # pylint: disable=import-outside-toplevel
-
-        column = kwargs.get("column")
 
         try:
             row_dict = {}
@@ -174,6 +174,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self,
         metric: Metrics,
         runner: List,
+        column,
         *args,
         **kwargs,
     ):
@@ -186,8 +187,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        column = kwargs.get("column")
-
         col_metric = None
         col_metric = metric(column).df_fn(runner)
         if not col_metric:
@@ -198,6 +197,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self,
         metrics: List[Metrics],
         runner: List,
+        column,
         *args,
         **kwargs,
     ):
@@ -205,7 +205,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         Given a list of metrics, compute the given results
         and returns the values
         """
-        column = kwargs.get("column")
 
         try:
             metric_values = {}

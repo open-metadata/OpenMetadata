@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#  pylint: disable=arguments-differ
 
 """
 Interfaces with database for all database engine
@@ -156,6 +157,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         self,
         metrics: List[Metrics],
         runner: QueryRunner,
+        session,
         *args,
         **kwargs,
     ):
@@ -168,7 +170,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         # pylint: disable=protected-access
-        session = kwargs.get("session")
         try:
             dialect = runner._session.get_bind().dialect.name
             row = table_metric_construct_factory.construct(
@@ -193,6 +194,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         self,
         metrics: List[Metrics],
         runner: QueryRunner,
+        column,
+        session,
         *args,
         **kwargs,
     ):
@@ -205,9 +208,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        column = kwargs.get("column")
-        session = kwargs.get("session")
-
         try:
             row = runner.select_first_from_sample(
                 *[
@@ -237,6 +237,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         self,
         metric: Metrics,
         runner: QueryRunner,
+        column,
+        session,
+        sample,
         *args,
         **kwargs,
     ):
@@ -249,9 +252,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        session = kwargs.get("session")
-        sample = kwargs.get("sample")
-        column = kwargs.get("column")
 
         try:
             col_metric = metric(column)
@@ -274,6 +274,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         self,
         metrics: List[Metrics],
         runner: QueryRunner,
+        column,
+        session,
         *args,
         **kwargs,
     ):
@@ -286,8 +288,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        session = kwargs.get("session")
-        column = kwargs.get("column")
 
         if not metrics:
             return None
@@ -315,6 +315,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         self,
         metrics: Metrics,
         runner: QueryRunner,
+        session,
         *args,
         **kwargs,
     ):
@@ -328,7 +329,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        session = kwargs.get("session")
         try:
             rows = metrics().sql(session, conn_config=self.service_connection_config)
             return rows
