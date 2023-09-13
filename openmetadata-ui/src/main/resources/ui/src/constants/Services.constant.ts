@@ -190,6 +190,7 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  SearchServiceType.OpenSearch,
 ];
 
 export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
@@ -401,7 +402,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
-  SearchServiceType.OpenSearch,
+  SearchServiceType.ElasticSearch,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
