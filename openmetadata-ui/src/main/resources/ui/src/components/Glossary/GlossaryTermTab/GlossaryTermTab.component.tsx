@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,18 +12,15 @@
  */
 
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { Button, Col, Modal, Row, Space, Table, Tooltip } from 'antd';
+  Button,
+  Col,
+  Modal,
+  Row,
+  Space,
+  Table,
+  TableProps,
+  Tooltip,
+} from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
@@ -45,7 +41,9 @@ import {
   GlossaryTerm,
 } from 'generated/entity/data/glossaryTerm';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { patchGlossaryTerm } from 'rest/glossaryAPI';
@@ -56,6 +54,7 @@ import { getGlossaryPath } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
+  DraggableBodyRowProps,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
@@ -78,7 +77,8 @@ const GlossaryTermTab = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [movedGlossaryTerm] = useState<MoveGlossaryTermType>();
+  const [movedGlossaryTerm, setMovedGlossaryTerm] =
+    useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
 
@@ -186,20 +186,20 @@ const GlossaryTermTab = ({
     [expandedRowKeys]
   );
 
-  //   const handleMoveRow = useCallback(
-  //     async (dragRecord: GlossaryTerm, dropRecord: GlossaryTerm) => {
-  //       if (dragRecord.id === dropRecord.id) {
-  //         return;
-  //       }
+  const handleMoveRow = useCallback(
+    async (dragRecord: GlossaryTerm, dropRecord: GlossaryTerm) => {
+      if (dragRecord.id === dropRecord.id) {
+        return;
+      }
 
-  //       setMovedGlossaryTerm({
-  //         from: dragRecord,
-  //         to: dropRecord,
-  //       });
-  //       setIsModalOpen(true);
-  //     },
-  //     []
-  //   );
+      setMovedGlossaryTerm({
+        from: dragRecord,
+        to: dropRecord,
+      });
+      setIsModalOpen(true);
+    },
+    []
+  );
 
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
@@ -224,18 +224,18 @@ const GlossaryTermTab = ({
     }
   };
 
-  //   const onTableRow: TableProps<ModifiedGlossaryTerm>['onRow'] = (
-  //     record,
-  //     index
-  //   ) => {
-  //     const attr = {
-  //       index,
-  //       handleMoveRow,
-  //       record,
-  //     };
+  const onTableRow: TableProps<ModifiedGlossaryTerm>['onRow'] = (
+    record,
+    index
+  ) => {
+    const attr = {
+      index,
+      handleMoveRow,
+      record,
+    };
 
-  //     return attr as DraggableBodyRowProps;
-  //   };
+    return attr as DraggableBodyRowProps;
+  };
 
   const toggleExpandAll = () => {
     if (expandedRowKeys.length === childGlossaryTerms.length) {
@@ -257,11 +257,6 @@ const GlossaryTermTab = ({
     }
     setIsLoading(false);
   }, [childGlossaryTerms]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor)
-  );
 
   if (termsLoading || isLoading) {
     return <Loader />;
@@ -308,32 +303,23 @@ const GlossaryTermTab = ({
         </div>
 
         {glossaryTerms.length > 0 ? (
-          <DndContext
-            collisionDetection={closestCenter}
-            sensors={sensors}
-            onDragCancel={() => console.info('Drag cancel')}
-            onDragEnd={() => console.info('Drag end')}
-            onDragMove={() => console.info('Drag move')}
-            onDragOver={() => console.info('Drag over')}
-            onDragStart={() => console.info('Drag start')}>
-            <SortableContext items={[]} strategy={verticalListSortingStrategy}>
-              <Table
-                bordered
-                className="drop-over-background"
-                columns={columns}
-                components={TABLE_CONSTANTS}
-                dataSource={glossaryTerms}
-                expandable={expandableConfig}
-                loading={isTableLoading}
-                pagination={false}
-                rowKey="fullyQualifiedName"
-                scroll={{ x: true }}
-                size="small"
-                tableLayout="auto"
-                // onRow={onTableRow}
-              />
-            </SortableContext>
-          </DndContext>
+          <DndProvider backend={HTML5Backend}>
+            <Table
+              bordered
+              className="drop-over-background"
+              columns={columns}
+              components={TABLE_CONSTANTS}
+              dataSource={glossaryTerms}
+              expandable={expandableConfig}
+              loading={isTableLoading}
+              pagination={false}
+              rowKey="fullyQualifiedName"
+              scroll={{ x: true }}
+              size="small"
+              tableLayout="auto"
+              onRow={onTableRow}
+            />
+          </DndProvider>
         ) : (
           <ErrorPlaceHolder />
         )}
