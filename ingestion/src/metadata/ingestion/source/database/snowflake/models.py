@@ -42,9 +42,9 @@ class SnowflakeStoredProcedure(BaseModel):
 
     # Update the signature to clean it up on read
     @validator("signature")
-    def clean_signature(
+    def clean_signature(  # pylint: disable=no-self-argument
         cls, signature
-    ) -> Optional[str]:  # pylint: disable=no-self-argument
+    ) -> Optional[str]:
         """
         pylint: keeping the approach from pydantic docs
 

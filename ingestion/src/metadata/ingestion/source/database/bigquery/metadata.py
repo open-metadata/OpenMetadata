@@ -657,7 +657,7 @@ class BigquerySource(CommonDbSourceService):
     def is_lineage_query(query_type: str, query_text: str) -> bool:
         """Check if it's worth it to parse the query for lineage"""
 
-        if query_type in ("MERGE", "UPDATE", "CREATE_TABLE"):
+        if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
             return True
 
         if query_type == "INSERT" and re.search(
