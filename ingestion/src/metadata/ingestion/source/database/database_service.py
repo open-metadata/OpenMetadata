@@ -14,7 +14,7 @@ Base class for ingesting database services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
