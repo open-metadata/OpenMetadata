@@ -54,6 +54,7 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardConnection } from 'generated/entity/services/dashboardService';
@@ -96,6 +97,7 @@ import {
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
+import { getSearchIndexes } from 'rest/SearchIndexAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
@@ -125,6 +127,7 @@ export type ServicePageData =
   | Pipeline
   | Container
   | DashboardDataModel
+  | SearchIndex
   | StoredProcedure;
 
 const ServiceDetailsPage: FunctionComponent = () => {
@@ -507,6 +510,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceFQN, include]
   );
 
+  const fetchSearchIndexes = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getSearchIndexes({
+        service: getDecodedFqn(serviceFQN),
+        fields: 'owner,tags',
+        paging,
+        root: true,
+        include,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [serviceFQN, include]
+  );
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal, isDataModel?: boolean) => {
       try {
@@ -546,6 +565,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
             break;
           }
+          case ServiceCategory.SEARCH_SERVICES: {
+            await fetchSearchIndexes(paging);
+
+            break;
+          }
           default:
             break;
         }
@@ -565,6 +589,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchPipeLines,
       fetchMlModal,
       fetchContainers,
+      fetchSearchIndexes,
     ]
   );
 
