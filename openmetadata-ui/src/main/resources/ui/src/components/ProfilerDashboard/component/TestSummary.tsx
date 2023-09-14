@@ -52,7 +52,7 @@ import {
 } from '../../../generated/tests/testCase';
 import { axisTickFormatter } from '../../../utils/ChartUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
+import { getFormattedDateFromMilliSeconds } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
@@ -103,7 +103,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       }, {});
 
       chartData.push({
-        name: getFormattedDateFromSeconds(result.timestamp as number),
+        name: getFormattedDateFromMilliSeconds(result.timestamp as number),
         status: result.testCaseStatus ?? '',
         ...values,
       });

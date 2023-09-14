@@ -53,10 +53,7 @@ import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
 } from '../../../utils/TableUtils';
-import {
-  getFormattedDateFromMilliSeconds,
-  getFormattedDateFromSeconds,
-} from '../../../utils/TimeUtils';
+import { getFormattedDateFromMilliSeconds } from '../../../utils/TimeUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
 import {
@@ -245,7 +242,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 150,
         render: (result: TestCaseResult) =>
           result?.timestamp
-            ? getFormattedDateFromSeconds(
+            ? getFormattedDateFromMilliSeconds(
                 result.timestamp,
                 'MMM dd, yyyy HH:mm'
               )

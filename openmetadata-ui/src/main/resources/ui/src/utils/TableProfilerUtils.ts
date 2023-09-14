@@ -15,10 +15,7 @@ import { MetricChartType } from 'components/ProfilerDashboard/profilerDashboard.
 import { findLast, sortBy } from 'lodash';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import { TableProfile } from '../generated/entity/data/table';
-import {
-  getFormattedDateFromMilliSeconds,
-  getFormattedDateFromSeconds,
-} from './TimeUtils';
+import { getFormattedDateFromMilliSeconds } from './TimeUtils';
 
 export const calculateRowCountMetrics = (
   profiler: TableProfile[],
@@ -28,7 +25,7 @@ export const calculateRowCountMetrics = (
   const rowCountMetricData: MetricChartType['data'] = [];
 
   updateProfilerData.forEach((data) => {
-    const timestamp = getFormattedDateFromSeconds(data.timestamp);
+    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
 
     rowCountMetricData.push({
       name: timestamp,

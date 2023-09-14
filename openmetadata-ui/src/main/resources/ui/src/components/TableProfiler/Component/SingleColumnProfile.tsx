@@ -31,7 +31,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getColumnProfilerList } from 'rest/tableAPI';
 import { getEncodedFqn } from 'utils/StringsUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
+import { getFormattedDateFromMilliSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 interface SingleColumnProfileProps {
@@ -99,7 +99,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     const sumMetricData: MetricChartType['data'] = [];
     const quartileMetricData: MetricChartType['data'] = [];
     updateProfilerData.forEach((col) => {
-      const x = getFormattedDateFromSeconds(col.timestamp);
+      const x = getFormattedDateFromMilliSeconds(col.timestamp);
 
       countMetricData.push({
         name: x,

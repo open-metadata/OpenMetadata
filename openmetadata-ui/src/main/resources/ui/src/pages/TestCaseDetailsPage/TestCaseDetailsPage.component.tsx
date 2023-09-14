@@ -26,7 +26,7 @@ import { getTestCaseByFqn } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDataQualityPagePath } from 'utils/RouterUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
+import { getFormattedDateFromMilliSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import './TestCaseDetailsPage.style.less';
 
@@ -122,7 +122,7 @@ function TestCaseDetailsPage() {
               <Col span={14}>
                 <Typography.Text>
                   {testCaseData.testCaseResult?.timestamp
-                    ? getFormattedDateFromSeconds(
+                    ? getFormattedDateFromMilliSeconds(
                         testCaseData.testCaseResult?.timestamp
                       )
                     : '--'}
