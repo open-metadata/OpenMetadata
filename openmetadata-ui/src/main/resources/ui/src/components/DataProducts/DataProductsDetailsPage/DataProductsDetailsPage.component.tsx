@@ -308,6 +308,10 @@ const DataProductsDetailsPage = ({
   };
 
   const handleTabChange = (activeKey: string) => {
+    if (activeKey === 'assets') {
+      // refresh data products assets count when assets tab is selected
+      fetchDataProductAssets();
+    }
     if (activeKey !== activeTab) {
       history.push(getDataProductsDetailsPath(fqn, activeKey));
     }
