@@ -13,6 +13,7 @@
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
@@ -30,6 +31,7 @@ import { MessagingService } from 'generated/entity/services/messagingService';
 import { MetadataService } from 'generated/entity/services/metadataService';
 import { MlmodelService } from 'generated/entity/services/mlmodelService';
 import { PipelineService } from 'generated/entity/services/pipelineService';
+import { SearchService } from 'generated/entity/services/searchService';
 import { StorageService } from 'generated/entity/services/storageService';
 import { EntityReference } from 'generated/entity/type';
 import { ServicesType } from 'interface/service.interface';
@@ -52,7 +54,8 @@ export type DataAssetsType =
   | DashboardService
   | MlmodelService
   | MetadataService
-  | StorageService;
+  | StorageService
+  | SearchService;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -61,7 +64,8 @@ export type DataAssetsWithoutServiceField =
   | DashboardService
   | MlmodelService
   | MetadataService
-  | StorageService;
+  | StorageService
+  | SearchService;
 
 export type DataAssetsWithFollowersField = Exclude<
   DataAssetsType,
@@ -84,6 +88,7 @@ export type DataAssetsHeaderProps = {
   onFollowClick?: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
+  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic
@@ -102,6 +107,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetMlModelService
   | DataAssetMetadataService
   | DataAssetStorageService
+  | DataAssetSearchService
 );
 
 export interface DataAssetTable {
@@ -178,6 +184,11 @@ export interface DataAssetMetadataService {
 export interface DataAssetStorageService {
   dataAsset: ServicesType;
   entityType: EntityType.STORAGE_SERVICE;
+}
+
+export interface DataAssetSearchService {
+  dataAsset: ServicesType;
+  entityType: EntityType.SEARCH_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {

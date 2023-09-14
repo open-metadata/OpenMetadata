@@ -38,28 +38,40 @@ public class ManagedHandleInvocationHandler<T> implements InvocationHandler {
   }
 
   private Object handleInvocation(Method method, Object[] args) throws Throwable {
-    Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
-    LOG.debug(
-        "{}.{} [{}] Thread Id [{}] with handle id [{}]",
-        method.getDeclaringClass().getSimpleName(),
-        method.getName(),
-        underlying.getSimpleName(),
-        Thread.currentThread().getId(),
-        handle.hashCode());
-
     if (CollectionDAO.class.isAssignableFrom(underlying) && method.isAnnotationPresent(CreateSqlObject.class)) {
       return getWrappedInstanceForDaoClass(method.getReturnType());
     } else {
-      if (!JdbiTransactionManager.getInstance().containsHandle(handle.hashCode())) {
+      Object dao;
+      Object result;
+      if (JdbiUnitOfWorkProvider.getInstance().getHandleManager().handleExists()) {
+        Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandle();
+        LOG.debug(
+            "{}.{} [{}] Thread Id [{}] with handle id [{}]",
+            method.getDeclaringClass().getSimpleName(),
+            method.getName(),
+            underlying.getSimpleName(),
+            Thread.currentThread().getId(),
+            handle.hashCode());
+
+        dao = handle.attach(underlying);
+        result = invokeMethod(method, dao, args);
+      } else {
         // This is non-transactional request
+        Handle handle = JdbiUnitOfWorkProvider.getInstance().getHandleManager().getJdbi().open();
         handle.getConnection().setAutoCommit(true);
+        dao = handle.attach(underlying);
+        result = invokeMethod(method, dao, args);
+        handle.close();
       }
-      Object dao = handle.attach(underlying);
-      try {
-        return method.invoke(dao, args);
-      } catch (Exception ex) {
-        throw ex.getCause();
-      }
+      return result;
+    }
+  }
+
+  private Object invokeMethod(Method method, Object dao, Object[] args) throws Throwable {
+    try {
+      return method.invoke(dao, args);
+    } catch (Exception ex) {
+      throw ex.getCause();
     }
   }
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { LoadingState } from 'Models';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -27,4 +28,5 @@ export type GlossaryV1Props = {
   isVersionsView: boolean;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  updateVote?: (data: VotingDataProps) => Promise<void>;
 };

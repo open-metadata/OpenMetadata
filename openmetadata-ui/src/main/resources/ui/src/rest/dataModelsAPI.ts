@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { EntityHistory } from 'generated/type/entityHistory';
@@ -63,7 +64,7 @@ export const getDataModelDetailsByFQN = async (
   arrQueryFields?: string | string[]
 ) => {
   const url = `${getURLWithQueryFields(
-    `/dashboard/datamodels/name/${databaseSchemaName}`,
+    `${URL}/name/${databaseSchemaName}`,
     arrQueryFields
   )}`;
 
@@ -123,7 +124,16 @@ export const restoreDataModel = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<DashboardDataModel>
-  >('/dashboard/datamodels/restore', { id });
+  >(`${URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const updateDataModelVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<
+    QueryVote,
+    AxiosResponse<DashboardDataModel>
+  >(`${URL}/${id}/vote`, data);
 
   return response.data;
 };
