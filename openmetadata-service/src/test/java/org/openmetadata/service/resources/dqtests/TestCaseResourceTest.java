@@ -843,26 +843,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
-            tableResourceTest
-                    .createRequest(test)
-                    .withName(test.getDisplayName())
-                    .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-                    .withOwner(USER1_REF)
-                    .withColumns(
-                            List.of(
-                                    new Column()
-                                            .withName(C1)
-                                            .withDisplayName("c1")
-                                            .withDataType(ColumnDataType.VARCHAR)
-                                            .withDataLength(10)))
-                    .withOwner(USER1_REF);
+        tableResourceTest
+            .createRequest(test)
+            .withName(test.getDisplayName())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withOwner(USER1_REF)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withOwner(USER1_REF);
     Table testTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     // create testSuite
     CreateTestSuite createExecutableTestSuite = testSuiteResourceTest.createRequest(testTable.getFullyQualifiedName());
-    TestSuite testSuite = testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite =
+        testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
 
     // create testCase
-    CreateTestCase createTestCase = new CreateTestCase()
+    CreateTestCase createTestCase =
+        new CreateTestCase()
             .withName(test.getDisplayName())
             .withDescription(test.getDisplayName())
             .withEntityLink(String.format("<#E::table::%s>", testTable.getFullyQualifiedName()))
