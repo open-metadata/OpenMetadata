@@ -604,6 +604,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={dataProductPermission}
         path={ROUTES.DATA_PRODUCT_DETAILS}
       />
+      <AdminProtectedRoute
+        exact
+        component={DataProductsPage}
+        hasPermission={dataProductPermission}
+        path={ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB}
+      />
 
       <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
       <AdminProtectedRoute

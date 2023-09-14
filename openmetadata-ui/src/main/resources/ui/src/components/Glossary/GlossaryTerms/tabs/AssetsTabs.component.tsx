@@ -326,6 +326,7 @@ const AssetsTabs = forwardRef(
             onClick={(value) => {
               setCurrentPage(1);
               setActiveFilter(value.key as SearchIndex);
+              setSelectedCard(undefined);
             }}
           />
         );
@@ -342,10 +343,7 @@ const AssetsTabs = forwardRef(
         );
       } else {
         return (
-          <PageLayoutV1
-            leftPanel={assetsHeader}
-            leftPanelWidth={200}
-            pageTitle="">
+          <PageLayoutV1 leftPanel={assetsHeader} pageTitle="">
             {assetListing}
           </PageLayoutV1>
         );

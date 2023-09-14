@@ -18,3 +18,8 @@ export interface DataProductsDetailsPageProps {
   onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
   onDelete: () => void;
 }
+
+export enum DataProductTabs {
+  DOCUMENTATION = 'documentation',
+  ASSETS = 'assets',
+}

@@ -24,6 +24,7 @@ import TagButton from 'components/TagButton/TagButton.component';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { Domain, DomainType } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
 import { ChangeDescription, EntityReference } from 'generated/entity/type';
@@ -35,18 +36,26 @@ import { getEntityName } from 'utils/EntityUtils';
 import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import '../../domain.less';
-import { DocumentationTabProps } from './DocumentationTab.interface';
+import {
+  DocumentationEntity,
+  DocumentationTabProps,
+} from './DocumentationTab.interface';
 
 const DocumentationTab = ({
   domain,
   onUpdate,
   isVersionsView = false,
+  type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [editDomainType, setEditDomainType] = useState(false);
+  const resourceType =
+    type === DocumentationEntity.DOMAIN
+      ? ResourceEntity.DOMAIN
+      : ResourceEntity.DATA_PRODUCT;
 
   const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
     useMemo(() => {
@@ -60,19 +69,19 @@ const DocumentationTab = ({
 
       const editDescription = checkPermission(
         Operation.EditDescription,
-        ResourceEntity.DOMAIN,
+        resourceType,
         permissions
       );
 
       const editOwner = checkPermission(
         Operation.EditOwner,
-        ResourceEntity.DOMAIN,
+        resourceType,
         permissions
       );
 
       const editAll = checkPermission(
         Operation.EditAll,
-        ResourceEntity.DOMAIN,
+        resourceType,
         permissions
       );
 
@@ -81,7 +90,7 @@ const DocumentationTab = ({
         editOwnerPermission: editOwner || editAll,
         editAllPermission: editAll,
       };
-    }, [permissions, isVersionsView]);
+    }, [permissions, isVersionsView, resourceType]);
 
   const description = useMemo(
     () =>
@@ -114,7 +123,7 @@ const DocumentationTab = ({
       ...domain,
       owner: newOwner,
     };
-    onUpdate(updatedData);
+    onUpdate(updatedData as Domain | DataProduct);
   };
 
   const handleExpertsUpdate = (data: Array<EntityReference>) => {
@@ -259,38 +268,41 @@ const DocumentationTab = ({
                 )}
             </div>
           </Col>
-          <Col data-testid="domainType" span="24">
-            <div className="d-flex items-center m-b-xss">
-              <Typography.Text
-                className="right-panel-label"
-                data-testid="domainType-heading-name">
-                {t('label.domain-type')}
-              </Typography.Text>
-              {editAllPermission && domain.domainType && (
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-domainType-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                  onClick={() => setEditDomainType(true)}
+
+          {type === DocumentationEntity.DOMAIN && (
+            <Col data-testid="domainType" span="24">
+              <div className="d-flex items-center m-b-xss">
+                <Typography.Text
+                  className="right-panel-label"
+                  data-testid="domainType-heading-name">
+                  {t('label.domain-type')}
+                </Typography.Text>
+                {editAllPermission && (domain as Domain).domainType && (
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-domainType-button"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                    onClick={() => setEditDomainType(true)}
+                  />
+                )}
+              </div>
+              {!editDomainType && (
+                <Space wrap data-testid="domain-type-label" size={6}>
+                  {(domain as Domain).domainType}
+                </Space>
+              )}
+
+              {editDomainType && (
+                <DomainTypeSelectForm
+                  defaultValue={(domain as Domain).domainType}
+                  onCancel={() => setEditDomainType(false)}
+                  onSubmit={handleDomainTypeUpdate}
                 />
               )}
-            </div>
-            {!editDomainType && (
-              <Space wrap data-testid="domain-type-label" size={6}>
-                {domain.domainType}
-              </Space>
-            )}
-
-            {editDomainType && (
-              <DomainTypeSelectForm
-                defaultValue={domain.domainType}
-                onCancel={() => setEditDomainType(false)}
-                onSubmit={handleDomainTypeUpdate}
-              />
-            )}
-          </Col>
+            </Col>
+          )}
         </Row>
       </Col>
     </Row>

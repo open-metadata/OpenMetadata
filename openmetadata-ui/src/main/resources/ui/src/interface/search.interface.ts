@@ -14,6 +14,7 @@
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Query } from 'generated/entity/data/query';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { Domain } from 'generated/entity/domains/domain';
 import { TestCase } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
@@ -77,6 +78,10 @@ export interface ContainerSearchSource extends SearchSourceBase, Container {} //
 
 export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
 
+export interface DataProductSearchSource
+  extends SearchSourceBase,
+    DataProduct {} // extends EntityInterface
+
 export interface DashboardDataModelSearchSource
   extends SearchSourceBase,
     DashboardDataModel {} // extends EntityInterface
@@ -123,6 +128,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.QUERY]: QuerySearchSource;
   [SearchIndex.TEST_CASE]: TestCaseSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
+  [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
 };
 
 export type SearchRequest<
