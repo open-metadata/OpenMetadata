@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Tabs } from 'antd';
+import { Button, Menu, Space } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
 import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { AssetsFilterOptions } from 'constants/Assets.constants';
 import { PAGE_SIZE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
@@ -43,6 +43,7 @@ import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import './assets-tabs.less';
 import {
   AssetsOfEntity,
   AssetsTabsProps,
@@ -90,12 +91,19 @@ const AssetsTabs = forwardRef(
       return AssetsFilterOptions.map((option) => {
         return {
           label: (
-            <TabsLabel
-              count={itemCount[option.key]}
-              id={option.key}
-              isActive={activeFilter === option.value}
-              name={option.label}
-            />
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                {option.label}
+              </Space>
+
+              <span>
+                {getCountBadge(
+                  itemCount[option.key],
+                  '',
+                  activeFilter === option.value
+                )}
+              </span>
+            </div>
           ),
           key: option.value,
           value: option.value,
@@ -234,6 +242,49 @@ const AssetsTabs = forwardRef(
       [activeFilter, currentPage]
     );
 
+    const assetListing = useMemo(
+      () =>
+        data.length ? (
+          <div className="assets-data-container">
+            {data.map(({ _source, _id = '' }, index) => (
+              <ExploreSearchCard
+                className={classNames(
+                  'm-b-sm cursor-pointer',
+                  selectedCard?.id === _source.id ? 'highlight-card' : ''
+                )}
+                handleSummaryPanelDisplay={setSelectedCard}
+                id={_id}
+                key={index}
+                showTags={false}
+                source={_source}
+              />
+            ))}
+            {total > PAGE_SIZE && data.length > 0 && (
+              <NextPrevious
+                isNumberBased
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={{ total }}
+                pagingHandler={(page: string | number) =>
+                  setCurrentPage(Number(page))
+                }
+              />
+            )}
+          </div>
+        ) : (
+          <div className="m-t-xlg">
+            <ErrorPlaceHolder
+              doc={GLOSSARIES_DOCS}
+              heading={t('label.asset')}
+              permission={permissions.Create}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={onAddAsset}
+            />
+          </div>
+        ),
+      [data, total, currentPage, selectedCard, setSelectedCard]
+    );
+
     const assetsHeader = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
         return AssetsFilterOptions.map((option) => {
@@ -268,16 +319,38 @@ const AssetsTabs = forwardRef(
         });
       } else {
         return (
-          <Tabs
+          <Menu
+            className="p-t-sm"
             items={tabs}
-            onChange={(value) => {
+            selectedKeys={[activeFilter]}
+            onClick={(value) => {
               setCurrentPage(1);
-              setActiveFilter(value as SearchIndex);
+              setActiveFilter(value.key as SearchIndex);
             }}
           />
         );
       }
     }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+
+    const layout = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return (
+          <>
+            {assetsHeader}
+            {assetListing}
+          </>
+        );
+      } else {
+        return (
+          <PageLayoutV1
+            leftPanel={assetsHeader}
+            leftPanelWidth={200}
+            pageTitle="">
+            {assetListing}
+          </PageLayoutV1>
+        );
+      }
+    }, [viewType, assetsHeader, assetListing, selectedCard]);
 
     useEffect(() => {
       fetchAssets({ index: activeFilter, page: currentPage });
@@ -316,46 +389,7 @@ const AssetsTabs = forwardRef(
           viewType === AssetsViewType.PILLS ? 'p-md' : ''
         )}
         data-testid="table-container">
-        {assetsHeader}
-
-        {data.length ? (
-          <div className="assets-data-container">
-            {data.map(({ _source, _id = '' }, index) => (
-              <ExploreSearchCard
-                className={classNames(
-                  'm-b-sm cursor-pointer',
-                  selectedCard?.id === _source.id ? 'highlight-card' : ''
-                )}
-                handleSummaryPanelDisplay={setSelectedCard}
-                id={_id}
-                key={index}
-                showTags={false}
-                source={_source}
-              />
-            ))}
-            {total > PAGE_SIZE && data.length > 0 && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={{ total }}
-                pagingHandler={(page: string | number) =>
-                  setCurrentPage(Number(page))
-                }
-              />
-            )}
-          </div>
-        ) : (
-          <div className="m-t-xlg">
-            <ErrorPlaceHolder
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              permission={permissions.Create}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-              onClick={onAddAsset}
-            />
-          </div>
-        )}
+        {layout}
       </div>
     );
   }

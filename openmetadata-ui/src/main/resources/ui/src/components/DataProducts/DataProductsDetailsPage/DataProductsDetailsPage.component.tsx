@@ -111,17 +111,12 @@ const DataProductsDetailsPage = ({
     const dataFQN: Array<string> = [];
 
     return [
-      {
-        name: 'Domains',
-        url: getDomainPath(arr[0]),
-        activeTitle: false,
-      },
       ...arr.slice(0, -1).map((d) => {
         dataFQN.push(d);
 
         return {
           name: d,
-          url: getDataProductsDetailsPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
+          url: getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
           activeTitle: false,
         };
       }),
@@ -129,10 +124,6 @@ const DataProductsDetailsPage = ({
   }, [dataProductFqn]);
 
   const [name, displayName, description] = useMemo(() => {
-    if (!dataProduct) {
-      return ['', '', ''];
-    }
-
     const defaultName = dataProduct.name;
     const defaultDisplayName = dataProduct.displayName;
     const defaultDescription = dataProduct.description;
@@ -215,9 +206,6 @@ const DataProductsDetailsPage = ({
   }, [permissions, isVersionsView]);
 
   const fetchDataProductPermission = useCallback(async () => {
-    if (!dataProduct) {
-      return;
-    }
     try {
       const response = await getEntityPermission(
         ResourceEntity.DATA_PRODUCT,
@@ -280,9 +268,6 @@ const DataProductsDetailsPage = ({
   ];
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (!dataProduct) {
-      return;
-    }
     if (dataProduct.description !== updatedHTML) {
       const updatedTableDetails = {
         ...dataProduct,
@@ -308,9 +293,6 @@ const DataProductsDetailsPage = ({
   };
 
   const handleExpertsUpdate = (data: Array<EntityReference>) => {
-    if (!dataProduct) {
-      return;
-    }
     if (!isEqual(data, dataProduct.experts)) {
       let updatedDataProduct = cloneDeep(dataProduct);
       const oldExperts = data.filter((d) => includes(dataProduct.experts, d));
@@ -347,9 +329,6 @@ const DataProductsDetailsPage = ({
   };
 
   const handleVersionClick = async () => {
-    if (!dataProduct) {
-      return;
-    }
     const path = isVersionsView
       ? getDataProductsDetailsPath(fqn)
       : getDataProductVersionsPath(fqn, toString(dataProduct.version));

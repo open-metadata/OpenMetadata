@@ -10,23 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import url('../../../../styles/variables.less');
 
-.data-product-content-container {
-  height: @data-product-page-height;
-  overflow-y: auto;
-}
-.data-product-details {
-  .assets-tab-container {
-    border: 1px solid @border-color;
-    .ant-tabs-nav {
-      margin-bottom: 0;
-    }
-    .ant-tabs-tab {
-      margin-left: 24px;
-    }
-    .assets-data-container {
-      padding: 12px 18px;
-    }
+.assets-tab-container {
+  .page-layout-v1-vertical-scroll,
+  .page-layout-leftpanel {
+    height: calc(100vh - 300px);
+  }
+  .summary-panel-container {
+    border-left: 1px solid @border-color;
   }
 }
