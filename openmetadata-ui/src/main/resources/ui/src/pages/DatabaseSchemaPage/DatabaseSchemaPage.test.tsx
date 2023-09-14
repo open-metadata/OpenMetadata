@@ -240,7 +240,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags'],
+      ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
       'include=all'
     );
   });
@@ -277,7 +277,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags'],
+      ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
       'include=all'
     );
 
@@ -299,7 +299,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags'],
+      ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
       'include=all'
     );
 
