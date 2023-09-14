@@ -63,7 +63,7 @@ SELECT
   routine_name as name,
   routine_definition as definition,
   external_language as language
-FROM {schema_name}.INFORMATION_SCHEMA.ROUTINES
+FROM `{schema_name}`.INFORMATION_SCHEMA.ROUTINES
 WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
