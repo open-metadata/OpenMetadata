@@ -839,9 +839,37 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   public void test_testCaseResultState(TestInfo test) throws IOException, ParseException {
-    TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
-    UUID testSuiteId = testCase.getTestSuite().getId();
+    // Create table for our test
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+            tableResourceTest
+                    .createRequest(test)
+                    .withName(test.getDisplayName())
+                    .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+                    .withOwner(USER1_REF)
+                    .withColumns(
+                            List.of(
+                                    new Column()
+                                            .withName(C1)
+                                            .withDisplayName("c1")
+                                            .withDataType(ColumnDataType.VARCHAR)
+                                            .withDataLength(10)))
+                    .withOwner(USER1_REF);
+    Table testTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    // create testSuite
+    CreateTestSuite createExecutableTestSuite = testSuiteResourceTest.createRequest(testTable.getFullyQualifiedName());
+    TestSuite testSuite = testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+
+    // create testCase
+    CreateTestCase createTestCase = new CreateTestCase()
+            .withName(test.getDisplayName())
+            .withDescription(test.getDisplayName())
+            .withEntityLink(String.format("<#E::table::%s>", testTable.getFullyQualifiedName()))
+            .withTestSuite(testSuite.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
+    TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    UUID testSuiteId = testCase.getTestSuite().getId();
 
     String dateStr = "2023-08-";
     List<TestCaseResult> testCaseResults = new ArrayList<>();
