@@ -60,8 +60,6 @@ class MissingMetricException(Exception):
     """
 
 
-# pylint: disable=too-many-public-methods
-# Pylint error above indicates that this class needs to be refactored
 class Profiler(Generic[TMetric]):
     """
     Core Profiler.

@@ -19,6 +19,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TopicDetails from 'components/TopicDetails/TopicDetails.component';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
@@ -33,6 +34,7 @@ import {
   getTopicByFqn,
   patchTopicDetails,
   removeFollower,
+  updateTopicVotes,
 } from 'rest/topicsAPI';
 import { getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
@@ -123,6 +125,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.TAGS,
         TabSpecificField.EXTENSION,
         TabSpecificField.DOMAIN,
+        TabSpecificField.VOTES,
       ]);
       const { id, fullyQualifiedName, serviceType } = res;
 
@@ -221,6 +224,22 @@ const TopicDetailsPage: FunctionComponent = () => {
     });
   };
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateTopicVotes(id, data);
+      const details = await getTopicByFqn(topicFQN, [
+        TabSpecificField.OWNER,
+        TabSpecificField.FOLLOWERS,
+        TabSpecificField.TAGS,
+        TabSpecificField.EXTENSION,
+        TabSpecificField.VOTES,
+      ]);
+      setTopicDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     fetchResourcePermission(topicFQN);
   }, [topicFQN]);
@@ -256,6 +275,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       unFollowTopicHandler={unFollowTopic}
       versionHandler={versionHandler}
       onTopicUpdate={onTopicUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };

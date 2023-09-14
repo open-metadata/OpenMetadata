@@ -60,6 +60,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onTopicUpdate,
   topicPermissions,
   handleToggleDelete,
+  onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -442,6 +443,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestoreTopic}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

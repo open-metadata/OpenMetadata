@@ -12,6 +12,7 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
@@ -47,4 +48,5 @@ export interface DashboardDetailsProps {
     key: keyof Dashboard
   ) => Promise<void>;
   handleToggleDelete: () => void;
+  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 }
