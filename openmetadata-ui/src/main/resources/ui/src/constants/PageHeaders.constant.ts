@@ -78,6 +78,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.storage-plural'),
     subHeader: i18n.t('message.page-sub-header-for-storages'),
   },
+  SEARCH_SERVICES: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search'),
+  },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
     subHeader: i18n.t('message.page-sub-header-for-activity-feed'),

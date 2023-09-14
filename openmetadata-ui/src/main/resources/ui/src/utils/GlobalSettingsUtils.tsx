@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchOutlined } from '@ant-design/icons';
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
@@ -180,6 +181,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.storages',
           icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
+        },
+        {
+          label: i18next.t('label.search'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.SEARCH_SERVICE,
+            permissions
+          ),
+          key: 'services.search',
+          icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
         },
       ],
     },
