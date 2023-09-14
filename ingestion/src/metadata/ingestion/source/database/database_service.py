@@ -228,14 +228,14 @@ class DatabaseServiceSource(
 
     def yield_table_tags(
         self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    ) -> Iterable[CreateTableRequest]:
         """
         From topology. To be run for each table
         """
 
     def yield_table_tag_details(
         self, table_name_and_type: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    ) -> Iterable[OMetaTagAndClassification]:
         """
         From topology. To be run for each table
         """

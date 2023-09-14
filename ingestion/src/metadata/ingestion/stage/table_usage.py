@@ -111,9 +111,7 @@ class TableUsageStage(Stage[QueryParserData]):
                 )
             ]
 
-    def _handle_table_usage(
-        self, parsed_data: ParsedData, table: str
-    ) -> None:
+    def _handle_table_usage(self, parsed_data: ParsedData, table: str) -> None:
         table_joins = parsed_data.joins.get(table)
         try:
             self._add_sql_query(record=parsed_data, table=table)
@@ -156,9 +154,7 @@ class TableUsageStage(Stage[QueryParserData]):
             if parsed_data is None:
                 continue
             for table in parsed_data.tables:
-                self._handle_table_usage(
-                    parsed_data=parsed_data, table=table
-                )
+                self._handle_table_usage(parsed_data=parsed_data, table=table)
         self.dump_data_to_file()
 
     def dump_data_to_file(self):

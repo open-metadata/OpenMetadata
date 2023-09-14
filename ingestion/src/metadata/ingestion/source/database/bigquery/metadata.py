@@ -336,7 +336,7 @@ class BigquerySource(CommonDbSourceService):
                     tags=[value],
                     classification_name=key,
                     tag_description="Bigquery Table Label",
-                    classification_description="",
+                    classification_desciption="",
                 )
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
