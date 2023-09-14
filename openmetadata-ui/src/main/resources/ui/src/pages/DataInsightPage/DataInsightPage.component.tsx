@@ -90,6 +90,11 @@ const DataInsightPage = () => {
       ),
     [permissions]
   );
+  const showDataInsightSummary =
+    tab === DataInsightTabs.APP_ANALYTICS ||
+    tab === DataInsightTabs.DATA_ASSETS;
+  const kpiChart =
+    tab === DataInsightTabs.KPIS || tab === DataInsightTabs.DATA_ASSETS;
 
   const viewKPIPermission = useMemo(
     () => checkPermission(Operation.ViewAll, ResourceEntity.KPI, permissions),
@@ -301,34 +306,9 @@ const DataInsightPage = () => {
     setActiveTab(tab ?? DataInsightTabs.DATA_ASSETS);
   }, [tab]);
 
-  if (!viewDataInsightChartPermission && !viewKPIPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
-
-  const getTabContent = () => {
-    const noDataInsightPermission =
-      !viewDataInsightChartPermission &&
-      (activeTab === DataInsightTabs.APP_ANALYTICS ||
-        activeTab === DataInsightTabs.DATA_ASSETS);
-
-    const noKPIPermission =
-      !viewKPIPermission && activeTab === DataInsightTabs.KPIS;
-
-    if (noDataInsightPermission || noKPIPermission) {
-      return (
-        <Row align="middle" className="w-full h-full" justify="center">
-          <Col span={24}>
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          </Col>
-        </Row>
-      );
-    }
-
-    return (
-      <Row
-        className="page-container"
-        data-testid="data-insight-container"
-        gutter={[16, 16]}>
+  const dataInsightHeader = useMemo(
+    () => (
+      <>
         <Col span={24}>
           <Space className="w-full justify-between items-start">
             <div data-testid="data-insight-header">
@@ -390,7 +370,7 @@ const DataInsightPage = () => {
         </Col>
 
         {/* Do not show summary for KPIs */}
-        {tab !== DataInsightTabs.KPIS && (
+        {showDataInsightSummary && (
           <Col span={24}>
             <DataInsightSummary
               chartFilter={chartFilter}
@@ -400,7 +380,7 @@ const DataInsightPage = () => {
         )}
 
         {/* Do not show KPIChart for app analytics */}
-        {tab !== DataInsightTabs.APP_ANALYTICS && (
+        {kpiChart && (
           <Col span={24}>
             <KPIChart
               chartFilter={chartFilter}
@@ -411,8 +391,58 @@ const DataInsightPage = () => {
             />
           </Col>
         )}
+      </>
+    ),
+    [
+      handleTeamSearch,
+      chartFilter,
+      createKPIPermission,
+      isKpiLoading,
+      kpiList,
+      viewKPIPermission,
+      handleScrollToChart,
+      handleDateRangeChange,
+      handleTierSearch,
+      fetchDefaultTierOptions,
+      handleTierChange,
+      tierOptions,
+      fetchDefaultTeamOptions,
+      handleTeamChange,
+      teamsOptions,
+    ]
+  );
+
+  if (!viewDataInsightChartPermission && !viewKPIPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  const getTabContent = () => {
+    const noDataInsightPermission =
+      !viewDataInsightChartPermission &&
+      (activeTab === DataInsightTabs.APP_ANALYTICS ||
+        activeTab === DataInsightTabs.DATA_ASSETS);
+
+    const noKPIPermission =
+      !viewKPIPermission && activeTab === DataInsightTabs.KPIS;
+
+    if (noDataInsightPermission || noKPIPermission) {
+      return (
+        <Row align="middle" className="w-full h-full" justify="center">
+          <Col span={24}>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          </Col>
+        </Row>
+      );
+    }
+
+    return (
+      <Row
+        className="page-container"
+        data-testid="data-insight-container"
+        gutter={[16, 16]}>
         {activeTab === DataInsightTabs.DATA_ASSETS && (
           <>
+            {dataInsightHeader}
             <Col span={24}>
               <TotalEntityInsight
                 chartFilter={chartFilter}
@@ -481,6 +511,7 @@ const DataInsightPage = () => {
         )}
         {activeTab === DataInsightTabs.APP_ANALYTICS && (
           <>
+            {dataInsightHeader}
             <Col span={24}>
               <TopViewEntities chartFilter={chartFilter} />
             </Col>
@@ -503,7 +534,10 @@ const DataInsightPage = () => {
         )}
 
         {activeTab === DataInsightTabs.KPIS && (
-          <KPIList viewKPIPermission={viewKPIPermission} />
+          <>
+            {dataInsightHeader}
+            <KPIList viewKPIPermission={viewKPIPermission} />
+          </>
         )}
       </Row>
     );
