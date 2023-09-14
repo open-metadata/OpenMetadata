@@ -14,9 +14,11 @@ Lineage Source Module
 import csv
 import traceback
 from abc import ABC
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Union
 
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.basic import SqlQuery, FullyQualifiedEntityName
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -99,7 +101,9 @@ class LineageSource(QueryParserSource, ABC):
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error processing query_dict {query_dict}: {exc}")
 
-    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
+    def _iter(
+        self, *_, **__
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -107,6 +111,8 @@ class LineageSource(QueryParserSource, ABC):
         connection_type = str(self.service_connection.type.value)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         for table_query in self.get_table_query():
+            # TODO: CHECK IF TABLE_QUERY HAS ALREADY BEEN PROCESSED FOR LINEAGE
+            # Find in ES
             lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
                 self.metadata,
                 query=table_query.query,
@@ -119,3 +125,15 @@ class LineageSource(QueryParserSource, ABC):
 
             for lineage_request in lineages or []:
                 yield lineage_request
+
+                # If we identified lineage properly, ingest the original query
+                if lineage_request.right:
+                    yield Either(
+                        right=CreateQueryRequest(
+                            query=SqlQuery(__root__=table_query.query),
+                            query_type=table_query.query_type,
+                            duration=table_query.duration,
+                            processedLineage=True,
+                            service=FullyQualifiedEntityName(__root__=self.config.serviceName),
+                        )
+                    )
