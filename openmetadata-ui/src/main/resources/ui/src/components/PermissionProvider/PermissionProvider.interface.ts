@@ -39,6 +39,7 @@ export enum ResourceEntity {
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchema',
   DATABASE_SERVICE = 'databaseService',
+  SEARCH_SERVICE = 'searchService',
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   FEED = 'feed',

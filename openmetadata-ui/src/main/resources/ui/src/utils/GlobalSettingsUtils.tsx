@@ -182,6 +182,15 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'services.storages',
           icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
         },
+        {
+          label: i18next.t('label.search'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.SEARCH_SERVICE,
+            permissions
+          ),
+          key: 'services.search',
+          icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+        },
       ],
     },
     {
