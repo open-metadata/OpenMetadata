@@ -91,10 +91,8 @@ class SearchServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=OMetaIndexSampleData,
-                context="search_index_sample_data",
                 processor="yield_search_index_sample_data",
                 consumer=["search_service"],
-                ack_sink=False,
                 nullable=True,
             ),
         ],

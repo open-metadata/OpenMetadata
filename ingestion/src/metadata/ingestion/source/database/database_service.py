@@ -126,7 +126,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_database_schema_tag_details",
-                ack_sink=False,
                 nullable=True,
                 cache_all=True,
             ),
@@ -147,7 +146,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_table_tag_details",
-                ack_sink=False,
                 nullable=True,
                 cache_all=True,
             ),
@@ -159,9 +157,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
-                context="life_cycle",
                 processor="yield_life_cycle_data",
-                ack_sink=False,
                 nullable=True,
             ),
         ],
@@ -182,17 +178,15 @@ class DatabaseServiceTopology(ServiceTopology):
         producer="get_stored_procedure_queries",
         stages=[
             NodeStage(
-                type_=AddLineageRequest,  # TODO: Fix context management for multiple types
+                type_=AddLineageRequest,
                 processor="yield_procedure_lineage",
                 context="stored_procedure_query_lineage",  # Used to flag if the query has had processed lineage
                 nullable=True,
-                ack_sink=False,
             ),
             NodeStage(
                 type_=Query,
                 processor="yield_procedure_query",
                 nullable=True,
-                ack_sink=False,
             ),
         ],
     )

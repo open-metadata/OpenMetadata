@@ -129,7 +129,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def get_tasks(self, pipeline_details: dict) -> List[Task]:
         task_list = []
-        self.append_context(key="job_id_list", value=pipeline_details["job_id"])
+        self._append_context(key="job_id_list", value=pipeline_details["job_id"])
 
         downstream_tasks = self.get_downstream_tasks(
             pipeline_details["settings"].get("tasks")
