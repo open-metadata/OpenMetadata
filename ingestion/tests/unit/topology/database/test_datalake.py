@@ -33,6 +33,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.utils.datalake.datalake_utils import get_columns
 
 mock_datalake_config = {
     "source": {
@@ -454,13 +455,13 @@ class DatalakeUnitTest(TestCase):
         actual_df_3 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
         )[0]
-        actual_cols_3 = DatalakeSource.get_columns(actual_df_3)
+        actual_cols_3 = get_columns(actual_df_3)
         assert actual_cols_3 == EXAMPLE_JSON_COL_3
 
         actual_df_4 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
         )[0]
-        actual_cols_4 = DatalakeSource.get_columns(actual_df_4)
+        actual_cols_4 = get_columns(actual_df_4)
         assert actual_cols_4 == EXAMPLE_JSON_COL_4
 
     def test_avro_file_parse(self):

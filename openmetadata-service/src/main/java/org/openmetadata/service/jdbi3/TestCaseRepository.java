@@ -481,7 +481,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected void postDelete(TestCase entity) {
+  protected void preDelete(TestCase entity, String deletedBy) {
     // delete test case from test suite summary when test case is deleted
     // from an executable test suite
     List<TestSuite> testSuites = getTestSuites(entity);
