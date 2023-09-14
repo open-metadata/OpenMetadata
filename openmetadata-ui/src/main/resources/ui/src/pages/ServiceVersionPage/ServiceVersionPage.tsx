@@ -44,6 +44,7 @@ import { getDashboards } from 'rest/dashboardAPI';
 import { getDatabases } from 'rest/databaseAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
+import { getSearchIndexes } from 'rest/SearchIndexAPI';
 import {
   getServiceByFQN,
   getServiceVersionData,
@@ -237,6 +238,22 @@ function ServiceVersionPage() {
     [serviceFQN]
   );
 
+  const fetchSearchIndexes = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getSearchIndexes({
+        service: getDecodedFqn(serviceFQN),
+        fields: 'owner,tags',
+        paging,
+        root: true,
+        include: Include.NonDeleted,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [serviceFQN]
+  );
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
       try {
@@ -269,6 +286,11 @@ function ServiceVersionPage() {
           }
           case ServiceCategory.STORAGE_SERVICES: {
             await fetchContainers(paging);
+
+            break;
+          }
+          case ServiceCategory.SEARCH_SERVICES: {
+            await fetchSearchIndexes(paging);
 
             break;
           }
