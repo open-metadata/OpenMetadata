@@ -569,13 +569,6 @@ class CommonDbSourceService(
         """
         return table
 
-    def yield_table_tag(self) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        We don't provide a common implementation for table tags.
-
-        Each source will have to implement its own on a need basis.
-        """
-
     def get_source_url(
         self,
         database_name: Optional[str] = None,

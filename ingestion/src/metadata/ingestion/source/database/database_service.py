@@ -145,7 +145,7 @@ class DatabaseServiceTopology(ServiceTopology):
             NodeStage(
                 type_=OMetaTagAndClassification,
                 context="tags",
-                processor="yield_tag_details",
+                processor="yield_database_schema_tag_details",
                 ack_sink=False,
                 nullable=True,
                 cache_all=True,
@@ -163,6 +163,14 @@ class DatabaseServiceTopology(ServiceTopology):
     table = TopologyNode(
         producer="get_tables_name_and_type",
         stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_table_tag_details",
+                ack_sink=False,
+                nullable=True,
+                cache_all=True,
+            ),
             NodeStage(
                 type_=Table,
                 context="table",
@@ -296,7 +304,23 @@ class DatabaseServiceSource(
         From topology. To be run for each schema
         """
 
-    def yield_tag_details(
+    def yield_table_tags(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[Either[CreateTableRequest]]:
+        """
+        From topology. To be run for each table
+        """
+
+    def yield_table_tag_details(
+        self, table_name_and_type: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each table
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_table_tags(table_name_and_type) or []
+
+    def yield_database_schema_tag_details(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
@@ -371,7 +395,7 @@ class DatabaseServiceSource(
 
         tag_labels = []
         for tag_and_category in self.context.tags or []:
-            if tag_and_category.fqn.__root__ == entity_fqn:
+            if tag_and_category.fqn and tag_and_category.fqn.__root__ == entity_fqn:
                 tag_label = get_tag_label(
                     metadata=self.metadata,
                     tag_name=tag_and_category.tag_request.name.__root__,
