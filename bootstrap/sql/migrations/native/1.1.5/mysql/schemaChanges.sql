@@ -6,7 +6,7 @@ UPDATE entity_extension_time_series
     JSON_EXTRACT(json, '$.timestamp') * 1000
     )
 WHERE
-    extension  in ('table.tableProfile', 'table.columnProfile');
+    extension  in ('table.tableProfile', 'table.columnProfile', 'testCase.testCaseResult');
 ;
 
 START TRANSACTION;

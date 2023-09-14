@@ -62,6 +62,19 @@
           "analyzer": "ik_max_word",
           "search_analyzer": "ik_smart"
         },
+        "entityType": {
+          "type": "keyword"
+        },
+        "suggest": {
+          "type": "completion",
+          "contexts": [
+            {
+              "name": "deleted",
+              "type": "category",
+              "path": "deleted"
+            }
+          ]
+        },
         "version": {
           "type": "float"
         },
