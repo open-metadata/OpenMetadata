@@ -17,7 +17,10 @@ import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import GlobalSettingRouter from 'components/router/GlobalSettingRouter';
-import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import { TeamType } from 'generated/entity/teams/team';
 import { useAuth } from 'hooks/authHooks';
@@ -78,13 +81,17 @@ const GlobalSettingPage = () => {
 
         break;
       case GlobalSettingOptions.SEARCH:
-        history.push(
-          getSettingsPathWithFqn(
-            category,
-            option,
-            ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
-          )
-        );
+        if (category === GlobalSettingsMenuCategory.OPEN_METADATA) {
+          history.push(
+            getSettingsPathWithFqn(
+              category,
+              option,
+              ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
+            )
+          );
+        } else {
+          history.push(getSettingPath(category, option));
+        }
 
         break;
       default:

@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -102,7 +103,8 @@ public class AlertsRuleEvaluator {
     }
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
-      if (changeEvent.getEntityType().equals(TEST_CASE) && ((TestCase) entity).getEntityFQN().equals(name)) {
+      if (changeEvent.getEntityType().equals(TEST_CASE)
+          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink()).getEntityFQN().equals(name))) {
         return true;
       }
       if (entity.getFullyQualifiedName().equals(name)) {

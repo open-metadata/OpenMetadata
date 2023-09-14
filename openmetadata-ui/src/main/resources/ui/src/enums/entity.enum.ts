@@ -28,6 +28,7 @@ export enum EntityType {
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',
   STORAGE_SERVICE = 'storageService',
+  SEARCH_SERVICE = 'searchService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -51,6 +52,7 @@ export enum EntityType {
   DATA_PRODUCT = 'dataProduct',
   SAMPLE_DATA = 'sampleData',
   STORED_PROCEDURE = 'storedProcedure',
+  SEARCH_INDEX = 'searchIndex',
 }
 
 export enum AssetsType {
