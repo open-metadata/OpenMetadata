@@ -48,7 +48,7 @@ import org.openmetadata.service.search.indexes.MlModelServiceIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
-import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
@@ -112,7 +112,7 @@ public class SearchIndexFactory {
       case Entity.SEARCH_SERVICE:
         return new SearchServiceIndex((SearchService) entity);
       case Entity.SEARCH_INDEX:
-        return new SearchIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
+        return new SearchEntityIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
       case Entity.PIPELINE_SERVICE:
         return new PipelineServiceIndex((PipelineService) entity);
       case Entity.DOMAIN:

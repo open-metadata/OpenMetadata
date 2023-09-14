@@ -58,6 +58,19 @@
           }
         }
       },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
