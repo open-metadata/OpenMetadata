@@ -58,6 +58,12 @@ class LinkedRequestScopedJdbiHandleManager implements JdbiHandleManager {
   }
 
   @Override
+  public boolean handleExists() {
+    // TODO
+    return false;
+  }
+
+  @Override
   public void clear() {
     String parent = getConversationId();
     Handle handle = parentThreadHandleMap.get(parent);

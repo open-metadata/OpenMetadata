@@ -30,6 +30,8 @@ import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.compon
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import Voting from 'components/Voting/Voting.component';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityAction, EntityType } from 'enums/entity.enum';
@@ -47,7 +49,8 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from 'rest/glossaryAPI';
-import { getEntityDeleteMessage } from 'utils/CommonUtils';
+import { getCurrentUserId, getEntityDeleteMessage } from 'utils/CommonUtils';
+import { getEntityVoteStatus } from 'utils/EntityUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
@@ -68,6 +71,7 @@ export interface GlossaryHeaderProps {
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
   onAssetAdd?: () => void;
+  updateVote?: (data: VotingDataProps) => Promise<void>;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
 }
 
@@ -79,10 +83,13 @@ const GlossaryHeader = ({
   isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
+  updateVote,
   isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
+  const USER_ID = getCurrentUserId();
+
   const { glossaryName: glossaryFqn, version } = useParams<{
     glossaryName: string;
     version: string;
@@ -115,6 +122,11 @@ const GlossaryHeader = ({
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
   }, [permissions]);
+
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(USER_ID, selectedData.votes),
+    [selectedData.votes, USER_ID]
+  );
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
@@ -168,6 +180,8 @@ const GlossaryHeader = ({
     onUpdate(updatedDetails);
     setIsNameEditing(false);
   };
+
+  const handleUpdateVote = (data: VotingDataProps) => updateVote?.(data);
 
   const addButtonContent = [
     {
@@ -387,12 +401,20 @@ const GlossaryHeader = ({
             serviceName=""
           />
         </Col>
-        <Col flex="280px">
+        <Col flex="360px">
           <div style={{ textAlign: 'right' }}>
-            <div>
+            <div className="d-flex items-end">
               {createButtons}
 
               <ButtonGroup className="p-l-xs" size="small">
+                {updateVote && (
+                  <Voting
+                    voteStatus={voteStatus}
+                    votes={selectedData.votes}
+                    onUpdateVote={handleUpdateVote}
+                  />
+                )}
+
                 {selectedData && selectedData.version && (
                   <Button
                     className={classNames('', {

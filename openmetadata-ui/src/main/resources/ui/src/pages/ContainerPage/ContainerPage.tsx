@@ -33,6 +33,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -57,6 +58,7 @@ import {
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
+  updateContainerVotes,
 } from 'rest/storageAPI';
 import {
   addToRecentViewed,
@@ -105,7 +107,7 @@ const ContainerPage = () => {
     try {
       const response = await getContainerByName(
         containerFQN,
-        'parent,dataModel,owner,tags,followers,extension,domain',
+        'parent,dataModel,owner,tags,followers,extension,domain,votes',
         Include.All
       );
       addToRecentViewed({
@@ -641,6 +643,19 @@ const ContainerPage = () => {
     ]
   );
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateContainerVotes(id, data);
+      const details = await getContainerByName(
+        containerName,
+        'parent,dataModel,owner,tags,followers,extension,votes'
+      );
+      setContainerData(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   // Effects
   useEffect(() => {
     if (hasViewPermission) {
@@ -702,6 +717,7 @@ const ContainerPage = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreContainer}
             onTierUpdate={handleUpdateTier}
+            onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
         </Col>

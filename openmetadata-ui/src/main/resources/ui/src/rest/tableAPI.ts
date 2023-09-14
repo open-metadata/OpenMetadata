@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { Include } from 'generated/type/include';
 import { PagingResponse, RestoreRequestType } from 'Models';
@@ -39,11 +40,13 @@ export type TableListParams = {
   includeEmptyTestSuite?: boolean;
 };
 
+const BASE_URL = '/tables';
+
 export const getTableDetails = async (
   id: string,
   arrQueryFields: string | string[]
 ) => {
-  const url = getURLWithQueryFields(`/tables/${id}`, arrQueryFields);
+  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
 
   const response = await APIClient.get<Table>(url);
 
@@ -51,7 +54,7 @@ export const getTableDetails = async (
 };
 
 export const getTableVersions = async (id: string) => {
-  const url = `/tables/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
@@ -59,7 +62,7 @@ export const getTableVersions = async (id: string) => {
 };
 
 export const getTableVersion = async (id: string, version: string) => {
-  const url = `/tables/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get(url);
 
@@ -72,7 +75,7 @@ export const getTableDetailsByFQN = async (
   include = 'all'
 ) => {
   const url = getURLWithQueryFields(
-    `/tables/name/${fqn}`,
+    `${BASE_URL}/name/${fqn}`,
     arrQueryFields,
     `include=${include}`
   );
@@ -88,7 +91,7 @@ export const getDatabaseTables = (
   arrQueryFields?: string
 ): Promise<AxiosResponse> => {
   const url = `${getURLWithQueryFields(
-    `/tables`,
+    `${BASE_URL}`,
     arrQueryFields
   )}&database=${databaseName}${paging ? paging : ''}`;
 
@@ -101,7 +104,7 @@ export const patchTableDetails = async (id: string, data: Operation[]) => {
   };
 
   const response = await APIClient.patch<Operation[], AxiosResponse<Table>>(
-    `/tables/${id}`,
+    `${BASE_URL}/${id}`,
     data,
     configOptions
   );
@@ -113,7 +116,7 @@ export const restoreTable = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Table>
-  >('/tables/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
 
   return response.data;
 };
@@ -128,7 +131,7 @@ export const addFollower = async (tableId: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/tables/${tableId}/followers`, userId, configOptions);
+  >(`${BASE_URL}/${tableId}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -143,14 +146,14 @@ export const removeFollower = async (tableId: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/tables/${tableId}/followers/${userId}`, configOptions);
+  >(`${BASE_URL}/${tableId}/followers/${userId}`, configOptions);
 
   return response.data;
 };
 
 export const getTableProfilerConfig = async (tableId: string) => {
   const response = await APIClient.get<Table>(
-    `/tables/${tableId}/tableProfilerConfig`
+    `${BASE_URL}/${tableId}/tableProfilerConfig`
   );
 
   return response.data;
@@ -167,7 +170,7 @@ export const putTableProfileConfig = async (
   const response = await APIClient.put<
     TableProfilerConfig,
     AxiosResponse<Table>
-  >(`/tables/${tableId}/tableProfilerConfig`, data, configOptions);
+  >(`${BASE_URL}/${tableId}/tableProfilerConfig`, data, configOptions);
 
   return response.data;
 };
@@ -179,7 +182,7 @@ export const getTableProfilesList = async (
     endTs?: number;
   }
 ) => {
-  const url = `/tables/${tableFqn}/tableProfile`;
+  const url = `${BASE_URL}/${tableFqn}/tableProfile`;
 
   const response = await APIClient.get<PagingResponse<TableProfile[]>>(url, {
     params,
@@ -195,7 +198,7 @@ export const getSystemProfileList = async (
     endTs?: number;
   }
 ) => {
-  const url = `/tables/${tableFqn}/systemProfile`;
+  const url = `${BASE_URL}/${tableFqn}/systemProfile`;
 
   const response = await APIClient.get<PagingResponse<SystemProfile[]>>(url, {
     params,
@@ -214,7 +217,7 @@ export const getColumnProfilerList = async (
     after?: string;
   }
 ) => {
-  const url = `/tables/${columnFqn}/columnProfile`;
+  const url = `${BASE_URL}/${columnFqn}/columnProfile`;
 
   const response = await APIClient.get<{
     data: ColumnProfile[];
@@ -225,7 +228,7 @@ export const getColumnProfilerList = async (
 };
 
 export const getSampleDataByTableId = async (id: string) => {
-  const response = await APIClient.get<Table>(`/tables/${id}/sampleData`);
+  const response = await APIClient.get<Table>(`${BASE_URL}/${id}/sampleData`);
 
   return response.data;
 };
@@ -233,14 +236,14 @@ export const getSampleDataByTableId = async (id: string) => {
 export const getLatestTableProfileByFqn = async (fqn: string) => {
   const encodedFQN = encodeURIComponent(fqn);
   const response = await APIClient.get<Table>(
-    `/tables/${encodedFQN}/tableProfile/latest`
+    `${BASE_URL}/${encodedFQN}/tableProfile/latest`
   );
 
   return response.data;
 };
 
 export const getTableList = async (params?: TableListParams) => {
-  const response = await APIClient.get<PagingResponse<Table[]>>('/tables', {
+  const response = await APIClient.get<PagingResponse<Table[]>>(BASE_URL, {
     params,
   });
 
@@ -248,5 +251,14 @@ export const getTableList = async (params?: TableListParams) => {
 };
 
 export const deleteSampleDataByTableId = async (id: string) => {
-  return await APIClient.delete<Table>(`/tables/${id}/sampleData`);
+  return await APIClient.delete<Table>(`${BASE_URL}/${id}/sampleData`);
+};
+
+export const updateTablesVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Table>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
+
+  return response.data;
 };
