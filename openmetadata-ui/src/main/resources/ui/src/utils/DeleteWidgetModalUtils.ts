@@ -25,6 +25,7 @@ export const prepareEntityType = (entityType: string) => {
     EntityType.METADATA_SERVICE,
     EntityType.STORAGE_SERVICE,
     EntityType.MLMODEL_SERVICE,
+    EntityType.SEARCH_SERVICE,
   ];
 
   const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
