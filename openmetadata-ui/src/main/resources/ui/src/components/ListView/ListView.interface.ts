@@ -14,7 +14,7 @@ import { TableProps } from 'antd';
 import { ReactNode } from 'react';
 
 interface SearchProps {
-  onSearch: (search: string) => void;
+  onSearch: ((search: string) => void) | ((search: string) => Promise<void>);
   search?: string;
 }
 

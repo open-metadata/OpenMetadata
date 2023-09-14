@@ -154,8 +154,8 @@ const UserListPageV1 = () => {
     currentPage,
   }: PagingHandlerParams) => {
     if (searchValue) {
-      setCurrentPage(currentPage as number);
-      getSearchedUsers(searchValue, currentPage as number);
+      setCurrentPage(currentPage);
+      getSearchedUsers(searchValue, currentPage);
     } else if (cursorType && paging[cursorType]) {
       setCurrentPage(currentPage);
       fetchUsersList({

@@ -31,7 +31,7 @@ import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/type';
 import { usePaging } from 'hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from 'interface/search.interface';
-import { isEmpty, isNil, map, startCase } from 'lodash';
+import { isEmpty, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -217,49 +217,45 @@ const Services = ({ serviceName }: ServicesProps) => {
     }
   }, [serviceName]);
 
-  const noDataPlaceholder = useMemo(
-    () =>
-      addServicePermission ? (
-        isNil(searchTerm) && isNil(serviceTypeFilter) ? (
-          <ErrorPlaceHolder
-            className="mt-24"
-            doc={CONNECTORS_DOCS}
-            heading={servicesDisplayName[serviceName]}
-            permission={addServicePermission}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={handleAddServiceClick}
-          />
-        ) : (
-          <ErrorPlaceHolder
-            className="mt-24"
-            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-          />
-        )
-      ) : (
+  const noDataPlaceholder = useMemo(() => {
+    if (
+      addServicePermission &&
+      isEmpty(searchTerm) &&
+      isEmpty(serviceTypeFilter)
+    ) {
+      return (
         <ErrorPlaceHolder
           className="mt-24"
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+          doc={CONNECTORS_DOCS}
+          heading={servicesDisplayName[serviceName]}
+          permission={addServicePermission}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddServiceClick}
         />
-      ),
-    [
-      addServicePermission,
-      servicesDisplayName,
-      serviceName,
-      searchTerm,
-      serviceTypeFilter,
-      addServicePermission,
-      handleAddServiceClick,
-    ]
-  );
+      );
+    }
+
+    return (
+      <ErrorPlaceHolder
+        className="mt-24"
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
+  }, [
+    addServicePermission,
+    servicesDisplayName,
+    serviceName,
+    searchTerm,
+    serviceTypeFilter,
+    addServicePermission,
+    handleAddServiceClick,
+  ]);
 
   const serviceTypeFilters = useMemo(() => {
-    return map(
-      getServiceTypesFromServiceCategory(serviceName as ServiceCategory),
-      (value) => ({
-        text: startCase(value),
-        value,
-      })
-    );
+    return map(getServiceTypesFromServiceCategory(serviceName), (value) => ({
+      text: startCase(value),
+      value,
+    }));
   }, [serviceName]);
 
   const columns: ColumnsType<ServicesType> = [
@@ -395,12 +391,11 @@ const Services = ({ serviceName }: ServicesProps) => {
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
-      filters:
-        serviceTypeFilter && serviceTypeFilter.length
-          ? `(${serviceTypeFilter
-              .map((type) => `serviceType:${type}`)
-              .join(' ')})`
-          : undefined,
+      filters: serviceTypeFilter?.length
+        ? `(${serviceTypeFilter
+            .map((type) => `serviceType:${type}`)
+            .join(' ')})`
+        : undefined,
     });
   }, [searchIndex, pageSize, serviceName, searchTerm, serviceTypeFilter]);
 

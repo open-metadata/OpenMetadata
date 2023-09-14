@@ -160,7 +160,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     currentPage,
   }: PagingHandlerParams) => {
     if (searchValue) {
-      searchTestCases(currentPage as number);
+      searchTestCases(currentPage);
     } else {
       const { paging } = testCase;
       if (cursorType) {

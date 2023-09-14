@@ -436,7 +436,7 @@ const TeamsPage = () => {
       setCurrentUserPage(currentPage);
       searchUsers(userSearchValue, currentPage);
     } else if (cursorType) {
-      setCurrentUserPage(currentPage as number);
+      setCurrentUserPage(currentPage);
       getCurrentTeamUsers(selectedTeam.name, {
         [cursorType]: userPaging[cursorType] as string,
       });
