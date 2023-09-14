@@ -64,7 +64,14 @@
         "search_analyzer": "ik_smart"
       },
       "storedProcedureCode": {
-        "type": "keyword"
+        "properties": {
+          "language": {
+            "type": "text"
+          },
+          "code": {
+            "type": "text"
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -221,9 +228,7 @@
         "type": "keyword"
       },
       "deleted": {
-        "description": "When `true` indicates the entity has been soft deleted.",
-        "type": "boolean",
-        "default": false
+        "type": "text"
       },
       "owner": {
         "properties": {
@@ -275,7 +280,106 @@
         "type": "keyword"
       },
       "votes" : {
-        "type": "keyword"
+        "properties": {
+          "upVotes": {
+            "type": "long"
+          },
+          "downVotes": {
+            "type": "long"
+          },
+          "upVoters": {
+            "properties": {
+              "id": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
+              }
+            }
+          },
+          "downVoters": {
+            "properties": {
+              "id": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
+              }
+            }
+          }
+        }
       },
       "code": {
         "type": "keyword"
