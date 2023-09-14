@@ -33,13 +33,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.FIELD_DELETED;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -1165,6 +1159,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldDeleted(change, FIELD_OWNER, USER1_REF);
     patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), false);
+
+    // set random type as entity. Check if the ownership validate.
+    T newEntity = entity;
+    String newJson = JsonUtils.pojoToJson(newEntity);
+    newEntity.setOwner(TEST_DEFINITION1.getEntityReference());
+    fieldUpdated(change, FIELD_OWNER, TEST_DEFINITION1, USER1_REF);
+    assertResponse(
+        () -> patchEntity(newEntity.getId(), newJson, newEntity, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidOwnerType(TEST_DEFINITION));
   }
 
   @Test

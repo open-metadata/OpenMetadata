@@ -34,16 +34,18 @@ public class JdbiTransactionManager {
   public void begin(boolean autoCommit) {
     try {
       Handle handle = handleManager.get();
-      handle.getConnection().setAutoCommit(autoCommit);
-      handle.getConfig(Handles.class).setForceEndTransactions(false);
-      handle.begin();
-      IN_TRANSACTION_HANDLES.add(handle.hashCode());
-      LOG.debug(
-          "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
-          Thread.currentThread().getId(),
-          handle.hashCode(),
-          handle.isInTransaction(),
-          handle.getTransactionIsolationLevel());
+      if (autoCommit) {
+        handle.getConnection().setAutoCommit(autoCommit);
+        handle.getConfig(Handles.class).setForceEndTransactions(false);
+        handle.begin();
+        IN_TRANSACTION_HANDLES.add(handle.hashCode());
+        LOG.debug(
+            "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
+            Thread.currentThread().getId(),
+            handle.hashCode(),
+            handle.isInTransaction(),
+            handle.getTransactionIsolationLevel());
+      }
     } catch (Exception ex) {
       terminateHandle();
     }
@@ -71,7 +73,7 @@ public class JdbiTransactionManager {
   }
 
   public void rollback() {
-    if (IN_TRANSACTION_HANDLES.contains(handleManager.get().hashCode())) {
+    if (handleManager.handleExists()) {
       Handle handle = handleManager.get();
       if (handle == null) {
         LOG.debug("Handle was found to be null during rollback for [{}]", Thread.currentThread().getId());
