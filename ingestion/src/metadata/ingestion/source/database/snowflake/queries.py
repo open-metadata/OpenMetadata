@@ -200,6 +200,8 @@ Q_HISTORY AS (
       USER_NAME
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE <> 'CALL'
+      AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+      AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}' 
       AND WAREHOUSE_NAME = '{warehouse}'
       AND SCHEMA_NAME = '{schema_name}'

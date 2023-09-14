@@ -12,11 +12,8 @@
 We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
-import re
 import traceback
-from collections import defaultdict
-from functools import lru_cache
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
@@ -30,11 +27,9 @@ from sqlalchemy_bigquery._types import _get_sqla_column_type
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database, EntityName
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
@@ -53,17 +48,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
-    MultipleProjectId,
     SingleProjectId,
 )
-from metadata.generated.schema.type.basic import SourceUrl, SqlQuery, Timestamp
-from metadata.generated.schema.type.entityLineage import Source as LineageSource
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.models import (
@@ -81,7 +71,10 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.database_service import QueryByProcedure
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
+)
 from metadata.utils import fqn
 from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
@@ -89,7 +82,6 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
-from metadata.utils.stored_procedures import get_procedure_name_from_call
 from metadata.utils.tag_utils import (
     get_ometa_tag_and_classification,
     get_tag_label,
@@ -202,7 +194,7 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 
 
-class BigquerySource(CommonDbSourceService):
+class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -225,9 +217,9 @@ class BigquerySource(CommonDbSourceService):
         return cls(config, metadata_config)
 
     @staticmethod
-    def set_project_id():
+    def set_project_id() -> List[str]:
         _, project_ids = auth.default()
-        return project_ids
+        return project_ids if isinstance(project_ids, list) else [project_ids]
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -247,7 +239,9 @@ class BigquerySource(CommonDbSourceService):
                 type_=_bigquery_table_types.get(table_type, TableType.Regular),
             )
             for table_name, table_type in self.engine.execute(
-                BIGQUERY_TABLE_AND_TYPE.format(schema_name)
+                BIGQUERY_TABLE_AND_TYPE.format(
+                    project_id=self.client.project, schema_name=schema_name
+                )
             )
             or []
         ]
@@ -351,12 +345,41 @@ class BigquerySource(CommonDbSourceService):
                 )
         yield Either(right=database_schema_request_obj)
 
+    def get_table_obj(self, table_name: str):
+        schema_name = self.context.database_schema.name.__root__
+        database = self.context.database.name.__root__
+        bq_table_fqn = fqn._build(database, schema_name, table_name)
+        return self.client.get_table(bq_table_fqn)
+
+    def yield_table_tag_details(self, table_name_and_type: Tuple[str, str]):
+        table_name, _ = table_name_and_type
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, value in table_obj.labels.items():
+                yield from get_ometa_tag_and_classification(
+                    tags=[value],
+                    classification_name=key,
+                    tag_description="Bigquery Table Label",
+                    classification_description="",
+                )
+
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
         is properly informed
         """
-        return []
+        table_tag_labels = super().get_tag_labels(table_name) or []
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, _ in table_obj.labels.items():
+                tag_label = get_tag_label(
+                    metadata=self.metadata,
+                    tag_name=key,
+                    classification_name=key,
+                )
+                if tag_label:
+                    table_tag_labels.append(tag_label)
+        return table_tag_labels
 
     def get_column_tag_labels(
         self, table_name: str, column: dict
@@ -402,42 +425,27 @@ class BigquerySource(CommonDbSourceService):
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        if hasattr(
-            self.service_connection.credentials.gcpConfig, "projectId"
-        ) and isinstance(
-            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
-        ):
-            for project_id in self.project_ids:
-                database_name = project_id
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=database_name,
-                )
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else database_name,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered out")
-                    continue
-
+        for project_id in self.project_ids:
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.database_service.name.__root__,
+                database_name=project_id,
+            )
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                database_fqn if self.source_config.useFqnForFiltering else project_id,
+            ):
+                self.status.filter(database_fqn, "Database Filtered out")
+            else:
                 try:
-                    self.set_inspector(database_name=database_name)
-                    self.project_id = (  # pylint: disable=attribute-defined-outside-init
-                        database_name
-                    )
-                    yield database_name
+                    self.set_inspector(database_name=project_id)
+                    yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error trying to connect to database {database_name}: {exc}"
+                        f"Error trying to connect to database {project_id}: {exc}"
                     )
-        else:
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -445,7 +453,9 @@ class BigquerySource(CommonDbSourceService):
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.context.database.name.__root__}.{schema_name}.{table_name}"
+                    fqn._build(
+                        self.context.database.name.__root__, schema_name, table_name
+                    )
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -463,7 +473,7 @@ class BigquerySource(CommonDbSourceService):
         check if the table is partitioned table and return the partition details
         """
         database = self.context.database.name.__root__
-        table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
+        table = self.client.get_table(fqn._build(database, schema_name, table_name))
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
                 table_partition = TablePartition(
@@ -615,66 +625,18 @@ class BigquerySource(CommonDbSourceService):
                 )
             )
 
-    @lru_cache
-    def procedure_queries_dict(
-        self, schema_name: str, database_name: str
-    ) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Cache the queries ran for the stored procedures in the last `queryLogDuration` days.
-
-        We will run this for each different and db name.
-
-        The dictionary key will be the case-insensitive procedure name.
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        results = self.engine.execute(
-            BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-                start_date=start,
-            )
-        ).all()
-
-        queries_dict = defaultdict(list)
-
-        for row in results:
-            try:
-                query_by_procedure = QueryByProcedure.parse_obj(dict(row))
-                procedure_name = get_procedure_name_from_call(
-                    query_text=query_by_procedure.procedure_text,
-                    schema_name=schema_name,
-                    database_name=database_name,
-                )
-                queries_dict[procedure_name].append(query_by_procedure)
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name="Stored Procedure",
-                        error=f"Error trying to get procedure name due to [{exc}]",
-                        stack_trace=traceback.format_exc(),
-                    )
-                )
-
-        return queries_dict
-
-    @staticmethod
-    def is_lineage_query(query_type: str, query_text: str) -> bool:
-        """Check if it's worth it to parse the query for lineage"""
-
-        if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
-            return True
-
-        if query_type == "INSERT" and re.search(
-            "^.*insert.*into.*select.*$", query_text, re.IGNORECASE
-        ):
-            return True
-
-        return False
-
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """
         Pick the stored procedure name from the context
         and return the list of associated queries
         """
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            region=self.service_connection.usageLocation,
+        )
         queries_dict = self.procedure_queries_dict(
+            query=query,
             schema_name=self.context.database_schema.name.__root__,
             database_name=self.context.database.name.__root__,
         )
@@ -683,57 +645,3 @@ class BigquerySource(CommonDbSourceService):
             queries_dict.get(self.context.stored_procedure.name.__root__.lower()) or []
         ):
             yield query_by_procedure
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Add procedure lineage from its query"""
-
-        self.update_context(key="stored_procedure_query_lineage", value=False)
-        if self.is_lineage_query(
-            query_type=query_by_procedure.query_type,
-            query_text=query_by_procedure.query_text,
-        ):
-            self.update_context(key="stored_procedure_query_lineage", value=True)
-
-            for either_lineage in get_lineage_by_query(
-                self.metadata,
-                query=query_by_procedure.query_text,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
-                schema_name=self.context.database_schema.name.__root__,
-                dialect=ConnectionTypeDialectMapper.dialect_of(
-                    self.context.database_service.serviceType.value
-                ),
-                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
-                lineage_source=LineageSource.QueryLineage,
-            ):
-                if either_lineage.right.edge.lineageDetails:
-                    either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
-                        id=self.context.stored_procedure.id,
-                        type="storedProcedure",
-                    )
-
-                yield either_lineage
-
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Check the queries triggered by the procedure and add their lineage, if any"""
-
-        yield Either(
-            right=CreateQueryRequest(
-                query=SqlQuery(__root__=query_by_procedure.query_text),
-                query_type=query_by_procedure.query_type,
-                duration=query_by_procedure.query_duration,
-                queryDate=Timestamp(
-                    __root__=int(query_by_procedure.query_start_time.timestamp()) * 1000
-                ),
-                triggeredBy=EntityReference(
-                    id=self.context.stored_procedure.id,
-                    type="storedProcedure",
-                ),
-                processedLineage=bool(self.context.stored_procedure_query_lineage),
-                service=self.context.database_service.name.__root__,
-            )
-        )

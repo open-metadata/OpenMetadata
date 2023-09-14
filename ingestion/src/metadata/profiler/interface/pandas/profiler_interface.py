@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#  pylint: disable=arguments-differ
 
 """
 Interfaces with database for all database engine
@@ -31,7 +32,6 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_col_types, fetch_dataframe
-from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -109,20 +109,10 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             profile_sample_query=self.profile_query,
         )
 
-    @valuedispatch
-    def _get_metrics(self, *_, **__):
-        """Generic getter method for metrics. To be used with
-        specific dispatch methods
-        """
-        logger.warning("Could not get metric. No function registered.")
-
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Table.value)
-    def _(
+    def _compute_table_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
-        dfs,
+        runner: List,
         *args,
         **kwargs,
     ):
@@ -138,7 +128,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         try:
             row_dict = {}
-            df_list = [df.where(pd.notnull(df), None) for df in dfs]
+            df_list = [df.where(pd.notnull(df), None) for df in runner]
             for metric in metrics:
                 row_dict[metric.name()] = metric().df_fn(df_list)
             return row_dict
@@ -147,13 +137,10 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             logger.warning(f"Error trying to compute profile for {exc}")
             raise RuntimeError(exc)
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Static.value)
-    def _(
+    def _compute_static_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
-        dfs,
+        runner: List,
         column,
         *args,
         **kwargs,
@@ -172,7 +159,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         try:
             row_dict = {}
             for metric in metrics:
-                metric_resp = metric(column).df_fn(dfs)
+                metric_resp = metric(column).df_fn(runner)
                 row_dict[metric.name()] = (
                     None if pd.isnull(metric_resp) else metric_resp
                 )
@@ -183,13 +170,10 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             )
             raise RuntimeError(exc)
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Query.value)
-    def _(
+    def _compute_query_metrics(
         self,
-        metric_type: str,
-        metrics: Metrics,
-        dfs,
+        metric: Metrics,
+        runner: List,
         column,
         *args,
         **kwargs,
@@ -204,18 +188,15 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             dictionnary of results
         """
         col_metric = None
-        col_metric = metrics(column).df_fn(dfs)
+        col_metric = metric(column).df_fn(runner)
         if not col_metric:
             return None
-        return {metrics.name(): col_metric}
+        return {metric.name(): col_metric}
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Window.value)
-    def _(
+    def _compute_window_metrics(
         self,
-        metric_type: str,
-        metrics: Metrics,
-        dfs,
+        metrics: List[Metrics],
+        runner: List,
         column,
         *args,
         **kwargs,
@@ -224,19 +205,21 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         Given a list of metrics, compute the given results
         and returns the values
         """
+
         try:
             metric_values = {}
             for metric in metrics:
-                metric_values[metric.name()] = metric(column).df_fn(dfs)
+                metric_values[metric.name()] = metric(column).df_fn(runner)
             return metric_values if metric_values else None
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             return None
 
-    @_get_metrics.register(MetricTypes.System.value)
-    def _(
+    def _compute_system_metrics(
         self,
+        metrics: Metrics,
+        runner: List,
         *args,
         **kwargs,
     ):
@@ -260,11 +243,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         try:
             row = None
             if self.dfs:
-                row = self._get_metrics(
-                    metric_type.value,
+                row = self._get_metric_fn[metric_type.value](
                     metrics,
                     dfs,
-                    session=self.client,
                     column=column,
                 )
         except Exception as exc:

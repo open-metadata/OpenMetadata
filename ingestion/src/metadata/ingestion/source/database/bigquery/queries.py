@@ -31,7 +31,7 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE")
-  AND query NOT LIKE '/*%%{"app": "OpenMetadata", %%}%%*/%%'
+  AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
   AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
   LIMIT {result_limit}
 """
@@ -45,7 +45,7 @@ BIGQUERY_TEST_STATEMENT = textwrap.dedent(
 BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
     """
     SELECT option_value as schema_description FROM
-    {project_id}.region-{region}.INFORMATION_SCHEMA.SCHEMATA_OPTIONS 
+    `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA_OPTIONS 
     where schema_name = '{schema_name}' and option_name = 'description' 
     and option_value is not null
     """
@@ -53,7 +53,7 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
 
 BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
-    select table_name, table_type from {}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
+    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
     """
 )
 
@@ -63,7 +63,7 @@ SELECT
   routine_name as name,
   routine_definition as definition,
   external_language as language
-FROM test_omd.INFORMATION_SCHEMA.ROUTINES
+FROM `{schema_name}`.INFORMATION_SCHEMA.ROUTINES
 WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
@@ -79,7 +79,7 @@ WITH SP_HISTORY AS (
     start_time,
     end_time,
     user_email as user_name
-  FROM `region-us`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+  FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
   WHERE statement_type = 'SCRIPT'
     AND start_time >= '{start_date}'
     AND job_type = "QUERY"
@@ -98,8 +98,10 @@ Q_HISTORY AS (
     query as query_text,
     null as schema_name,
     total_slot_ms/1000 as duration
-  FROM `region-us`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+  FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
   WHERE statement_type <> 'SCRIPT'
+    AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND start_time >= '{start_date}' 
     AND job_type = "QUERY"
     AND state = "DONE"
