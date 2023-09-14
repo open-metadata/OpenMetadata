@@ -27,6 +27,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override

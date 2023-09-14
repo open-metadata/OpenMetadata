@@ -18,9 +18,11 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Space, Tooltip } from 'antd';
 import Input from 'antd/lib/input/Input';
+import { SearchServiceType } from 'generated/entity/services/searchService';
 import { StorageServiceType } from 'generated/entity/services/storageService';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
+import { getSearchServiceConfig } from 'utils/SearchServiceUtils';
 import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
 import { EntityType } from '../../enums/entity.enum';
@@ -236,6 +238,12 @@ const ServiceConnectionDetails = ({
       case EntityType.STORAGE_SERVICE:
         setSchema(
           getStorageServiceConfig(serviceFQN as StorageServiceType).schema
+        );
+
+        break;
+      case EntityType.SEARCH_SERVICE:
+        setSchema(
+          getSearchServiceConfig(serviceFQN as SearchServiceType).schema
         );
     }
   }, [serviceCategory, serviceFQN]);

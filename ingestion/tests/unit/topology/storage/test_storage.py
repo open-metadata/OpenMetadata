@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.data.container import (
     FileFormat,
 )
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+    S3Config,
+)
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
     StorageContainerConfig,
@@ -42,6 +45,11 @@ from metadata.ingestion.source.storage.s3.metadata import (
     S3ContainerDetails,
     S3Source,
 )
+from metadata.ingestion.source.storage.storage_service import (
+    OPENMETADATA_TEMPLATE_FILE_NAME,
+)
+from metadata.readers.file.base import ReadException
+from metadata.readers.file.config_source_factory import get_reader
 
 MOCK_OBJECT_STORE_CONFIG = {
     "source": {
@@ -135,6 +143,9 @@ class StorageUnitTest(TestCase):
             MOCK_OBJECT_STORE_CONFIG["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
+        self.s3_reader = get_reader(
+            config_source=S3Config(), client=self.object_store_source.s3_client
+        )
 
     def test_create_from_invalid_source(self):
         """
@@ -173,30 +184,26 @@ class StorageUnitTest(TestCase):
             self.object_store_source.fetch_buckets(), EXPECTED_S3_BUCKETS
         )
 
-    def test_load_metadata_file(self):
-        self.object_store_source._is_metadata_file_present = lambda bucket_name: True
-        self.object_store_source.s3_client.get_object = (
-            lambda Bucket, Key: self._compute_mocked_metadata_file_response()
-        )
-        container_config: StorageContainerConfig = (
-            self.object_store_source._load_metadata_file(bucket_name="test")
-        )
+    def test_load_metadata_file_s3(self):
+        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()
 
-        self.assertEqual(1, len(container_config.entries))
+        self.assertEqual(1, len(metadata_entry))
         self.assertEqual(
             MetadataEntry(
                 dataPath="transactions",
                 structureFormat="csv",
                 isPartitioned=False,
             ),
-            container_config.entries[0],
+            metadata_entry[0],
         )
 
     def test_no_metadata_file_returned_when_file_not_present(self):
-        self.object_store_source._is_metadata_file_present = lambda bucket_name: False
-        self.assertIsNone(
-            self.object_store_source._load_metadata_file(bucket_name="test")
-        )
+        with self.assertRaises(ReadException):
+            self.s3_reader.read(
+                path=OPENMETADATA_TEMPLATE_FILE_NAME,
+                bucket_name="test",
+                verbose=False,
+            )
 
     def test_generate_unstructured_container(self):
         bucket_response = S3BucketResponse(
@@ -241,12 +248,12 @@ class StorageUnitTest(TestCase):
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key, config_source, client: columns
+            lambda bucket_name, sample_key, config_source, client, metadata_entry: columns
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")
 
-        self.assertEquals(
+        self.assertEqual(
             S3ContainerDetails(
                 name="transactions",
                 prefix="/transactions",
@@ -309,6 +316,7 @@ class StorageUnitTest(TestCase):
                     sample_key="test.json",
                     config_source=None,
                     client=None,
+                    metadata_entry=self.return_metadata_entry()[0],
                 ),
             )
 
@@ -319,7 +327,7 @@ class StorageUnitTest(TestCase):
             isPartitioned=True,
             partitionColumns=[Column(name="date", dataType=DataType.DATE)],
         )
-        self.assertEquals(
+        self.assertEqual(
             "transactions",
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
@@ -340,7 +348,7 @@ class StorageUnitTest(TestCase):
             structureFormat="csv",
             isPartitioned=False,
         )
-        self.assertEquals(
+        self.assertEqual(
             "transactions",
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
@@ -366,7 +374,7 @@ class StorageUnitTest(TestCase):
         self.object_store_source._get_sample_file_prefix = (
             lambda metadata_entry: "/transactions"
         )
-        self.object_store_source.prefix_exits = lambda bucket_name, prefix: True
+        prefix_exits = lambda bucket_name, prefix: True
         self.object_store_source.s3_client.list_objects_v2 = (
             lambda Bucket, Prefix: MOCK_S3_OBJECT_FILE_PATHS
         )
@@ -381,7 +389,11 @@ class StorageUnitTest(TestCase):
         )
         self.assertTrue(
             candidate
-            in ["transactions/transactions_1.csv", "transactions/transactions_2.csv"]
+            in [
+                "transactions/transactions_1.csv",
+                "transactions/transactions_2.csv",
+                "transactions/",
+            ]
         )
 
     @staticmethod
@@ -389,3 +401,16 @@ class StorageUnitTest(TestCase):
         body_encoded = json.dumps(MOCK_S3_METADATA_FILE_RESPONSE).encode()
         body = StreamingBody(io.BytesIO(body_encoded), len(body_encoded))
         return {"Body": body}
+
+    def return_metadata_entry(self):
+        self.object_store_source.s3_client.get_object = (
+            lambda Bucket, Key: self._compute_mocked_metadata_file_response()
+        )
+        metadata_config_response = self.s3_reader.read(
+            path=OPENMETADATA_TEMPLATE_FILE_NAME,
+            bucket_name="test",
+            verbose=False,
+        )
+        content = json.loads(metadata_config_response)
+        container_config = StorageContainerConfig.parse_obj(content)
+        return container_config.entries

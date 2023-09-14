@@ -22,6 +22,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 
 from .topology.database.test_datalake import mock_datalake_config
 
@@ -66,6 +67,7 @@ class TestStringMethods(unittest.TestCase):
                         id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
                         type="databaseSchema",
                     ),
+                    fileFormat=SupportedTypes.PARQUET.value,
                 ),
                 client=None,
                 profile_sample_config=None,
@@ -99,6 +101,7 @@ class TestStringMethods(unittest.TestCase):
                             id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
                             type="databaseSchema",
                         ),
+                        fileFormat=None,
                     ),
                     client=None,
                     profile_sample_config=None,

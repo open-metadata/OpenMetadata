@@ -1216,7 +1216,7 @@ export const deleteEntity = (
   toastNotification(`${successMessageEntityName} deleted successfully!`, false);
 };
 
-const navigateToService = (serviceName) => {
+const navigateToService = (serviceName, serviceCategory) => {
   cy.get('[data-testid="services-container"]').then(($body) => {
     // Find if the service name is present in the list
     const serviceTitle = $body.find(
@@ -1224,7 +1224,16 @@ const navigateToService = (serviceName) => {
     );
     // If the service is not present
     if (isEmpty(serviceTitle)) {
+      interceptURL(
+        'GET',
+        `/api/v1/services/${serviceCategory}*`,
+        'getServices'
+      );
+
       cy.get('[data-testid="next"]').click();
+
+      verifyResponseStatusCode('@getServices', 200);
+
       navigateToService(serviceName);
     } else {
       cy.get(`[data-testid="service-name-${serviceName}"]`).click();
@@ -1255,7 +1264,7 @@ export const visitServiceDetailsPage = (
     'getServiceDetails'
   );
 
-  navigateToService(serviceName);
+  navigateToService(serviceName, serviceCategory);
 
   verifyResponseStatusCode('@getServiceDetails', 200);
 };

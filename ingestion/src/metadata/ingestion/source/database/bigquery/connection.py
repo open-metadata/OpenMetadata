@@ -98,6 +98,8 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    _, project_ids = auth.default()
+    project_ids = project_ids if isinstance(project_ids, list) else [project_ids]
 
     def get_tags(taxonomies):
         for taxonomy in taxonomies:
@@ -107,42 +109,37 @@ def test_connection(
             return policy_tags
 
     def test_tags():
-        list_project_ids = auth.default()
-        project_id = list_project_ids[1]
-
-        if isinstance(project_id, str):
+        for project in project_ids:
             taxonomies = PolicyTagManagerClient().list_taxonomies(
-                parent=f"projects/{project_id}/locations/{service_connection.taxonomyLocation}"
+                parent=f"projects/{project}/locations/{service_connection.taxonomyLocation}"
             )
             return get_tags(taxonomies)
-
-        if isinstance(project_id, list):
-            taxonomies = PolicyTagManagerClient().list_taxonomies(
-                parent=f"projects/{project_id[0]}/locations/{service_connection.taxonomyLocation}"
-            )
-
-            return get_tags(taxonomies)
-
         return None
 
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-        "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
-        "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
-        "GetTags": test_tags,
-        "GetQueries": partial(
-            test_query,
-            engine=engine,
-            statement=BIGQUERY_TEST_STATEMENT.format(
-                region=service_connection.usageLocation
+    def test_connection_inner(engine):
+        test_fn = {
+            "CheckAccess": partial(test_connection_engine_step, engine),
+            "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+            "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
+            "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
+            "GetTags": test_tags,
+            "GetQueries": partial(
+                test_query,
+                engine=engine,
+                statement=BIGQUERY_TEST_STATEMENT.format(
+                    region=service_connection.usageLocation
+                ),
             ),
-        ),
-    }
+        }
 
-    test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-    )
+        test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,
+            automation_workflow=automation_workflow,
+        )
+
+    for project in project_ids:
+        if project in str(engine.url):
+            continue
+        test_connection_inner(engine)
