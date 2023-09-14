@@ -11,54 +11,57 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Typography } from 'antd';
+import { Collapse, Tag, Typography } from 'antd';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import React, { useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import './MessageCard.less';
+
+const { Panel } = Collapse;
 
 const MessageCard = ({ message }: { message: string }) => {
   const { t } = useTranslation();
+  const [header, setHeader] = useState<ReactNode>(
+    <Typography.Text ellipsis className="text-primary">
+      {message}
+    </Typography.Text>
+  );
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const toggleExpanded = () => setIsExpanded((value) => !value);
+
+  useEffect(() => {
+    if (isExpanded) {
+      setHeader(
+        <Tag data-testid="expanded-header" id="sampleData-value">
+          {t('label.value')}
+        </Tag>
+      );
+    } else {
+      setHeader(
+        <Typography.Text
+          ellipsis
+          className="text-primary"
+          data-testid="collapsed-header">
+          {message}
+        </Typography.Text>
+      );
+    }
+  }, [isExpanded]);
+
   return (
-    <Card
-      data-testid="message-card"
-      onClick={() => setIsExpanded((pre) => !pre)}>
-      <Row align="top" gutter={16} wrap={false}>
-        <Col className="cursor-pointer">
-          {isExpanded ? (
-            <UpOutlined className="text-xs" />
-          ) : (
-            <DownOutlined className="text-xs" />
-          )}
-        </Col>
-        <Col flex="auto">
-          {isExpanded ? (
-            <>
-              <Button
-                className="active"
-                data-testid="value"
-                id="sampleData-value">
-                {t('label.value')}
-              </Button>
-              <SchemaEditor
-                className="m-t-xs"
-                editorClass="topic-sample-data"
-                options={{
-                  styleActiveLine: false,
-                }}
-                value={message.replace(/'/g, '"')}
-              />
-            </>
-          ) : (
-            <Typography.Text ellipsis className="text-primary">
-              {message}
-            </Typography.Text>
-          )}
-        </Col>
-      </Row>
-    </Card>
+    <Collapse className="message-card-collapse" onChange={toggleExpanded}>
+      <Panel data-testid="message-card" header={header} key="1">
+        <SchemaEditor
+          className="m-t-xs"
+          editorClass="topic-sample-data"
+          options={{
+            styleActiveLine: false,
+          }}
+          value={message.replace(/'/g, '"')}
+        />
+      </Panel>
+    </Collapse>
   );
 };
 

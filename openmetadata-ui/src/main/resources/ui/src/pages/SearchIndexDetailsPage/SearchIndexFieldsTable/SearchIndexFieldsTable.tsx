@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Space, Table, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
@@ -27,9 +28,9 @@ import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { updateFieldDescription, updateFieldTags } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { makeData } from 'utils/SearchIndexUtils';
+import { updateFieldDescription, updateFieldTags } from 'utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,

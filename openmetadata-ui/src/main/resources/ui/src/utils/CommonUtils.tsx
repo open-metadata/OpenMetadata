@@ -22,10 +22,6 @@ import {
 } from 'components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from 'components/Loader/Loader';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { Column } from 'generated/entity/data/table';
-import { Field as TopicField } from 'generated/entity/data/topic';
-import { Field } from 'generated/type/schema';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -35,20 +31,15 @@ import {
   isNull,
   isString,
   isUndefined,
-  lowerCase,
-  reduce,
   toNumber,
-  toString,
 } from 'lodash';
 import {
   CurrentState,
-  EntityTags,
   ExtraInfo,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
-  TagOption,
 } from 'Models';
 import React from 'react';
 import { Trans } from 'react-i18next';
@@ -80,13 +71,12 @@ import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
-import { getDataTypeString } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -874,130 +864,3 @@ export const getUniqueArray = (count: number) =>
   [...Array(count)].map((_, index) => ({
     key: `key${index}`,
   }));
-
-export const getAllRowKeysByKeyName = <T extends Field | SearchIndexField>(
-  data: T[],
-  keyName: keyof T
-) => {
-  let keys: string[] = [];
-
-  data.forEach((item) => {
-    if (item.children && item.children.length > 0) {
-      keys.push(toString(item[keyName]));
-      keys = [
-        ...keys,
-        ...getAllRowKeysByKeyName(item.children as T[], keyName),
-      ];
-    }
-  });
-
-  return keys;
-};
-
-export const searchInFields = <T extends SearchIndexField | Column>(
-  searchIndex: Array<T>,
-  searchText: string
-): Array<T> => {
-  const searchedValue: Array<T> = searchIndex.reduce(
-    (searchedFields, field) => {
-      const isContainData =
-        lowerCase(field.name).includes(searchText) ||
-        lowerCase(field.description).includes(searchText) ||
-        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
-
-      if (isContainData) {
-        return [...searchedFields, field];
-      } else if (!isUndefined(field.children)) {
-        const searchedChildren = searchInFields(
-          field.children as T[],
-          searchText
-        );
-        if (searchedChildren.length > 0) {
-          return [
-            ...searchedFields,
-            {
-              ...field,
-              children: searchedChildren,
-            },
-          ];
-        }
-      }
-
-      return searchedFields;
-    },
-    [] as Array<T>
-  );
-
-  return searchedValue;
-};
-
-export const getUpdatedTags = <
-  T extends SearchIndexField | Column | TopicField
->(
-  newFieldTags: Array<EntityTags>,
-  field?: T
-): TagLabel[] => {
-  const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
-
-  return reduce(
-    newFieldTags,
-    (acc: Array<EntityTags>, cv: TagOption) => {
-      if (prevTagsFqn?.includes(cv.fqn)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.fqn);
-
-        return [...acc, prev];
-      } else {
-        return [
-          ...acc,
-          {
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-            source: cv.source,
-            tagFQN: cv.fqn,
-          },
-        ];
-      }
-    },
-    []
-  );
-};
-
-export const updateFieldDescription = <
-  T extends SearchIndexField | Column | TopicField
->(
-  changedFieldFQN: string,
-  description: string,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.description = description;
-    } else {
-      updateFieldDescription(
-        changedFieldFQN,
-        description,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldTags = <
-  T extends SearchIndexField | Column | TopicField
->(
-  changedFieldFQN: string,
-  newFieldTags: Array<TagOption>,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.tags = getUpdatedTags<T>(newFieldTags, field);
-    } else {
-      updateFieldTags(
-        changedFieldFQN,
-        newFieldTags,
-        field?.children as Array<T>
-      );
-    }
-  });
-};

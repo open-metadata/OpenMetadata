@@ -40,13 +40,13 @@ import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getAllRowKeysByKeyName,
+  getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
+} from 'utils/TableUtils';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,

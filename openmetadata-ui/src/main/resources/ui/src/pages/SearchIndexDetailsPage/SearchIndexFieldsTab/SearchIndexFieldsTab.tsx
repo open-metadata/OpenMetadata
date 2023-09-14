@@ -19,8 +19,11 @@ import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { isEmpty, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllRowKeysByKeyName, searchInFields } from 'utils/CommonUtils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
+import {
+  getAllRowKeysByKeyName,
+  getTableExpandableConfig,
+  searchInFields,
+} from 'utils/TableUtils';
 import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
 import { SearchIndexFieldsTabProps } from './SearchIndexFieldsTab.interface';
 
@@ -97,7 +100,7 @@ function SearchIndexFieldsTab({
   return (
     <>
       <Row align="middle" justify="space-between">
-        <Col className="w-1/2">
+        <Col span={12}>
           <Searchbar
             removeMargin
             placeholder={`${t('message.find-in-table')}`}
