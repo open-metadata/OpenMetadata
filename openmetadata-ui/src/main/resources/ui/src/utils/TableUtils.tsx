@@ -247,9 +247,11 @@ export const getEntityLink = (
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
 
+    case SearchIndex.DASHBOARD_DATA_MODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
 
+    case SearchIndex.STORED_PROCEDURE:
     case EntityType.STORED_PROCEDURE:
       return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
 

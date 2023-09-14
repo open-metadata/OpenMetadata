@@ -13,7 +13,7 @@
 
 import { ElementLoadingState } from 'components/Entity/EntityLineage/EntityLineage.interface';
 import { capitalize } from 'lodash';
-import { EntityType } from '../enums/entity.enum';
+import { EntitySearchIndexKey, EntityType } from '../enums/entity.enum';
 
 export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.75;
@@ -29,12 +29,39 @@ export const entityData = [
   {
     type: EntityType.TABLE,
     label: capitalize(EntityType.TABLE),
+    key: EntitySearchIndexKey.table,
   },
-  { type: EntityType.DASHBOARD, label: capitalize(EntityType.DASHBOARD) },
-  { type: EntityType.TOPIC, label: capitalize(EntityType.TOPIC) },
-  { type: EntityType.MLMODEL, label: capitalize(EntityType.MLMODEL) },
-  { type: EntityType.CONTAINER, label: capitalize(EntityType.CONTAINER) },
-  { type: EntityType.PIPELINE, label: capitalize(EntityType.PIPELINE) },
+  {
+    type: EntityType.DASHBOARD,
+    label: capitalize(EntityType.DASHBOARD),
+    key: EntitySearchIndexKey.dashboard,
+  },
+  { type: EntityType.TOPIC, label: capitalize(EntityType.TOPIC), key: 'TOPIC' },
+  {
+    type: EntityType.MLMODEL,
+    label: capitalize(EntityType.MLMODEL),
+    key: EntitySearchIndexKey.mlModel,
+  },
+  {
+    type: EntityType.CONTAINER,
+    label: capitalize(EntityType.CONTAINER),
+    key: EntitySearchIndexKey.container,
+  },
+  {
+    type: EntityType.PIPELINE,
+    label: capitalize(EntityType.PIPELINE),
+    key: EntitySearchIndexKey.pipeline,
+  },
+  {
+    type: EntityType.STORED_PROCEDURE,
+    label: capitalize(EntityType.STORED_PROCEDURE),
+    key: EntitySearchIndexKey.storedProcedure,
+  },
+  {
+    type: EntityType.DASHBOARD_DATA_MODEL,
+    label: capitalize(EntityType.DASHBOARD_DATA_MODEL),
+    key: EntitySearchIndexKey.dashboardDataModel,
+  },
 ];
 
 export const POSITION_X = 150;

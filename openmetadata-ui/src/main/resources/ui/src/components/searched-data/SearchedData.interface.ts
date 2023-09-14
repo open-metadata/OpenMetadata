@@ -17,6 +17,7 @@ import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   ContainerSearchSource,
+  DashboardDataModelSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
   GlossarySearchSource,
@@ -24,6 +25,7 @@ import {
   PipelineSearchSource,
   QuerySearchSource,
   SearchHitBody,
+  StoredProcedureSearchSource,
   TableSearchSource,
   TagClassSearchSource,
   TeamSearchSource,
@@ -50,6 +52,8 @@ export type SourceType = (
   | Pick<TopicSearchSource, Fields>
   | Pick<ContainerSearchSource, Fields>
   | Pick<PipelineSearchSource, Fields>
+  | Pick<DashboardDataModelSearchSource, Fields>
+  | Pick<StoredProcedureSearchSource, Fields | 'storedProcedureCode'>
   | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
   | Pick<
       Exclude<
@@ -63,14 +67,17 @@ export type SourceType = (
         | UserSearchSource
         | TeamSearchSource
         | TestCaseSearchSource
+        | StoredProcedureSearchSource
+        | DashboardDataModelSearchSource
       >,
       Fields
     >
 ) & {
-  id: string;
+  id?: string;
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
   entityType?: string;
+  service?: EntityReference;
   owner?: Partial<
     Pick<
       EntityReference,

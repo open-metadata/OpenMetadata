@@ -117,6 +117,8 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.PIPELINE,
       SearchIndex.MLMODEL,
       SearchIndex.CONTAINER,
+      SearchIndex.STORED_PROCEDURE,
+      SearchIndex.DASHBOARD_DATA_MODEL,
       SearchIndex.GLOSSARY,
       SearchIndex.TAG,
     ],

@@ -14,7 +14,11 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
-import { ContainerSearchSource } from 'interface/search.interface';
+import {
+  ContainerSearchSource,
+  DashboardDataModelSearchSource,
+  StoredProcedureSearchSource,
+} from 'interface/search.interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSuggestions } from 'rest/miscAPI';
@@ -71,6 +75,15 @@ const Suggestions = ({
     GlossarySource[]
   >([]);
   const [tagSuggestions, setTagSuggestions] = useState<TagSource[]>([]);
+
+  const [storedProcedureSuggestions, setStoredProcedureSuggestions] = useState<
+    StoredProcedureSearchSource[]
+  >([]);
+
+  const [dataModelSuggestions, setDataModelSuggestions] = useState<
+    DashboardDataModelSearchSource[]
+  >([]);
+
   const isMounting = useRef(true);
 
   const setSuggestions = (options: Array<Option>) => {
@@ -83,6 +96,12 @@ const Suggestions = ({
     setMlModelSuggestions(filterOptionsByIndex(options, SearchIndex.MLMODEL));
     setContainerSuggestions(
       filterOptionsByIndex(options, SearchIndex.CONTAINER)
+    );
+    setStoredProcedureSuggestions(
+      filterOptionsByIndex(options, SearchIndex.STORED_PROCEDURE)
+    );
+    setDataModelSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
     );
     setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
@@ -126,6 +145,14 @@ const Suggestions = ({
           {
             suggestions: containerSuggestions,
             searchIndex: SearchIndex.CONTAINER,
+          },
+          {
+            suggestions: storedProcedureSuggestions,
+            searchIndex: SearchIndex.STORED_PROCEDURE,
+          },
+          {
+            suggestions: dataModelSuggestions,
+            searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
           },
           {
             suggestions: glossarySuggestions,

@@ -14,6 +14,7 @@
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Query } from 'generated/entity/data/query';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Domain } from 'generated/entity/domains/domain';
 import { TestCase } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
@@ -76,6 +77,9 @@ export interface TeamSearchSource extends SearchSourceBase, Team {} // extends E
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
 
 export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
+export interface StoredProcedureSearchSource
+  extends SearchSourceBase,
+    StoredProcedure {} // extends EntityInterface
 
 export interface DashboardDataModelSearchSource
   extends SearchSourceBase,
@@ -105,6 +109,7 @@ export type ExploreSearchSource =
   | UserSearchSource
   | TeamSearchSource
   | TagClassSearchSource
+  | StoredProcedureSearchSource
   | DashboardDataModelSearchSource
   | TestCaseSearchSource
   | DomainSearchSource;
@@ -123,6 +128,8 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.QUERY]: QuerySearchSource;
   [SearchIndex.TEST_CASE]: TestCaseSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
+  [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
+  [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
 };
 
 export type SearchRequest<

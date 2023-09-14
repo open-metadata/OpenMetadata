@@ -76,6 +76,14 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     value: 'testCase',
     label: t('label.test-case'),
   },
+  {
+    value: 'storedProcedure',
+    label: t('label.stored-procedure-plural'),
+  },
+  {
+    value: 'dashboardDataModel',
+    label: t('label.data-model'),
+  },
 ];
 
 export const ELASTIC_SEARCH_INITIAL_VALUES = {
