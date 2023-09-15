@@ -11,14 +11,11 @@
         }
       },
       "analyzer": {
-        "om_analyzer_jp" : {
-          "tokenizer" : "kuromoji_tokenizer",
-          "type" : "custom",
-          "filter" : [
-            "kuromoji_baseform",
-            "kuromoji_part_of_speech",
-            "kuromoji_number",
-            "kuromoji_stemmer"
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
           ]
         },
         "om_ngram": {
@@ -45,7 +42,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -63,7 +60,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -77,7 +74,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "ngram": {
             "type": "text",
@@ -94,6 +91,19 @@
       },
       "updatedBy": {
         "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "service": {
         "properties": {

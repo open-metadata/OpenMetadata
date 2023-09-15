@@ -72,6 +72,19 @@
         "type": "text",
         "analyzer": "om_analyzer_jp"
       },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
       "pipelines": {
         "properties": {
           "id": {

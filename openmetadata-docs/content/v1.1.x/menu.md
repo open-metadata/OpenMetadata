@@ -591,6 +591,8 @@ site_menu:
     url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-users
   - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Change the Team Type
     url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/change-team-type
+  - category: How to Guides / Admin Guide for Roles and Policies
+    url: /how-to-guides/admin-guide-roles-policies
   - category: How to Guides / User Guide for Data Stewards
     url: /how-to-guides/user-guide-for-data-stewards
   - category: How to Guides / User Guide for Data Stewards / Understanding the Basics of OpenMetadata
