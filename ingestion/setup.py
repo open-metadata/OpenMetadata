@@ -93,7 +93,7 @@ base_requirements = {
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
-    "importlib-metadata~=4.13.0",  # From airflow constraints
+    "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
