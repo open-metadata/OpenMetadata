@@ -19,6 +19,7 @@ import ActivityFeedProvider, {
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import Loader from 'components/Loader/Loader';
@@ -38,7 +39,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isString, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import StoredProcedureTab from 'pages/StoredProcedure/StoredProcedureTab';
@@ -481,11 +482,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [databaseSchemaId]);
 
   const tablePaginationHandler = useCallback(
-    (cursorValue: string | number, activePage?: number) => {
-      if (isString(cursorValue)) {
-        getSchemaTables({ [cursorValue]: tableData.paging[cursorValue] });
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getSchemaTables({ [cursorType]: tableData.paging[cursorType] });
       }
-      setCurrentTablesPage(activePage ?? INITIAL_PAGING_VALUE);
+      setCurrentTablesPage(currentPage);
     },
     [tableData, getSchemaTables]
   );
@@ -507,20 +508,19 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const storedProcedurePagingHandler = useCallback(
-    async (cursorType: string | number, activePage?: number) => {
-      const pagingString = {
-        [cursorType]:
-          storedProcedure.paging[
-            cursorType as keyof typeof storedProcedure.paging
-          ],
-      };
+    async ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        const pagingString = {
+          [cursorType]: storedProcedure.paging[cursorType],
+        };
 
-      await fetchStoreProcedureDetails(pagingString);
+        await fetchStoreProcedureDetails(pagingString);
 
-      setStoredProcedure((prev) => ({
-        ...prev,
-        currentPage: activePage ?? INITIAL_PAGING_VALUE,
-      }));
+        setStoredProcedure((prev) => ({
+          ...prev,
+          currentPage: currentPage,
+        }));
+      }
     },
     [storedProcedure.paging]
   );

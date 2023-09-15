@@ -30,6 +30,7 @@ interface ListAlertsRequestParams {
   before?: string;
   after?: string;
   include?: string;
+  limit?: number;
 }
 
 export const getAlertsFromId = async (
