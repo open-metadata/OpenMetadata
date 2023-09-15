@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import Icon, { FilterOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
@@ -58,6 +58,7 @@ import {
   getTableTabPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
+  PRIMERY_COLOR,
   TEXT_BODY_COLOR,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -496,3 +497,7 @@ export const prepareConstraintIcon = ({
     </span>
   );
 };
+
+export const FilterIcon = (filtered: boolean) => (
+  <FilterOutlined style={{ color: filtered ? PRIMERY_COLOR : undefined }} />
+);

@@ -17,6 +17,11 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from 'constants/constants';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CursorType } from '../../../enums/pagination.enum';
@@ -36,24 +41,29 @@ const NextPrevious: FC<NextPreviousProps> = ({
 }: NextPreviousProps) => {
   const { t } = useTranslation();
   const {
-    pageSizeOptions = [10, 25, 50],
+    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
     onShowSizeChange,
-    showPageSize,
   } = (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = () => {
     if (isNumberBased) {
-      pagingHandler(currentPage + 1);
+      pagingHandler({ currentPage: currentPage + 1 });
     } else {
-      pagingHandler(CursorType.AFTER, currentPage + 1);
+      pagingHandler({
+        cursorType: CursorType.AFTER,
+        currentPage: currentPage + 1,
+      });
     }
   };
 
   const onPreviousHandler = () => {
     if (isNumberBased) {
-      pagingHandler(currentPage - 1);
+      pagingHandler({ currentPage: currentPage - 1 });
     } else {
-      pagingHandler(CursorType.BEFORE, currentPage - 1);
+      pagingHandler({
+        cursorType: CursorType.BEFORE,
+        currentPage: currentPage - 1,
+      });
     }
   };
 
@@ -101,14 +111,14 @@ const NextPrevious: FC<NextPreviousProps> = ({
         <span> {t('label.next')}</span>
         <ArrowRightOutlined />
       </Button>
-      {showPageSize && (
+      {onShowSizeChange && (
         <Dropdown
           menu={{
             items: pageSizeOptions.map((size) => ({
               label: `${size} / Page`,
               value: size,
               key: size,
-              onClick: () => onShowSizeChange && onShowSizeChange(size),
+              onClick: () => onShowSizeChange(size),
             })),
           }}>
           <Button onClick={(e) => e.preventDefault()}>

@@ -13,6 +13,7 @@
 
 import ClassificationDetails from 'components/ClassificationDetails/ClassificationDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
@@ -146,14 +147,14 @@ function ClassificationVersionPage() {
   };
 
   const handlePageChange = useCallback(
-    (cursorType: string | number, activePage?: number) => {
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         const pagination = {
           [cursorType]: paging[cursorType as keyof Paging] as string,
           total: paging.total,
         } as Paging;
 
-        setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+        setCurrentPage(currentPage);
         fetchClassificationChildren(classificationName, pagination);
       }
     },

@@ -20,6 +20,7 @@ import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/Activit
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -332,22 +333,24 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseSchemaPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    if (isString(cursorType)) {
-      const pagingString = `&${cursorType}=${
-        databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-      }`;
-      setSchemaDataLoading(true);
-      fetchDatabaseSchemas(pagingString).finally(() => {
-        setSchemaDataLoading(false);
-      });
-      setCurrentPage(activePage ?? 1);
-    } else {
-      setCurrentPage(cursorType);
-      searchValue && searchSchema(searchValue, cursorType);
+  const databaseSchemaPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      if (isString(cursorType)) {
+        const pagingString = `&${cursorType}=${
+          databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
+        }`;
+        setSchemaDataLoading(true);
+        fetchDatabaseSchemas(pagingString).finally(() => {
+          setSchemaDataLoading(false);
+        });
+        setCurrentPage(currentPage);
+      } else {
+        setCurrentPage(cursorType);
+        searchValue && searchSchema(searchValue, cursorType);
+      }
     }
   };
 
