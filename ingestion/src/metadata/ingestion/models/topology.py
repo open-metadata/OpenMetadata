@@ -32,8 +32,9 @@ class NodeStage(BaseModel, Generic[T]):
 
     type_: Type[T]  # Entity type
     processor: str  # has the producer results as an argument. Here is where filters happen
-    context: Optional[str] = None  # context key storing stage state, if needed
-    ack_sink: bool = True  # Validate that the request is present in OM and update the context with the results
+    context: Optional[
+        str
+    ] = None  # context key storing stage state, if needed. This requires us to ACK the ingestion
     nullable: bool = False  # The yielded value can be null
     must_return: bool = False  # The sink MUST return a value back after ack. Useful to validate services are correct.
     cache_all: bool = (

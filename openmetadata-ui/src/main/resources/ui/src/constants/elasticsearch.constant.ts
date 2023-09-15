@@ -78,6 +78,10 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.test-case'),
   },
   {
+    value: 'databaseSchema',
+    label: t('label.database-schema'),
+  },
+  {
     value: 'domain',
     label: t('label.domain'),
   },
