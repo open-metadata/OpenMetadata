@@ -10,12 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import { StoredProcedureData } from 'pages/DatabaseSchemaPage/DatabaseSchemaPage.interface';
+import { PAGE_SIZE_BASE, pagingObject } from 'constants/constants';
+import { Paging } from 'generated/type/paging';
+import { useState } from 'react';
 
-export interface StoredProcedureTabProps {
-  storedProcedure: StoredProcedureData;
-  fetchStoredProcedure: () => void;
-  pagingHandler: NextPreviousProps['pagingHandler'];
-  onShowDeletedStoreProcedureChange: (value: boolean) => void;
-}
+export const usePaging = () => {
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+
+  return {
+    paging,
+    handlePagingChange: setPaging,
+    currentPage,
+    handlePageChange: setCurrentPage,
+    pageSize,
+    handlePageSizeChange: setPageSize,
+  };
+};

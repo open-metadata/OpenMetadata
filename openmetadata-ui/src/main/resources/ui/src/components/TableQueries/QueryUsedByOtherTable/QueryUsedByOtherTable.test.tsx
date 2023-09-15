@@ -92,7 +92,7 @@ describe('QueryUsedByOtherTable test', () => {
     expect(mockSearchData).toHaveBeenCalledWith(
       '',
       1,
-      15,
+      25,
       '',
       '',
       '',

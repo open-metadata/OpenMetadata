@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TableAntd from 'components/common/Table/Table';
 import { PAGE_SIZE } from 'constants/constants';
@@ -39,10 +40,7 @@ interface SchemaTablesTabProps {
   showDeletedTables?: boolean;
   tableData: PagingResponse<Table[]>;
   currentTablesPage: number;
-  tablePaginationHandler: (
-    cursorValue: string | number,
-    activePage?: number
-  ) => void;
+  tablePaginationHandler: NextPreviousProps['pagingHandler'];
   onCancel?: () => void;
   onDescriptionEdit?: () => void;
   onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;

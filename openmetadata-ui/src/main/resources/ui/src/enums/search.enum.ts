@@ -24,5 +24,11 @@ export enum SearchIndex {
   CONTAINER = 'container_search_index',
   QUERY = 'query_search_index',
   TEST_CASE = 'test_case_search_index',
+  DATABASE_SERVICE = 'database_service_search_index',
+  MESSAGING_SERVICE = 'messaging_service_search_index',
+  PIPELINE_SERVICE = 'pipeline_service_search_index',
+  SEARCH_SERVICE = 'search_service_search_index',
+  DASHBOARD_SERCVICE = 'dashboard_service_search_index',
+  ML_MODEL_SERVICE = 'mlmodel_service_search_index',
   DOMAIN = 'domain_search_index',
 }

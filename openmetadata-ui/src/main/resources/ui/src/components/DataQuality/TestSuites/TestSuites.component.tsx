@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import Table from 'components/common/Table/Table';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -33,7 +34,6 @@ import { EntityTabs } from 'enums/entity.enum';
 import { TestSummary } from 'generated/entity/data/table';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
-import { Paging } from 'generated/type/paging';
 import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
@@ -151,15 +151,15 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     }
   };
 
-  const handlePagingClick = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePageChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     const { paging } = testSuites;
-    if (isString(cursorValue)) {
-      fetchTestSuites({ [cursorValue]: paging?.[cursorValue as keyof Paging] });
+    if (isString(cursorType)) {
+      fetchTestSuites({ [cursorType]: paging?.[cursorType] });
     }
-    activePage && setCurrentPage(activePage);
+    setCurrentPage(currentPage);
   };
 
   useEffect(() => {
@@ -217,7 +217,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             currentPage={currentPage}
             pageSize={PAGE_SIZE}
             paging={testSuites.paging}
-            pagingHandler={handlePagingClick}
+            pagingHandler={handlePageChange}
           />
         )}
       </Col>

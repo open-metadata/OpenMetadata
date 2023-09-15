@@ -10,12 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import { StoredProcedureData } from 'pages/DatabaseSchemaPage/DatabaseSchemaPage.interface';
+import { TableProps } from 'antd';
+import { ReactNode } from 'react';
 
-export interface StoredProcedureTabProps {
-  storedProcedure: StoredProcedureData;
-  fetchStoredProcedure: () => void;
-  pagingHandler: NextPreviousProps['pagingHandler'];
-  onShowDeletedStoreProcedureChange: (value: boolean) => void;
+interface SearchProps {
+  onSearch: ((search: string) => void) | ((search: string) => Promise<void>);
+  search?: string;
+}
+
+export interface ListViewProps<T> {
+  tableprops: TableProps<T>;
+  cardRenderer: (data: T) => ReactNode;
+  searchProps: SearchProps;
+}
+
+export enum ListViewOptions {
+  CARD = 1,
+  TABLE = 2,
 }

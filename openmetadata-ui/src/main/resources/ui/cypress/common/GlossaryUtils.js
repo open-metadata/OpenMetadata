@@ -34,7 +34,7 @@ export const visitGlossaryPage = () => {
 };
 
 export const addReviewer = (reviewerName, entity) => {
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
 
   cy.get('[data-testid="glossary-reviewer"] [data-testid="Add"]').click();
 
