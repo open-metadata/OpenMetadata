@@ -144,6 +144,9 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     databaseFQN: 'bigquery.shopify',
   }),
+  useLocation: jest
+    .fn()
+    .mockImplementation(() => ({ search: '?schema=sales' })),
 }));
 
 jest.mock(
@@ -244,6 +247,9 @@ jest.mock(
     return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
   }
 );
+jest.mock('components/common/searchbar/Searchbar', () => {
+  return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
+});
 
 jest.mock(
   'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
@@ -287,12 +293,14 @@ describe('Test DatabaseDetails page', () => {
     );
     const headerOwner = await findByText(container, 'label.owner');
     const headerUsage = await findByText(container, 'label.usage');
+    const searchBox = await findByText(container, 'Searchbar.component');
 
     expect(databaseTable).toBeInTheDocument();
     expect(headerName).toBeInTheDocument();
     expect(headerDescription).toBeInTheDocument();
     expect(headerOwner).toBeInTheDocument();
     expect(headerUsage).toBeInTheDocument();
+    expect(searchBox).toBeInTheDocument();
   });
 
   it('Should render error placeholder if getDatabase Details Api fails', async () => {

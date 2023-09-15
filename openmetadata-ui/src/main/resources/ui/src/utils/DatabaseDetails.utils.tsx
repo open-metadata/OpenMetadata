@@ -25,7 +25,6 @@ import { EntityReference } from 'generated/entity/type';
 import { UsageDetails } from 'generated/type/entityUsage';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { isNil } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -84,7 +83,8 @@ export const getDatabaseSchemaTable = (
   schemaDataLoading: boolean,
   databaseSchemaPaging: Paging,
   currentPage: number,
-  databaseSchemaPagingHandler: NextPreviousProps['pagingHandler']
+  databaseSchemaPagingHandler: NextPreviousProps['pagingHandler'],
+  isNumberBased = false
 ) => {
   return (
     <Col span={24}>
@@ -102,12 +102,10 @@ export const getDatabaseSchemaTable = (
           rowKey="id"
           size="small"
         />
-        {Boolean(
-          !isNil(databaseSchemaPaging.after) ||
-            !isNil(databaseSchemaPaging.before)
-        ) && (
+        {databaseSchemaPaging.total > PAGE_SIZE && (
           <NextPrevious
             currentPage={currentPage}
+            isNumberBased={isNumberBased}
             pageSize={PAGE_SIZE}
             paging={databaseSchemaPaging}
             pagingHandler={databaseSchemaPagingHandler}

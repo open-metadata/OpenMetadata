@@ -13,6 +13,8 @@
 
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Query } from 'generated/entity/data/query';
 import { Domain } from 'generated/entity/domains/domain';
 import { DashboardService } from 'generated/entity/services/dashboardService';
@@ -80,6 +82,10 @@ export interface UserSearchSource extends SearchSourceBase, User {} // extends E
 export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
 
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
+export interface DataBaseSchemaSearchSource
+  extends SearchSourceBase,
+    DatabaseSchema {} // extends EntityInterface
+export interface DatabaseSearchSource extends SearchSourceBase, Database {} // extends EntityInterface
 
 export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
 
@@ -133,6 +139,8 @@ export type ExploreSearchSource =
   | TagClassSearchSource
   | DashboardDataModelSearchSource
   | TestCaseSearchSource
+  | DatabaseSearchSource
+  | DataBaseSchemaSearchSource
   | DatabaseServiceSearchSource
   | DashboardServiceSearchSource
   | PipelineServiceSearchSource
@@ -154,6 +162,8 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
   [SearchIndex.TEST_CASE]: TestCaseSearchSource;
+  [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
+  [SearchIndex.DATABASE]: DatabaseSearchSource;
   [SearchIndex.DATABASE_SERVICE]: DatabaseServiceSearchSource;
   [SearchIndex.DASHBOARD_SERCVICE]: DashboardServiceSearchSource;
   [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
