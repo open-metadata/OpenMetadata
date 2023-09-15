@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { AxiosError } from 'axios';
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { EntityReference } from 'generated/entity/type';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -75,7 +77,13 @@ export const DomainLabel = ({
     return (
       <Space>
         <Typography.Text className="self-center text-xs whitespace-nowrap">
-          <span className="text-grey-muted">{`${t('label.domain')}: `}</span>
+          <DomainIcon
+            className="d-flex"
+            color={DE_ACTIVE_COLOR}
+            height={16}
+            name="folder"
+            width={16}
+          />
         </Typography.Text>
         {activeDomain ? (
           <Link
