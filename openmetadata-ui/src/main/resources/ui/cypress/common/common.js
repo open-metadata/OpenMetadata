@@ -1112,7 +1112,7 @@ export const addOwner = (
     cy.get('[data-testid="edit-owner"]').click();
   }
 
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
 

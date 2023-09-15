@@ -47,38 +47,30 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 
-export const TAG_VIEW_CAP = 33;
 export const USER_DATA_SIZE = 4;
-export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
-export const PAGE_SIZE_BASE = 12;
-export const PAGE_SIZE_MEDIUM = 15;
-export const SERVICE_VIEW_CAP = 20;
-export const PAGE_SIZE_LARGE = 100;
+export const PAGE_SIZE_BASE = 15;
+export const PAGE_SIZE_MEDIUM = 25;
+export const PAGE_SIZE_LARGE = 50;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
-export const SIDEBAR_WIDTH_COLLAPSED = 290;
-export const SIDEBAR_WIDTH_EXPANDED = 290;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
-export const MAX_CHAR_LIMIT_TEST_SUITE = 75;
 export const SMALL_TABLE_LOADER_SIZE = 3;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
 export const refreshTokenKey = 'refreshToken';
-export const accessToken = 'accessToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
-export const TERM_ALL = 'all';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
@@ -89,12 +81,9 @@ export const imageTypes = {
   image72: 's72-c',
 };
 export const NO_DATA_PLACEHOLDER = '--';
-export const ELLIPSES = '...';
-export const SINGLE_DOT = '•';
 export const PIPE_SYMBOL = '|';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR404 = t('label.no-data-found');
 export const ERROR500 = t('message.something-went-wrong');
 export const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
 

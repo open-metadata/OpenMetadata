@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import PageHeader from 'components/header/PageHeader.component';
 import { ALERTS_DOCS } from 'constants/docs.constants';
@@ -25,11 +26,12 @@ import {
   EventSubscription,
   ProviderType,
 } from 'generated/events/eventSubscription';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getAllAlerts } from 'rest/alertsAPI';
+import { showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
@@ -81,12 +83,15 @@ const AlertsPage = () => {
     }
   }, [fetchAlerts]);
 
-  const onPageChange = useCallback((after: string | number, page?: number) => {
-    if (after) {
-      fetchAlerts(after + '');
-      page && setCurrentPage(page);
-    }
-  }, []);
+  const onPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchAlerts(cursorType + '');
+        setCurrentPage(currentPage);
+      }
+    },
+    []
+  );
 
   const columns = useMemo(
     () => [
@@ -215,9 +220,7 @@ const AlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          {Boolean(
-            !isNil(alertsPaging.after) || !isNil(alertsPaging.before)
-          ) && (
+          {showPagination(alertsPaging) && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={PAGE_SIZE_MEDIUM}

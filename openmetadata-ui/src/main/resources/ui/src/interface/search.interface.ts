@@ -15,6 +15,12 @@ import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Query } from 'generated/entity/data/query';
 import { Domain } from 'generated/entity/domains/domain';
+import { DashboardService } from 'generated/entity/services/dashboardService';
+import { DatabaseService } from 'generated/entity/services/databaseService';
+import { MessagingService } from 'generated/entity/services/messagingService';
+import { MlmodelService } from 'generated/entity/services/mlmodelService';
+import { PipelineService } from 'generated/entity/services/pipelineService';
+import { SearchService } from 'generated/entity/services/searchService';
 import { TestCase } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
 import { SearchIndex } from '../enums/search.enum';
@@ -93,6 +99,26 @@ export interface TestCaseSearchSource
   testSuites: TestSuite[];
 } // extends EntityInterface
 
+export interface DatabaseServiceSearchSource
+  extends SearchSourceBase,
+    DatabaseService {}
+export interface MessagingServiceSearchSource
+  extends SearchSourceBase,
+    MessagingService {}
+export interface DashboardServiceSearchSource
+  extends SearchSourceBase,
+    DashboardService {}
+export interface PipelineServiceSearchSource
+  extends SearchSourceBase,
+    PipelineService {}
+export interface MlModelServiceSearchSource
+  extends SearchSourceBase,
+    MlmodelService {}
+
+export interface SearchServiceSearchSource
+  extends SearchSourceBase,
+    SearchService {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -107,6 +133,12 @@ export type ExploreSearchSource =
   | TagClassSearchSource
   | DashboardDataModelSearchSource
   | TestCaseSearchSource
+  | DatabaseServiceSearchSource
+  | DashboardServiceSearchSource
+  | PipelineServiceSearchSource
+  | MlModelServiceSearchSource
+  | MessagingServiceSearchSource
+  | SearchServiceSearchSource
   | DomainSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
@@ -122,6 +154,12 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
   [SearchIndex.TEST_CASE]: TestCaseSearchSource;
+  [SearchIndex.DATABASE_SERVICE]: DatabaseServiceSearchSource;
+  [SearchIndex.DASHBOARD_SERCVICE]: DashboardServiceSearchSource;
+  [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
+  [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
+  [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
+  [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
 };
 
