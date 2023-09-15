@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -41,6 +42,11 @@ public class QueryRepository extends EntityRepository<Query> {
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
     supportsSearchIndex = true;
+  }
+
+  @Override
+  public void setFullyQualifiedName(Query query) {
+    query.setFullyQualifiedName(FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
   }
 
   @Override

@@ -125,6 +125,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name","query"],
+  "required": ["name", "query", "service"],
   "additionalProperties": false
 }
