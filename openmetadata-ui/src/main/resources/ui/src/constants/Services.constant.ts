@@ -396,6 +396,17 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
 };
 
+export const SERVICE_TYPES_ENUM = {
+  [ServiceCategory.DASHBOARD_SERVICES]: DashboardServiceType,
+  [ServiceCategory.DATABASE_SERVICES]: DatabaseServiceType,
+  [ServiceCategory.MESSAGING_SERVICES]: MessagingServiceType,
+  [ServiceCategory.ML_MODEL_SERVICES]: MlModelServiceType,
+  [ServiceCategory.METADATA_SERVICES]: MetadataServiceType,
+  [ServiceCategory.STORAGE_SERVICES]: StorageServiceType,
+  [ServiceCategory.PIPELINE_SERVICES]: PipelineServiceType,
+  [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
+};
+
 export const BETA_SERVICES = [
   DatabaseServiceType.SapHana,
   PipelineServiceType.Spline,
