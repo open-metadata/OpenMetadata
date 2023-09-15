@@ -15,7 +15,7 @@ import { Button, Col, Dropdown, Row, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
+import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
@@ -416,7 +416,8 @@ const DataProductsDetailsPage = ({
             entityData={{ ...dataProduct, displayName, name }}
             entityType={EntityType.DATA_PRODUCT}
             icon={
-              <DomainIcon
+              <DataProductIcon
+                className="align-middle"
                 color={DE_ACTIVE_COLOR}
                 height={36}
                 name="folder"

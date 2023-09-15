@@ -483,6 +483,7 @@ const DomainDetailsPage = ({
             entityType={EntityType.DOMAIN}
             icon={
               <DomainIcon
+                className="align-middle"
                 color={DE_ACTIVE_COLOR}
                 height={36}
                 name="folder"

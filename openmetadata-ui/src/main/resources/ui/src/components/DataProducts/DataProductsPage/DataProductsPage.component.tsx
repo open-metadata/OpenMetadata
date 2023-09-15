@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { EntityHistory } from 'generated/type/entityHistory';
@@ -69,29 +72,28 @@ const DataProductsPage = () => {
     }
   };
 
-  const handleDataProductDelete = () => {
+  const handleDataProductDelete = async () => {
     if (!dataProduct) {
       return;
     }
 
-    deleteDataProduct(dataProduct.id)
-      .then(() => {
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.data-product'),
-          })
-        );
-        const domainPath = getDomainPath();
-        history.push(domainPath);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.delete-entity-error', {
-            entity: t('label.data-product'),
-          })
-        );
-      });
+    try {
+      await deleteDataProduct(dataProduct.id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.data-product'),
+        })
+      );
+      const domainPath = getDomainPath();
+      history.push(domainPath);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.delete-entity-error', {
+          entity: t('label.data-product'),
+        })
+      );
+    }
   };
 
   const fetchDataProductByFqn = async (fqn: string) => {
@@ -163,7 +165,25 @@ const DataProductsPage = () => {
   }
 
   if (!dataProduct) {
-    return null;
+    return (
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <div className="text-center">
+          <p>
+            {t('message.no-entity-found-for-name', {
+              entity: t('label.data-product'),
+              name: fqn,
+            })}
+          </p>
+          <Button
+            ghost
+            className="m-t-sm"
+            type="primary"
+            onClick={() => history.push(getDomainPath())}>
+            {t('label.go-back')}
+          </Button>
+        </div>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (
