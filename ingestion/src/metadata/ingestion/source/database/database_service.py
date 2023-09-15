@@ -159,7 +159,6 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
-                context="life_cycle",
                 processor="yield_life_cycle_data",
                 ack_sink=False,
                 nullable=True,
