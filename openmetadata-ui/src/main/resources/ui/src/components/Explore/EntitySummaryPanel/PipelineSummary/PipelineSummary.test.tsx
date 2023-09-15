@@ -64,7 +64,7 @@ describe('PipelineSummary component tests', () => {
       }
     );
 
-    const schemaHeader = screen.getAllByTestId('schema-header');
+    const descriptionHeader = screen.getAllByTestId('description-header');
     const tags = screen.getByText('label.tag-plural');
     const noTags = screen.getByText('label.no-tags-added');
     const pipelineName = screen.getAllByTestId('pipeline-link-name');
@@ -82,7 +82,7 @@ describe('PipelineSummary component tests', () => {
 
     expect(ownerLabel).not.toBeInTheDocument();
 
-    expect(schemaHeader[0]).toBeInTheDocument();
+    expect(descriptionHeader[0]).toBeInTheDocument();
     expect(tags).toBeInTheDocument();
     expect(pipelineName[0]).toBeInTheDocument();
     expect(noTags).toBeInTheDocument();
