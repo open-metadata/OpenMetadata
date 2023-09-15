@@ -57,6 +57,11 @@ export interface MlModelSource extends CommonSource {
   mlmodel_name: string;
 }
 
+export interface SearchIndexSource extends CommonSource {
+  search_index_id: string;
+  search_index_name: string;
+}
+
 export interface GlossarySource extends CommonSource {
   glossary_id: string;
   glossary_name: string;
@@ -77,7 +82,8 @@ export interface Option {
     MlModelSource &
     ContainerSearchSource &
     GlossarySource &
-    TagSource;
+    TagSource &
+    SearchIndexSource;
 }
 
 export type SearchSuggestions =
@@ -88,4 +94,5 @@ export type SearchSuggestions =
   | GlossarySource[]
   | ContainerSearchSource[]
   | DashboardSource[]
-  | MlModelSource[];
+  | MlModelSource[]
+  | SearchIndexSource[];
