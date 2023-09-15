@@ -90,9 +90,9 @@ pip install openmetadata-ingestion[<plugin>]==x.y.z
 The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.4`.
 You will find specific instructions for each connector [here](/connectors).
 
-## 1.1.4 - Stable Release 🎉
+## 1.1.5 - Stable Release 🎉
 
-OpenMetadata 1.1.4 is a stable release. Please check the [release notes](/releases/latest-release).
+OpenMetadata 1.1.5 is a stable release. Please check the [release notes](/releases/latest-release).
 
 If you are upgrading production this is the recommended version to upgrade to.
 
