@@ -27,7 +27,7 @@ You can learn more about how the migration process works [here](/deployment/upgr
 ```python
 python -m venv venv
 source venv/bin/activate
-pip install openmetadata-ingestion~=1.1.4
+pip install openmetadata-ingestion~=1.1.5
 ```
 
 Validate the installed metadata version with `python -m metadata --version`
@@ -87,12 +87,12 @@ For example, if you are upgrading the server to the version `x.y.z`, you will ne
 pip install openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.4`.
+The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.5`.
 You will find specific instructions for each connector [here](/connectors).
 
-## 1.1.4 - Stable Release 🎉
+## 1.1.5 - Stable Release 🎉
 
-OpenMetadata 1.1.4 is a stable release. Please check the [release notes](/releases/latest-release).
+OpenMetadata 1.1.5 is a stable release. Please check the [release notes](/releases/latest-release).
 
 If you are upgrading production this is the recommended version to upgrade to.
 

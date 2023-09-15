@@ -256,6 +256,12 @@ const ContainerPage = withSuspenseFallback(
   React.lazy(() => import('pages/ContainerPage/ContainerPage'))
 );
 
+const SearchIndexDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
+  )
+);
+
 const QueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/QueryPage/QueryPage.component'))
 );
@@ -523,6 +529,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={ContainerPage}
         path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_SUB_TAB}
       />
       <AdminProtectedRoute
         exact

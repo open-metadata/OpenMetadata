@@ -380,6 +380,7 @@
     "february": "Fevrier",
     "feed-lowercase": "flux",
     "feed-plural": "Flux",
+    "field": "Field",
     "field-change": "Champs Mis à Jour",
     "field-invalid": "{{field}} est invalide",
     "field-plural": "Champs",
