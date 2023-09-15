@@ -133,12 +133,10 @@ class StoredProcedureMixin:
     ) -> Iterable[Either[AddLineageRequest]]:
         """Add procedure lineage from its query"""
 
-        self.update_context(key="stored_procedure_query_lineage", value=False)
         if self.is_lineage_query(
             query_type=query_by_procedure.query_type,
             query_text=query_by_procedure.query_text,
         ):
-            self.update_context(key="stored_procedure_query_lineage", value=True)
 
             for either_lineage in get_lineage_by_query(
                 self.metadata,

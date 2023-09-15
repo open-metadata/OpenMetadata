@@ -67,3 +67,12 @@ caption="Announcements, Following, and Recent Views"
 - **Announcements:** View all the recent announcements about the data assets you own or follow. Learn [How to Add an Announcement](/how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement).
 - **Following:** View all the data assets that you are following. [Learn How to Follow a Data Asset](/how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset).
 - **Recent Views:** Displays all the recently viewed data.
+
+{%inlineCallout
+  color="violet-70"
+  bold="Overview of Data Assets"
+  icon="MdArrowForward"
+  align="right"
+  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets"%}
+  Know it all about data assets.
+{%/inlineCallout%}

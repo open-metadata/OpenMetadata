@@ -83,6 +83,11 @@ const EntitySummaryDetails = ({
     setShowTypeSelector(value);
   }, []);
 
+  const handleUpdateTeamType = (type: TeamType) => {
+    updateTeamType?.(type);
+    handleShowTypeSelector(false);
+  };
+
   const ownerDropdown = allowTeamOwner ? (
     <UserTeamSelectableList
       hasPermission={Boolean(updateOwner)}
@@ -335,7 +340,7 @@ const EntitySummaryDetails = ({
                 handleShowTypeSelector={handleShowTypeSelector}
                 showGroupOption={showGroupOption ?? false}
                 teamType={teamType ?? TeamType.Department}
-                updateTeamType={updateTeamType}
+                updateTeamType={handleUpdateTeamType}
               />
             ) : (
               <>
