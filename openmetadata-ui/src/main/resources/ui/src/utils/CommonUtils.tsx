@@ -75,6 +75,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
+import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -146,6 +147,11 @@ export const getPartialNameFromTableFQN = (
 
   if (fqnParts.includes(FqnPart.Topic)) {
     // Remove the first 2 parts ( service, database)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.SearchIndexField)) {
+    // Remove the first 2 parts ( service, searchIndex)
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
@@ -817,6 +823,11 @@ export const getEntityDetailLink = (
 
     case EntityType.CONTAINER:
       path = getContainerDetailPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.SEARCH_INDEX:
+      path = getSearchIndexTabPath(fqn, tab, subTab);
 
       break;
 

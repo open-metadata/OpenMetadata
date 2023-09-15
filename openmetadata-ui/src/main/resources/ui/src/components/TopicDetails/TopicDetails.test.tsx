@@ -117,8 +117,8 @@ jest.mock('./TopicSchema/TopicSchema', () => {
     .mockReturnValue(<div data-testid="schema-fields">TopicSchema</div>);
 });
 
-jest.mock('../SampleDataTopic/SampleDataTopic', () => {
-  return jest.fn().mockReturnValue(<div>SampleDataTopic</div>);
+jest.mock('components/SampleDataWithMessages/SampleDataWithMessages', () => {
+  return jest.fn().mockReturnValue(<div>SampleDataWithMessages</div>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -176,7 +176,7 @@ describe.skip('Test TopicDetails component', () => {
     const { container } = render(<TopicDetails {...topicDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const sampleData = await findByText(container, 'SampleDataTopic');
+    const sampleData = await findByText(container, 'SampleDataWithMessages');
 
     expect(sampleData).toBeInTheDocument();
   });
