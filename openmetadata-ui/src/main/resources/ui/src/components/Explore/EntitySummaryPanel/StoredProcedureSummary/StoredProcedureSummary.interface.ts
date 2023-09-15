@@ -18,5 +18,5 @@ export interface StoredProcedureSummaryProps {
   entityDetails: StoredProcedure;
   componentType?: string;
   tags?: TagLabel[];
-  isLoading: boolean;
+  isLoading?: boolean;
 }
