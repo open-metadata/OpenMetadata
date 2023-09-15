@@ -103,9 +103,9 @@ describe('TestSuites component', () => {
     });
   });
 
-  it('pagination should visible if total is grater than 10', async () => {
+  it('pagination should visible if total is grater than 15', async () => {
     (getListTestSuites as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: [], paging: { total: 15 } })
+      Promise.resolve({ data: [], paging: { total: 16 } })
     );
 
     render(<TestSuites {...mockProps} />);

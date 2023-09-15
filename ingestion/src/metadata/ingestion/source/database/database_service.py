@@ -12,10 +12,9 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Any, Iterable, List, Optional, Set, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -67,6 +66,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -82,26 +82,6 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
-
-
-class QueryByProcedure(BaseModel):
-    """
-    Query(ies) executed by each stored procedure
-    """
-
-    procedure_id: str = Field(..., alias="PROCEDURE_ID")
-    query_id: str = Field(..., alias="QUERY_ID")
-    query_type: str = Field(..., alias="QUERY_TYPE")
-    procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
-    procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
-    procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
-    query_start_time: datetime = Field(..., alias="QUERY_START_TIME")
-    query_duration: Optional[float] = Field(None, alias="QUERY_DURATION")
-    query_text: str = Field(..., alias="QUERY_TEXT")
-    query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")
-
-    class Config:
-        allow_population_by_field_name = True
 
 
 class DatabaseServiceTopology(ServiceTopology):

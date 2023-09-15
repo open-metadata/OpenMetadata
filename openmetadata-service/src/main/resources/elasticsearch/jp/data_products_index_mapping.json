@@ -92,6 +92,9 @@
           }
         }
       },
+      "entityType": {
+        "type": "keyword"
+      },
       "version": {
         "type": "float"
       },

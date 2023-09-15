@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { QueryVote } from 'components/TableQueries/TableQueries.interface';
+import { PAGE_SIZE } from 'constants/constants';
 import { Operation } from 'fast-json-patch';
 import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
@@ -54,7 +55,8 @@ export const getDashboards = async (
   service: string,
   fields: string,
   paging?: PagingWithoutTotal,
-  include: Include = Include.NonDeleted
+  include: Include = Include.NonDeleted,
+  limit: number = PAGE_SIZE
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
@@ -65,6 +67,7 @@ export const getDashboards = async (
       fields,
       ...paging,
       include,
+      limit,
     },
   });
 
