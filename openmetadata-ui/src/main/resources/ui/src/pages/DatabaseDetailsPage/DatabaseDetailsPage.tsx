@@ -20,6 +20,7 @@ import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/Activit
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import Loader from 'components/Loader/Loader';
@@ -285,18 +286,20 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseSchemaPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${
-      databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-    }`;
-    setSchemaDataLoading(true);
-    fetchDatabaseSchemas(pagingString).finally(() => {
-      setSchemaDataLoading(false);
-    });
-    setCurrentPage(activePage ?? 1);
+  const databaseSchemaPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      const pagingString = `&${cursorType}=${
+        databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
+      }`;
+      setSchemaDataLoading(true);
+      fetchDatabaseSchemas(pagingString).finally(() => {
+        setSchemaDataLoading(false);
+      });
+      setCurrentPage(currentPage);
+    }
   };
 
   const settingsUpdateHandler = async (data: Database) => {

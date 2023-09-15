@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import ClassificationDetails from 'components/ClassificationDetails/ClassificationDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
@@ -575,14 +576,14 @@ const TagsPage = () => {
   };
 
   const handlePageChange = useCallback(
-    (cursorType: string | number, activePage?: number) => {
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         const pagination = {
-          [cursorType]: paging[cursorType as keyof Paging] as string,
+          [cursorType]: paging[cursorType],
           total: paging.total,
         } as Paging;
 
-        setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+        setCurrentPage(currentPage);
         fetchClassificationChildren(currentClassificationName, pagination);
       }
     },

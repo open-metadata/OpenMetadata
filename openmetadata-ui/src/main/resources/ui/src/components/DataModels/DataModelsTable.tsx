@@ -74,30 +74,34 @@ const DataModelTable = ({
   );
 
   return (
-    <Col className="p-x-lg" data-testid="table-container" span={24}>
-      <Table
-        bordered
-        className="mt-4 table-shadow"
-        columns={tableColumn}
-        data-testid="data-models-table"
-        dataSource={data}
-        loading={isLoading}
-        locale={{
-          emptyText: <ErrorPlaceHolder className="m-y-md" />,
-        }}
-        pagination={false}
-        rowKey="id"
-        size="small"
-      />
-      {paging && paging.total > PAGE_SIZE && (
-        <NextPrevious
-          currentPage={currentPage}
-          pageSize={PAGE_SIZE}
-          paging={paging}
-          pagingHandler={pagingHandler}
+    <>
+      <Col className="p-x-lg" data-testid="table-container" span={24}>
+        <Table
+          bordered
+          className="mt-4 table-shadow"
+          columns={tableColumn}
+          data-testid="data-models-table"
+          dataSource={data}
+          loading={isLoading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
         />
-      )}
-    </Col>
+      </Col>
+      <Col span={24}>
+        {paging && paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={pagingHandler}
+          />
+        )}
+      </Col>
+    </>
   );
 };
 

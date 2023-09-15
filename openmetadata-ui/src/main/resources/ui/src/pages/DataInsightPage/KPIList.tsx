@@ -17,6 +17,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Table from 'components/common/Table/Table';
 import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPlaceholder';
@@ -186,14 +187,16 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
     return col;
   }, [kpiList]);
 
-  const kpiPagingHandler = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
-    setKpiPage(activePage as number);
-    fetchKpiList({
-      [cursorValue]: kpiPaging[cursorValue as keyof Paging] as string,
-    });
+  const kpiPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      setKpiPage(currentPage);
+      fetchKpiList({
+        [cursorType]: kpiPaging[cursorType as keyof Paging] as string,
+      });
+    }
   };
 
   useEffect(() => {

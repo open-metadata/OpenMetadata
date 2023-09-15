@@ -18,6 +18,7 @@ import { AxiosError } from 'axios';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Table from 'components/common/Table/Table';
 import PageHeader from 'components/header/PageHeader.component';
@@ -202,7 +203,7 @@ const PoliciesListPage = () => {
     setIsLoading(true);
     try {
       const data = await getPolicies(
-        'owner,location,roles,teams',
+        'roles',
         paging?.after,
         paging?.before,
         PAGE_SIZE_MEDIUM
@@ -223,9 +224,14 @@ const PoliciesListPage = () => {
     history.push(ROUTES.ADD_POLICY);
   };
 
-  const handlePaging = (_: string | number, activePage?: number) => {
-    setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
-    fetchPolicies(paging);
+  const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
+    setCurrentPage(currentPage);
+    if (cursorType && paging) {
+      fetchPolicies({
+        [cursorType]: paging[cursorType],
+        total: paging?.total,
+      } as Paging);
+    }
   };
 
   useEffect(() => {
