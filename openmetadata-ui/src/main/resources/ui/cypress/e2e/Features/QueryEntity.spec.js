@@ -70,7 +70,7 @@ describe('Query Entity', () => {
 
   it('Update owner, description and tag', () => {
     interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
     interceptURL('PATCH', '/api/v1/queries/*', 'patchQuery');
     interceptURL(
       'GET',

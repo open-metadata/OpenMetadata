@@ -15,6 +15,7 @@ import { Col, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Table from 'components/common/Table/Table';
 import { getDatabaseSchemaDetailsPath, PAGE_SIZE } from 'constants/constants';
@@ -83,10 +84,7 @@ export const getDatabaseSchemaTable = (
   schemaDataLoading: boolean,
   databaseSchemaPaging: Paging,
   currentPage: number,
-  databaseSchemaPagingHandler: (
-    cursorType: string | number,
-    activePage?: number
-  ) => void
+  databaseSchemaPagingHandler: NextPreviousProps['pagingHandler']
 ) => {
   return (
     <Col span={24}>

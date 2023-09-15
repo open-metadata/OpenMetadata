@@ -15,6 +15,7 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
@@ -25,7 +26,7 @@ import { updateUser } from 'rest/userAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { CreateUser } from '../../generated/api/teams/createUser';
@@ -48,7 +49,7 @@ interface UserListV1Props {
   currentPage: number;
   isDataLoading: boolean;
   showDeletedUser: boolean;
-  onPagingChange: (cursorValue: string | number, activePage?: number) => void;
+  onPagingChange: NextPreviousProps['pagingHandler'];
   onShowDeletedUserChange: (value: boolean) => void;
   onSearch: (text: string) => void;
   afterDeleteAction: () => void;
@@ -210,7 +211,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
   return (
     <Row
-      className="user-listing"
+      className="user-listing p-b-md"
       data-testid="user-list-v1-component"
       gutter={[16, 16]}>
       <Col span={12}>
@@ -268,11 +269,11 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={24}>
-        {paging.total > PAGE_SIZE_MEDIUM && (
+        {paging.total > PAGE_SIZE_BASE && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchTerm)}
-            pageSize={PAGE_SIZE_MEDIUM}
+            pageSize={PAGE_SIZE_BASE}
             paging={paging}
             pagingHandler={onPagingChange}
           />

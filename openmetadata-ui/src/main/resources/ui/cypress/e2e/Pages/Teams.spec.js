@@ -118,7 +118,7 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Add user to created team', () => {
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
     interceptURL('PATCH', '/api/v1/teams/*', 'updateTeam');
     // Clicking on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
@@ -148,7 +148,7 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Remove added user from created team', () => {
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
     interceptURL('PATCH', '/api/v1/teams/*', 'updateTeam');
     // Clicking on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
