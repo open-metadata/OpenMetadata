@@ -187,6 +187,8 @@ const mockParams = {
   tab: 'table',
 };
 
+const API_FIELDS = ['owner', 'usageSummary', 'tags', 'domain', 'votes'];
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     history: {
@@ -240,7 +242,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
+      API_FIELDS,
       'include=all'
     );
   });
@@ -277,7 +279,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
+      API_FIELDS,
       'include=all'
     );
 
@@ -299,7 +301,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
+      API_FIELDS,
       'include=all'
     );
 

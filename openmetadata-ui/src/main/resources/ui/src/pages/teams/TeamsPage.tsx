@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -43,7 +44,7 @@ import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
   LIST_SIZE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
@@ -225,7 +226,12 @@ const TeamsPage = () => {
     loadPage = true
   ) => {
     loadPage && setIsDataLoading((isDataLoading) => ++isDataLoading);
-    getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
+    getUsers({
+      fields: 'teams,roles',
+      limit: PAGE_SIZE_BASE,
+      team,
+      ...paging,
+    })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -385,7 +391,7 @@ const TeamsPage = () => {
     searchData(
       text,
       currentPage,
-      PAGE_SIZE_MEDIUM,
+      PAGE_SIZE_BASE,
       `(teams.id:${selectedTeam?.id})`,
       '',
       '',
@@ -422,17 +428,17 @@ const TeamsPage = () => {
     }
   };
 
-  const userPagingHandler = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const userPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (userSearchValue) {
-      setCurrentUserPage(cursorValue as number);
-      searchUsers(userSearchValue, cursorValue as number);
-    } else {
-      setCurrentUserPage(activePage as number);
+      setCurrentUserPage(currentPage);
+      searchUsers(userSearchValue, currentPage);
+    } else if (cursorType) {
+      setCurrentUserPage(currentPage);
       getCurrentTeamUsers(selectedTeam.name, {
-        [cursorValue]: userPaging[cursorValue as keyof Paging] as string,
+        [cursorType]: userPaging[cursorType] as string,
       });
     }
   };
@@ -578,8 +584,8 @@ const TeamsPage = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  const handleAssetsPaginate = (page: string | number) => {
-    setAssets((pre) => ({ ...pre, currPage: page as number }));
+  const handleAssetsPaginate = ({ currentPage }: PagingHandlerParams) => {
+    setAssets((pre) => ({ ...pre, currPage: currentPage }));
   };
 
   useEffect(() => {

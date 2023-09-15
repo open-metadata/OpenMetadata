@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -30,18 +31,20 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityType } from 'enums/entity.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
-import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { cloneDeep, groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
+import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
@@ -168,6 +171,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [isVersionView]
   );
 
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(messageSchema?.schemaFields ?? []);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [messageSchema?.schemaFields]);
+
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
@@ -214,6 +226,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -228,13 +246,22 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
       },
       {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
-        key: 'tags',
+        key: 'glossary',
         accessor: 'tags',
         width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -249,6 +276,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
       },
     ],
     [
@@ -268,9 +298,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   useEffect(() => {
-    if (isVersionView) {
-      setExpandedRowKeys(schemaAllRowKeys);
-    }
+    setExpandedRowKeys(schemaAllRowKeys);
   }, []);
 
   return (

@@ -55,7 +55,7 @@ describe('Activity feed', () => {
       '/api/v1/search/query?q=**teamType:Group&from=0&size=15&index=team_search_index',
       'getTeams'
     );
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
     const value = SEARCH_ENTITY_TABLE.table_4;
     const OWNER = 'admin';
     interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');

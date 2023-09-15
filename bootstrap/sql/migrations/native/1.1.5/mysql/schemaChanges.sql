@@ -74,11 +74,10 @@ WHERE extension = 'testCase.testCaseResult';
 COMMIT;
 
 ALTER TABLE automations_workflow MODIFY COLUMN nameHash VARCHAR(256) COLLATE ascii_bin,MODIFY COLUMN workflowType VARCHAR(256) COLLATE ascii_bin, MODIFY COLUMN status VARCHAR(256) COLLATE ascii_bin;
-ALTER TABLE entity_extension MODIFY COLUMN extension VARCHAR(256) COLLATE ascii_bin;
 ALTER TABLE entity_extension_time_series MODIFY COLUMN entityFQNHash VARCHAR(768) COLLATE ascii_bin, MODIFY COLUMN jsonSchema VARCHAR(50) COLLATE ascii_bin, MODIFY COLUMN extension VARCHAR(100) COLLATE ascii_bin,
     ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
 ALTER TABLE field_relationship MODIFY COLUMN fromFQNHash VARCHAR(768) COLLATE ascii_bin, MODIFY COLUMN toFQNHash VARCHAR(768) COLLATE ascii_bin;
-ALTER TABLE thread_entity MODIFY COLUMN entityLink VARCHAR(3072) GENERATED ALWAYS AS (json ->> '$.about') NOT NULL, MODIFY COLUMN createdBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.createdBy') STORED NOT NULL COLLATE ascii_bin;
+ALTER TABLE thread_entity MODIFY COLUMN entityLink VARCHAR(3072) GENERATED ALWAYS AS (json ->> '$.about') NOT NULL;
 ALTER TABLE event_subscription_entity MODIFY COLUMN nameHash VARCHAR(256) COLLATE ascii_bin;
 ALTER TABLE ingestion_pipeline_entity MODIFY COLUMN fqnHash VARCHAR(768) COLLATE ascii_bin;
 ALTER TABLE bot_entity MODIFY COLUMN nameHash VARCHAR(256) COLLATE ascii_bin;

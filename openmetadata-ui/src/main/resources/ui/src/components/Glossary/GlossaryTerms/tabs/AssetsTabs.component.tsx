@@ -16,6 +16,7 @@ import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
@@ -265,8 +266,8 @@ const AssetsTabs = forwardRef(
                 currentPage={currentPage}
                 pageSize={PAGE_SIZE}
                 paging={{ total }}
-                pagingHandler={(page: string | number) =>
-                  setCurrentPage(Number(page))
+                pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                  setCurrentPage(currentPage)
                 }
               />
             )}
