@@ -13,6 +13,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
@@ -20,12 +21,10 @@ import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { TestCase } from 'generated/tests/testCase';
-import { Paging } from 'generated/type/paging';
 import {
   SearchHitBody,
   TestCaseSearchSource,
 } from 'interface/search.interface';
-import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
@@ -156,21 +155,21 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       setIsLoading(false);
     }
   };
-  const handlePagingClick = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePagingClick = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (searchValue) {
-      searchTestCases(cursorValue as number);
+      searchTestCases(currentPage);
     } else {
       const { paging } = testCase;
-      if (isString(cursorValue)) {
+      if (cursorType) {
         fetchTestCases({
-          [cursorValue]: paging?.[cursorValue as keyof Paging],
+          [cursorType]: paging?.[cursorType],
         });
       }
     }
-    activePage && setCurrentPage(activePage);
+    setCurrentPage(currentPage);
   };
 
   useEffect(() => {

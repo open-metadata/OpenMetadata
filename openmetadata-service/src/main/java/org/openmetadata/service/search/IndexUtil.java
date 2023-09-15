@@ -139,11 +139,15 @@ public class IndexUtil {
     } else if (type.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.SEARCH_INDEX)) {
-      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_INDEX_SEARCH;
+      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_ENTITY_INDEX_SEARCH;
     } else if (type.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DOMAIN)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DOMAIN_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.STORED_PROCEDURE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATA_PRODUCT)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATA_PRODUCTS_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }

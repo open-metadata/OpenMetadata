@@ -72,7 +72,7 @@ const checkName = (name) => {
 
 const updateOwner = (newOwner) => {
   interceptURL('PATCH', `/api/v1/domains/*`, 'patchOwner');
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
   cy.get('[data-testid="edit-owner"]').click();
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
@@ -111,7 +111,7 @@ const updateDescription = (newDescription) => {
 };
 
 const fillForm = (formObj, type) => {
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
   cy.get('[data-testid="name"]').scrollIntoView().clear().type(formObj.name);
 
   cy.get(descriptionBox)

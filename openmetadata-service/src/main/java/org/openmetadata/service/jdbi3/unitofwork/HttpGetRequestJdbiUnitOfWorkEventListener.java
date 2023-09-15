@@ -7,18 +7,16 @@ import org.glassfish.jersey.server.monitoring.RequestEventListener;
 @Slf4j
 class HttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListener {
 
-  private final JdbiTransactionAspect transactionAspect;
-
-  HttpGetRequestJdbiUnitOfWorkEventListener(JdbiHandleManager handleManager) {
-    this.transactionAspect = new JdbiTransactionAspect(handleManager);
-  }
+  HttpGetRequestJdbiUnitOfWorkEventListener() {}
 
   @Override
   public void onEvent(RequestEvent event) {
     RequestEvent.Type type = event.getType();
     LOG.debug("Handling GET Request Event {} {}", type, Thread.currentThread().getId());
-    if (type == RequestEvent.Type.FINISHED) {
-      transactionAspect.terminateHandle();
+    if (type == RequestEvent.Type.RESOURCE_METHOD_START) {
+      JdbiTransactionManager.getInstance().begin(true);
+    } else if (type == RequestEvent.Type.FINISHED) {
+      JdbiTransactionManager.getInstance().terminateHandle();
     }
   }
 }

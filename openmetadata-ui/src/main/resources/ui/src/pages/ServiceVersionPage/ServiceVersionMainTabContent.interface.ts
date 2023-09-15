@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import { EntityType } from 'enums/entity.enum';
 import { ChangeDescription } from 'generated/entity/type';
 import { Paging } from 'generated/type/paging';
@@ -24,7 +25,7 @@ export interface ServiceVersionMainTabContentProps {
   isServiceLoading: boolean;
   paging: Paging;
   currentPage: number;
-  pagingHandler: (cursorType: string | number, activePage?: number) => void;
+  pagingHandler: NextPreviousProps['pagingHandler'];
   entityType: EntityType;
   changeDescription: ChangeDescription;
 }
