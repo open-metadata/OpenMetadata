@@ -26,7 +26,7 @@ ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
 LABEL org.open-metadata.image.authors="support@openmetadata.org"
 LABEL org.open-metadata.vendor="OpenMetadata"
-LABEL org.open-metadata.release-version="1.1.4"
+LABEL org.open-metadata.release-version="1.1.5"
 LABEL org.open-metadata.description="OpenMetadata is an open source platform for metadata management and discovery."
 LABEL org.open-metadata.url="https://open-metadata.org/"
 LABEL org.open-metadata.vcs-url="https://github.com/open-metadata/OpenMetadata"
