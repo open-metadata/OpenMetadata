@@ -73,7 +73,7 @@ export type SourceType = (
       Fields
     >
 ) & {
-  id?: string;
+  id: string;
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
   entityType?: string;
