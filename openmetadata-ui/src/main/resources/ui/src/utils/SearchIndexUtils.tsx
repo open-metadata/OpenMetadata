@@ -26,11 +26,11 @@ export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.EXTE
 
 export const makeRow = (column: SearchIndexField) => {
   return {
-    description: column.description || '',
+    description: column.description ?? '',
     // Sorting tags as the response of PATCH request does not return the sorted order
     // of tags, but is stored in sorted manner in the database
     // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags || []),
+    tags: sortTagsCaseInsensitive(column.tags ?? []),
     key: column?.name,
     ...column,
   };

@@ -143,7 +143,7 @@ function SearchIndexDetailsPage() {
       return {
         ...searchIndexDetails,
         tier: getTierTags(tags ?? []),
-        searchIndexTags: getTagsWithoutTier(tags || []),
+        searchIndexTags: getTagsWithoutTier(tags ?? []),
         entityName: getEntityName(searchIndexDetails),
       };
     }
