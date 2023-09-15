@@ -12,11 +12,12 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Typography } from 'antd';
 import { ReactComponent as DragIconDotted } from 'assets/svg/dots-six-bold.svg';
 import classNames from 'classnames';
 import { PRIMERY_COLOR } from 'constants/constants';
 import { entityData } from 'constants/Lineage.constants';
-import { capitalize, isEmpty, uniqueId } from 'lodash';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
 import { getEntityIcon } from 'utils/TableUtils';
@@ -40,16 +41,14 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable, keyId }) => {
   };
 
   return (
-    <div className=" m-b-lg">
+    <div className=" m-b-lg text-center">
       <div
         className={classNames('sidebar-icon-container', {
           'cursor-not-allowed opacity-50': !draggable,
         })}
         draggable={draggable}
         style={{ ...(draggable && { cursor: 'grab' }) }}
-        onDragStart={(event) =>
-          onDragStart(event, `${keyId ?? label}-default`)
-        }>
+        onDragStart={(event) => onDragStart(event, `${keyId}-default`)}>
         <span
           className="d-flex"
           onDragStart={(e) => {
@@ -69,9 +68,9 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable, keyId }) => {
           />
         </span>
       </div>
-      <p className="text-grey-body text-center text-xs p-t-xs">
-        {capitalize(`${label}s`)}
-      </p>
+      <Typography.Text className="text-grey-body text-xs p-t-xs">
+        {label}
+      </Typography.Text>
     </div>
   );
 };
