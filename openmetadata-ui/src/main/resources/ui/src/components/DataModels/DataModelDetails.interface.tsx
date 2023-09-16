@@ -21,7 +21,7 @@ import { EntityReference } from 'generated/entity/type';
 import { EntityTags } from 'Models';
 
 export interface DataModelDetailsProps {
-  updateDataModelDetailsState: (data: DataAssetWithDomains) => void;
+  updateDataModelDetailsState?: (data: DataAssetWithDomains) => void;
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   fetchDataModel: () => void;

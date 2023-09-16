@@ -26,7 +26,6 @@ export interface DashboardVersionProp {
   domain: Dashboard['domain'];
   tier: TagLabel;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

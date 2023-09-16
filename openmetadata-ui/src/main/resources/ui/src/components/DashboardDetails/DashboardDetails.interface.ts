@@ -28,7 +28,7 @@ export interface ChartsPermissions {
   permissions: OperationPermission;
 }
 export interface DashboardDetailsProps {
-  updateDashboardDetailsState: (data: DataAssetWithDomains) => void;
+  updateDashboardDetailsState?: (data: DataAssetWithDomains) => void;
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
   fetchDashboard: () => void;

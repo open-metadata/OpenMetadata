@@ -18,7 +18,7 @@ import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
 
 export interface PipeLineDetailsProp {
-  updatePipelineDetailsState: (data: DataAssetWithDomains) => void;
+  updatePipelineDetailsState?: (data: DataAssetWithDomains) => void;
   pipelineFQN: string;
   pipelineDetails: Pipeline;
   paging: Paging;

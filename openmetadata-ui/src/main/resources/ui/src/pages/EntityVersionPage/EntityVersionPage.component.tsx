@@ -601,7 +601,6 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedDashboardName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}

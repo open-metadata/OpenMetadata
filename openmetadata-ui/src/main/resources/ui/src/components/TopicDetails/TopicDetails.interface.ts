@@ -19,7 +19,7 @@ import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
 import { SchemaType } from '../../generated/type/schema';
 
 export interface TopicDetailsProps {
-  updateTopicDetailsState: (data: DataAssetWithDomains) => void;
+  updateTopicDetailsState?: (data: DataAssetWithDomains) => void;
   topicDetails: Topic;
   topicPermissions: OperationPermission;
   fetchTopic: () => void;
