@@ -284,6 +284,7 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.CONTAINER,
           SearchIndex.GLOSSARY,
           SearchIndex.TAG,
+          SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
             query: searchQueryParam,
@@ -307,6 +308,7 @@ const ExplorePageV1: FunctionComponent = () => {
           containerResponse,
           glossaryResponse,
           tagsResponse,
+          searchIndexResponse,
         ]) => {
           setSearchHitCounts({
             [SearchIndex.TABLE]: tableResponse.hits.total.value,
@@ -317,6 +319,7 @@ const ExplorePageV1: FunctionComponent = () => {
             [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
             [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
             [SearchIndex.TAG]: tagsResponse.hits.total.value,
+            [SearchIndex.SEARCH_INDEX]: searchIndexResponse.hits.total.value,
           });
         }
       ),

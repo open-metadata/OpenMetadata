@@ -97,6 +97,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
 import {
@@ -105,10 +106,12 @@ import {
   getGlossaryPath,
   getSettingPath,
 } from './RouterUtils';
+import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import {
   getDataTypeString,
+  getTagsWithoutTier,
   getTierFromTableTags,
   getUsagePercentile,
 } from './TableUtils';
@@ -146,8 +149,11 @@ export const getEntityTags = (
 
       return tableTags;
     }
-    case EntityType.PIPELINE:
     case EntityType.DASHBOARD:
+    case EntityType.SEARCH_INDEX:
+    case EntityType.PIPELINE:
+      return getTagsWithoutTier(entityDetail.tags || []);
+
     case EntityType.TOPIC:
     case EntityType.MLMODEL:
     case EntityType.STORED_PROCEDURE:
@@ -179,16 +185,7 @@ export const getOwnerNameWithProfilePic = (
 export const getEntityOverview = (
   type: string,
   entityDetail: EntityUnion
-): Array<{
-  name: string;
-  value: string | number | React.ReactNode;
-  isLink: boolean;
-  isExternal?: boolean;
-  isIcon?: boolean;
-  url?: string;
-  visible?: Array<string>;
-  dataTestId?: string;
-}> => {
+): Array<BasicEntityOverviewInfo> => {
   const NO_DATA = '-';
 
   switch (type) {
@@ -411,6 +408,45 @@ export const getEntityOverview = (
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
           isLink: false,
           isExternal: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
+      ];
+
+      return overview;
+    }
+
+    case ExplorePageTabs.SEARCH_INDEX: {
+      const { owner, tags, service } = entityDetail as Dashboard;
+      const tier = getTierFromTableTags(tags || []);
+
+      const overview = [
+        {
+          name: i18next.t('label.owner'),
+          value:
+            getOwnerNameWithProfilePic(owner) ||
+            i18next.t('label.no-entity', {
+              entity: i18next.t('label.owner'),
+            }),
+          url: getOwnerValue(owner as EntityReference),
+          isLink: owner?.name ? true : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
+        {
+          name: i18next.t('label.tier'),
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+          isLink: false,
+          isExternal: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
+        {
+          name: i18next.t('label.service'),
+          value: (service?.fullyQualifiedName as string) || NO_DATA,
+          url: getServiceDetailsPath(
+            service?.name as string,
+            ServiceCategory.SEARCH_SERVICES
+          ),
+          isExternal: false,
+          isLink: true,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
@@ -1052,6 +1088,8 @@ export const getEntityLinkFromType = (
       return getDataModelDetailsPath(fullyQualifiedName);
     case EntityType.STORED_PROCEDURE:
       return getStoredProcedureDetailPath(fullyQualifiedName);
+    case EntityType.SEARCH_INDEX:
+      return getSearchIndexTabPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1378,6 +1416,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
+    case EntityType.SEARCH_INDEX:
     default:
       return getBreadcrumbForEntitiesWithServiceOnly(
         entity as Topic,

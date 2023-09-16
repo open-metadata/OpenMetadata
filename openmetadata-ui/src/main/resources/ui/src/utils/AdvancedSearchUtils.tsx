@@ -37,6 +37,7 @@ import {
   DASHBOARD_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
+  SEARCH_INDEX_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
   TAG_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
@@ -59,6 +60,9 @@ export const getDropDownItems = (index: string) => {
 
     case SearchIndex.PIPELINE:
       return [...COMMON_DROPDOWN_ITEMS, ...PIPELINE_DROPDOWN_ITEMS];
+
+    case SearchIndex.SEARCH_INDEX:
+      return [...COMMON_DROPDOWN_ITEMS, ...SEARCH_INDEX_DROPDOWN_ITEMS];
 
     case SearchIndex.MLMODEL:
       return [

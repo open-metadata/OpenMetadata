@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
@@ -31,18 +31,21 @@ import {
   SelectedEdge,
   SelectedNode,
 } from 'components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import {
+  capitalize,
   cloneDeep,
   isEmpty,
   isEqual,
   isNil,
   isUndefined,
-  lowerCase,
   uniqueId,
   uniqWith,
+  upperCase,
 } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
@@ -1369,18 +1372,29 @@ export const getEntityLineagePath = (
 
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
-  switch (lowerCase(label)) {
-    case EntityType.TABLE:
+  switch (label) {
+    case capitalize(EntityType.TABLE):
       return TableIcon;
-    case EntityType.DASHBOARD:
+    case capitalize(EntityType.DASHBOARD):
       return DashboardIcon;
-    case EntityType.TOPIC:
+    case capitalize(EntityType.TOPIC):
       return TopicIcon;
-    case EntityType.PIPELINE:
+    case capitalize(EntityType.PIPELINE):
       return PipelineIcon;
-    case EntityType.MLMODEL:
+    case capitalize(EntityType.MLMODEL):
       return MlModelIcon;
+    case EntityType.SEARCH_INDEX:
+      return SearchOutlined;
     default:
       return TableIcon;
   }
+};
+
+export const getSearchIndexFromNodeType = (entityType: string) => {
+  const searchIndexKey = upperCase(entityType).replace(
+    ' ',
+    '_'
+  ) as keyof typeof SearchIndex;
+
+  return SearchIndex[searchIndexKey] as ExploreSearchIndex;
 };

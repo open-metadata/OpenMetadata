@@ -16,7 +16,7 @@ import { ReactComponent as DragIconDotted } from 'assets/svg/dots-six-bold.svg';
 import classNames from 'classnames';
 import { PRIMERY_COLOR } from 'constants/constants';
 import { entityData } from 'constants/Lineage.constants';
-import { capitalize, isEmpty, uniqueId } from 'lodash';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
 import { getEntityIcon } from 'utils/TableUtils';
@@ -30,9 +30,15 @@ interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
 interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {
   type: string;
   label: string;
+  entityKey: string;
 }
 
-const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
+const EntityNode: FC<EntityNodeProps> = ({
+  type,
+  label,
+  draggable,
+  entityKey,
+}) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -46,7 +52,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
         })}
         draggable={draggable}
         style={{ ...(draggable && { cursor: 'grab' }) }}
-        onDragStart={(event) => onDragStart(event, `${label}-default`)}>
+        onDragStart={(event) => onDragStart(event, `${entityKey}-default`)}>
         <span
           className="d-flex"
           onDragStart={(e) => {
@@ -66,9 +72,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
           />
         </span>
       </div>
-      <p className="text-grey-body text-center text-xs p-t-xs">
-        {capitalize(`${label}s`)}
-      </p>
+      <p className="text-grey-body text-center text-xs p-t-xs">{label}</p>
     </div>
   );
 };
@@ -82,6 +86,7 @@ const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
       {entityData.map((d) => (
         <EntityNode
           draggable={isEmpty(newAddedNode)}
+          entityKey={d.key}
           key={uniqueId()}
           label={d.label}
           type={d.type}

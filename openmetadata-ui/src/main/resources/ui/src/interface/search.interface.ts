@@ -16,6 +16,7 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Query } from 'generated/entity/data/query';
+import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
 import { Domain } from 'generated/entity/domains/domain';
 import { DashboardService } from 'generated/entity/services/dashboardService';
 import { DatabaseService } from 'generated/entity/services/databaseService';
@@ -89,6 +90,10 @@ export interface DatabaseSearchSource extends SearchSourceBase, Database {} // e
 
 export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
 
+export interface SearchIndexSearchSource
+  extends SearchSourceBase,
+    SearchIndexEntity {} // extends EntityInterface
+
 export interface DashboardDataModelSearchSource
   extends SearchSourceBase,
     DashboardDataModel {} // extends EntityInterface
@@ -147,7 +152,8 @@ export type ExploreSearchSource =
   | MlModelServiceSearchSource
   | MessagingServiceSearchSource
   | SearchServiceSearchSource
-  | DomainSearchSource;
+  | DomainSearchSource
+  | SearchIndexSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
@@ -171,6 +177,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
+  [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
 };
 
 export type SearchRequest<

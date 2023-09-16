@@ -30,6 +30,7 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.CONTAINER
   | SearchIndex.GLOSSARY
   | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
