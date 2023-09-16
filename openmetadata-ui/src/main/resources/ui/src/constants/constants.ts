@@ -82,6 +82,7 @@ export const imageTypes = {
 };
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
+export const NO_DATA = '-';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
