@@ -32,16 +32,16 @@ const DATA = {
 
 describe('Query Entity', () => {
   beforeEach(() => {
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
-      'fetchTableOption'
-    );
     cy.login();
     cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
 
   it('Create query', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
+      'fetchTableOption'
+    );
     interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
     interceptURL('POST', '/api/v1/queries', 'createQuery');
     visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
