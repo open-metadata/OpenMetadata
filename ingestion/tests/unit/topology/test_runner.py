@@ -30,9 +30,7 @@ class MockTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=int,
-                context="numbers",
                 processor="yield_numbers",
-                ack_sink=False,
             )
         ],
         children=["strings"],
@@ -42,9 +40,7 @@ class MockTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=str,
-                context="strings",
                 processor="yield_strings",
-                ack_sink=False,
                 consumer=["numbers"],
             )
         ],
@@ -69,21 +65,23 @@ class MockSource(TopologyRunnerMixin):
     def yield_numbers(number: int):
         yield Either(right=number + 1)
 
-    def yield_strings(self, my_str: str):
-        yield Either(right=my_str + str(self.context.numbers))
+    @staticmethod
+    def yield_strings(my_str: str):
+        yield Either(right=my_str)
 
 
 class TopologyRunnerTest(TestCase):
     """Validate filter patterns"""
 
-    def test_node_and_stage(self):
+    @staticmethod
+    def test_node_and_stage():
         source = MockSource()
         processed = list(source._iter())
         assert [either.right for either in processed] == [
             2,
-            "abc2",
-            "def2",
+            "abc",
+            "def",
             3,
-            "abc3",
-            "def3",
+            "abc",
+            "def",
         ]

@@ -5,14 +5,14 @@ slug: /connectors/dashboard/superset
 
 # Superset
 
-| Stage      | PROD                           |
-|------------|--------------------------------|
-| Dashboards |  {% icon iconName="check" /%}  |
-| Charts     |  {% icon iconName="check" /%}  |
-| Owners     |  {% icon iconName="check" /%}  |
-| Tags       |  {% icon iconName="cross" /%}  |
-| Datamodels | Upcoming in OpenMetadata 1.1.4 |
-| Lineage    |  {% icon iconName="check" /%}  |
+| Stage      | PROD                          |
+|------------|-------------------------------|
+| Dashboards | {% icon iconName="check" /%}  |
+| Charts     | {% icon iconName="check" /%}  |
+| Owners     | {% icon iconName="check" /%}  |
+| Tags       | {% icon iconName="cross" /%}  |
+| Datamodels |Upcoming in OpenMetadata 1.1.4 |
+| Lineage    | {% icon iconName="check" /%}  |
 
 In this section, we provide guides and references to use the Superset connector.
 

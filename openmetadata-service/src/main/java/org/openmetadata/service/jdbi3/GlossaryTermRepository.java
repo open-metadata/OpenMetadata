@@ -73,7 +73,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) {
-    entity.withGlossary(getGlossary(entity)).withParent(getParent(entity));
+    entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : entity.getRelatedTerms());
     return entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
   }
@@ -176,9 +176,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
+    Relationship relationship = term.getParent() != null ? Relationship.HAS : Relationship.CONTAINS;
     return term.getGlossary() != null
         ? term.getGlossary()
-        : getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
+        : getFromEntityRef(term.getId(), relationship, GLOSSARY, true);
   }
 
   public EntityReference getGlossary(String id) {
@@ -220,7 +221,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {
-    addRelationship(term.getGlossary().getId(), term.getId(), GLOSSARY, GLOSSARY_TERM, Relationship.CONTAINS);
+    Relationship relationship = term.getParent() != null ? Relationship.HAS : Relationship.CONTAINS;
+    addRelationship(term.getGlossary().getId(), term.getId(), GLOSSARY, GLOSSARY_TERM, relationship);
   }
 
   private void addParentRelationship(GlossaryTerm term) {
@@ -357,6 +359,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateTerm(original.getId());
       }
       if (parentChanged) {
+        updateGlossaryRelationship(original, updated);
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTerm(original.getId());
@@ -378,7 +381,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     private void deleteGlossaryRelationship(GlossaryTerm term) {
-      deleteRelationship(term.getGlossary().getId(), GLOSSARY, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
+      Relationship relationship = term.getParent() == null ? Relationship.CONTAINS : Relationship.HAS;
+      deleteRelationship(term.getGlossary().getId(), GLOSSARY, term.getId(), GLOSSARY_TERM, relationship);
     }
 
     private void updateParentRelationship(GlossaryTerm orig, GlossaryTerm updated) {

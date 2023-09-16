@@ -593,6 +593,10 @@ site_menu:
     url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/change-team-type
   - category: How to Guides / Admin Guide for Roles and Policies
     url: /how-to-guides/admin-guide-roles-policies
+  - category: How to Guides / Admin Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
+    url: /how-to-guides/admin-guide-roles-policies/authorization
+  - category: How to Guides / Admin Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
+    url: /how-to-guides/admin-guide-roles-policies/use-cases
   - category: How to Guides / User Guide for Data Stewards
     url: /how-to-guides/user-guide-for-data-stewards
   - category: How to Guides / User Guide for Data Stewards / Understanding the Basics of OpenMetadata

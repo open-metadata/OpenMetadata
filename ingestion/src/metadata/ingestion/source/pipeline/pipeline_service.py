@@ -81,7 +81,6 @@ class PipelineServiceTopology(ServiceTopology):
                 type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_tag",
-                ack_sink=False,
                 nullable=True,
             ),
             NodeStage(
@@ -92,18 +91,14 @@ class PipelineServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=OMetaPipelineStatus,
-                context="pipeline_status",
                 processor="yield_pipeline_status",
                 consumer=["pipeline_service"],
                 nullable=True,
-                ack_sink=False,
             ),
             NodeStage(
                 type_=AddLineageRequest,
-                context="lineage",
                 processor="yield_pipeline_lineage",
                 consumer=["pipeline_service"],
-                ack_sink=False,
                 nullable=True,
             ),
         ],
