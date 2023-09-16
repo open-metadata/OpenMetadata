@@ -1420,7 +1420,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       ]);
       setEdgeOptions(
         data.data.hits.hits.map((hit) =>
-          getEntityReferenceFromEntity(hit._source, hit._source.entityType)
+          getEntityReferenceFromEntity(
+            hit._source,
+            hit._source.entityType as EntityType
+          )
         )
       );
     } catch (error) {
