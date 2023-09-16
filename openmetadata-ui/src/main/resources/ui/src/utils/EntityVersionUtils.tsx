@@ -475,7 +475,7 @@ export const getEntityReferenceDiffFromFieldName = (
   changeDescription: ChangeDescription,
   entity?: EntityReference
 ) => {
-  const entityDiff = getDiffByFieldName(fieldName, changeDescription);
+  const entityDiff = getDiffByFieldName(fieldName, changeDescription, true);
 
   const oldEntity = JSON.parse(getChangedEntityOldValue(entityDiff) ?? '{}');
   const newEntity = JSON.parse(getChangedEntityNewValue(entityDiff) ?? '{}');
