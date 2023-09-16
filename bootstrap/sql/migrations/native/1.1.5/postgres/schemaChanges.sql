@@ -6,7 +6,7 @@ SET json = jsonb_set(
 	to_jsonb(cast(json#>'{timestamp}' as int8) *1000)
 )
 WHERE
-	extension  in ('table.tableProfile', 'table.columnProfile');
+	extension  in ('table.tableProfile', 'table.columnProfile', 'testCase.testCaseResult');
 ;
 
 BEGIN;

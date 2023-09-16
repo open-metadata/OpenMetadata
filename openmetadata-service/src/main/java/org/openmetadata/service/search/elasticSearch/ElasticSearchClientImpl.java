@@ -342,7 +342,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("domain_search_index")) {
+    if (request.getIndex().equalsIgnoreCase("domain_search_index")
+        || request.getIndex().equalsIgnoreCase("data_products_search_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
