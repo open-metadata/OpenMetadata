@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
 
-export interface DocumentationTabProps {
-  domain: Domain | DataProduct;
-  onUpdate: (value: Domain | DataProduct) => Promise<void>;
+export interface DataProductsDetailsPageProps {
+  dataProduct: DataProduct;
   isVersionsView?: boolean;
-  type?: DocumentationEntity;
+  onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
+  onDelete: () => void;
 }
 
-export enum DocumentationEntity {
-  DOMAIN = 'DOMAIN',
-  DATA_PRODUCT = 'DATA_PRODUCT',
+export enum DataProductTabs {
+  DOCUMENTATION = 'documentation',
+  ASSETS = 'assets',
 }
