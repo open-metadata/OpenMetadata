@@ -48,7 +48,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { MlModelDetailProp } from './MlModelDetail.interface';
@@ -495,10 +494,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable
-            entityDetails={
-              mlModelDetail as CustomPropertyProps['entityDetails']
-            }
+          <CustomPropertyTable<Mlmodel>
             entityType={EntityType.MLMODEL}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

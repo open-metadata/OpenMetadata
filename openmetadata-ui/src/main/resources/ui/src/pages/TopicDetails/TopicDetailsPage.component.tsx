@@ -56,7 +56,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { topicFQN } = useParams<{ topicFQN: string }>();
+  const { fqn: topicFQN } = useParams<{ fqn: string }>();
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
@@ -123,7 +123,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.OWNER,
         TabSpecificField.FOLLOWERS,
         TabSpecificField.TAGS,
-        TabSpecificField.EXTENSION,
         TabSpecificField.DOMAIN,
         TabSpecificField.VOTES,
       ]);
@@ -231,7 +230,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.OWNER,
         TabSpecificField.FOLLOWERS,
         TabSpecificField.TAGS,
-        TabSpecificField.EXTENSION,
         TabSpecificField.VOTES,
       ]);
       setTopicDetails(details);

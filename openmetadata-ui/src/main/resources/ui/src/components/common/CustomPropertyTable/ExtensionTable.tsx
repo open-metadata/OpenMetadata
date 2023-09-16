@@ -16,7 +16,7 @@ import { isString, map } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
-import { CustomPropertyProps } from './CustomPropertyTable.interface';
+import { EntityDetails } from './CustomPropertyTable.interface';
 
 interface ExtensionDataSource {
   name: string;
@@ -26,7 +26,7 @@ interface ExtensionDataSource {
 export const ExtensionTable = ({
   extension,
 }: {
-  extension: CustomPropertyProps['entityDetails']['extension'];
+  extension: EntityDetails['extension'];
 }) => {
   const { t } = useTranslation();
   const dataSource: ExtensionDataSource[] = useMemo(() => {

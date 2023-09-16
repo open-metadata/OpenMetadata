@@ -18,7 +18,6 @@ import { AxiosError } from 'axios';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -693,10 +692,7 @@ const PipelineDetails = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable
-            entityDetails={
-              pipelineDetails as CustomPropertyProps['entityDetails']
-            }
+          <CustomPropertyTable<Pipeline>
             entityType={EntityType.PIPELINE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

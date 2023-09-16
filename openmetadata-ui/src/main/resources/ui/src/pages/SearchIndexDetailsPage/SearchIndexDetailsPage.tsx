@@ -19,7 +19,6 @@ import ActivityFeedProvider, {
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
@@ -72,8 +71,8 @@ import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 function SearchIndexDetailsPage() {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { searchIndexFQN, tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ searchIndexFQN: string; tab: string }>();
+  const { fqn: searchIndexFQN, tab: activeTab = EntityTabs.FIELDS } =
+    useParams<{ fqn: string; tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = getCurrentUserId();
@@ -478,9 +477,6 @@ function SearchIndexDetailsPage() {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={
-              searchIndexDetails as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.SEARCH_INDEX}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

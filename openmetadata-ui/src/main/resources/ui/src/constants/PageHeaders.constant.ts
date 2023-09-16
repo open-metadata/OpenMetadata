@@ -134,6 +134,10 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.search-index-plural'),
     }),
   },
+  GLOSSARY_TERM_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.glossary'),
+    subHeader: i18n.t('message.page-sub-header-for-glossary-term'),
+  },
   BOTS: {
     header: i18n.t('label.bot-plural'),
     subHeader: i18n.t('message.page-sub-header-for-bots'),

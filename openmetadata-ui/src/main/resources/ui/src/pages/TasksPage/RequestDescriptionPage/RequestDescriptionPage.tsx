@@ -58,7 +58,8 @@ const RequestDescription = () => {
   const [form] = useForm();
   const markdownRef = useRef<EditorContentRef>();
 
-  const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
+  const { entityType, fqn: entityFQN } =
+    useParams<{ fqn: string; entityType: EntityType }>();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');

@@ -107,7 +107,7 @@ function ClassificationDetails({
 }: ClassificationDetailsProps) {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
-  const { tagCategoryName } = useParams<Record<string, string>>();
+  const { fqn: tagCategoryName } = useParams<{ fqn: string }>();
   const history = useHistory();
 
   const currentVersion = useMemo(

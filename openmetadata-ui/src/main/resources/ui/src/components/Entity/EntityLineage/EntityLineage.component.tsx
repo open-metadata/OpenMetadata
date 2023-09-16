@@ -90,7 +90,6 @@ import {
   getNewLineageConnectionDetails,
   getNewNodes,
   getPaginatedChildMap,
-  getParamByEntityType,
   getRemovedNodeData,
   getSelectedEdgeArr,
   getUniqueFlowElements,
@@ -208,12 +207,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     nodesPerLayer: 50,
   });
 
-  const params = useParams<Record<string, string>>();
+  const { fqn: entityFQN } = useParams<{ fqn: string }>();
   const queryParams = new URLSearchParams(location.search);
 
   const isFullScreen = queryParams.get('fullscreen') === 'true';
-  const entityFQN =
-    params[getParamByEntityType(entityType)] ?? params['entityFQN'];
+
   const history = useHistory();
 
   const onFullScreenClick = useCallback(() => {

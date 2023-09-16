@@ -73,9 +73,13 @@ function ServiceVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { serviceCategory, serviceFQN, version } = useParams<{
+  const {
+    serviceCategory,
+    fqn: serviceFQN,
+    version,
+  } = useParams<{
     serviceCategory: ServiceTypes;
-    serviceFQN: string;
+    fqn: string;
     version: string;
   }>();
   const [paging, setPaging] = useState<Paging>(pagingObject);

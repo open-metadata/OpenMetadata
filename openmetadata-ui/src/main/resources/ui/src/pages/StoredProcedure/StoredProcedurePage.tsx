@@ -16,7 +16,6 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -79,8 +78,8 @@ const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const USER_ID = getCurrentUserId();
   const history = useHistory();
-  const { storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
-    useParams<{ storedProcedureFQN: string; tab: string }>();
+  const { fqn: storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
+    useParams<{ fqn: string; tab: string }>();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -585,10 +584,7 @@ const StoredProcedurePage = () => {
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable
-            entityDetails={
-              storedProcedure as CustomPropertyProps['entityDetails']
-            }
+          <CustomPropertyTable<StoredProcedure>
             entityType={EntityType.STORED_PROCEDURE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

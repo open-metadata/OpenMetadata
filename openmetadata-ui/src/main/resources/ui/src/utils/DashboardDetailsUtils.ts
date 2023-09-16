@@ -18,7 +18,7 @@ import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.EXTENSION},
+export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},
 ${TabSpecificField.VOTES}`;
 
 export const sortTagsForCharts = (charts: ChartType[]) => {

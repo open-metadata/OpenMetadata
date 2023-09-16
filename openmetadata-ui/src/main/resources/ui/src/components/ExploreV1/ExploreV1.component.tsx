@@ -180,7 +180,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
     if (tab) {
-      const entityName = toUpper(ENTITY_PATH[tab]);
+      const entityName = toUpper(ENTITY_PATH[tab as keyof typeof ENTITY_PATH]);
 
       return SearchIndex[entityName as ExploreSearchIndexKey];
     } else if (tabItems.length > 0) {

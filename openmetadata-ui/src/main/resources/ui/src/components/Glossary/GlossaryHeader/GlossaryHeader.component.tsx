@@ -90,8 +90,8 @@ const GlossaryHeader = ({
   const history = useHistory();
   const USER_ID = getCurrentUserId();
 
-  const { glossaryName: glossaryFqn, version } = useParams<{
-    glossaryName: string;
+  const { fqn, version } = useParams<{
+    fqn: string;
     version: string;
   }>();
   const { showModal } = useEntityExportModalProvider();
@@ -110,8 +110,8 @@ const GlossaryHeader = ({
   const fetchCurrentGlossaryInfo = async () => {
     try {
       const res = isGlossary
-        ? await getGlossariesById(glossaryFqn)
-        : await getGlossaryTermsById(glossaryFqn);
+        ? await getGlossariesById(fqn)
+        : await getGlossaryTermsById(fqn);
 
       setLatestGlossaryData(res);
     } catch (error) {
@@ -130,7 +130,7 @@ const GlossaryHeader = ({
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
-  }, [glossaryFqn]);
+  }, [fqn]);
 
   const handleGlossaryImport = () =>
     history.push(

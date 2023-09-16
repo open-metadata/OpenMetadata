@@ -18,6 +18,7 @@ import ActivityFeedProvider, {
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
@@ -102,8 +103,8 @@ const DatabaseDetails: FunctionComponent = () => {
     return searchData.schema as string | undefined;
   }, [location.search]);
 
-  const { databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ databaseFQN: string; tab: EntityTabs }>();
+  const { fqn: databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
   const [database, setDatabase] = useState<Database>({} as Database);
@@ -601,6 +602,10 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
+  const handelExtentionUpdate = async (schema: Database) => {
+    saveUpdatedDatabaseData(schema);
+  };
+
   const tabs = useMemo(
     () => [
       {
@@ -709,6 +714,27 @@ const DatabaseDetails: FunctionComponent = () => {
               onUpdateEntityDetails={getDetailsByFQN}
             />
           </ActivityFeedProvider>
+        ),
+      },
+
+      {
+        label: (
+          <div data-testid="custom-properties">
+            {t('label.custom-property-plural')}
+            <span className="p-l-xs ">
+              {/* {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')} */}
+            </span>
+          </div>
+        ),
+        key: 'custom-properties',
+        children: (
+          <CustomPropertyTable
+            hasEditAccess
+            hasPermission
+            entityType={EntityType.DATABASE}
+            handleExtensionUpdate={handelExtentionUpdate}
+            isVersionView={false}
+          />
         ),
       },
     ],

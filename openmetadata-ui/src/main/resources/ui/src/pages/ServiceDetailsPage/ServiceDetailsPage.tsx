@@ -134,8 +134,12 @@ export type ServicePageData =
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
-  const { serviceFQN, serviceCategory, tab } = useParams<{
-    serviceFQN: string;
+  const {
+    fqn: serviceFQN,
+    serviceCategory,
+    tab,
+  } = useParams<{
+    fqn: string;
     serviceCategory: ServiceTypes;
     tab: string;
   }>();

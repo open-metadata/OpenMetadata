@@ -18,6 +18,7 @@ import ActivityFeedProvider, {
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -90,8 +91,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { databaseSchemaFQN, tab: activeTab = EntityTabs.TABLE } =
-    useParams<{ databaseSchemaFQN: string; tab: EntityTabs }>();
+  const { fqn: databaseSchemaFQN, tab: activeTab = EntityTabs.TABLE } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const history = useHistory();
   const isMounting = useRef(true);
 
@@ -564,6 +565,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission, databaseSchema]
   );
 
+  const handelExtentionUpdate = async (schema: DatabaseSchema) => {
+    saveUpdatedDatabaseSchemaData(schema);
+  };
+
   const tabs: TabsProps['items'] = [
     {
       label: (
@@ -663,6 +668,27 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
           />
         </ActivityFeedProvider>
+      ),
+    },
+    {
+      label: (
+        <div data-testid="custom-properties">
+          {t('label.custom-property-plural')}
+          <span className="p-l-xs ">
+            {/* {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')} */}
+          </span>
+        </div>
+      ),
+      key: 'custom-properties',
+      children: (
+        <CustomPropertyTable
+          hasEditAccess
+          hasPermission
+          className=""
+          entityType={EntityType.DATABASE_SCHEMA}
+          handleExtensionUpdate={handelExtentionUpdate}
+          isVersionView={false}
+        />
       ),
     },
   ];
