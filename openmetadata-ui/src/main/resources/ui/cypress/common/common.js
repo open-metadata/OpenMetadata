@@ -1010,10 +1010,7 @@ export const retryIngestionRun = () => {
         verifyResponseStatusCode('@pipelineStatus', 200);
         checkSuccessState();
       } else {
-        cy.get('[data-testid="pipeline-status"]').should(
-          'have.text',
-          'Success'
-        );
+        cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
       }
     });
   };

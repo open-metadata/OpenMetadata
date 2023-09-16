@@ -32,6 +32,11 @@ const DATA = {
 
 describe('Query Entity', () => {
   beforeEach(() => {
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
+      'fetchTableOption'
+    );
     cy.login();
     cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
@@ -39,11 +44,6 @@ describe('Query Entity', () => {
   it('Create query', () => {
     interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
     interceptURL('POST', '/api/v1/queries', 'createQuery');
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
-      'fetchTableOption'
-    );
     visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
@@ -69,7 +69,7 @@ describe('Query Entity', () => {
 
   it('Update owner, description and tag', () => {
     interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
-    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
     interceptURL('PATCH', '/api/v1/queries/*', 'patchQuery');
     interceptURL(
       'GET',

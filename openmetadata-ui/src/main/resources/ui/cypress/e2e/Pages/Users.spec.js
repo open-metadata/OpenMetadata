@@ -38,7 +38,7 @@ describe('Users flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/users?fields=*', 'getUsers');
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   });
 

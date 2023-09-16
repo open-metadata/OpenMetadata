@@ -66,6 +66,8 @@ describe('Recently viwed data assets', () => {
       verifyResponseStatusCode('@ownerDetails', 200);
       verifyResponseStatusCode('@getAnnouncements', 200);
 
+      // need to add manual wait as we are dependant on local storage for recently view data
+      cy.wait(500);
       cy.get(
         `[data-testid="recently-viewed-container"] [title="${entity.displayName}"]`
       ).should('be.visible');
