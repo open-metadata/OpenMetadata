@@ -28,37 +28,30 @@ export const PIPELINE_EDGE_WIDTH = 200;
 export const entityData = [
   {
     type: EntityType.TABLE,
-    key: EntityType.TABLE,
     label: t('label.table-plural'),
   },
   {
     type: EntityType.DASHBOARD,
-    key: EntityType.DASHBOARD,
     label: t('label.dashboard-plural'),
   },
   {
     type: EntityType.TOPIC,
-    key: EntityType.TOPIC,
     label: t('label.topic-plural'),
   },
   {
     type: EntityType.MLMODEL,
-    key: EntityType.MLMODEL,
     label: t('label.ml-model-plural'),
   },
   {
     type: EntityType.CONTAINER,
-    key: EntityType.CONTAINER,
     label: t('label.container-plural'),
   },
   {
     type: EntityType.PIPELINE,
-    key: EntityType.PIPELINE,
     label: t('label.pipeline-plural'),
   },
   {
     type: EntityType.SEARCH_INDEX,
-    key: EntityType.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
 ];

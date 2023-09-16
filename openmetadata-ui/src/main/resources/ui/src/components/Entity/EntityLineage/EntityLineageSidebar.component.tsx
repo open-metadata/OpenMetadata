@@ -30,15 +30,9 @@ interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
 interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {
   type: string;
   label: string;
-  entityKey: string;
 }
 
-const EntityNode: FC<EntityNodeProps> = ({
-  type,
-  label,
-  draggable,
-  entityKey,
-}) => {
+const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -52,7 +46,7 @@ const EntityNode: FC<EntityNodeProps> = ({
         })}
         draggable={draggable}
         style={{ ...(draggable && { cursor: 'grab' }) }}
-        onDragStart={(event) => onDragStart(event, `${entityKey}-default`)}>
+        onDragStart={(event) => onDragStart(event, `${type}-default`)}>
         <span
           className="d-flex"
           onDragStart={(e) => {
@@ -86,7 +80,6 @@ const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
       {entityData.map((d) => (
         <EntityNode
           draggable={isEmpty(newAddedNode)}
-          entityKey={d.key}
           key={uniqueId()}
           label={d.label}
           type={d.type}
