@@ -21,6 +21,7 @@ import React from 'react';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
 import { CustomPropertyTable } from './CustomPropertyTable';
+import { EntityDetails } from './CustomPropertyTable.interface';
 
 const mockCustomProperties = [
   {
@@ -80,9 +81,22 @@ jest.mock('antd', () => ({
   Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
 }));
 
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    fqn: 'fqn',
+  })),
+}));
+
+jest.mock('utils/CustomProperties/CustomProperty.utils', () => ({
+  getEntityExtentionDetailsFromEntityType: jest.fn(),
+}));
+
+const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
+  entityDetails: mockTableDetails,
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
   hasEditAccess: true,

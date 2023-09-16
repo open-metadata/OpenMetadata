@@ -174,7 +174,7 @@ const GlossaryTermsV1 = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={glossaryTerm}
+            entityDetails={isVersionView ? glossaryTerm : undefined}
             entityType={EntityType.GLOSSARY_TERM}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

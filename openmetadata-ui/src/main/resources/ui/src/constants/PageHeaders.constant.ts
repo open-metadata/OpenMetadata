@@ -135,8 +135,22 @@ export const PAGE_HEADERS = {
     }),
   },
   GLOSSARY_TERM_CUSTOM_ATTRIBUTES: {
-    header: i18n.t('label.glossary'),
-    subHeader: i18n.t('message.page-sub-header-for-glossary-term'),
+    header: i18n.t('label.glossary-term'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.glossary-term'),
+    }),
+  },
+  DATABASE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database'),
+    }),
+  },
+  DATABASE_SCHEMA_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database-schema'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database-schema'),
+    }),
   },
   BOTS: {
     header: i18n.t('label.bot-plural'),

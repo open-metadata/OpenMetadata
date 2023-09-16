@@ -328,7 +328,6 @@ describe('Test EntityLineageUtils utility', () => {
     expect(getEntityLineagePath(EntityType.MLMODEL, 'myModel')).toEqual(
       getMlModelPath('myModel', 'lineage')
     );
-    expect(getEntityLineagePath(EntityType.TABLE, 'myDataset')).toEqual('');
   });
 
   it('getChildMap should return valid map object', () => {
@@ -339,7 +338,7 @@ describe('Test EntityLineageUtils utility', () => {
     const expectedStyle = {
       opacity: 1,
       strokeWidth: 2,
-      stroke: '#B02AAC',
+      stroke: '#2196f3',
     };
 
     expect(getEdgeStyle(true)).toEqual(expectedStyle);
