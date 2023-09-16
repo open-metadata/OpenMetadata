@@ -14,7 +14,6 @@ import { Button, Col, Row, Space, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DomainExperts from 'components/Domain/DomainExperts/DomainExperts.component';
@@ -22,43 +21,41 @@ import DomainTypeSelectForm from 'components/Domain/DomainTypeSelectForm/DomainT
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagButton from 'components/TagButton/TagButton.component';
-import {
-  DE_ACTIVE_COLOR,
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  NO_DATA_PLACEHOLDER,
-} from 'constants/constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { Domain, DomainType } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
 import { ChangeDescription, EntityReference } from 'generated/entity/type';
-import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import React, { ReactNode, useCallback, useMemo, useState } from 'react';
+import { cloneDeep, includes, isEqual } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { getUserNames } from 'utils/DomainUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
-  getDiffValue,
-  getEntityVersionByField,
-} from 'utils/EntityVersionUtils';
+import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import '../../domain.less';
-import { DocumentationTabProps } from './DocumentationTab.interface';
+import {
+  DocumentationEntity,
+  DocumentationTabProps,
+} from './DocumentationTab.interface';
 
 const DocumentationTab = ({
   domain,
   onUpdate,
   isVersionsView = false,
+  type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [editDomainType, setEditDomainType] = useState(false);
+  const resourceType =
+    type === DocumentationEntity.DOMAIN
+      ? ResourceEntity.DOMAIN
+      : ResourceEntity.DATA_PRODUCT;
 
   const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
     useMemo(() => {
@@ -72,19 +69,19 @@ const DocumentationTab = ({
 
       const editDescription = checkPermission(
         Operation.EditDescription,
-        ResourceEntity.DOMAIN,
+        resourceType,
         permissions
       );
 
       const editOwner = checkPermission(
         Operation.EditOwner,
-        ResourceEntity.DOMAIN,
+        resourceType,
         permissions
       );
 
       const editAll = checkPermission(
         Operation.EditAll,
-        ResourceEntity.DOMAIN,
+        resourceType,
         permissions
       );
 
@@ -93,88 +90,7 @@ const DocumentationTab = ({
         editOwnerPermission: editOwner || editAll,
         editAllPermission: editAll,
       };
-    }, [permissions, isVersionsView]);
-
-  const getOwner = useCallback(
-    (ownerDisplayName: ReactNode, owner?: EntityReference) => {
-      if (owner) {
-        return (
-          <>
-            <ProfilePicture
-              displayName={getEntityName(owner)}
-              id={owner?.id || ''}
-              name={owner?.name ?? ''}
-              textClass="text-xs"
-              width="20"
-            />
-            <Link
-              to={
-                owner.type === 'team'
-                  ? getTeamAndUserDetailsPath(owner.name ?? '')
-                  : getUserPath(owner.name ?? '')
-              }>
-              {ownerDisplayName}
-            </Link>
-          </>
-        );
-      }
-      if (!(editOwnerPermission || editAllPermission)) {
-        return <div>{NO_DATA_PLACEHOLDER}</div>;
-      }
-
-      return null;
-    },
-    [editOwnerPermission, editAllPermission]
-  );
-
-  const getUserNames = useCallback(
-    (glossaryData: Domain) => {
-      if (isVersionsView) {
-        const ownerDiff = getDiffByFieldName(
-          EntityField.OWNER,
-          glossaryData.changeDescription as ChangeDescription
-        );
-
-        const oldOwner = JSON.parse(
-          getChangedEntityOldValue(ownerDiff) ?? '{}'
-        );
-        const newOwner = JSON.parse(
-          getChangedEntityNewValue(ownerDiff) ?? '{}'
-        );
-
-        const shouldShowDiff =
-          !isEmpty(ownerDiff.added) ||
-          !isEmpty(ownerDiff.deleted) ||
-          !isEmpty(ownerDiff.updated);
-
-        if (shouldShowDiff) {
-          if (!isEmpty(ownerDiff.added)) {
-            const ownerName = getDiffValue('', getEntityName(newOwner));
-
-            return getOwner(ownerName, newOwner);
-          }
-
-          if (!isEmpty(ownerDiff.deleted)) {
-            const ownerName = getDiffValue(getEntityName(oldOwner), '');
-
-            return getOwner(ownerName, oldOwner);
-          }
-
-          if (!isEmpty(ownerDiff.updated)) {
-            const ownerName = getDiffValue(
-              getEntityName(oldOwner),
-              getEntityName(newOwner)
-            );
-
-            return getOwner(ownerName, newOwner);
-          }
-        }
-      }
-
-      return getOwner(getEntityName(glossaryData.owner), glossaryData.owner);
-    },
-    [isVersionsView, getOwner]
-  );
+    }, [permissions, isVersionsView, resourceType]);
 
   const description = useMemo(
     () =>
@@ -207,7 +123,7 @@ const DocumentationTab = ({
       ...domain,
       owner: newOwner,
     };
-    onUpdate(updatedData);
+    onUpdate(updatedData as Domain | DataProduct);
   };
 
   const handleExpertsUpdate = (data: Array<EntityReference>) => {
@@ -279,7 +195,11 @@ const DocumentationTab = ({
             </div>
 
             <Space className="m-r-xss" size={4}>
-              {getUserNames(domain)}
+              {getUserNames(
+                domain,
+                editOwnerPermission || editAllPermission,
+                isVersionsView
+              )}
             </Space>
 
             {!domain.owner && editOwnerPermission && (
@@ -325,8 +245,8 @@ const DocumentationTab = ({
                 )}
             </div>
             <DomainExperts
-              domain={domain}
               editPermission={editAllPermission}
+              entity={domain}
               isVersionsView={isVersionsView}
             />
             <div>
@@ -348,38 +268,41 @@ const DocumentationTab = ({
                 )}
             </div>
           </Col>
-          <Col data-testid="domainType" span="24">
-            <div className="d-flex items-center m-b-xss">
-              <Typography.Text
-                className="right-panel-label"
-                data-testid="domainType-heading-name">
-                {t('label.domain-type')}
-              </Typography.Text>
-              {editAllPermission && domain.domainType && (
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-domainType-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                  onClick={() => setEditDomainType(true)}
+
+          {type === DocumentationEntity.DOMAIN && (
+            <Col data-testid="domainType" span="24">
+              <div className="d-flex items-center m-b-xss">
+                <Typography.Text
+                  className="right-panel-label"
+                  data-testid="domainType-heading-name">
+                  {t('label.domain-type')}
+                </Typography.Text>
+                {editAllPermission && (domain as Domain).domainType && (
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-domainType-button"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                    onClick={() => setEditDomainType(true)}
+                  />
+                )}
+              </div>
+              {!editDomainType && (
+                <Space wrap data-testid="domain-type-label" size={6}>
+                  {(domain as Domain).domainType}
+                </Space>
+              )}
+
+              {editDomainType && (
+                <DomainTypeSelectForm
+                  defaultValue={(domain as Domain).domainType}
+                  onCancel={() => setEditDomainType(false)}
+                  onSubmit={handleDomainTypeUpdate}
                 />
               )}
-            </div>
-            {!editDomainType && (
-              <Space wrap data-testid="domain-type-label" size={6}>
-                {domain.domainType}
-              </Space>
-            )}
-
-            {editDomainType && (
-              <DomainTypeSelectForm
-                defaultValue={domain.domainType}
-                onCancel={() => setEditDomainType(false)}
-                onSubmit={handleDomainTypeUpdate}
-              />
-            )}
-          </Col>
+            </Col>
+          )}
         </Row>
       </Col>
     </Row>

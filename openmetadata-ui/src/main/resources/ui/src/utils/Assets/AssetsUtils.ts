@@ -140,7 +140,10 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
   };
 
-  if (source === AssetsOfEntity.DOMAIN) {
+  if (
+    source === AssetsOfEntity.DOMAIN ||
+    source === AssetsOfEntity.DATA_PRODUCT
+  ) {
     commonAssets[EntityType.GLOSSARY] = SearchIndex.GLOSSARY;
   }
 
@@ -150,7 +153,9 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
 export const getAssetsFields = (source: AssetsOfEntity) => {
   if (source === AssetsOfEntity.GLOSSARY) {
     return 'tags';
-  } else {
+  } else if (source === AssetsOfEntity.DOMAIN) {
     return 'domain';
+  } else {
+    return 'dataProducts';
   }
 };

@@ -35,4 +35,5 @@ export enum SearchIndex {
   DOMAIN = 'domain_search_index',
   STORED_PROCEDURE = 'stored_procedure_search_index',
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
+  DATA_PRODUCT = 'data_products_search_index',
 }
