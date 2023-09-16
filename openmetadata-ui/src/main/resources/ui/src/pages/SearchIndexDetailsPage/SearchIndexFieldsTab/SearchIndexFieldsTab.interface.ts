@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,19 +11,15 @@
  *  limitations under the License.
  */
 
-import { EntityType } from '../enums/entity.enum';
+import { ThreadType } from 'generated/api/feed/createThread';
+import { SearchIndexField } from 'generated/entity/data/searchIndex';
 
-export const ANNOUNCEMENT_ENTITIES = [
-  EntityType.TABLE,
-  EntityType.DASHBOARD,
-  EntityType.TOPIC,
-  EntityType.PIPELINE,
-  EntityType.MLMODEL,
-  EntityType.SEARCH_INDEX,
-];
-
-export const isActiveAnnouncement = (startTime: number, endTime: number) => {
-  const currentTime = Date.now() / 1000;
-
-  return currentTime > startTime && currentTime < endTime;
-};
+export interface SearchIndexFieldsTabProps {
+  fields: Array<SearchIndexField>;
+  hasDescriptionEditAccess: boolean;
+  hasTagEditAccess: boolean;
+  isReadOnly?: boolean;
+  entityFqn: string;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+  onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
+}

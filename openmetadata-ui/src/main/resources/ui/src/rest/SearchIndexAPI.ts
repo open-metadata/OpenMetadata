@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
+import {
+  EntityReference,
+  SearchIndex,
+} from 'generated/entity/data/searchIndex';
 import { Include } from 'generated/type/include';
-import { PagingResponse, PagingWithoutTotal } from 'Models';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
 export const getSearchIndexes = async (args: {
@@ -33,6 +40,85 @@ export const getSearchIndexes = async (args: {
         ...paging,
       },
     }
+  );
+
+  return response.data;
+};
+
+export const getSearchIndexDetailsByFQN = async (
+  fqn: string,
+  arrQueryFields: string | string[],
+  include = Include.All
+) => {
+  const url = getURLWithQueryFields(
+    `/searchIndexes/name/${fqn}`,
+    arrQueryFields,
+    `include=${include}`
+  );
+
+  const response = await APIClient.get<SearchIndex>(url);
+
+  return response.data;
+};
+
+export const patchSearchIndexDetails = async (
+  id: string,
+  data: Operation[]
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<SearchIndex>
+  >(`/searchIndexes/${id}`, data, configOptions);
+
+  return response.data;
+};
+
+export const restoreSearchIndex = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<SearchIndex>
+  >('/searchIndexes/restore', { id });
+
+  return response.data;
+};
+
+export const addFollower = async (searchIndexId: string, userId: string) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`/searchIndexes/${searchIndexId}/followers`, userId, configOptions);
+
+  return response.data;
+};
+
+export const removeFollower = async (searchIndexId: string, userId: string) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(`/searchIndexes/${searchIndexId}/followers/${userId}`, configOptions);
+
+  return response.data;
+};
+
+export const getSampleDataBySearchIndexId = async (id: string) => {
+  const response = await APIClient.get<SearchIndex>(
+    `/searchIndexes/${id}/sampleData`
   );
 
   return response.data;

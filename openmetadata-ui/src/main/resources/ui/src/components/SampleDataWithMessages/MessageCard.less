@@ -10,20 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../styles/variables.less');
 
-import { EntityType } from '../enums/entity.enum';
-
-export const ANNOUNCEMENT_ENTITIES = [
-  EntityType.TABLE,
-  EntityType.DASHBOARD,
-  EntityType.TOPIC,
-  EntityType.PIPELINE,
-  EntityType.MLMODEL,
-  EntityType.SEARCH_INDEX,
-];
-
-export const isActiveAnnouncement = (startTime: number, endTime: number) => {
-  const currentTime = Date.now() / 1000;
-
-  return currentTime > startTime && currentTime < endTime;
-};
+.message-card-collapse {
+  background-color: @white;
+  .ant-collapse-header-text {
+    width: 95%;
+  }
+  .ant-collapse-header {
+    background-color: transparent;
+  }
+  .ant-collapse-content {
+    border-top-width: 0px;
+  }
+  .ant-collapse-content-box {
+    padding-top: 0px;
+  }
+  .ant-tag {
+    padding: 4px 12px;
+    font-size: 14px;
+  }
+}

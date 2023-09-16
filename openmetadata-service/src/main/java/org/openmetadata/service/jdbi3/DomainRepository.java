@@ -109,8 +109,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void deleteFromSearch(Domain entity, String changeType) {
     if (supportsSearchIndex) {
-      String scriptTxt =
-          "for (int i = 0; i < ctx._source.domain.length; i++) { if (ctx._source.domain[i].fullyQualifiedName == '%s') { ctx._source.domain.remove(i) }}";
+      String scriptTxt = "ctx._source.remove('domain')";
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, Domain.class),
