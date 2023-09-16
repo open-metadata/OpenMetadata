@@ -51,6 +51,7 @@ import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
+  updateTopicDetailsState,
   topicDetails,
   fetchTopic,
   followTopicHandler,
@@ -438,6 +439,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateTopicDetailsState}
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
             permissions={topicPermissions}

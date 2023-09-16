@@ -382,6 +382,15 @@ const ContainerPage = () => {
     []
   );
 
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as Container;
+
+    setContainerData((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   const handleRestoreContainer = async () => {
     try {
       await restoreContainer(containerData?.id ?? '');
@@ -709,6 +718,7 @@ const ContainerPage = () => {
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}

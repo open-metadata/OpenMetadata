@@ -19,6 +19,7 @@ import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardService } from 'generated/entity/services/dashboardService';
@@ -43,6 +44,7 @@ export type AssetsUnion =
   | EntityType.MLMODEL
   | EntityType.TOPIC
   | EntityType.CONTAINER
+  | EntityType.SEARCH_INDEX
   | EntityType.GLOSSARY_TERM
   | EntityType.DATABASE_SCHEMA
   | EntityType.DATABASE
@@ -59,6 +61,7 @@ export type MapPatchAPIResponse = {
   [EntityType.MLMODEL]: Mlmodel;
   [EntityType.PIPELINE]: Pipeline;
   [EntityType.CONTAINER]: Container;
+  [EntityType.SEARCH_INDEX]: SearchIndex;
   [EntityType.TOPIC]: Topic;
   [EntityType.GLOSSARY_TERM]: GlossaryTerm;
   [EntityType.DATABASE_SCHEMA]: DatabaseSchema;

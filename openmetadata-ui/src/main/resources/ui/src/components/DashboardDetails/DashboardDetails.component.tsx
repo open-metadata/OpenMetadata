@@ -65,6 +65,7 @@ import {
 } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
+  updateDashboardDetailsState,
   charts,
   dashboardDetails,
   fetchDashboard,
@@ -724,6 +725,7 @@ const DashboardDetails = ({
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateDashboardDetailsState}
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             permissions={dashboardPermissions}

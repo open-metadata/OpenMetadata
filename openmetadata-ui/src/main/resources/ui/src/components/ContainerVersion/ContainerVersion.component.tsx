@@ -51,6 +51,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   containerFQN,
   breadCrumbList,
@@ -67,10 +68,17 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const columns = useMemo(() => {
     const colList = cloneDeep(
@@ -225,6 +233,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.CONTAINER}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

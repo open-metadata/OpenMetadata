@@ -29,6 +29,10 @@ import { getGlossaryTermByFQN, patchGlossaryTerm } from 'rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
 import {
+  getSearchIndexDetailsByFQN,
+  patchSearchIndexDetails,
+} from 'rest/SearchIndexAPI';
+import {
   getDomainSupportedServiceByFQN,
   patchDomainSupportedService,
 } from 'rest/serviceAPI';
@@ -56,6 +60,8 @@ export const getAPIfromSource = (
       return patchTopicDetails;
     case EntityType.CONTAINER:
       return patchContainerDetails;
+    case EntityType.SEARCH_INDEX:
+      return patchSearchIndexDetails;
     case EntityType.GLOSSARY_TERM:
       return patchGlossaryTerm;
     case EntityType.DATABASE_SCHEMA:
@@ -101,6 +107,8 @@ export const getEntityAPIfromSource = (
       return getDatabaseSchemaDetailsByFQN;
     case EntityType.DATABASE:
       return getDatabaseDetailsByFQN;
+    case EntityType.SEARCH_INDEX:
+      return getSearchIndexDetailsByFQN;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:

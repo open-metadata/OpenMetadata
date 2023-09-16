@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { EntityType } from 'enums/entity.enum';
 import { EntityReference } from 'generated/entity/type';
+import { ReactNode } from 'react';
 
 export type DomainLabelProps = {
+  afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   hasPermission: boolean;
   domain: EntityReference | undefined;
+  domainDisplayName?: ReactNode;
   entityType: EntityType;
   entityFqn: string;
   entityId: string;

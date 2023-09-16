@@ -317,6 +317,15 @@ const DataModelsPage = () => {
     }
   };
 
+  const updateDataModelDetailsState = useCallback((data) => {
+    const updatedData = data as DashboardDataModel;
+
+    setDataModelData((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -357,6 +366,7 @@ const DataModelsPage = () => {
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
+      updateDataModelDetailsState={updateDataModelDetailsState}
       onUpdateDataModel={handleUpdateDataModel}
       onUpdateVote={updateVote}
     />
