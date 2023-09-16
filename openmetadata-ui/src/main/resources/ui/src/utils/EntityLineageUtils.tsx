@@ -37,7 +37,6 @@ import dagre from 'dagre';
 import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import {
-  capitalize,
   cloneDeep,
   isEmpty,
   isEqual,
@@ -1373,15 +1372,15 @@ export const getEntityLineagePath = (
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
   switch (label) {
-    case capitalize(EntityType.TABLE):
+    case EntityType.TABLE:
       return TableIcon;
-    case capitalize(EntityType.DASHBOARD):
+    case EntityType.DASHBOARD:
       return DashboardIcon;
-    case capitalize(EntityType.TOPIC):
+    case EntityType.TOPIC:
       return TopicIcon;
-    case capitalize(EntityType.PIPELINE):
+    case EntityType.PIPELINE:
       return PipelineIcon;
-    case capitalize(EntityType.MLMODEL):
+    case EntityType.MLMODEL:
       return MlModelIcon;
     case EntityType.SEARCH_INDEX:
       return SearchOutlined;

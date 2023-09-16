@@ -13,7 +13,6 @@
 
 import { ElementLoadingState } from 'components/Entity/EntityLineage/EntityLineage.interface';
 import { t } from 'i18next';
-import { camelCase, capitalize } from 'lodash';
 import { EntityType } from '../enums/entity.enum';
 
 export const FOREIGN_OBJECT_SIZE = 40;
@@ -29,37 +28,37 @@ export const PIPELINE_EDGE_WIDTH = 200;
 export const entityData = [
   {
     type: EntityType.TABLE,
-    key: capitalize(EntityType.TABLE),
+    key: EntityType.TABLE,
     label: t('label.table-plural'),
   },
   {
     type: EntityType.DASHBOARD,
-    key: capitalize(EntityType.DASHBOARD),
+    key: EntityType.DASHBOARD,
     label: t('label.dashboard-plural'),
   },
   {
     type: EntityType.TOPIC,
-    key: capitalize(EntityType.TOPIC),
+    key: EntityType.TOPIC,
     label: t('label.topic-plural'),
   },
   {
     type: EntityType.MLMODEL,
-    key: capitalize(EntityType.MLMODEL),
+    key: EntityType.MLMODEL,
     label: t('label.ml-model-plural'),
   },
   {
     type: EntityType.CONTAINER,
-    key: capitalize(EntityType.CONTAINER),
+    key: EntityType.CONTAINER,
     label: t('label.container-plural'),
   },
   {
     type: EntityType.PIPELINE,
-    key: capitalize(EntityType.PIPELINE),
+    key: EntityType.PIPELINE,
     label: t('label.pipeline-plural'),
   },
   {
     type: EntityType.SEARCH_INDEX,
-    key: camelCase(EntityType.SEARCH_INDEX),
+    key: EntityType.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
 ];
