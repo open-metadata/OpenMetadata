@@ -312,19 +312,21 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Glossary g1 = createGlossary(test, null, null);
 
     // Create glossary term t1 in glossary g1
-    CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1.getFullyQualifiedName());
-    GlossaryTerm t1 = createEntity(create, ADMIN_AUTH_HEADERS);
+    GlossaryTerm t1 = createTerm(g1, null, "t1");
     TagLabel t1Label = EntityUtil.toTagLabel(t1);
 
     // Create glossary term t11 under t1
-    create.withName("t11with'quote").withParent(t1.getFullyQualifiedName());
-    GlossaryTerm t11 = createEntity(create, ADMIN_AUTH_HEADERS);
+    GlossaryTerm t11 = createTerm(g1, t1, "t11");
     TagLabel t11Label = EntityUtil.toTagLabel(t11);
 
     // Create glossary term t111 under t11
-    create.withName("t111'quote").withParent(t11.getFullyQualifiedName());
-    GlossaryTerm t111 = createEntity(create, ADMIN_AUTH_HEADERS);
+    GlossaryTerm t111 = createTerm(g1, t11, "t111");
     TagLabel t111Label = EntityUtil.toTagLabel(t111);
+
+    // Create glossary term t12, t121, t1211 under t1
+    GlossaryTerm t12 = createTerm(g1, t1, "t12");
+    GlossaryTerm t121 = createTerm(g1, t12, "t121");
+    GlossaryTerm t1211 = createTerm(g1, t121, "t121");
 
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
