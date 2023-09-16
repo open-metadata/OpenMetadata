@@ -53,11 +53,6 @@ export const entityData = [
     key: EntitySearchIndexKey.pipeline,
   },
   {
-    type: EntityType.STORED_PROCEDURE,
-    label: i18n.t('label.stored-procedure-plural'),
-    key: EntitySearchIndexKey.storedProcedure,
-  },
-  {
     type: EntityType.DASHBOARD_DATA_MODEL,
     label: i18n.t('label.data-model-plural'),
     key: EntitySearchIndexKey.dashboardDataModel,
