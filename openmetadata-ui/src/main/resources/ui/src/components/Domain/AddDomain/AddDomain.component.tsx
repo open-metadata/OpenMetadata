@@ -27,6 +27,7 @@ import { getDomainPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
+import { useDomainProvider } from '../DomainProvider/DomainProvider';
 import './add-domain.less';
 
 const AddDomain = () => {
@@ -34,6 +35,7 @@ const AddDomain = () => {
   const history = useHistory();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { refreshDomains } = useDomainProvider();
 
   const goToDomain = (name = '') => {
     history.push(getDomainPath(name));
@@ -62,6 +64,7 @@ const AddDomain = () => {
       setIsLoading(true);
       try {
         const res = await addDomains(formData as CreateDomain);
+        refreshDomains();
         goToDomain(res.fullyQualifiedName ?? '');
       } catch (error) {
         showErrorToast(

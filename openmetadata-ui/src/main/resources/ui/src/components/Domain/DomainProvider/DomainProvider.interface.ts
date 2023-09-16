@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Domain } from 'generated/entity/domains/domain';
 
-import { TabSpecificField } from '../enums/entity.enum';
-
-// eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.VIEW_DEFINITION},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES}`;
+export interface DomainContextType {
+  domains: Domain[];
+  domainLoading: boolean;
+  domainOptions: ItemType[];
+  updateDomains: (domainsArr: Domain[]) => void;
+  refreshDomains: () => void;
+}

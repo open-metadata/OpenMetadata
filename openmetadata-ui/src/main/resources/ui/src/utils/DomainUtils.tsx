@@ -113,3 +113,17 @@ export const getUserNames = (
 
 export const DomainAssetsSearchIndex =
   `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.GLOSSARY},${SearchIndex.CONTAINER}` as SearchIndex;
+
+export const getEntityReferenceFromDataProduct = (
+  dataProduct: DataProduct
+): EntityReference => {
+  return {
+    href: dataProduct.href ?? '',
+    fullyQualifiedName: dataProduct.fullyQualifiedName,
+    id: dataProduct.id,
+    description: dataProduct.description,
+    displayName: dataProduct.displayName,
+    name: dataProduct.name ?? '',
+    type: 'dataProduct',
+  };
+};

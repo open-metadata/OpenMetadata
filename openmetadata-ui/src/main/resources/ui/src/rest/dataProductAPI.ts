@@ -12,14 +12,21 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { PAGE_SIZE } from 'constants/constants';
+import { SearchIndex } from 'enums/search.enum';
 import { Operation } from 'fast-json-patch';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
+import { Paging } from 'generated/type/paging';
 import { PagingResponse } from 'Models';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+import {
+  formatDataProductResponse,
+  getURLWithQueryFields,
+} from 'utils/APIUtils';
 import APIClient from './index';
+import { searchQuery } from './searchAPI';
 
 const BASE_URL = '/dataProducts';
 
@@ -98,4 +105,34 @@ export const getDataProductVersionData = async (
   const response = await APIClient.get<DataProduct>(url);
 
   return response.data;
+};
+
+export const fetchDataProductsElasticSearch = async (
+  searchText: string,
+  page: number
+): Promise<{
+  data: {
+    label: string;
+    value: DataProduct;
+  }[];
+  paging: Paging;
+}> => {
+  const res = await searchQuery({
+    query: searchText,
+    filters: '',
+    pageNumber: page,
+    pageSize: PAGE_SIZE,
+    queryFilter: {},
+    searchIndex: SearchIndex.DATA_PRODUCT,
+  });
+
+  return {
+    data: formatDataProductResponse(res.hits.hits ?? []).map((item) => ({
+      label: item.fullyQualifiedName ?? '',
+      value: item,
+    })),
+    paging: {
+      total: res.hits.total.value,
+    },
+  };
 };

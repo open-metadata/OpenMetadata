@@ -1365,6 +1365,9 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.DATA_PRODUCT: {
       const data = entity as DataProduct;
+      if (!data.domain) {
+        return [];
+      }
 
       return [
         {
