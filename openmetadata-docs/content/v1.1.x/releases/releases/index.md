@@ -12,7 +12,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-# 1.1.4 Release 🎉
+# 1.1.5 Release 🎉
 
 {% inlineCalloutContainer %}
 {% inlineCallout
@@ -20,9 +20,27 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.1.4!
+Learn how to upgrade your OpenMetadata instance to 1.1.5!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
+
+## UI
+- Fixed signup page styling
+- Fixed OIDC Keyset retrieval
+
+## Ingestion
+- Fixed BigQuery multi-project ingestion
+- Upgrade Airflow base image to 2.6.3. This fixes Airflow's db migration.
+- Fixed table usage count
+- Add support for Tableau version 3.10
+- Add support for BigQuery datasets named with hyphens
+
+## Backend
+- Standardized timestamp
+- Improved Data Insights error management to improve result accuracy
+- Improved API performance of Data Quality endpoints
+
+# 1.1.4 Release 🎉
 
 ## UI Improvements
 - Fixed ingestion deployment with schedule as `None`

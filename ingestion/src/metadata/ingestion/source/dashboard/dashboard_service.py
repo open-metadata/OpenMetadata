@@ -105,9 +105,7 @@ class DashboardServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_tag",
-                ack_sink=False,
                 nullable=True,
             ),
         ],
@@ -169,7 +167,6 @@ class DashboardServiceTopology(ServiceTopology):
                 context="lineage",
                 processor="yield_dashboard_lineage",
                 consumer=["dashboard_service"],
-                ack_sink=False,
                 nullable=True,
             ),
             NodeStage(
@@ -177,7 +174,6 @@ class DashboardServiceTopology(ServiceTopology):
                 context="usage",
                 processor="yield_dashboard_usage",
                 consumer=["dashboard_service"],
-                ack_sink=False,
                 nullable=True,
             ),
         ],

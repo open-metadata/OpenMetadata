@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import { Card, Col, Radio, Row, Space, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -25,6 +26,7 @@ import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineag
 import ExecutionsTab from 'components/Execution/Execution.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
+import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -33,18 +35,20 @@ import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
-import { isEmpty, isUndefined, map } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import { getDecodedFqn } from 'utils/StringsUtils';
+import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
   getPipelineDetailsPath,
   NO_DATA_PLACEHOLDER,
+  PRIMERY_COLOR,
 } from '../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../constants/pipeline.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -343,6 +347,15 @@ const PipelineDetails = ({
     await taskUpdateHandler(jsonPatch);
   };
 
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(tasksInternal);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [tasksInternal]);
+
   const taskColumns: ColumnsType<Task> = useMemo(
     () => [
       {
@@ -401,6 +414,12 @@ const PipelineDetails = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
@@ -415,13 +434,25 @@ const PipelineDetails = ({
             onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
       },
       {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
-        key: 'tags',
+        key: 'glossary',
         accessor: 'tags',
         width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
