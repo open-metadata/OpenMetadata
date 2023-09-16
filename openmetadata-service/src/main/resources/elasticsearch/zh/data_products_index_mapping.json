@@ -76,6 +76,9 @@
       "href": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
       "owner": {
         "properties": {
           "id": {

@@ -22,6 +22,7 @@ import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
@@ -31,6 +32,7 @@ import { MessagingService } from 'generated/entity/services/messagingService';
 import { MetadataService } from 'generated/entity/services/metadataService';
 import { MlmodelService } from 'generated/entity/services/mlmodelService';
 import { PipelineService } from 'generated/entity/services/pipelineService';
+import { SearchService } from 'generated/entity/services/searchService';
 import { StorageService } from 'generated/entity/services/storageService';
 import { EntityReference } from 'generated/entity/type';
 import { ServicesType } from 'interface/service.interface';
@@ -43,6 +45,7 @@ export type DataAssetsType =
   | Pipeline
   | Mlmodel
   | Container
+  | SearchIndex
   | Database
   | DashboardDataModel
   | StoredProcedure
@@ -53,7 +56,8 @@ export type DataAssetsType =
   | DashboardService
   | MlmodelService
   | MetadataService
-  | StorageService;
+  | StorageService
+  | SearchService;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -62,7 +66,8 @@ export type DataAssetsWithoutServiceField =
   | DashboardService
   | MlmodelService
   | MetadataService
-  | StorageService;
+  | StorageService
+  | SearchService;
 
 export type DataAssetsWithFollowersField = Exclude<
   DataAssetsType,
@@ -93,6 +98,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetDashboard
   | DataAssetMlmodel
   | DataAssetContainer
+  | DataAssetSearchIndex
   | DataAssetDashboardDataModel
   | DataAssetStoredProcedure
   | DataAssetDatabase
@@ -104,6 +110,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetMlModelService
   | DataAssetMetadataService
   | DataAssetStorageService
+  | DataAssetSearchService
 );
 
 export interface DataAssetTable {
@@ -133,6 +140,11 @@ export interface DataAssetMlmodel {
 export interface DataAssetContainer {
   dataAsset: Container;
   entityType: EntityType.CONTAINER;
+}
+
+export interface DataAssetSearchIndex {
+  dataAsset: SearchIndex;
+  entityType: EntityType.SEARCH_INDEX;
 }
 
 export interface DataAssetDashboardDataModel {
@@ -180,6 +192,11 @@ export interface DataAssetMetadataService {
 export interface DataAssetStorageService {
   dataAsset: ServicesType;
   entityType: EntityType.STORAGE_SERVICE;
+}
+
+export interface DataAssetSearchService {
+  dataAsset: ServicesType;
+  entityType: EntityType.SEARCH_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {

@@ -12,9 +12,10 @@
  */
 
 import { act, render } from '@testing-library/react';
+import { EntityType } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import SampleDataTopic from './SampleDataTopic';
+import SampleDataWithMessages from './SampleDataWithMessages';
 
 const mockSampleData = {
   messages: ['{"email":"data","name":"job"}'],
@@ -32,7 +33,10 @@ jest.mock('rest/topicsAPI', () => ({
 describe('Test SampleData Component', () => {
   it('Should render message cards', async () => {
     const { findAllByTestId } = render(
-      <SampleDataTopic topicId="f8e260ac-4db1-4bf3-92ad-f28bdb7dc041" />,
+      <SampleDataWithMessages
+        entityId="f8e260ac-4db1-4bf3-92ad-f28bdb7dc041"
+        entityType={EntityType.TOPIC}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -45,9 +49,12 @@ describe('Test SampleData Component', () => {
 
   it('Should render no data placeholder if no data available', () => {
     act(() => {
-      const { getByTestId } = render(<SampleDataTopic topicId="" />, {
-        wrapper: MemoryRouter,
-      });
+      const { getByTestId } = render(
+        <SampleDataWithMessages entityId="" entityType={EntityType.TOPIC} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
 
       const noDataPlaceHolder = getByTestId('no-data-placeholder');
 

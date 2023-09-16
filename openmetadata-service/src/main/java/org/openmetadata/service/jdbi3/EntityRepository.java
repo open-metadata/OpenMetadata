@@ -874,9 +874,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     String changeType;
     T updated = get(null, original.getId(), putFields, ALL, false);
-    //    clearFields(updated, Fields.EMPTY_FIELDS); // Clear the entity and set the fields again
-    //    setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from
-    // ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(deletedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -901,7 +898,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
-
     T entity = dao.findEntityById(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
@@ -1069,15 +1065,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public List<String> getResultsFromAndToTimestamps(
       String fullyQualifiedName, String extension, Long startTs, Long endTs) {
     return getResultsFromAndToTimestamps(
-        fullyQualifiedName, extension, startTs, endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy.DESC);
+        fullyQualifiedName, extension, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC);
   }
 
   public List<String> getResultsFromAndToTimestamps(
-      String fqn,
-      String extension,
-      Long startTs,
-      Long endTs,
-      CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+      String fqn, String extension, Long startTs, Long endTs, EntityTimeSeriesDAO.OrderBy orderBy) {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
