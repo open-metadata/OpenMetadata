@@ -594,6 +594,9 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
 export const MarkdownToHTMLConverter = new Showdown.Converter({
   strikethrough: true,
+  tables: true,
+  tasklists: true,
+  simpleLineBreaks: true,
 });
 
 export const getFeedPanelHeaderText = (

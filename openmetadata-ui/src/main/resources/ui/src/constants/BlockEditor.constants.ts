@@ -16,6 +16,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import StarterKit from '@tiptap/starter-kit';
+import DiffView from 'components/BlockEditor/Extensions/diffView';
 import { Hashtag } from 'components/BlockEditor/Extensions/hashtag';
 import { hashtagSuggestion } from 'components/BlockEditor/Extensions/hashtag/hashtagSuggestion';
 import { Mention } from 'components/BlockEditor/Extensions/mention';
@@ -98,6 +99,7 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     Hashtag.configure({
       suggestion: hashtagSuggestion(),
     }),
+    DiffView,
   ],
 
   enableInputRules: [
