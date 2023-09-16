@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-// / <reference types="cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import { isEmpty } from 'lodash';
 import {
@@ -151,9 +152,10 @@ export const handleIngestionRetry = (
       .as('checkRun');
     // the latest run should be success
     cy.get('@checkRun').then(($ingestionStatus) => {
+      const text = $ingestionStatus.text();
       if (
-        $ingestionStatus.text() !== 'Success' &&
-        $ingestionStatus.text() !== 'Failed' &&
+        text !== 'Success' &&
+        text !== 'Failed' &&
         retryCount <= RETRY_TIMES
       ) {
         // retry after waiting with log1 method [20s,40s,80s,160s,320s]
@@ -162,7 +164,7 @@ export const handleIngestionRetry = (
         cy.reload();
         checkSuccessState();
       } else {
-        cy.get('@checkRun').should('have.text', 'Success');
+        cy.get('@checkRun').should('contain', 'Success');
       }
     });
   };

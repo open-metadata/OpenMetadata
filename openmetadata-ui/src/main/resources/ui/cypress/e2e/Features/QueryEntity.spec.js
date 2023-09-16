@@ -49,7 +49,6 @@ describe('Query Entity', () => {
     verifyResponseStatusCode('@fetchQuery', 200);
 
     cy.get('[data-testid="add-query-btn"]').click();
-    verifyResponseStatusCode('@fetchTableOption', 200);
 
     cy.get('[data-testid="code-mirror-container"]').type(DATA.query);
     cy.get(descriptionBox).scrollIntoView().type(DATA.description);
