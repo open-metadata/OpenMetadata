@@ -273,7 +273,10 @@ const DashboardDetails = ({
     await onDashboardUpdate(updatedData, 'displayName');
   };
   const onExtensionUpdate = async (updatedData: Dashboard) => {
-    await onDashboardUpdate(updatedData, 'extension');
+    await onDashboardUpdate(
+      { ...dashboardDetails, extension: updatedData.extension },
+      'extension'
+    );
   };
 
   const handleRestoreDashboard = async () => {

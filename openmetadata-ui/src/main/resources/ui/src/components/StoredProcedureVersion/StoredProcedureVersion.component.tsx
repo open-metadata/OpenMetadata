@@ -144,6 +144,7 @@ const StoredProcedureVersion = ({
         children: (
           <CustomPropertyTable
             isVersionView
+            entityDetails={currentVersionData}
             entityType={EntityType.STORED_PROCEDURE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

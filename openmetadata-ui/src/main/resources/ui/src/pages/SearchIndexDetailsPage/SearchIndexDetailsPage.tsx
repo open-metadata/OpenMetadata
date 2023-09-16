@@ -309,9 +309,16 @@ function SearchIndexDetailsPage() {
     await handleTagsUpdate(updatedTags);
   };
 
-  const onExtensionUpdate = async (updatedData: SearchIndex) => {
-    await onSearchIndexUpdate(updatedData, 'extension');
-  };
+  const onExtensionUpdate = useCallback(
+    async (updatedData: SearchIndex) => {
+      searchIndexDetails &&
+        (await saveUpdatedSearchIndexData({
+          ...searchIndexDetails,
+          extension: updatedData.extension,
+        }));
+    },
+    [saveUpdatedSearchIndexData, searchIndexDetails]
+  );
 
   const fieldsTab = useMemo(
     () => (

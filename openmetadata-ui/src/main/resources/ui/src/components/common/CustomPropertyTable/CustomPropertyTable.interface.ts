@@ -54,6 +54,7 @@ export type ExtentionEntities = {
 export interface CustomPropertyProps<T extends EntityDetails> {
   isVersionView?: boolean;
   entityType: keyof ExtentionEntities;
+  entityDetails?: T;
   handleExtensionUpdate?: (updatedTable: T) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;

@@ -565,9 +565,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission, databaseSchema]
   );
 
-  const handelExtentionUpdate = async (schema: DatabaseSchema) => {
-    saveUpdatedDatabaseSchemaData(schema);
-  };
+  const handelExtentionUpdate = useCallback(
+    async (schema: DatabaseSchema) => {
+      await saveUpdatedDatabaseSchemaData({
+        ...databaseSchema,
+        extension: schema.extension,
+      });
+    },
+    [saveUpdatedDatabaseSchemaData, databaseSchema]
+  );
 
   const tabs: TabsProps['items'] = [
     {
@@ -672,21 +678,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
     {
       label: (
-        <div data-testid="custom-properties">
-          {t('label.custom-property-plural')}
-          <span className="p-l-xs ">
-            {/* {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')} */}
-          </span>
-        </div>
+        <TabsLabel
+          id={EntityTabs.CUSTOM_PROPERTIES}
+          name={t('label.custom-property-plural')}
+        />
       ),
-      key: 'custom-properties',
+      key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
         <CustomPropertyTable
-          hasEditAccess
-          hasPermission
           className=""
           entityType={EntityType.DATABASE_SCHEMA}
           handleExtensionUpdate={handelExtentionUpdate}
+          hasEditAccess={databaseSchemaPermission.ViewAll}
+          hasPermission={
+            databaseSchemaPermission.EditAll ||
+            databaseSchemaPermission.EditCustomFields
+          }
           isVersionView={false}
         />
       ),

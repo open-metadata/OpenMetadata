@@ -23,7 +23,6 @@ import {
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
-  PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -159,21 +158,7 @@ export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(fqn));
-  }
-
-  return path;
-};
-
-export const getGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, glossaryTerm);
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
   }
 
   return path;
@@ -422,7 +407,7 @@ export const getGlossaryPathWithAction = (
   let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
 
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
     .replace(PLACEHOLDER_ACTION, action);
 
   return path;
@@ -460,7 +445,7 @@ export const getGlossaryVersionsPath = (
 ) => {
   let path = ROUTES.GLOSSARY_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName)
+    .replace(PLACEHOLDER_ROUTE_FQN, glossaryName)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -475,7 +460,7 @@ export const getGlossaryTermsVersionsPath = (
     ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
     : ROUTES.GLOSSARY_TERMS_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(glossaryTermsFQN))
+    .replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(glossaryTermsFQN))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   if (tab) {

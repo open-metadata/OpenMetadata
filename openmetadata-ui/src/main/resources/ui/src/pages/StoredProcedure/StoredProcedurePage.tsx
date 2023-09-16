@@ -200,7 +200,7 @@ const StoredProcedurePage = () => {
 
       return patchStoredProceduresDetails(storedProcedureId ?? '', jsonPatch);
     },
-    [storedProcedure]
+    [storedProcedure, storedProcedureId]
   );
 
   const handleStoreProcedureUpdate = async (
@@ -450,9 +450,16 @@ const StoredProcedurePage = () => {
     setThreadLink('');
   };
 
-  const onExtensionUpdate = async (updatedData: StoredProcedure) => {
-    await handleStoreProcedureUpdate(updatedData, 'extension');
-  };
+  const onExtensionUpdate = useCallback(
+    async (updatedData: StoredProcedure) => {
+      storedProcedure &&
+        (await saveUpdatedStoredProceduresData({
+          ...storedProcedure,
+          extension: updatedData.extension,
+        }));
+    },
+    [saveUpdatedStoredProceduresData, storedProcedure]
+  );
 
   const tabs = useMemo(
     () => [

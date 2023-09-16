@@ -109,7 +109,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     await onTopicUpdate(updatedData, 'displayName');
   };
   const onExtensionUpdate = async (updatedData: Topic) => {
-    await onTopicUpdate(updatedData, 'extension');
+    await onTopicUpdate(
+      { ...topicDetails, extension: updatedData.extension },
+      'extension'
+    );
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {

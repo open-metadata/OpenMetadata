@@ -18,11 +18,12 @@ import { EntityDetailsObjectInterface } from 'components/Explore/explore.interfa
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { VotingDataProps } from 'components/Voting/voting.interface';
 import { getGlossaryTermDetailsPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
-import { EntityType } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
@@ -90,7 +91,10 @@ const GlossaryTermsV1 = ({
   };
 
   const onExtensionUpdate = async (updatedTable: GlossaryTerm) => {
-    handleGlossaryTermUpdate(updatedTable);
+    await handleGlossaryTermUpdate({
+      ...glossaryTerm,
+      extension: updatedTable.extension,
+    });
   };
 
   const tabItems = useMemo(() => {
@@ -158,29 +162,30 @@ const GlossaryTermsV1 = ({
                 />
               ),
             },
-            {
-              label: (
-                <div data-testid="custom-properties">
-                  {t('label.custom-property-plural')}
-                  <span className="p-l-xs ">
-                    {/* {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')} */}
-                  </span>
-                </div>
-              ),
-              key: 'custom-properties',
-              children: (
-                <CustomPropertyTable
-                  hasEditAccess
-                  hasPermission
-                  className=""
-                  entityType={EntityType.GLOSSARY_TERM}
-                  handleExtensionUpdate={onExtensionUpdate}
-                  isVersionView={false}
-                />
-              ),
-            },
           ]
         : []),
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={glossaryTerm}
+            entityType={EntityType.GLOSSARY_TERM}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              !isVersionView &&
+              (permissions.EditAll || permissions.EditCustomFields)
+            }
+            hasPermission={permissions.ViewAll}
+            isVersionView={isVersionView}
+          />
+        ),
+      },
     ];
 
     return items;

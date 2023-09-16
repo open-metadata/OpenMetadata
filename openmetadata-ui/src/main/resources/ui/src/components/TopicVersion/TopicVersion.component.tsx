@@ -181,6 +181,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
+            entityDetails={currentVersionData}
             entityType={EntityType.TOPIC}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

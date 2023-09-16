@@ -303,6 +303,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
+            entityDetails={currentVersionData}
             entityType={EntityType.MLMODEL}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

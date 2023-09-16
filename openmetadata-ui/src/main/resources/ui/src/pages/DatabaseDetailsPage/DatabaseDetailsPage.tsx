@@ -68,12 +68,12 @@ import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
-import { getDatabaseVersionPath } from 'utils/RouterUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getExplorePath,
+  getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
@@ -566,7 +566,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getDatabaseVersionPath(databaseFQN, toString(currentVersion))
+        getVersionPathWithTab(
+          EntityType.DATABASE,
+          databaseFQN,
+          toString(currentVersion),
+          EntityTabs.SCHEMA
+        )
       );
   }, [currentVersion, databaseFQN]);
 
@@ -600,10 +605,6 @@ const DatabaseDetails: FunctionComponent = () => {
     } else {
       fetchDatabaseSchemas();
     }
-  };
-
-  const handelExtentionUpdate = async (schema: Database) => {
-    saveUpdatedDatabaseData(schema);
   };
 
   const tabs = useMemo(
@@ -719,20 +720,20 @@ const DatabaseDetails: FunctionComponent = () => {
 
       {
         label: (
-          <div data-testid="custom-properties">
-            {t('label.custom-property-plural')}
-            <span className="p-l-xs ">
-              {/* {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')} */}
-            </span>
-          </div>
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
         ),
-        key: 'custom-properties',
+        key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            hasEditAccess
-            hasPermission
             entityType={EntityType.DATABASE}
-            handleExtensionUpdate={handelExtentionUpdate}
+            handleExtensionUpdate={settingsUpdateHandler}
+            hasEditAccess={databasePermission.ViewAll}
+            hasPermission={
+              databasePermission.EditAll || databasePermission.EditCustomFields
+            }
             isVersionView={false}
           />
         ),

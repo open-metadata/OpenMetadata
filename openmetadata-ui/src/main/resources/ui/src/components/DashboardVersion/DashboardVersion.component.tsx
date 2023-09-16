@@ -217,6 +217,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
+            entityDetails={currentVersionData}
             entityType={EntityType.DASHBOARD}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

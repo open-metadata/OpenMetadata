@@ -11,18 +11,29 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import ContainerVersion from 'components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from 'components/DashboardVersion/DashboardVersion.component';
 import DataModelVersion from 'components/DataModelVersion/DataModelVersion.component';
 import Loader from 'components/Loader/Loader';
 import MlModelVersion from 'components/MlModelVersion/MlModelVersion.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import PipelineVersion from 'components/PipelineVersion/PipelineVersion.component';
+import StoredProcedureVersion from 'components/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from 'components/TableVersion/TableVersion.component';
 import TopicVersion from 'components/TopicVersion/TopicVersion.component';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
+import { isEmpty } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -58,6 +69,11 @@ import {
   getContainerVersions,
 } from 'rest/storageAPI';
 import {
+  getStoredProceduresDetailsByFQN,
+  getStoredProceduresVersion,
+  getStoredProceduresVersionsList,
+} from 'rest/storedProceduresAPI';
+import {
   getTableDetailsByFQN,
   getTableVersion,
   getTableVersions,
@@ -68,6 +84,7 @@ import {
   getTopicVersions,
 } from 'rest/topicsAPI';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -89,24 +106,6 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
-
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import StoredProcedureVersion from 'components/StoredProcedureVersion/StoredProcedureVersion.component';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { isEmpty } from 'lodash';
-import {
-  getStoredProceduresDetailsByFQN,
-  getStoredProceduresVersion,
-  getStoredProceduresVersionsList,
-} from 'rest/storedProceduresAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import './EntityVersionPage.less';
 
@@ -133,8 +132,11 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as VersionData
   );
 
-  const { entityType, version, entityFQN } =
-    useParams<{ entityType: string; version: string; entityFQN: string }>();
+  const {
+    entityType,
+    version,
+    fqn: entityFQN,
+  } = useParams<{ entityType: string; version: string; fqn: string }>();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityPermissions, setEntityPermissions] =
@@ -281,6 +283,21 @@ const EntityVersionPage: FunctionComponent = () => {
         }
         case EntityType.STORED_PROCEDURE: {
           await fetchResourcePermission(ResourceEntity.STORED_PROCEDURE);
+
+          break;
+        }
+        case EntityType.DATABASE: {
+          await fetchResourcePermission(ResourceEntity.DATABASE);
+
+          break;
+        }
+        case EntityType.DATABASE_SCHEMA: {
+          await fetchResourcePermission(ResourceEntity.DATABASE_SCHEMA);
+
+          break;
+        }
+        case EntityType.GLOSSARY_TERM: {
+          await fetchResourcePermission(ResourceEntity.GLOSSARY_TERM);
 
           break;
         }
@@ -589,7 +606,7 @@ const EntityVersionPage: FunctionComponent = () => {
         return (
           <TableVersion
             backHandler={backHandler}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as Table}
             datasetFQN={entityFQN}
             deleted={currentVersionData.deleted}
             entityPermissions={entityPermissions}
@@ -607,7 +624,7 @@ const EntityVersionPage: FunctionComponent = () => {
         return (
           <TopicVersion
             backHandler={backHandler}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as Topic}
             deleted={currentVersionData.deleted}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
@@ -626,7 +643,7 @@ const EntityVersionPage: FunctionComponent = () => {
         return (
           <DashboardVersion
             backHandler={backHandler}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as Dashboard}
             deleted={currentVersionData.deleted}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
@@ -645,7 +662,7 @@ const EntityVersionPage: FunctionComponent = () => {
         return (
           <PipelineVersion
             backHandler={backHandler}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as Pipeline}
             deleted={currentVersionData.deleted}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
@@ -664,7 +681,7 @@ const EntityVersionPage: FunctionComponent = () => {
         return (
           <MlModelVersion
             backHandler={backHandler}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as Mlmodel}
             deleted={currentVersionData.deleted}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
@@ -683,7 +700,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
             containerFQN={entityFQN}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as Container}
             deleted={currentVersionData.deleted}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
@@ -719,7 +736,7 @@ const EntityVersionPage: FunctionComponent = () => {
         return (
           <StoredProcedureVersion
             backHandler={backHandler}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as StoredProcedure}
             deleted={currentVersionData.deleted}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}

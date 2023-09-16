@@ -416,7 +416,11 @@ const TableDetailsPageV1 = () => {
   };
 
   const onExtensionUpdate = async (updatedData: Table) => {
-    await onTableUpdate(updatedData, 'extension');
+    tableDetails &&
+      (await saveUpdatedTableData({
+        ...tableDetails,
+        extension: updatedData.extension,
+      }));
   };
 
   const schemaTab = useMemo(

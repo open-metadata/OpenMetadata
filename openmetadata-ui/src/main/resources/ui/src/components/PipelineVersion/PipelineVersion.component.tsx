@@ -227,6 +227,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
+            entityDetails={currentVersionData}
             entityType={EntityType.PIPELINE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
