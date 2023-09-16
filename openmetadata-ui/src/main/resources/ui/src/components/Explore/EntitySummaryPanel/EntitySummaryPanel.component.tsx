@@ -25,6 +25,7 @@ import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { Table } from 'generated/entity/data/table';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { get } from 'lodash';
@@ -44,6 +45,7 @@ import './EntitySummaryPanel.style.less';
 import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
+import SearchIndexSummary from './SearchIndexSummary/SearchIndexSummary.component';
 import TableSummary from './TableSummary/TableSummary.component';
 import TagsSummary from './TagsSummary/TagsSummary.component';
 import TopicSummary from './TopicSummary/TopicSummary.component';
@@ -125,6 +127,9 @@ export default function EntitySummaryPanel({
 
       case EntityType.DATA_PRODUCT:
         return <DataProductSummary entityDetails={entity as DataProduct} />;
+
+      case EntityType.SEARCH_INDEX:
+        return <SearchIndexSummary entityDetails={entity as SearchIndex} />;
 
       default:
         return null;

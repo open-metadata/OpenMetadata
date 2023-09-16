@@ -12,9 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -35,7 +33,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase } from 'rest/testAPI';
 import {
@@ -57,6 +55,7 @@ import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtil
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TableTestsType } from '../../../TableProfiler/TableProfiler.interface';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import './table-summary.less';
@@ -271,52 +270,10 @@ function TableSummary({
       <>
         <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
-            <Row gutter={[0, 4]}>
-              {entityInfo.map((info) => {
-                const isOwner = info.name === t('label.owner');
-
-                return info.visible?.includes(componentType) ? (
-                  <Col key={info.name} span={24}>
-                    <Row
-                      className={classNames('', {
-                        'p-b-md': isOwner,
-                      })}
-                      gutter={[16, 32]}>
-                      {!isOwner ? (
-                        <Col data-testid={`${info.name}-label`} span={8}>
-                          <Typography.Text className="summary-item-key text-grey-muted">
-                            {info.name}
-                          </Typography.Text>
-                        </Col>
-                      ) : null}
-                      <Col data-testid={`${info.name}-value`} span={16}>
-                        {info.isLink ? (
-                          <Link
-                            component={Typography.Link}
-                            target={info.isExternal ? '_blank' : '_self'}
-                            to={{ pathname: info.url }}>
-                            {info.value}
-                            {info.isExternal ? (
-                              <IconExternalLink className="m-l-xs" width={12} />
-                            ) : null}
-                          </Link>
-                        ) : (
-                          <Typography.Text
-                            className={classNames(
-                              'summary-item-value text-grey-muted',
-                              {
-                                'text-grey-body': !isOwner,
-                              }
-                            )}>
-                            {info.value}
-                          </Typography.Text>
-                        )}
-                      </Col>
-                    </Row>
-                  </Col>
-                ) : null;
-              })}
-            </Row>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
           </Col>
         </Row>
 
