@@ -417,18 +417,18 @@ export const getEntityOverview = (
 
     case ExplorePageTabs.SEARCH_INDEX: {
       const { owner, tags, service } = entityDetail as Dashboard;
-      const tier = getTierFromTableTags(tags || []);
+      const tier = getTierFromTableTags(tags ?? []);
 
       const overview = [
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) ||
+            getOwnerNameWithProfilePic(owner) ??
             i18next.t('label.no-entity', {
               entity: i18next.t('label.owner'),
             }),
           url: getOwnerValue(owner as EntityReference),
-          isLink: owner?.name ? true : false,
+          isLink: !isEmpty(owner?.name),
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
