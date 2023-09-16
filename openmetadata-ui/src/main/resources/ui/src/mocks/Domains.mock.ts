@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { DomainType } from 'generated/api/domains/createDomain';
+import { Domain } from 'generated/entity/domains/domain';
 
 export const MOCK_DOMAIN = {
   id: '5f4326d3-9dfc-4e43-8f0c-d88d4a293ede',
@@ -34,3 +35,42 @@ export const MOCK_DOMAIN = {
   },
   experts: [],
 };
+
+export const DOMAINS_LIST: Domain[] = [
+  {
+    id: '353a1cf3-1608-4405-b2e9-58bfe52fa8d2',
+    domainType: DomainType.Aggregate,
+    name: 'Domain1',
+    fullyQualifiedName: 'Domain1',
+    displayName: 'Domain1',
+    description: 'Domain1',
+    version: 0.4,
+    updatedAt: 1694584150825,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/domains/353a1cf3-1608-4405-b2e9-58bfe52fa8d2',
+    changeDescription: {
+      fieldsAdded: [],
+      fieldsUpdated: [
+        {
+          name: 'domainType',
+          oldValue: 'Consumer-aligned',
+          newValue: 'Source-aligned',
+        },
+      ],
+      fieldsDeleted: [],
+      previousVersion: 0.3,
+    },
+  },
+  {
+    id: '0e5307a6-d2bd-44ea-a3ae-22daac806575',
+    domainType: DomainType.Aggregate,
+    name: 'Domain2',
+    fullyQualifiedName: 'Domain2',
+    displayName: 'Domain2',
+    description: 'Domain2',
+    version: 0.1,
+    updatedAt: 1694609430230,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/domains/0e5307a6-d2bd-44ea-a3ae-22daac806575',
+  },
+];

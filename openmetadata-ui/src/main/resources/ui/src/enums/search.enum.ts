@@ -34,4 +34,5 @@ export enum SearchIndex {
   ML_MODEL_SERVICE = 'mlmodel_service_search_index',
   DOMAIN = 'domain_search_index',
   SEARCH_INDEX = 'search_entity_index',
+  DATA_PRODUCT = 'data_products_search_index',
 }
