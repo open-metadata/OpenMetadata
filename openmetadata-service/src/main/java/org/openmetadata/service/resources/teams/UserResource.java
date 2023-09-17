@@ -160,7 +160,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private final AuthenticatorHandler authHandler;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domain";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domain,persona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -726,7 +726,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           authorizer.authorizeAdmin(securityContext);
           continue;
         }
-        // if path contains team, check if team is joinable by any user
+        // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
             && patchOpObject.getString("op").equals("add")
             && path.startsWith("/teams/")) {
@@ -1144,7 +1144,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for user import/export")
-  public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name) {
+  public String getUserCsvDocumentation(@Context SecurityContext securityContext) {
     return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
   }
 
@@ -1218,6 +1218,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withIsBot(create.getIsBot())
         .withIsAdmin(create.getIsAdmin())
         .withProfile(create.getProfile())
+        .withPersona(create.getPersona())
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())

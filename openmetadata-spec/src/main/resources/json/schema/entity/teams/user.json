@@ -104,6 +104,10 @@
       "description": "Teams that the user belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "persona": {
+      "description": "Persona that the user belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
     "owns": {
       "description": "List of entities owned by the user.",
       "$ref": "../../type/entityReferenceList.json"

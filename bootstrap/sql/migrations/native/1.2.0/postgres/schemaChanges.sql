@@ -116,6 +116,7 @@ UPDATE dashboard_service_entity
 SET json = jsonb_set(
   json::jsonb #- '{connection,config,sandboxDomain}',
   '{connection,config,instanceDomain}',
+    json JSONB NOT NULL,
   (json #> '{connection,config,sandboxDomain}')::jsonb,
   true
 )
@@ -132,3 +133,15 @@ WHERE serviceType = 'DomoPipeline';
 
 -- Query Entity supports service, which requires FQN for name
 ALTER TABLE query_entity RENAME COLUMN nameHash TO fqnHash;
+
+CREATE TABLE IF NOT EXISTS persona_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash),
+    INDEX name_index(name)
+);

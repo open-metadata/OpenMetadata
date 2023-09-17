@@ -97,6 +97,7 @@ import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -165,6 +166,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TeamDAO teamDAO();
+
+  @CreateSqlObject
+  PersonaDAO personaDAO();
 
   @CreateSqlObject
   TagUsageDAO tagUsageDAO();
@@ -2288,6 +2292,28 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "nameHash";
+    }
+  }
+
+  interface PersonaDAO extends EntityDAO<Persona> {
+    @Override
+    default String getTableName() {
+      return "persona_entity";
+    }
+
+    @Override
+    default Class<Persona> getEntityClass() {
+      return Persona.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
     }
   }
 

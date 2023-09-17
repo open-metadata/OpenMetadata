@@ -143,6 +143,7 @@ public final class Entity {
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
+  public static final String PERSONA = "persona";
   public static final String BOT = "bot";
 
   //

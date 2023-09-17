@@ -111,4 +111,18 @@ SET json = JSON_INSERT(
 WHERE serviceType = 'DomoPipeline';
 
 -- Query Entity supports service, which requires FQN for name
-ALTER TABLE query_entity CHANGE COLUMN nameHash fqnHash VARCHAR(256);
+ALTER TABLE query_entity CHANGE COLUMN nameHash fqnHash VARCHAR(256);    INDEX name_index(name)
+);
+
+CREATE TABLE IF NOT EXISTS persona_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash),
+    INDEX name_index(name)
+);
+

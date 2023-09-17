@@ -59,6 +59,10 @@
       },
       "default": null
     },
+    "persona": {
+      "description": "Persona that the user belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
     "authenticationMechanism": {
       "description": "Authentication mechanism specified ",
       "$ref": "../../entity/teams/user.json#/definitions/authenticationMechanism",
