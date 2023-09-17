@@ -18,3 +18,8 @@ export interface EntityDiffProps {
   deleted?: FieldChange;
   updated?: FieldChange;
 }
+export interface EntityDiffWithMultiChanges {
+  added?: FieldChange[];
+  deleted?: FieldChange[];
+  updated?: FieldChange[];
+}

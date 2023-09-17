@@ -53,6 +53,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
@@ -60,7 +61,7 @@ from metadata.utils import entity_link
 from metadata.utils.fqn import split
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.workflow_output_handler import print_test_suite_status
+from metadata.workflow.workflow_output_handler import print_test_suite_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger: Logger = test_suite_logger()
@@ -375,9 +376,11 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 logger.error(error)
                 logger.debug(traceback.format_exc())
                 self.status.failed(
-                    self.source_config.entityFullyQualifiedName.__root__,
-                    error,
-                    traceback.format_exc(),
+                    StackTraceError(
+                        name=self.source_config.entityFullyQualifiedName.__root__,
+                        error=error,
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
         return test_cases
@@ -430,7 +433,11 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 logger.debug(traceback.format_exc())
                 logger.error(error)
                 self.status.failed(
-                    test_case.name.__root__, error, traceback.format_exc()
+                    StackTraceError(
+                        name=test_case.name.__root__,
+                        error=error,
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def _retrieve_service_connection(self) -> None:

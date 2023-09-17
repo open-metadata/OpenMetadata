@@ -15,13 +15,10 @@ import { List, Space, Typography } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
-import {
-  getDateTimeByTimeStamp,
-  getRelativeDateTimeByTimeStamp,
-} from '../../utils/TimeUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
 
@@ -76,11 +73,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             </Typography.Paragraph>
             <Typography.Text
               style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
-              title={getDateTimeByTimeStamp(
-                timestamp as number,
-                'MMM, dd, yyyy hh:mm:ss'
-              )}>
-              {getRelativeDateTimeByTimeStamp(timestamp as number)}
+              title={formatDateTime(timestamp)}>
+              {getRelativeTime(timestamp)}
             </Typography.Text>
           </Space>
         }

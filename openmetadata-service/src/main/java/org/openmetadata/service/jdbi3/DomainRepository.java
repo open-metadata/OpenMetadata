@@ -16,9 +16,8 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
@@ -27,6 +26,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
@@ -34,6 +35,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public DomainRepository(CollectionDAO dao) {
     super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -48,14 +50,13 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public void prepare(Domain entity) {
+  public void prepare(Domain entity, boolean update) {
     // Parent, Experts, Owner are already validated
   }
 
   @Override
   public void storeEntity(Domain entity, boolean update) {
     EntityReference parent = entity.getParent();
-    List<EntityReference> children = entity.getChildren();
     entity.withParent(null);
     store(entity, update);
     entity.withParent(parent);
@@ -105,6 +106,22 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
+  @Override
+  public void deleteFromSearch(Domain entity, String changeType) {
+    if (supportsSearchIndex) {
+      String scriptTxt = "ctx._source.remove('domain')";
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, Domain.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "domain.fullyQualifiedName");
+      } else {
+        searchClient.deleteEntityAndRemoveRelationships(
+            JsonUtils.deepCopy(entity, Domain.class), scriptTxt, "domain.fullyQualifiedName");
+      }
+    }
+  }
+
   public class DomainUpdater extends EntityUpdater {
     public DomainUpdater(Domain original, Domain updated, Operation operation) {
       super(original, updated, operation);
@@ -112,21 +129,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     @Override
     public void entitySpecificUpdate() {
-      updateExperts();
-    }
-
-    private void updateExperts() {
-      List<EntityReference> origExperts = listOrEmpty(original.getExperts());
-      List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
-      updateToRelationships(
-          FIELD_EXPERTS,
-          DOMAIN,
-          original.getId(),
-          Relationship.EXPERT,
-          Entity.USER,
-          origExperts,
-          updatedExperts,
-          false);
+      recordChange("domainType", original.getDomainType(), updated.getDomainType());
     }
   }
 }

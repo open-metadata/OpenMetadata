@@ -13,12 +13,15 @@
 import { Button, List, Modal, Select, Space } from 'antd';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import Loader from 'components/Loader/Loader';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { mapAssetsSearchIndex } from 'constants/Assets.constants';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
+import { Table } from 'generated/entity/data/table';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Domain } from 'generated/entity/domains/domain';
 import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
@@ -27,12 +30,17 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getDataProductByName } from 'rest/dataProductAPI';
+import { getDomainByName } from 'rest/domainAPI';
 import { searchQuery } from 'rest/searchAPI';
 import {
   getAPIfromSource,
+  getAssetsFields,
+  getAssetsSearchIndex,
   getEntityAPIfromSource,
 } from 'utils/Assets/AssetsUtils';
 import { getQueryFilterToExcludeTerm } from 'utils/GlossaryUtils';
@@ -40,10 +48,11 @@ import './asset-selection-model.style.less';
 import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
 
 export const AssetSelectionModal = ({
-  glossaryFQN,
+  entityFqn,
   onCancel,
   onSave,
   open,
+  type = AssetsOfEntity.GLOSSARY,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -54,8 +63,17 @@ export const AssetSelectionModal = ({
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
     SearchIndex.TABLE
   );
+  const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  const queryFilter = useMemo(() => {
+    if (type === AssetsOfEntity.GLOSSARY) {
+      return getQueryFilterToExcludeTerm(entityFqn);
+    } else {
+      return {};
+    }
+  }, [entityFqn, type]);
 
   const fetchEntities = useCallback(
     async ({ searchText = '', page = 1, index = activeFilter }) => {
@@ -66,7 +84,7 @@ export const AssetSelectionModal = ({
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: index,
           query: searchText,
-          queryFilter: getQueryFilterToExcludeTerm(glossaryFQN),
+          queryFilter: queryFilter,
         });
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
@@ -81,11 +99,22 @@ export const AssetSelectionModal = ({
     [setActiveFilter]
   );
 
+  const fetchCurrentEntity = useCallback(async () => {
+    if (type === AssetsOfEntity.DOMAIN) {
+      const data = await getDomainByName(entityFqn, '');
+      setActiveEntity(data);
+    } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+      const data = await getDataProductByName(entityFqn, '');
+      setActiveEntity(data);
+    }
+  }, [type, entityFqn]);
+
   useEffect(() => {
     if (open) {
       fetchEntities({ index: activeFilter, searchText: search });
+      fetchCurrentEntity();
     }
-  }, [open, activeFilter, search]);
+  }, [open, activeFilter, search, type]);
 
   const handleCardClick = (
     details: SearchedDataProps['data'][number]['_source']
@@ -120,10 +149,45 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const handleSave = async () => {
+  const getJsonPatchObject = (entity: Table) => {
+    if (!activeEntity) {
+      return [];
+    }
+    const { id, description, fullyQualifiedName, name, displayName } =
+      activeEntity;
+    const patchObj = {
+      id,
+      description,
+      fullyQualifiedName,
+      name,
+      displayName,
+      type: type === AssetsOfEntity.DATA_PRODUCT ? 'dataProduct' : 'domain',
+    };
+
+    if (type === AssetsOfEntity.DATA_PRODUCT) {
+      const jsonPatch = compare(entity, {
+        ...entity,
+        dataProducts: [...(entity.dataProducts ?? []), patchObj],
+      });
+
+      return jsonPatch;
+    } else {
+      const jsonPatch = compare(entity, {
+        ...entity,
+        domain: patchObj,
+      });
+
+      return jsonPatch;
+    }
+  };
+
+  const domainAndDataProductsSave = async () => {
     setIsLoading(true);
     const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, 'tags')
+      getEntityAPIfromSource(item.entityType)(
+        item.fullyQualifiedName,
+        getAssetsFields(type)
+      )
     );
 
     try {
@@ -133,7 +197,49 @@ export const AssetSelectionModal = ({
       entityDetailsResponse.forEach((response) => {
         if (response.status === 'fulfilled') {
           const entity = response.value;
+          entity && map.set(entity.fullyQualifiedName, entity);
+        }
+      });
+      const patchAPIPromises = [...(selectedItems?.values() ?? [])]
+        .map((item) => {
+          if (map.has(item.fullyQualifiedName) && activeEntity) {
+            const entity = map.get(item.fullyQualifiedName);
+            const jsonPatch = getJsonPatchObject(entity);
+            const api = getAPIfromSource(item.entityType);
 
+            return api(item.id, jsonPatch);
+          }
+
+          return;
+        })
+        .filter(Boolean);
+
+      await Promise.all(patchAPIPromises);
+      onSave?.();
+      onCancel();
+    } catch (_) {
+      // Nothing here
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
+      getEntityAPIfromSource(item.entityType)(
+        item.fullyQualifiedName,
+        getAssetsFields(type)
+      )
+    );
+
+    try {
+      const entityDetailsResponse = await Promise.allSettled(entityDetails);
+      const map = new Map();
+
+      entityDetailsResponse.forEach((response) => {
+        if (response.status === 'fulfilled') {
+          const entity = response.value;
           entity && map.set(entity.fullyQualifiedName, entity.tags);
         }
       });
@@ -146,14 +252,13 @@ export const AssetSelectionModal = ({
                 tags: [
                   ...(item.tags ?? []),
                   {
-                    tagFQN: glossaryFQN,
+                    tagFQN: entityFqn,
                     source: 'Glossary',
                     labelType: 'Manual',
                   },
                 ],
               }
             );
-
             const api = getAPIfromSource(item.entityType);
 
             return api(item.id, jsonPatch);
@@ -164,12 +269,20 @@ export const AssetSelectionModal = ({
         .filter(Boolean);
 
       await Promise.all(patchAPIPromises);
-      onSave && onSave();
+      onSave?.();
       onCancel();
     } catch (_) {
       // Nothing here
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onSaveAction = () => {
+    if (type === AssetsOfEntity.GLOSSARY) {
+      handleSave();
+    } else {
+      domainAndDataProductsSave();
     }
   };
 
@@ -190,6 +303,10 @@ export const AssetSelectionModal = ({
     [activeFilter, search, totalCount, items]
   );
 
+  const mapAssetsSearchIndex = useMemo(() => {
+    return getAssetsSearchIndex(type);
+  }, [type]);
+
   return (
     <Modal
       destroyOnClose
@@ -198,7 +315,7 @@ export const AssetSelectionModal = ({
       footer={
         <>
           <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button loading={isLoading} type="primary" onClick={handleSave}>
+          <Button loading={isLoading} type="primary" onClick={onSaveAction}>
             {t('label.save')}
           </Button>
         </>

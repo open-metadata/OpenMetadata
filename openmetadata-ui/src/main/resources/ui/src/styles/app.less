@@ -245,6 +245,9 @@ a[href].link-text-grey,
 .bg-grey-1 {
   background-color: @grey-1;
 }
+.bg-grey-2 {
+  background-color: @grey-2;
+}
 .bg-grey-4 {
   background-color: @grey-4;
 }
@@ -542,14 +545,20 @@ a[href].link-text-grey,
 
 .diff-added {
   background: @success-background-color;
-  color: @success-color;
   width: fit-content;
+  color: @success-color;
+  * {
+    color: @success-color;
+  }
 }
 
 .diff-removed {
-  color: @text-grey-muted;
   text-decoration: line-through;
   width: fit-content;
+  color: @text-grey-muted;
+  * {
+    color: @text-grey-muted;
+  }
 }
 
 .diff-description {
@@ -557,9 +566,6 @@ a[href].link-text-grey,
 }
 
 /* Page Search Bar */
-.page-search-bar {
-  margin-bottom: 1em;
-}
 .page-search-bar label {
   font-size: 1.25em;
   color: @text-grey-muted;
@@ -696,4 +702,33 @@ a[href].link-text-grey,
 .notification-dropdown-list-btn:hover,
 .notification-dropdown-list-btn:focus {
   background-color: @body-bg-color;
+}
+
+/* react toastify */
+
+.Toastify__toast-container {
+  width: 450px;
+  word-break: break-word;
+}
+
+.Toastify__toast {
+  overflow-y: auto;
+  max-height: 80vh;
+}
+
+.Toastify__toast-body {
+  align-items: flex-start;
+}
+
+/* ToastUI Editor style */
+.ProseMirror .placeholder {
+  color: @text-grey-muted;
+}
+
+// Search text Highlighter
+
+.text-highlighter {
+  background-color: @text-highlighter;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
 }

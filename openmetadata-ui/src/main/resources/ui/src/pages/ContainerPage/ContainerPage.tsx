@@ -33,6 +33,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -57,14 +58,13 @@ import {
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
+  updateContainerVotes,
 } from 'rest/storageAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
-  refreshPage,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
@@ -107,7 +107,7 @@ const ContainerPage = () => {
     try {
       const response = await getContainerByName(
         containerFQN,
-        'parent,dataModel,owner,tags,followers,extension',
+        'parent,dataModel,owner,tags,followers,extension,domain,votes',
         Include.All
       );
       addToRecentViewed({
@@ -191,7 +191,6 @@ const ContainerPage = () => {
     isUserFollowing,
     tags,
     tier,
-    entityFqn,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -339,31 +338,49 @@ const ContainerPage = () => {
 
   const handleUpdateTier = async (updatedTier?: string) => {
     try {
-      if (updatedTier) {
-        const { tags: newTags, version } = await handleUpdateContainerData({
-          ...(containerData as Container),
-          tags: [
-            ...getTagsWithoutTier(containerData?.tags ?? []),
-            {
-              tagFQN: updatedTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: TagSource.Classification,
-            },
-          ],
-        });
+      const { tags: newTags, version } = await handleUpdateContainerData({
+        ...(containerData as Container),
+        tags: [
+          ...getTagsWithoutTier(containerData?.tags ?? []),
+          ...(updatedTier
+            ? [
+                {
+                  tagFQN: updatedTier,
+                  labelType: LabelType.Manual,
+                  state: State.Confirmed,
+                  source: TagSource.Classification,
+                },
+              ]
+            : []),
+        ],
+      });
 
-        setContainerData((prev) => ({
-          ...(prev as Container),
-          tags: newTags,
-          version,
-        }));
-        getEntityFeedCount();
-      }
+      setContainerData((prev) => ({
+        ...(prev as Container),
+        tags: newTags,
+        version,
+      }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const handleToggleDelete = () => {
+    setContainerData((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
 
   const handleRestoreContainer = async () => {
     try {
@@ -374,7 +391,7 @@ const ContainerPage = () => {
         }),
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -490,7 +507,7 @@ const ContainerPage = () => {
 
                 <ContainerDataModel
                   dataModel={containerData?.dataModel}
-                  entityFqn={entityFqn}
+                  entityFqn={containerName}
                   hasDescriptionEditAccess={hasEditDescriptionPermission}
                   hasTagEditAccess={hasEditTagsPermission}
                   isReadOnly={Boolean(deleted)}
@@ -560,11 +577,10 @@ const ContainerPage = () => {
         children: (
           <Row className="p-md" gutter={[0, 16]}>
             <Col span={24}>
-              {isChildrenLoading ? (
-                <Loader />
-              ) : (
-                <ContainerChildren childrenList={containerChildrenData} />
-              )}
+              <ContainerChildren
+                childrenList={containerChildrenData}
+                isLoading={isChildrenLoading}
+              />
             </Col>
           </Row>
         ),
@@ -589,9 +605,7 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !containerPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             entityDetails={
               containerData as CustomPropertyProps['entityDetails']
@@ -599,6 +613,7 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={hasEditCustomFieldsPermission}
+            hasPermission={containerPermissions.ViewAll}
           />
         ),
       },
@@ -627,6 +642,19 @@ const ContainerPage = () => {
       handleExtensionUpdate,
     ]
   );
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateContainerVotes(id, data);
+      const details = await getContainerByName(
+        containerName,
+        'parent,dataModel,owner,tags,followers,extension,votes'
+      );
+      setContainerData(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   // Effects
   useEffect(() => {
@@ -680,7 +708,7 @@ const ContainerPage = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}
@@ -689,6 +717,7 @@ const ContainerPage = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreContainer}
             onTierUpdate={handleUpdateTier}
+            onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
         </Col>

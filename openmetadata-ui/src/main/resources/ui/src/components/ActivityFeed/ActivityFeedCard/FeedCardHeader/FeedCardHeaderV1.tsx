@@ -20,6 +20,7 @@ import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
+import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
 import {
   entityDisplayName,
   getEntityField,
@@ -28,10 +29,6 @@ import {
   getEntityType,
 } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
-import {
-  getDateTimeFromMilliSeconds,
-  getDayTimeByTimeStamp,
-} from 'utils/TimeUtils';
 import './feed-card-header-v1.style.less';
 import FeedCardHeaderName from './FeedCardHeaderName';
 
@@ -103,9 +100,9 @@ const FeedCardHeaderV1 = ({
         {getFeedLinkElement}
 
         {timeStamp && (
-          <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
+          <Tooltip title={formatDateTime(timeStamp)}>
             <span className="feed-header-timestamp" data-testid="timestamp">
-              {getDayTimeByTimeStamp(timeStamp)}
+              {getRelativeTime(timeStamp)}
             </span>
           </Tooltip>
         )}

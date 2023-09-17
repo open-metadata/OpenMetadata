@@ -10,17 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
+import { DashboardService } from 'generated/entity/services/dashboardService';
+import { DatabaseService } from 'generated/entity/services/databaseService';
+import { MessagingService } from 'generated/entity/services/messagingService';
+import { MlmodelService } from 'generated/entity/services/mlmodelService';
+import { PipelineService } from 'generated/entity/services/pipelineService';
+import { StorageService } from 'generated/entity/services/storageService';
 
 export interface AssetSelectionModalProps {
-  glossaryFQN: string;
+  entityFqn: string;
   open: boolean;
+  type?: AssetsOfEntity;
   onCancel: () => void;
   onSave?: () => void;
 }
@@ -31,7 +42,16 @@ export type AssetsUnion =
   | EntityType.DASHBOARD
   | EntityType.MLMODEL
   | EntityType.TOPIC
-  | EntityType.CONTAINER;
+  | EntityType.CONTAINER
+  | EntityType.GLOSSARY_TERM
+  | EntityType.DATABASE_SCHEMA
+  | EntityType.DATABASE
+  | EntityType.DASHBOARD_SERVICE
+  | EntityType.MESSAGING_SERVICE
+  | EntityType.PIPELINE_SERVICE
+  | EntityType.MLMODEL_SERVICE
+  | EntityType.STORAGE_SERVICE
+  | EntityType.DATABASE_SERVICE;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -40,4 +60,13 @@ export type MapPatchAPIResponse = {
   [EntityType.PIPELINE]: Pipeline;
   [EntityType.CONTAINER]: Container;
   [EntityType.TOPIC]: Topic;
+  [EntityType.GLOSSARY_TERM]: GlossaryTerm;
+  [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
+  [EntityType.DATABASE]: Database;
+  [EntityType.DASHBOARD_SERVICE]: DashboardService;
+  [EntityType.MESSAGING_SERVICE]: MessagingService;
+  [EntityType.PIPELINE_SERVICE]: PipelineService;
+  [EntityType.MLMODEL_SERVICE]: MlmodelService;
+  [EntityType.STORAGE_SERVICE]: StorageService;
+  [EntityType.DATABASE_SERVICE]: DatabaseService;
 };

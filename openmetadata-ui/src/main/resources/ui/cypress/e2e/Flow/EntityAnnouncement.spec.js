@@ -12,9 +12,10 @@
  */
 
 import {
-  getCurrentLocaleDate,
-  getFutureLocaleDateFromCurrentDate,
-} from '../../../src/utils/TimeUtils';
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from '../../../src/utils/date-time/DateTimeUtils';
 import {
   descriptionBox,
   interceptURL,
@@ -30,20 +31,18 @@ describe('Entity Announcement', () => {
 
   const createAnnouncement = (title, startDate, endDate, description) => {
     cy.get('[data-testid="add-announcement"]').should('be.visible').click();
-    cy.get('.ant-modal-header')
-      .should('be.visible')
-      .contains('Make an announcement');
-    cy.get('.ant-modal-body').should('be.visible');
+    cy.get('.ant-modal-header').contains('Make an announcement');
 
-    cy.get('#title').should('be.visible').type(title);
-    cy.get('#startDate').should('be.visible').type(startDate);
-    cy.get('#endtDate').should('be.visible').type(endDate);
+    cy.get('#title').type(title);
+
+    cy.get('#startTime').click().type(`${startDate}{enter}`);
+    cy.clickOutside();
+
+    cy.get('#endTime').click().type(`${endDate}{enter}`);
+    cy.clickOutside();
     cy.get(descriptionBox).type(description);
 
-    cy.get('[id="announcement-submit"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[id="announcement-submit"]').scrollIntoView().click();
   };
 
   const addAnnouncement = (value) => {
@@ -79,8 +78,11 @@ describe('Entity Announcement', () => {
         cy.get('[data-testid="manage-button"]').click();
         cy.get('[data-testid="announcement-button"]').click();
       }
-      const startDate = getCurrentLocaleDate();
-      const endDate = getFutureLocaleDateFromCurrentDate(5);
+      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
+      const endDate = customFormatDateTime(
+        getEpochMillisForFutureDays(5),
+        'yyyy-MM-dd'
+      );
 
       cy.get('[data-testid="announcement-error"]')
         .should('be.visible')
@@ -98,8 +100,15 @@ describe('Entity Announcement', () => {
       verifyResponseStatusCode('@waitForAnnouncement', 201);
       cy.get('.Toastify__close-button >').should('be.visible').click();
       // Create InActive Announcement
-      const InActiveStartDate = getFutureLocaleDateFromCurrentDate(6);
-      const InActiveEndDate = getFutureLocaleDateFromCurrentDate(11);
+
+      const InActiveStartDate = customFormatDateTime(
+        getEpochMillisForFutureDays(6),
+        'yyyy-MM-dd'
+      );
+      const InActiveEndDate = customFormatDateTime(
+        getEpochMillisForFutureDays(11),
+        'yyyy-MM-dd'
+      );
 
       createAnnouncement(
         'InActive Announcement Title',

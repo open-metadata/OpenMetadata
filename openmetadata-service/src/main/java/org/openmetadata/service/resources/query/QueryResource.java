@@ -72,7 +72,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("users,votes,queryUsedIn", MetadataOperation.VIEW_BASIC);
+    addViewOperation("users,queryUsedIn", MetadataOperation.VIEW_BASIC);
     return null;
   }
 
@@ -321,9 +321,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @PUT
   @Path("/{id}/vote")
   @Operation(
-      operationId = "updateVote",
-      summary = "Update Vote for a query",
-      description = "Update vote for a query",
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -334,7 +334,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid VoteRequest request) {
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
@@ -381,6 +381,51 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return repository.addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/users")
+  @Operation(
+      operationId = "addQueryUsers",
+      summary = "Add query users",
+      description = "Add query users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Response addQueryUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid List<String> userFqnList) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return repository.AddQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList).toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/usedBy")
+  @Operation(
+      operationId = "addQueryUsedBy",
+      summary = "Populate Used By Field",
+      description = "Add query users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Response addQueryUsedBy(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid List<String> usedByList) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return repository.AddQueryUsedBy(uriInfo, securityContext.getUserPrincipal().getName(), id, usedByList)
+        .toResponse();
   }
 
   @DELETE
@@ -468,6 +513,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
         .withUsers(getEntityReferences(USER, create.getUsers()))
         .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
-        .withQueryDate(create.getQueryDate());
+        .withQueryDate(create.getQueryDate())
+        .withTriggeredBy(create.getTriggeredBy())
+        .withProcessedLineage(create.getProcessedLineage());
   }
 }

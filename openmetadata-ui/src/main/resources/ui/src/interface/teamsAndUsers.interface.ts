@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
@@ -111,10 +112,7 @@ export interface TeamDetailsProp {
   handleTeamUsersSearchAction: (text: string) => void;
   updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
   handleCurrentUserPage: (value?: number) => void;
-  teamUserPagingHandler: (
-    cursorValue: string | number,
-    activePage?: number
-  ) => void;
+  teamUserPagingHandler: NextPreviousProps['pagingHandler'];
   handleAddUser: (data: Array<EntityReference>) => void;
   afterDeleteAction: () => void;
   removeUserFromTeam: (id: string) => Promise<void>;
@@ -122,7 +120,7 @@ export interface TeamDetailsProp {
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   childTeams: Team[];
   showDeletedTeam: boolean;
-  onAssetsPaginate: (page: string | number) => void;
+  onAssetsPaginate: NextPreviousProps['pagingHandler'];
   onShowDeletedTeamChange: () => void;
   parentTeams: Team[];
   onTeamExpand: (

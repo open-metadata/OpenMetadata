@@ -13,6 +13,17 @@
 import { uuid } from './constants';
 const uniqueID = uuid();
 
+export const SERVICE_CATEGORIES = {
+  DATABASE_SERVICES: 'databaseServices',
+  MESSAGING_SERVICES: 'messagingServices',
+  PIPELINE_SERVICES: 'pipelineServices',
+  DASHBOARD_SERVICES: 'dashboardServices',
+  ML_MODEL_SERVICES: 'mlmodelServices',
+  STORAGE_SERVICES: 'storageServices',
+  METADATA_SERVICES: 'metadataServices',
+  SEARCH_SERVICES: 'searchServices',
+};
+
 export const REDSHIFT = {
   serviceType: 'Redshift',
   serviceName: `redshift-ct-test-${uniqueID}`,

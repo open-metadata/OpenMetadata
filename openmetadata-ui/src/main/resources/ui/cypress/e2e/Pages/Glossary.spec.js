@@ -22,10 +22,11 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
   DELETE_TERM,
-  GLOSSARY_INVALID_NAMES,
-  GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR,
+  INVALID_NAMES,
+  NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   NEW_GLOSSARY,
   NEW_GLOSSARY_1,
@@ -61,36 +62,6 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
 };
 
-const deleteGlossary = (glossary) => {
-  cy.get('.ant-menu-item').contains(glossary).click();
-  cy.get('[data-testid="manage-button"]').should('be.visible').click();
-  cy.get('[data-testid="delete-button"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="delete-confirmation-modal"]')
-    .should('exist')
-    .then(() => {
-      cy.get('[role="dialog"]').should('be.visible');
-      cy.get('[data-testid="modal-header"]').should('be.visible');
-    });
-  cy.get('[data-testid="modal-header"]')
-    .should('be.visible')
-    .should('contain', `Delete ${glossary}`);
-  cy.get('[data-testid="confirmation-text-input"]')
-    .should('be.visible')
-    .type(DELETE_TERM);
-  interceptURL('DELETE', '/api/v1/glossaries/*', 'getGlossary');
-  cy.get('[data-testid="confirm-button"]')
-    .should('be.visible')
-    .should('not.disabled')
-    .click();
-  verifyResponseStatusCode('@getGlossary', 200);
-
-  toastNotification('Glossary deleted successfully!');
-};
-
 const checkDisplayName = (displayName) => {
   cy.get('[data-testid="entity-header-display-name"]')
     .scrollIntoView()
@@ -115,16 +86,16 @@ const validateForm = () => {
   cy.get('[data-testid="name"]')
     .scrollIntoView()
     .should('be.visible')
-    .type(GLOSSARY_INVALID_NAMES.MAX_LENGTH);
+    .type(INVALID_NAMES.MAX_LENGTH);
   cy.get('#name_help')
     .should('be.visible')
-    .contains(GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR);
+    .contains(NAME_MAX_LENGTH_VALIDATION_ERROR);
 
   // with special char validation
   cy.get('[data-testid="name"]')
     .should('be.visible')
     .clear()
-    .type(GLOSSARY_INVALID_NAMES.WITH_SPECIAL_CHARS);
+    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
   cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
 };
 
@@ -377,6 +348,60 @@ const updateDescription = (newDescription, isGlossary) => {
     .should('be.visible');
 };
 
+const upVoting = (api) => {
+  cy.get('[data-testid="up-vote-btn"]').click();
+
+  cy.wait(api).then(({ request, response }) => {
+    expect(request.body.updatedVoteType).to.equal('votedUp');
+
+    expect(response.statusCode).to.equal(200);
+  });
+
+  cy.get('[data-testid="up-vote-count"]').contains(1);
+};
+
+const downVoting = (api) => {
+  cy.get('[data-testid="down-vote-btn"]').click();
+
+  cy.wait(api).then(({ request, response }) => {
+    expect(request.body.updatedVoteType).to.equal('votedDown');
+
+    expect(response.statusCode).to.equal(200);
+  });
+
+  cy.get('[data-testid="down-vote-count"]').contains(1);
+
+  // after voting down, the selected up-voting will cancel and count goes down
+  cy.get('[data-testid="up-vote-count"]').contains(0);
+};
+
+// goes to initial stage after down voting glossary or glossary term
+const initialVoting = (api) => {
+  cy.get('[data-testid="down-vote-btn"]').click();
+
+  cy.wait(api).then(({ request, response }) => {
+    expect(request.body.updatedVoteType).to.equal('unVoted');
+
+    expect(response.statusCode).to.equal(200);
+  });
+
+  cy.get('[data-testid="up-vote-count"]').contains(0);
+  cy.get('[data-testid="down-vote-count"]').contains(0);
+};
+
+const voteGlossary = (isGlossary) => {
+  if (isGlossary) {
+    interceptURL('PUT', '/api/v1/glossaries/*/vote', 'voteGlossary');
+  } else {
+    interceptURL('PUT', '/api/v1/glossaryTerms/*/vote', 'voteGlossaryTerm');
+  }
+  upVoting(isGlossary ? '@voteGlossary' : '@voteGlossaryTerm');
+
+  downVoting(isGlossary ? '@voteGlossary' : '@voteGlossaryTerm');
+
+  initialVoting(isGlossary ? '@voteGlossary' : '@voteGlossaryTerm');
+};
+
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.login();
@@ -394,10 +419,10 @@ describe('Glossary page should work properly', () => {
       .and('be.visible')
       .then(($el) => {
         cy.wrap($el)
-          .find('[data-testid="appbar-item-glossary"]')
+          .find('[data-testid="app-bar-item-glossary"]')
           .should('exist')
           .and('be.visible')
-          .click();
+          .click({ force: true });
       });
   });
 
@@ -616,6 +641,8 @@ describe('Glossary page should work properly', () => {
 
     // updating description
     updateDescription('Updated description', true);
+
+    voteGlossary(true);
   });
 
   it('Update glossary term', () => {
@@ -668,6 +695,9 @@ describe('Glossary page should work properly', () => {
 
     // updating description
     updateDescription('Updated description', false);
+
+    // updating voting for glossary term
+    voteGlossary();
   });
 
   it('Assets Tab should work properly', () => {
@@ -786,7 +816,7 @@ describe('Glossary page should work properly', () => {
       .should('contain', term3);
 
     cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="appbar-item-glossary"]').click();
+    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
     cy.get('.ant-menu-item').contains(NEW_GLOSSARY_1.name).click();
 
@@ -859,7 +889,7 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
 
     cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="appbar-item-glossary"]').click();
+    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 

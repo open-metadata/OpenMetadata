@@ -17,6 +17,7 @@ import DashboardDetails from 'components/DashboardDetails/DashboardDetails.compo
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
@@ -29,6 +30,7 @@ import {
   getDashboardByFqn,
   patchDashboardDetails,
   removeFollower,
+  updateDashboardVotes,
 } from 'rest/dashboardAPI';
 import { postThread } from 'rest/feedsAPI';
 import { getVersionPath } from '../../constants/constants';
@@ -281,6 +283,26 @@ const DashboardDetailsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setDashboardDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDashboardVotes(id, data);
+      const details = await getDashboardByFqn(dashboardFQN, defaultFields);
+      setDashboardDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
@@ -314,9 +336,11 @@ const DashboardDetailsPage = () => {
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}
+      handleToggleDelete={handleToggleDelete}
       unFollowDashboardHandler={unFollowDashboard}
       versionHandler={versionHandler}
       onDashboardUpdate={onDashboardUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };

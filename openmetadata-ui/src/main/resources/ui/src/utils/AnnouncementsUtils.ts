@@ -19,6 +19,7 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.TOPIC,
   EntityType.PIPELINE,
   EntityType.MLMODEL,
+  EntityType.SEARCH_INDEX,
 ];
 
 export const isActiveAnnouncement = (startTime: number, endTime: number) => {

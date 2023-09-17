@@ -253,7 +253,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(testCaseResult), 1);
 
-    // Add new date for TableCaseResult
+    // Add new data for TableCaseResult
     TestCaseResult newTestCaseResult =
         new TestCaseResult()
             .withResult("tested")
@@ -300,7 +300,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCaseResultList, 12);
 
-    // create another table and add profiles
+    // create another table and add test results
     TestCase testCase1 = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     List<TestCaseResult> testCase1ResultList = new ArrayList<>();
     dateStr = "2021-10-";
@@ -337,8 +337,111 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotEquals(0, testSummary.getTotal());
     assertEquals(0, testSummary.getAborted());
 
-    TestSummary emptyTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, UUID.randomUUID().toString());
-    assertNull(emptyTestSummary.getFailed());
+    String randomUUID = UUID.randomUUID().toString();
+    assertResponseContains(
+        () -> getTestSummary(ADMIN_AUTH_HEADERS, randomUUID),
+        NOT_FOUND,
+        "testSuite instance for " + randomUUID + " not found");
+
+    // Test that we can get the test summary for a logical test suite and that
+    // adding a logical test suite does not change the total number of tests
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+    TestSuite logicalTestSuite = testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+    List<UUID> testCaseIds = new ArrayList<>();
+    testCaseIds.add(testCase1.getId());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(1, testSummary.getTotal());
+    assertEquals(1, testSummary.getFailed());
+
+    // add a new test case to the logical test suite to validate if the
+    // summary is updated correctly
+    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.add(testCase.getId());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(2, testSummary.getTotal());
+
+    // remove test case from logical test suite and validate
+    // the summary is updated as expected
+    deleteLogicalTestCase(logicalTestSuite, testCase.getId());
+
+    testSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(1, testSummary.getTotal());
+  }
+
+  @Test
+  void test_resultSummaryCascadeToAllSuites(TestInfo test) throws IOException, ParseException {
+    TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    TestCase testCase1 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
+
+    TestCaseResult testCaseResult;
+
+    String dateStr = "2021-10-";
+    for (int i = 11; i <= 15; i++) {
+      testCaseResult =
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+      putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    for (int i = 11; i <= 20; i++) {
+      testCaseResult =
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+      putTestCaseResult(testCase1.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+    TestSuite logicalTestSuite = testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+    List<UUID> testCaseIds = new ArrayList<>();
+    testCaseIds.add(testCase1.getId());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+    // test we get the right summary for the executable test suite
+    TestSummary executableTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
+    assertEquals(2, executableTestSummary.getTotal());
+
+    // test we get the right summary for the logical test suite
+    TestSummary logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(1, logicalTestSummary.getTotal());
+    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.add(testCase.getId());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+    logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(
+        2,
+        logicalTestSummary
+            .getTotal()); // we added a new test case to the logical test suite check if the summary is updated
+
+    deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
+
+    executableTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
+    assertEquals(
+        1,
+        executableTestSummary
+            .getTotal()); // we deleted a test case from the executable test suite check if the summary is updated
+
+    logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(
+        1,
+        logicalTestSummary
+            .getTotal()); // check the deletion of the test case from the executable test suite cascaded to the logical
+    // test suite
+    deleteLogicalTestCase(logicalTestSuite, testCase.getId());
+    logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+    assertEquals(
+        null,
+        logicalTestSummary
+            .getTotal()); // check the deletion of the test case from the logical test suite is reflected in the summary
   }
 
   @Test
@@ -755,11 +858,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId) throws IOException {
-    WebTarget target = getCollection().path("/executionSummary");
-    if (testSuiteId != null) {
-      target = target.queryParam("testSuiteId", testSuiteId);
-    }
-    return TestUtils.get(target, TestSummary.class, authHeaders);
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    return testSuiteResourceTest.getTestSummary(authHeaders, testSuiteId);
   }
 
   public ResultList<TestCase> getTestCases(

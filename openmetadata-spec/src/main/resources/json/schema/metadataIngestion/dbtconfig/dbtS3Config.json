@@ -12,7 +12,21 @@
     },
     "dbtPrefixConfig": {
       "title": "DBT Prefix Config",
-      "$ref": "./dbtBucketDetails.json"
+      "description": "Details of the bucket where the dbt files are stored",
+      "type": "object",
+      "properties": {
+        "dbtBucketName": {
+          "title": "DBT Bucket Name",
+          "description": "Name of the bucket where the dbt files are stored",
+          "type": "string"
+        },
+        "dbtObjectPrefix": {
+          "title": "DBT Object Prefix",
+          "description": "Path of the folder where the dbt files are stored",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

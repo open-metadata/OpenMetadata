@@ -42,7 +42,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     this.dao = dao;
     this.entityType = entityType;
     this.batchSize = batchSize;
-    stats.setTotalRecords(dao.entityExtensionTimeSeriesDao().listCount(entityType));
+    stats.setTotalRecords(dao.reportDataTimeSeriesDao().listCount(entityType));
   }
 
   @Override
@@ -93,9 +93,9 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
     // workaround. Should be fixed in https://github.com/open-metadata/OpenMetadata/issues/12298
     String upperCaseFQN = StringUtils.capitalize(entityFQN);
-    int reportDataCount = dao.entityExtensionTimeSeriesDao().listCount(upperCaseFQN);
+    int reportDataCount = dao.reportDataTimeSeriesDao().listCount(upperCaseFQN);
     List<CollectionDAO.ReportDataRow> reportDataList =
-        dao.entityExtensionTimeSeriesDao()
+        dao.reportDataTimeSeriesDao()
             .getAfterExtension(upperCaseFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     return getAfterExtensionList(reportDataList, after, limit, reportDataCount);
   }

@@ -34,7 +34,8 @@ from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -44,17 +45,17 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_columns
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 KEY_SEPARATOR = "/"
+OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
@@ -130,32 +131,27 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     @abstractmethod
     def yield_create_container_requests(
         self, container_details: Any
-    ) -> Iterable[CreateContainerRequest]:
+    ) -> Iterable[Either[CreateContainerRequest]]:
         """Generate the create container requests based on the received details"""
 
-    def get_status(self) -> SourceStatus:
-        return self.status
-
     def close(self):
-        """
-        By default, nothing needs to be closed
-        """
+        """By default, nothing needs to be closed"""
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
     def prepare(self):
-        """
-        By default, nothing needs to be taken care of when loading the source
-        """
+        """By default, nothing needs to be taken care of when loading the source"""
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=StorageService, config=config
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=StorageService, config=config
+            )
         )
 
     @staticmethod
@@ -175,22 +171,23 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         sample_key: str,
         config_source: ConfigSource,
         client: Any,
+        metadata_entry: MetadataEntry,
     ) -> List[Column]:
-        """
-        Extract Column related metadata from s3
-        """
+        """Extract Column related metadata from s3"""
         data_structure_details = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=sample_key, bucket_name=bucket_name
+                key=sample_key,
+                bucket_name=bucket_name,
+                file_extension=SupportedTypes(metadata_entry.structureFormat),
             ),
         )
         columns = []
         if isinstance(data_structure_details, DataFrame):
-            columns = DatalakeSource.get_columns(data_structure_details)
+            columns = get_columns(data_structure_details)
         if isinstance(data_structure_details, list) and data_structure_details:
-            columns = DatalakeSource.get_columns(data_structure_details[0])
+            columns = get_columns(data_structure_details[0])
         return columns
 
     def _get_columns(
@@ -201,10 +198,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         config_source: ConfigSource,
         client: Any,
     ) -> Optional[List[Column]]:
-        """
-        Get the columns from the file and partition information
-        """
+        """Get the columns from the file and partition information"""
         extracted_cols = self.extract_column_definitions(
-            container_name, sample_key, config_source, client
+            container_name, sample_key, config_source, client, metadata_entry
         )
         return (metadata_entry.partitionColumns or []) + (extracted_cols or [])

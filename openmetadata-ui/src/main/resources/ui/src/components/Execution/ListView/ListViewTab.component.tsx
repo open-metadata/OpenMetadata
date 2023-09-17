@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -22,7 +23,6 @@ import {
   getTableViewData,
   StatusIndicator,
 } from '../../../utils/executionUtils';
-import Loader from '../../Loader/Loader';
 
 interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;
@@ -66,7 +66,10 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
       className="h-full"
       columns={columns}
       dataSource={tableData}
-      loading={{ spinning: loading, indicator: <Loader /> }}
+      loading={loading}
+      locale={{
+        emptyText: <FilterTablePlaceHolder />,
+      }}
       pagination={false}
       rowKey="name"
     />

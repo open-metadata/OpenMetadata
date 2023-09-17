@@ -40,6 +40,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
@@ -188,7 +189,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
+  public void initialize(OpenMetadataApplicationConfig config)
+      throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
+          InstantiationException, IllegalAccessException {
+    super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
@@ -543,7 +547,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
     User user = getUser(securityContext, create);
-    repository.prepareInternal(user);
+    repository.prepareInternal(user, true);
 
     ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
@@ -948,8 +952,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/checkEmailInUse")
   @Operation(
       operationId = "checkEmailInUse",
-      summary = "Check if a mail is already in use",
-      description = "Check if a mail is already in use",
+      summary = "Check if a email is already in use",
+      description = "Check if a email is already in use",
       responses = {
         @ApiResponse(
             responseCode = "200",

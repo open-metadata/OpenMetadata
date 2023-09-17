@@ -31,6 +31,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Container;
@@ -379,6 +380,27 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -427,6 +449,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .withNumberOfObjects(create.getNumberOfObjects())
         .withSize(create.getSize())
         .withFileFormats(create.getFileFormats())
+        .withSourceUrl(create.getSourceUrl())
         .withTags(create.getTags());
   }
 }

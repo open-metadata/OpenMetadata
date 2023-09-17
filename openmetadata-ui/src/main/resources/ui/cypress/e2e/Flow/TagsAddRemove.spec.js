@@ -30,6 +30,29 @@ const addTags = (tag) => {
   cy.get(`.ant-select-dropdown [data-testid='tag-${tag}']`).click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 };
+const verifyTagFilter = ({ entity, tag }) => {
+  if (entity !== 'mlmodels') {
+    let columnLength = 0;
+    cy.get('.ant-table-tbody')
+      .find('tr')
+      .then(($tr) => {
+        columnLength = $tr.length;
+      });
+    cy.get('[data-testid="tag-filter"]').scrollIntoView().click();
+    cy.get(`[data-menu-id*="${tag}"]`).click();
+    // need to add manual wait as we are not making any api call for filter.
+    cy.wait(500);
+    cy.get('.ant-table-tbody')
+      .find('tr')
+      .then(($tr) => {
+        expect(columnLength).gte($tr.length);
+      });
+    cy.get('[data-testid="tag-filter"]').scrollIntoView().click();
+    cy.get(`[data-menu-id*="${tag}"]`).click();
+    // need to add manual wait as we are not making any api call for filter.
+    cy.wait(500);
+  }
+};
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
@@ -84,8 +107,10 @@ describe('Check if tags addition and removal flow working properly from tables',
     cy.login();
   });
 
-  TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) =>
-    it(`Adding and removing tags to the ${entityDetails.entity} entity should work properly`, () => {
+  TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) => {
+    it(`Adding & removing tags to the ${entityDetails.entity} entity`, () => {
+      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
+
       interceptURL(
         'GET',
         `/api/v1/${entityDetails.entity}/name/*?fields=*`,
@@ -103,6 +128,7 @@ describe('Check if tags addition and removal flow working properly from tables',
         entityDetails.entity
       );
       verifyResponseStatusCode('@getEntityDetail', 200);
+      verifyResponseStatusCode('@getEntityPermission', 200);
 
       cy.get(
         '[data-testid="entity-right-panel"] [data-testid="tags-container"]'
@@ -127,6 +153,44 @@ describe('Check if tags addition and removal flow working properly from tables',
       checkTags(entityDetails.tags[0], true);
 
       removeTags(true);
+    });
+
+    it(`Adding & removing tags to the ${entityDetails.entity} entity schema table`, () => {
+      interceptURL(
+        'GET',
+        `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+        'getEntityDetail'
+      );
+      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
+      interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
+      interceptURL(
+        'PATCH',
+        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+        'tagsChange'
+      );
+      if (entityDetails.insideEntity) {
+        interceptURL(
+          'GET',
+          `/api/v1/${entityDetails.insideEntity}/*`,
+          'getInsideColumn'
+        );
+        interceptURL(
+          'GET',
+          `/api/v1/permissions/chart/*`,
+          'getInsideColumnPermission'
+        );
+      }
+      visitEntityDetailsPage(
+        entityDetails.term,
+        entityDetails.serviceName,
+        entityDetails.entity
+      );
+      verifyResponseStatusCode('@getEntityDetail', 200);
+      verifyResponseStatusCode('@getEntityPermission', 200);
+      if (entityDetails.insideEntity) {
+        verifyResponseStatusCode('@getInsideColumn', 200);
+        verifyResponseStatusCode('@getInsideColumnPermission', 200);
+      }
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
@@ -140,6 +204,9 @@ describe('Check if tags addition and removal flow working properly from tables',
           ).click();
         });
       } else {
+        if (entityDetails.entity === 'topics') {
+          cy.get('[id*=panel-schema]').contains('Collapse All').click();
+        }
         cy.get(
           '.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"]'
         ).then(($container) => {
@@ -163,8 +230,11 @@ describe('Check if tags addition and removal flow working properly from tables',
       verifyResponseStatusCode('@tagsChange', 200);
 
       entityDetails.tags.map((tag) => checkTags(tag));
-
+      verifyTagFilter({
+        entity: entityDetails.entity,
+        tag: entityDetails.tags[0],
+      });
       removeTags(false, entityDetails.separate);
-    })
-  );
+    });
+  });
 });

@@ -38,9 +38,12 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.lifeCycle import Accessed, Created, Deleted, Updated
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.bulk_sink import BulkSink
+from metadata.ingestion.api.models import StackTraceError
+from metadata.ingestion.api.steps import BulkSink
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_table_entities_from_query,
@@ -49,7 +52,12 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
+from metadata.utils.life_cycle_utils import (
+    get_query_type,
+    init_empty_life_cycle_properties,
+)
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp
 
 logger = ingestion_logger()
 
@@ -118,9 +126,9 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
-                    date=datetime.fromtimestamp(int(value_dict["usage_date"])).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    date=datetime.fromtimestamp(
+                        convert_timestamp(value_dict["usage_date"])
+                    ).strftime("%Y-%m-%d"),
                     count=value_dict["usage_count"],
                 )
                 self.metadata.publish_table_usage(
@@ -129,7 +137,7 @@ class MetadataUsageBulkSink(BulkSink):
                 logger.info(
                     f"Successfully table usage published for {value_dict['table_entity'].fullyQualifiedName.__root__}"
                 )
-                self.status.records_written(
+                self.status.scanned(
                     f"Table: {value_dict['table_entity'].fullyQualifiedName.__root__}"
                 )
             except ValidationError as err:
@@ -142,7 +150,13 @@ class MetadataUsageBulkSink(BulkSink):
                 error = f"Failed to update usage for {name} :{exc}"
                 logger.debug(traceback.format_exc())
                 logger.warning(error)
-                self.status.failed(name, error, traceback.format_exc())
+                self.status.failed(
+                    StackTraceError(
+                        name=value_dict["table_entity"].fullyQualifiedName.__root__,
+                        error=f"Failed to update usage for {name} :{exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def iterate_files(self):
         """
@@ -158,7 +172,7 @@ class MetadataUsageBulkSink(BulkSink):
                     yield file
 
     # Check here how to properly pick up ES and/or table query data
-    def write_records(self) -> None:
+    def run(self) -> None:
         for file_handler in self.iterate_files():
             self.table_usage_map = {}
             for usage_record in file_handler.readlines():
@@ -222,11 +236,20 @@ class MetadataUsageBulkSink(BulkSink):
                         self.metadata.ingest_entity_queries_data(
                             entity=table_entity, queries=table_usage.sqlQueries
                         )
+                        self._get_table_life_cycle_data(
+                            table_entity=table_entity, table_usage=table_usage
+                        )
                 except APIError as err:
                     error = f"Failed to update query join for {table_usage}: {err}"
                     logger.debug(traceback.format_exc())
                     logger.warning(error)
-                    self.status.failed(table_usage.table, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=table_usage.table,
+                            error=error,
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
                 except Exception as exc:
                     name = table_entity.name.__root__
                     error = (
@@ -234,13 +257,19 @@ class MetadataUsageBulkSink(BulkSink):
                     )
                     logger.debug(traceback.format_exc())
                     logger.warning(error)
-                    self.status.failed(name, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=name, error=error, stack_trace=traceback.format_exc()
+                        )
+                    )
             else:
                 logger.warning(
                     "Could not fetch table"
                     f" {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
                 )
-                self.status.warning(f"Table: {table_usage.table}")
+                self.status.warning(
+                    f"Table: {table_usage.table}", reason="Could not fetch table"
+                )
 
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount
@@ -312,6 +341,73 @@ class MetadataUsageBulkSink(BulkSink):
 
         for table_entity in table_entities:
             return get_column_fqn(table_entity=table_entity, column=table_column.column)
+
+    def _get_table_life_cycle_data(
+        self, table_entity: Table, table_usage: TableUsageCount
+    ):
+        """
+        Method to call the lifeCycle API to store the data.
+        We iterate over all the queries of a table entity and pick the life cycle
+        data according to the query.
+        The life cycle data will only be added if the current lifecycle datetime is less the datetime of
+        the query being processed.
+        """
+        try:
+            life_cycle = init_empty_life_cycle_properties()
+
+            for create_query in table_usage.sqlQueries:
+                user = None
+                if create_query.users:
+                    user = self.metadata.get_entity_reference(
+                        entity=User, fqn=create_query.users[0]
+                    )
+                elif create_query.usedBy:
+                    user = create_query.usedBy[0]
+                query_type = get_query_type(create_query=create_query)
+                if query_type == Created and (
+                    not life_cycle.created
+                    or life_cycle.created.created_at.__root__
+                    < create_query.queryDate.__root__
+                ):
+                    life_cycle.created = Created(
+                        created_at=create_query.queryDate.__root__, created_by=user
+                    )
+                elif query_type == Updated and (
+                    not life_cycle.updated
+                    or life_cycle.updated.updated_at.__root__
+                    < create_query.queryDate.__root__
+                ):
+                    life_cycle.updated = Updated(
+                        updated_at=create_query.queryDate.__root__, updated_by=user
+                    )
+                elif query_type == Deleted and (
+                    not life_cycle.deleted
+                    or life_cycle.deleted.deleted_at.__root__
+                    < create_query.queryDate.__root__
+                ):
+                    life_cycle.deleted = Deleted(
+                        deleted_at=create_query.queryDate.__root__, deleted_by=user
+                    )
+                elif query_type == Accessed and (
+                    not life_cycle.accessed
+                    or life_cycle.accessed.accessed_at.__root__
+                    < create_query.queryDate.__root__
+                ):
+                    life_cycle.accessed = Accessed(
+                        accessed_at=create_query.queryDate.__root__, accessed_by=user
+                    )
+            self.metadata.ingest_life_cycle_data(
+                entity=table_entity, life_cycle_data=life_cycle
+            )
+        except Exception as err:
+            error = f"Unable to get life cycle data for table {table_entity.fullyQualifiedName}: {err}"
+            self.status.failed(
+                StackTraceError(
+                    name=table_usage.table,
+                    error=error,
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         if Path(self.config.filename).exists():

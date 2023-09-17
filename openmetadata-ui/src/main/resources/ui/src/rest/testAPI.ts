@@ -149,7 +149,7 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
 
 export const getTestCaseExecutionSummary = async (testSuiteId?: string) => {
   const response = await APIClient.get<TestSummary>(
-    `${testCaseUrl}/executionSummary`,
+    `${testSuiteUrl}/executionSummary`,
     { params: { testSuiteId } }
   );
 
@@ -273,14 +273,23 @@ export const restoreTestSuite = async (id: string) => {
 
 // Test Result
 
-export const putTestCaseResult = async (
-  testCaseFqn: string,
-  data: TestCaseResult
-) => {
-  const response = await APIClient.put<
-    TestCaseResult,
-    AxiosResponse<TestSuite>
-  >(`${testCaseUrl}/${testCaseFqn}/testCaseResult`, data);
+export const patchTestCaseResult = async ({
+  testCaseFqn,
+  timestamp,
+  patch,
+}: {
+  testCaseFqn: string;
+  timestamp: number;
+  patch: Operation[];
+}) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+  const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
+    `${testCaseUrl}/${testCaseFqn}/testCaseResult/${timestamp}`,
+    patch,
+    configOptions
+  );
 
   return response.data;
 };

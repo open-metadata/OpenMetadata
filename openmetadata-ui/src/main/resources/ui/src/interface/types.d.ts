@@ -13,6 +13,7 @@
 
 declare module 'Models' {
   import { EntityType } from 'enums/entity.enum';
+  import { CreateSearchService } from 'generated/api/services/createSearchService';
   import { SearchEntityHits } from 'utils/APIUtils';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
@@ -35,7 +36,8 @@ declare module 'Models' {
     | CreateDashboardService
     | CreateDatabaseService
     | CreateMessagingService
-    | CreateStorageService;
+    | CreateStorageService
+    | CreateSearchService;
 
   export type EntityTags = {
     isRemovable?: boolean;
@@ -142,7 +144,8 @@ declare module 'Models' {
     | 'pipelineServices'
     | 'mlmodelServices'
     | 'metadataServices'
-    | 'storageServices';
+    | 'storageServices'
+    | 'searchServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -257,4 +260,16 @@ declare module 'Models' {
     | Topic
     | Mlmodel
     | Container;
+
+  export type TagFilterOptions = {
+    text: string;
+    value: string;
+    source: TagSource;
+  };
+
+  export type TagsData = {
+    tags?: TagLabel[];
+    fullyQualifiedName?: string;
+    children?: TagsData[];
+  };
 }

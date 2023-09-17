@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchOutlined } from '@ant-design/icons';
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
@@ -42,6 +43,7 @@ import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg
 import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
 import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {
@@ -101,19 +103,13 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.role-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.ROLE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.roles',
           icon: <RolesIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.policy-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.POLICY,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.policies',
           icon: <PoliciesIcon className="side-panel-icons" />,
         },
@@ -186,6 +182,15 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'services.storages',
           icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
         },
+        {
+          label: i18next.t('label.search'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.SEARCH_SERVICE,
+            permissions
+          ),
+          key: 'services.search',
+          icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+        },
       ],
     },
     {
@@ -251,6 +256,18 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.containers',
           icon: <StorageIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.search-index'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.searchIndex',
+          icon: <SearchOutlined className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.stored-procedure-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.storedProcedure',
+          icon: <StoredProcedureIcon className="side-panel-icons" />,
         },
       ],
     },

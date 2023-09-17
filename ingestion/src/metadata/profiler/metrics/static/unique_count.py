@@ -14,14 +14,12 @@ Unique Count Metric definition
 """
 from typing import Optional
 
-from sqlalchemy import NVARCHAR, TEXT, column, func, literal_column
+from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.profiler.metrics.core import QueryMetric
-from metadata.profiler.orm.converter.mssql.converter import cast_dict
-from metadata.profiler.orm.functions.count import CountFn
+from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
 from metadata.profiler.orm.registry import NOT_COMPUTE
-from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -58,28 +56,10 @@ class UniqueCount(QueryMetric):
 
         # Run all queries on top of the sampled data
         col = column(self.col.name, self.col.type)
-
-        is_mssql = (
-            hasattr(session.bind, "dialect") and session.bind.dialect.name == "mssql"
+        unique_count_query = _unique_count_query_mapper[session.bind.dialect.name](
+            col, session, sample
         )
-        is_mssql_deprecated_datatype = isinstance(
-            self.col.type, (CustomImage, TEXT, NVARCHAR)
-        )
-
-        count_fn = CountFn(col) if is_mssql and is_mssql_deprecated_datatype else col
-        group_by_col = (
-            func.convert(literal_column(cast_dict.get(type(self.col.type))), col)
-            if is_mssql and is_mssql_deprecated_datatype
-            else col
-        )
-
-        only_once = (
-            session.query(func.count(count_fn))
-            .select_from(sample)
-            .group_by(group_by_col)
-            .having(func.count(count_fn) == 1)
-        )
-        only_once_cte = only_once.cte("only_once")
+        only_once_cte = unique_count_query.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
 
     def df_fn(self, dfs=None):
@@ -91,7 +71,8 @@ class UniqueCount(QueryMetric):
         try:
             counter = Counter()
             for df in dfs:
-                counter.update(df[self.col.name].dropna().to_list())
+                df_col_value = df[self.col.name].dropna().to_list()
+                counter.update(df_col_value)
             return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(

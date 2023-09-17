@@ -12,7 +12,7 @@
 Helper functions to handle SQL lineage operations
 """
 import traceback
-from typing import Any, Iterable, Iterator, List, Optional
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -21,7 +21,9 @@ from metadata.generated.schema.type.entityLineage import (
     EntitiesEdge,
     LineageDetails,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -222,7 +224,8 @@ def _build_table_lineage(
     to_table_raw_name: str,
     query: str,
     column_lineage_map: dict,
-) -> Optional[Iterator[AddLineageRequest]]:
+    lineage_source: LineageSource = LineageSource.QueryLineage,
+) -> Iterable[Either[AddLineageRequest]]:
     """
     Prepare the lineage request generator
     """
@@ -233,7 +236,7 @@ def _build_table_lineage(
         from_table_raw_name=str(from_table_raw_name),
         column_lineage_map=column_lineage_map,
     )
-    lineage_details = LineageDetails(sqlQuery=query)
+    lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
     if col_lineage:
         lineage_details.columnsLineage = col_lineage
     if from_entity and to_entity:
@@ -251,7 +254,7 @@ def _build_table_lineage(
         )
         if lineage_details:
             lineage.edge.lineageDetails = lineage_details
-        yield lineage
+        yield Either(right=lineage)
 
 
 # pylint: disable=too-many-arguments
@@ -264,7 +267,8 @@ def _create_lineage_by_table_name(
     schema_name: Optional[str],
     query: str,
     column_lineage_map: dict,
-) -> Optional[Iterable[AddLineageRequest]]:
+    lineage_source: LineageSource = LineageSource.QueryLineage,
+) -> Iterable[Either[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
     """
@@ -295,12 +299,16 @@ def _create_lineage_by_table_name(
                     from_table_raw_name=from_table,
                     query=query,
                     column_lineage_map=column_lineage_map,
+                    lineage_source=lineage_source,
                 )
 
     except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.error(
-            f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}"
+        yield Either(
+            left=StackTraceError(
+                name="Lineage",
+                error=f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}",
+                stack_trace=traceback.format_exc(),
+            )
         )
 
 
@@ -343,7 +351,8 @@ def get_lineage_by_query(
     query: str,
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
-) -> Optional[Iterator[AddLineageRequest]]:
+    lineage_source: LineageSource = LineageSource.QueryLineage,
+) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
@@ -368,6 +377,7 @@ def get_lineage_by_query(
                     schema_name=schema_name,
                     query=query,
                     column_lineage_map=column_lineage,
+                    lineage_source=lineage_source,
                 )
             for target_table in lineage_parser.target_tables:
                 yield from _create_lineage_by_table_name(
@@ -379,6 +389,7 @@ def get_lineage_by_query(
                     schema_name=schema_name,
                     query=query,
                     column_lineage_map=column_lineage,
+                    lineage_source=lineage_source,
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
@@ -392,10 +403,16 @@ def get_lineage_by_query(
                         schema_name=schema_name,
                         query=query,
                         column_lineage_map=column_lineage,
+                        lineage_source=lineage_source,
                     )
     except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.error(f"Ingesting lineage failed for service [{service_name}]: {exc}")
+        yield Either(
+            left=StackTraceError(
+                name="Lineage",
+                error=f"Ingesting lineage failed for service [{service_name}]: {exc}",
+                stack_trace=traceback.format_exc(),
+            )
+        )
 
 
 def get_lineage_via_table_entity(
@@ -407,24 +424,9 @@ def get_lineage_via_table_entity(
     query: str,
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
-) -> Optional[Iterator[AddLineageRequest]]:
-    """Get lineage from table entity
-
-    Args:
-        metadata (OpenMetadata): OM Server client Object
-        table_entity (Table): table entity
-        database_name (str): name of the database
-        schema_name (str): name of the schema
-        service_name (str): name of the service
-        query (str): query used for lineage
-        dialect (str): dialect used for lineage
-
-    Returns:
-        Optional[Iterator[AddLineageRequest]]
-
-    Yields:
-        Iterator[Optional[Iterator[AddLineageRequest]]]
-    """
+    lineage_source: LineageSource = LineageSource.QueryLineage,
+) -> Iterable[Either[AddLineageRequest]]:
+    """Get lineage from table entity"""
     column_lineage = {}
 
     try:
@@ -442,9 +444,13 @@ def get_lineage_via_table_entity(
                 schema_name=schema_name,
                 query=query,
                 column_lineage_map=column_lineage,
+                lineage_source=lineage_source,
             ) or []
     except Exception as exc:  # pylint: disable=broad-except
-        logger.debug(traceback.format_exc())
-        logger.error(
-            f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]: {exc}"
+        Either(
+            left=StackTraceError(
+                name="Lineage",
+                error=f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]: {exc}",
+                stack_trace=traceback.format_exc(),
+            )
         )

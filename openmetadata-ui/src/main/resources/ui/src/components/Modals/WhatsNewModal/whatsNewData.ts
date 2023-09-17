@@ -18,9 +18,9 @@ import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
 import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 
-export const LATEST_VERSION_ID = 17;
+export const LATEST_VERSION_ID = 18;
 
-export const COOKIE_VERSION = 'VERSION_1_1_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_1_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -961,6 +961,33 @@ export const WHATS_NEW = [
       Backend: `- Bumped table and column names length
 - Aggregation Improvements for Search
 - Test Suite Improvements
+      `,
+    },
+  },
+  {
+    id: 18,
+    version: 'v1.1.2',
+    description: 'Released on 22nd Aug 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- Added Russian language support.
+- Supports Delete functionality for sample data.
+- Improved Schema page UX.
+- Table mentions now show Service, Schema and Database information.
+- Fixed the version history list.
+`,
+      'Data Quality': `- Added support for Postgres version 11.19.
+- Fixed MariaDB time column issues.`,
+      Ingestion: `- Improved performance when ingesting table constraints.`,
+      Connectors: `- Added JWT authentication support for Trino
+- Fixed Snowflake connection test.
+- Fixed SageMaker ingestion.
+- Added external table support for BigQuery.`,
+      Backend: `- Improved Glossary import validations.
+- Fixed Test Suite migrations and naming.
+- Fixed Classification migration.
+- Deprecated Flyway and using native migrations.
+- Improved Test Suite UI performance.
       `,
     },
   },

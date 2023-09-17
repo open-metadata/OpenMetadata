@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -84,12 +83,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void prepare(IngestionPipeline ingestionPipeline) {
+  public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
   }
 
-  @Transaction
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityById(ingestionPipelineId);
@@ -168,7 +166,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return change;
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> addPipelineStatus(UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityByName(fqn);

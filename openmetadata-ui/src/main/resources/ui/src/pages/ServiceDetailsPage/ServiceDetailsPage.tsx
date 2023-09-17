@@ -26,6 +26,7 @@ import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import TestConnection from 'components/common/TestConnection/TestConnection';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -47,12 +48,15 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { compare, Operation } from 'fast-json-patch';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardConnection } from 'generated/entity/services/dashboardService';
 import { DatabaseService } from 'generated/entity/services/databaseService';
@@ -63,7 +67,7 @@ import { LabelType, State } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from 'interface/service.interface';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import {
   PagingWithoutTotal,
   ServicesUpdateRequest,
@@ -94,14 +98,17 @@ import {
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
+import { getSearchIndexes } from 'rest/SearchIndexAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getEditConnectionPath } from 'utils/RouterUtils';
+import {
+  getEditConnectionPath,
+  getServiceVersionPath,
+} from 'utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -120,7 +127,9 @@ export type ServicePageData =
   | Mlmodel
   | Pipeline
   | Container
-  | DashboardDataModel;
+  | DashboardDataModel
+  | SearchIndex
+  | StoredProcedure;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -184,6 +193,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
+  const { version: currentVersion } = useMemo(
+    () => serviceDetails,
+    [serviceDetails]
+  );
+
   const fetchServicePermission = async () => {
     setIsLoading(true);
     try {
@@ -239,11 +253,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: string) => {
       try {
         setIsIngestionPipelineLoading(true);
-        const response = await getIngestionPipelines(
-          ['owner', 'pipelineStatuses'],
-          getDecodedFqn(serviceFQN),
-          paging
-        );
+        const response = await getIngestionPipelines({
+          arrQueryFields: ['owner', 'pipelineStatuses'],
+          serviceFilter: getDecodedFqn(serviceFQN),
+          paging,
+          pipelineType: [
+            PipelineType.Metadata,
+            PipelineType.Usage,
+            PipelineType.Lineage,
+            PipelineType.Profiler,
+            PipelineType.Dbt,
+          ],
+        });
 
         if (response.data) {
           setIngestionPipelines(response.data);
@@ -490,6 +511,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceFQN, include]
   );
 
+  const fetchSearchIndexes = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getSearchIndexes({
+        service: getDecodedFqn(serviceFQN),
+        fields: 'owner,tags',
+        paging,
+        root: true,
+        include,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [serviceFQN, include]
+  );
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal, isDataModel?: boolean) => {
       try {
@@ -529,6 +566,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
             break;
           }
+          case ServiceCategory.SEARCH_SERVICES: {
+            await fetchSearchIndexes(paging);
+
+            break;
+          }
           default:
             break;
         }
@@ -548,6 +590,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchPipeLines,
       fetchMlModal,
       fetchContainers,
+      fetchSearchIndexes,
     ]
   );
 
@@ -557,7 +600,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const response = await getServiceByFQN(
         serviceCategory,
         serviceFQN,
-        'owner,tags'
+        'owner,tags,domain'
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
@@ -715,19 +758,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const dataModelPagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails(
-        {
-          [cursorType]:
-            dataModelPaging[cursorType as keyof typeof dataModelPaging],
-        },
-        true
-      );
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails(
+          {
+            [cursorType]: dataModelPaging[cursorType],
+          },
+          true
+        );
 
-      setDataModelCurrentPage(activePage ?? 1);
+        setDataModelCurrentPage(currentPage);
+      }
     },
     [getOtherDetails, dataModelPaging]
   );
+
+  const afterDeleteAction = useCallback(() => history.push('/'), []);
 
   const dataModalTab = useMemo(
     () => (
@@ -903,11 +949,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const pagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails({
-        [cursorType]: paging[cursorType as keyof typeof paging],
-      });
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails({
+          [cursorType]: paging[cursorType],
+        });
+        setCurrentPage(currentPage);
+      }
     },
     [paging, getOtherDetails]
   );
@@ -1010,6 +1058,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
     activeTab,
   ]);
 
+  const versionHandler = () => {
+    currentVersion &&
+      history.push(
+        getServiceVersionPath(
+          serviceCategory,
+          serviceFQN,
+          toString(currentVersion)
+        )
+      );
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1020,7 +1079,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
       })}>
@@ -1033,7 +1091,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <Col className="p-x-lg" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              afterDeleteAction={afterDeleteAction}
               allowSoftDelete={false}
               dataAsset={serviceDetails}
               entityType={entityType}
@@ -1042,6 +1100,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={() => Promise.resolve()}
               onTierUpdate={handleUpdateTier}
+              onVersionClick={versionHandler}
             />
           </Col>
 

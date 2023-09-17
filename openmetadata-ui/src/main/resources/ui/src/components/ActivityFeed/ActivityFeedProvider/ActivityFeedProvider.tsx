@@ -137,7 +137,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setLoading(false);
       }
     },
-    []
+    [currentUser, user]
   );
 
   // Here value is the post message and id can be thread id or post id.

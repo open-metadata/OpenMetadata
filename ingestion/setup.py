@@ -93,7 +93,7 @@ base_requirements = {
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
-    "importlib-metadata~=4.13.0",  # From airflow constraints
+    "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
@@ -108,7 +108,7 @@ base_requirements = {
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
-    "openmetadata-sqllineage>=1.0.4",
+    "collate-sqllineage>=1.0.4",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
@@ -174,7 +174,8 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        "elasticsearch==7.13.1"
+        "elasticsearch==7.13.1",
+        "elasticsearch8~=8.9.0",
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -198,6 +199,7 @@ plugins: Dict[str, Set[str]] = {
     "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
     "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
     "mongo": {"pymongo~=4.3", VERSIONS["pandas"]},
+    "couchbase": {"couchbase~=4.1"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},

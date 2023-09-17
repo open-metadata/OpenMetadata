@@ -24,7 +24,8 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -64,7 +65,6 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DbtFiles,
                 processor="validate_dbt_files",
-                ack_sink=False,
                 nullable=True,
             )
         ],
@@ -81,14 +81,12 @@ class DbtServiceTopology(ServiceTopology):
                 type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_dbt_tags",
-                ack_sink=False,
                 nullable=True,
                 cache_all=True,
             ),
             NodeStage(
                 type_=DataModelLink,
                 processor="yield_data_models",
-                ack_sink=False,
                 nullable=True,
             ),
         ],
@@ -99,17 +97,14 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=AddLineageRequest,
                 processor="create_dbt_lineage",
-                ack_sink=False,
             ),
             NodeStage(
                 type_=AddLineageRequest,
                 processor="create_dbt_query_lineage",
-                ack_sink=False,
             ),
             NodeStage(
                 type_=DataModelLink,
                 processor="process_dbt_descriptions",
-                ack_sink=False,
                 nullable=True,
             ),
         ],
@@ -120,17 +115,14 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=CreateTestDefinitionRequest,
                 processor="create_dbt_tests_definition",
-                ack_sink=False,
             ),
             NodeStage(
                 type_=CreateTestCaseRequest,
                 processor="create_dbt_test_case",
-                ack_sink=False,
             ),
             NodeStage(
                 type_=TestCaseResult,
                 processor="add_dbt_test_result",
-                ack_sink=False,
                 nullable=True,
             ),
         ],
@@ -201,9 +193,9 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     @abstractmethod
     def yield_dbt_tags(
         self, dbt_objects: DbtObjects
-    ) -> Iterable[OMetaTagAndClassification]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
-        Create and yeild tags from DBT
+        Create and yield tags from DBT
         """
 
     @abstractmethod

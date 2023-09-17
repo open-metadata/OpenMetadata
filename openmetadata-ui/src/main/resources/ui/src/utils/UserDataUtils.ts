@@ -36,7 +36,7 @@ import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
 export const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers(arrQueryFields, 1)
+  getUsers({ fields: arrQueryFields, limit: 1 })
     .then((res) => {
       AppState.updateUsers(res.data);
     })
