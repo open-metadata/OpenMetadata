@@ -40,7 +40,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import StoredProcedureTab from 'pages/StoredProcedure/StoredProcedureTab';
@@ -67,11 +67,11 @@ import {
 } from 'rest/storedProceduresAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
-import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
 import {
   getDatabaseSchemaDetailsPath,
+  getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../constants/constants';
@@ -495,9 +495,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getDatabaseSchemaVersionPath(
+        getVersionPathWithTab(
+          EntityType.DATABASE_SCHEMA,
           databaseSchemaFQN,
-          toString(currentVersion)
+          String(currentVersion),
+          EntityTabs.TABLE
         )
       );
   }, [currentVersion, databaseSchemaFQN]);

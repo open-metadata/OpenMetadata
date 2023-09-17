@@ -331,7 +331,7 @@ function DatabaseSchemaVersionPage() {
                 <Tabs
                   className="entity-details-page-tabs"
                   data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                  defaultActiveKey={tab ?? EntityTabs.TABLE}
                   items={tabs}
                   onChange={handleTabChange}
                 />
