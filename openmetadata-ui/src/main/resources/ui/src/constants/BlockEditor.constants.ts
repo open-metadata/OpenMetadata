@@ -19,6 +19,7 @@ import StarterKit from '@tiptap/starter-kit';
 import DiffView from 'components/BlockEditor/Extensions/diffView';
 import { Hashtag } from 'components/BlockEditor/Extensions/hashtag';
 import { hashtagSuggestion } from 'components/BlockEditor/Extensions/hashtag/hashtagSuggestion';
+import { Image } from 'components/BlockEditor/Extensions/image';
 import { Mention } from 'components/BlockEditor/Extensions/mention';
 import { mentionSuggestion } from 'components/BlockEditor/Extensions/mention/mentionSuggestions';
 import slashCommand from 'components/BlockEditor/Extensions/slashCommand';
@@ -100,6 +101,10 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
       suggestion: hashtagSuggestion(),
     }),
     DiffView,
+    Image.configure({
+      allowBase64: true,
+      inline: true,
+    }),
   ],
 
   enableInputRules: [

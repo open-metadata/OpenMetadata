@@ -23,6 +23,7 @@ import {
 } from 'utils/FeedUtils';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
+import ImageModal, { ImageData } from './ImageModal/ImageModal';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 
@@ -40,6 +41,7 @@ const BlockEditor: FC<BlockEditorProps> = ({
   onChange,
 }) => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
 
   const editor = useEditor({
     ...EDITOR_OPTIONS,
@@ -56,6 +58,9 @@ const BlockEditor: FC<BlockEditorProps> = ({
 
   const handleLinkToggle = () => {
     setIsLinkModalOpen((prev) => !prev);
+  };
+  const handleImageToggle = () => {
+    setIsImageModalOpen((prev) => !prev);
   };
 
   const handleLinkCancel = () => {
@@ -151,6 +156,16 @@ const BlockEditor: FC<BlockEditorProps> = ({
     }
   };
 
+  const handleAddImage = (values: ImageData) => {
+    if (isNil(editor)) {
+      return;
+    }
+
+    editor.chain().focus().setImage({ src: values.src }).run();
+
+    handleImageToggle();
+  };
+
   const menus = !isNil(editor) && (
     <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
   );
@@ -195,6 +210,13 @@ const BlockEditor: FC<BlockEditorProps> = ({
               editor?.getAttributes('link').href ? 'edit' : 'add'
             )
           }
+        />
+      )}
+      {isImageModalOpen && (
+        <ImageModal
+          isOpen={isImageModalOpen}
+          onCancel={handleImageToggle}
+          onSave={handleAddImage}
         />
       )}
       <div className="block-editor-wrapper">
