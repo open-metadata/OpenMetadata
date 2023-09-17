@@ -34,8 +34,8 @@ public class JdbiTransactionManager {
   public void begin(boolean autoCommit) {
     try {
       Handle handle = handleManager.get();
-      if (autoCommit) {
-        handle.getConnection().setAutoCommit(autoCommit);
+      if (!autoCommit) {
+        handle.getConnection().setAutoCommit(false);
         handle.getConfig(Handles.class).setForceEndTransactions(false);
         handle.begin();
         IN_TRANSACTION_HANDLES.add(handle.hashCode());
