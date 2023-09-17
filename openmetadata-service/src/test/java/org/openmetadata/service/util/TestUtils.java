@@ -673,7 +673,7 @@ public final class TestUtils {
   }
 
   public static void assertStyle(Style expected, Style actual) {
-	if (expected == null) return;
+    if (expected == null) return;
     assertEquals(expected.getIconURL(), actual.getIconURL());
     assertEquals(expected.getColor(), actual.getColor());
   }
