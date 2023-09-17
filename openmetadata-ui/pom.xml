@@ -80,7 +80,7 @@
     <resources>
       <resource>
         <directory>src/main/resources/ui</directory>
-        <targetPath>${build.outputDirectory}/openmetadata-ui/</targetPath>
+        <targetPath>${project.build.outputDirectory}/openmetadata-ui/</targetPath>
         <excludes>
           <exclude>dist/**</exclude>
           <exclude>node_modules/**</exclude>
@@ -89,6 +89,7 @@
         </excludes>
         <includes>
           <include>**</include>
+          <include>generated/**</include>
         </includes>
       </resource>
       <resource>
