@@ -411,6 +411,8 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
+        .withName(term.getName())
+        .withDisplayName(term.getDisplayName())
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
@@ -418,6 +420,8 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
+        .withName(tag.getName())
+        .withDisplayName(tag.getDisplayName())
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
         .withSource(TagSource.CLASSIFICATION);

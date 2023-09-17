@@ -483,6 +483,8 @@ public final class TestUtils {
           derived.add(
               new TagLabel()
                   .withTagFQN(tag.getTagFQN())
+                  .withName(tag.getName())
+                  .withDisplayName(tag.getDisplayName())
                   .withState(expected.getState())
                   .withDescription(associatedTag.getDescription())
                   .withLabelType(TagLabel.LabelType.DERIVED));
@@ -490,10 +492,7 @@ public final class TestUtils {
         EntityUtil.mergeTags(updatedExpectedList, derived);
       }
     }
-    updatedExpectedList.sort(EntityUtil.compareTagLabel);
-    actualList.sort(EntityUtil.compareTagLabel);
-    assertEquals(updatedExpectedList.size(), actualList.size());
-    assertEquals(updatedExpectedList, actualList);
+    assertTrue(compareListsIgnoringOrder(updatedExpectedList, actualList));
   }
 
   public static void validateTagLabel(TagLabel label) {
@@ -502,8 +501,6 @@ public final class TestUtils {
     assertNotNull(label.getLabelType(), label.getTagFQN());
     assertNotNull(label.getSource(), label.getTagFQN());
     assertNotNull(label.getState(), label.getTagFQN());
-    // TODO
-    // assertNotNull(label.getHref());
   }
 
   public static void checkUserFollowing(
@@ -660,5 +657,17 @@ public final class TestUtils {
       LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
     }
     return null;
+  }
+
+  public static <T> boolean compareListsIgnoringOrder(List<T> expected, List<T> actual) {
+    int exists = 0;
+    if (expected == null || actual == null) return false;
+    if (expected.size() != actual.size()) return false;
+
+    for (T o : expected) {
+      if (actual.contains(o)) exists++;
+    }
+
+    return actual.size() == exists;
   }
 }
