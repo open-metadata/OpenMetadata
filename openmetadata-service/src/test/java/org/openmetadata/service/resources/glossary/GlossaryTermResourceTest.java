@@ -86,7 +86,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
-  private final GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+  private final GlossaryResourceTest glossaryTest = new GlossaryResourceTest();
 
   public GlossaryTermResourceTest() {
     super(
@@ -189,8 +189,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a glossary term, carry it forward from the glossary
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
-    Glossary glossary = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    CreateGlossary createGlossary = glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     // Create term t1 in the glossary without domain
     CreateGlossaryTerm create =
@@ -342,9 +342,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // g1 glossary is not empty and can't be deleted
     assertResponse(
-        () -> glossaryResourceTest.deleteEntity(g1.getId(), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        entityIsNotEmpty(GLOSSARY));
+        () -> glossaryTest.deleteEntity(g1.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY));
 
     // t1 is not empty and can't be deleted
     assertResponse(() -> deleteEntity(t1.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY_TERM));
@@ -368,8 +366,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertFalse(table.getTags().isEmpty()); // tag t1 still exists
 
     // Delete the entire glossary
-    glossaryResourceTest.deleteAndCheckEntity(g1, true, true, ADMIN_AUTH_HEADERS);
-    glossaryResourceTest.assertEntityDeleted(g1.getId(), true);
+    glossaryTest.deleteAndCheckEntity(g1, true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.assertEntityDeleted(g1.getId(), true);
     assertEntityDeleted(t1.getId(), true);
 
     // Check to see the tags assigned are deleted
@@ -622,16 +620,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   public Glossary createGlossary(TestInfo test, List<EntityReference> reviewers, EntityReference owner)
       throws IOException {
-    return createGlossary(glossaryResourceTest.getEntityName(test), reviewers, owner);
+    return createGlossary(glossaryTest.getEntityName(test), reviewers, owner);
   }
 
   public Glossary createGlossary(String name, List<EntityReference> reviewers, EntityReference owner)
       throws IOException {
-    CreateGlossary create = glossaryResourceTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
-    return glossaryResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    CreateGlossary create = glossaryTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
+    return glossaryTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   public Glossary getGlossary(String name) throws IOException {
-    return glossaryResourceTest.getEntityByName(name, glossaryResourceTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
+    return glossaryTest.getEntityByName(name, glossaryTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
   }
 }

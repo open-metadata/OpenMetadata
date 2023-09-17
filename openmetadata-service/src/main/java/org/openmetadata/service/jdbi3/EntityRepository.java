@@ -198,6 +198,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
+  @Getter protected final boolean supportsReviewers;
   protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
@@ -255,6 +256,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsDomain) {
       this.patchFields.addField(allowedFields, FIELD_DOMAIN);
       this.putFields.addField(allowedFields, FIELD_DOMAIN);
+    }
+    this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
+    if (supportsReviewers) {
+      this.patchFields.addField(allowedFields, FIELD_REVIEWERS);
+      this.putFields.addField(allowedFields, FIELD_REVIEWERS);
     }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
     if (supportsDataProducts) {
@@ -626,7 +632,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T create(UriInfo uriInfo, T entity) {
     entity = withHref(uriInfo, createInternal(entity));
-    postCreate(entity);
     return entity;
   }
 
@@ -685,16 +690,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
-    PutResponse<T> response = createOrUpdateInternal(uriInfo, updated);
-    if (response.getStatus() == Status.CREATED) {
-      postCreate(response.getEntity());
-    } else if (response.getStatus() == Status.OK) {
-      postUpdate(response.getEntity());
-    }
-    return response;
-  }
-
-  public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) {
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
@@ -785,7 +780,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    postUpdate(JsonUtils.deepCopy(entity, entityClass));
+    postUpdate(entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -1014,6 +1009,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeExtension(entity);
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
+    postCreate(entity);
     return entity;
   }
 
