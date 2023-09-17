@@ -47,11 +47,17 @@ public class TagLabelUtil {
     return Entity.getEntityByName(Entity.GLOSSARY_TERM, glossaryTermFqn, "", NON_DELETED);
   }
 
-  public static String getDescription(TagLabel label) {
+  public static void applyTagCommonFields(TagLabel label) {
     if (label.getSource() == TagSource.CLASSIFICATION) {
-      return getTag(label.getTagFQN()).getDescription();
+      Tag tag = getTag(label.getTagFQN());
+      label.setName(tag.getName());
+      label.setDisplayName(tag.getDisplayName());
+      label.setDescription(tag.getDescription());
     } else if (label.getSource() == TagSource.GLOSSARY) {
-      return getGlossaryTerm(label.getTagFQN()).getDescription();
+      GlossaryTerm glossaryTerm = getGlossaryTerm(label.getTagFQN());
+      label.setName(glossaryTerm.getName());
+      label.setDisplayName(glossaryTerm.getDisplayName());
+      label.setDescription(glossaryTerm.getDescription());
     } else {
       throw new IllegalArgumentException("Invalid source type " + label.getSource());
     }
