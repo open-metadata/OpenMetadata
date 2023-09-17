@@ -23,7 +23,7 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
-import SampleDataTopic from 'components/SampleDataTopic/SampleDataTopic';
+import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleDataWithMessages';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -60,6 +60,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onTopicUpdate,
   topicPermissions,
   handleToggleDelete,
+  onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -365,7 +366,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           </div>
         ) : (
-          <SampleDataTopic topicId={topicDetails.id} />
+          <SampleDataWithMessages
+            entityId={topicDetails.id}
+            entityType={EntityType.TOPIC}
+          />
         ),
       },
       {
@@ -442,6 +446,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestoreTopic}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

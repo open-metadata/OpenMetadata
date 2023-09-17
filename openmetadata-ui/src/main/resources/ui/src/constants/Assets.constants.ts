@@ -52,7 +52,7 @@ export const AssetsFilterOptions: Array<{
   },
   {
     label: i18n.t('label.glossary-plural'),
-    key: EntityType.GLOSSARY,
+    key: EntityType.GLOSSARY_TERM,
     value: SearchIndex.GLOSSARY,
   },
 ];

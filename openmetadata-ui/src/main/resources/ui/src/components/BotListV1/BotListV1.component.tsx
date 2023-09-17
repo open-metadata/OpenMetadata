@@ -15,25 +15,24 @@ import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { Paging } from 'generated/type/paging';
+import { usePaging } from 'hooks/paging/usePaging';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getBots } from 'rest/botsAPI';
+import { showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  getBotsPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_LARGE,
-} from '../../constants/constants';
+import { getBotsPath } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
-import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -53,10 +52,17 @@ const BotListV1 = ({
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
   const [botUsers, setBotUsers] = useState<Bot[]>([]);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
   const [selectedUser, setSelectedUser] = useState<Bot>();
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+
+  const {
+    currentPage,
+    paging,
+    pageSize,
+    handlePagingChange,
+    handlePageChange,
+    handlePageSizeChange,
+  } = usePaging();
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
@@ -65,15 +71,16 @@ const BotListV1 = ({
    *
    * @param after - Pagination value if passed data will be fetched post cursor value
    */
-  const fetchBots = async (showDeleted?: boolean, after?: string) => {
+  const fetchBots = async (showDeleted?: boolean, pagingOffset?: Paging) => {
     try {
       setLoading(true);
       const { data, paging } = await getBots({
-        after,
-        limit: PAGE_SIZE_LARGE,
+        after: pagingOffset?.after,
+        before: pagingOffset?.before,
+        limit: pageSize,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
-      setPaging(paging);
+      handlePagingChange(paging);
       setBotUsers(data);
       setSearchedData(data);
       if (!showDeleted && isEmpty(data)) {
@@ -159,8 +166,16 @@ const BotListV1 = ({
    *
    * @param cursorValue - represents pagination value
    */
-  const handlePageChange = (cursorValue: string | number) => {
-    setCurrentPage(cursorValue as number);
+  const handleBotPageChange = ({
+    currentPage,
+    cursorType,
+  }: PagingHandlerParams) => {
+    handlePageChange(currentPage);
+    cursorType &&
+      fetchBots(false, {
+        [cursorType]: paging[cursorType],
+        total: paging.total,
+      } as Paging);
   };
 
   /**
@@ -259,45 +274,42 @@ const BotListV1 = ({
         />
       </Col>
       <Col span={24}>
-        <Row>
-          <Col span={24}>
-            <Table
-              bordered
-              columns={columns}
-              dataSource={searchedData}
-              loading={loading}
-              locale={{
-                emptyText: <FilterTablePlaceHolder />,
-              }}
-              pagination={false}
-              rowKey="name"
-              size="small"
-            />
-          </Col>
-          <Col span={24}>
-            {paging.total > PAGE_SIZE_LARGE && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE_LARGE}
-                paging={paging}
-                pagingHandler={handlePageChange}
-              />
-            )}
-          </Col>
-        </Row>
-
-        <DeleteWidgetModal
-          afterDeleteAction={handleDeleteAction}
-          allowSoftDelete={!showDeleted}
-          entityId={selectedUser?.id || ''}
-          entityName={selectedUser?.displayName || ''}
-          entityType={EntityType.BOT}
-          visible={Boolean(selectedUser)}
-          onCancel={() => {
-            setSelectedUser(undefined);
+        <Table
+          bordered
+          columns={columns}
+          dataSource={searchedData}
+          loading={loading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
           }}
+          pagination={false}
+          rowKey="name"
+          size="small"
         />
       </Col>
+      <Col span={24}>
+        {showPagination(paging) && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleBotPageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </Col>
+
+      <DeleteWidgetModal
+        afterDeleteAction={handleDeleteAction}
+        allowSoftDelete={!showDeleted}
+        entityId={selectedUser?.id || ''}
+        entityName={selectedUser?.displayName || ''}
+        entityType={EntityType.BOT}
+        visible={Boolean(selectedUser)}
+        onCancel={() => {
+          setSelectedUser(undefined);
+        }}
+      />
     </Row>
   );
 };

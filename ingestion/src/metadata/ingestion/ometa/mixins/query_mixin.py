@@ -81,6 +81,14 @@ class OMetaQueryMixin:
                             ),
                         )
 
+                    # Add Query used by
+                    user_list = create_query.usedBy
+                    if user_list:
+                        self.client.put(
+                            f"{self.get_suffix(Query)}/{model_str(query.id)}/usedBy",
+                            data=json.dumps(user_list),
+                        )
+
     def get_entity_queries(
         self, entity_id: Union[Uuid, str], fields: Optional[List[str]] = None
     ) -> Optional[List[Query]]:

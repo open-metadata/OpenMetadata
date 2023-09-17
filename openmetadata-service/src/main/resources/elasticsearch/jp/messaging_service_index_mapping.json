@@ -120,6 +120,19 @@
           }
         }
       },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -225,7 +238,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"

@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     LocalConfig,
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 
 ROOT_PATH = Path(__file__).parent.parent / "resources" / "datalake"
@@ -29,6 +30,25 @@ class TestDataFrameReader(TestCase):
     Load different files from resources and validate
     that the reader can properly get the df out ot if.
     """
+
+    def test_dsv_no_extension_reader(self):
+        key = ROOT_PATH / "transactions_1"
+
+        df_list = fetch_dataframe(
+            config_source=LocalConfig(),
+            client=None,
+            file_fqn=DatalakeTableSchemaWrapper(
+                key=str(key), bucket_name="unused", file_extension=SupportedTypes.CSV
+            ),
+        )
+
+        self.assertIsNotNone(df_list)
+        self.assertTrue(len(df_list))
+
+        self.assertEquals(df_list[0].shape, (5, 2))
+        self.assertEquals(
+            list(df_list[0].columns), ["transaction_id", "transaction_value"]
+        )
 
     def test_dsv_reader(self):
         key = ROOT_PATH / "transactions_1.csv"

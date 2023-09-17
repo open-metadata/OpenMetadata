@@ -22,6 +22,9 @@ const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
+const API_FIELDS = `owner, followers, 
+tags, extension, domain, votes`;
+
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
@@ -159,7 +162,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      API_FIELDS
     );
   });
 
@@ -178,7 +181,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      API_FIELDS
     );
   });
 
@@ -209,7 +212,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      API_FIELDS
     );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -236,7 +239,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'owner, followers, tags, extension'
+      API_FIELDS
     );
 
     expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();

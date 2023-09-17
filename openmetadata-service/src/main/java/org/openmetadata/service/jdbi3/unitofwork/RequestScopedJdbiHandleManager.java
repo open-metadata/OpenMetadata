@@ -6,7 +6,6 @@ import org.jdbi.v3.core.Jdbi;
 
 @Slf4j
 class RequestScopedJdbiHandleManager implements JdbiHandleManager {
-
   private final Jdbi dbi;
 
   @SuppressWarnings("ThreadLocalUsage")
@@ -17,6 +16,11 @@ class RequestScopedJdbiHandleManager implements JdbiHandleManager {
   }
 
   @Override
+  public Jdbi getJdbi() {
+    return dbi;
+  }
+
+  @Override
   public Handle get() {
     if (threadLocal.get() == null) {
       threadLocal.set(dbi.open());
@@ -24,6 +28,11 @@ class RequestScopedJdbiHandleManager implements JdbiHandleManager {
     Handle handle = threadLocal.get();
     LOG.debug("handle [{}] : Thread Id [{}]", handle.hashCode(), Thread.currentThread().getId());
     return handle;
+  }
+
+  @Override
+  public boolean handleExists() {
+    return threadLocal.get() != null;
   }
 
   @Override

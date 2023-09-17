@@ -257,6 +257,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_DOMAIN);
     }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
+    if (supportsDataProducts) {
+      this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+      this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+    }
   }
 
   /**
@@ -416,7 +420,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Clone the entity from the cache and reset all the fields that are not already set
     // Cloning is necessary to ensure different threads making a call to this method don't
     // overwrite the fields of the entity being returned
-    T entityClone = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entityClass);
+    T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
@@ -461,7 +465,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Clone the entity from the cache and reset all the fields that are not already set
     // Cloning is necessary to ensure different threads making a call to this method don't
     // overwrite the fields of the entity being returned
-    T entityClone = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entityClass);
+    T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
@@ -874,9 +878,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     String changeType;
     T updated = get(null, original.getId(), putFields, ALL, false);
-    //    clearFields(updated, Fields.EMPTY_FIELDS); // Clear the entity and set the fields again
-    //    setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from
-    // ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(deletedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -901,7 +902,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
-
     T entity = dao.findEntityById(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
@@ -1069,15 +1069,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public List<String> getResultsFromAndToTimestamps(
       String fullyQualifiedName, String extension, Long startTs, Long endTs) {
     return getResultsFromAndToTimestamps(
-        fullyQualifiedName, extension, startTs, endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy.DESC);
+        fullyQualifiedName, extension, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC);
   }
 
   public List<String> getResultsFromAndToTimestamps(
-      String fqn,
-      String extension,
-      Long startTs,
-      Long endTs,
-      CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+      String fqn, String extension, Long startTs, Long endTs, EntityTimeSeriesDAO.OrderBy orderBy) {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
@@ -1579,6 +1575,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public void updateOwner(T ownedEntity, EntityReference originalOwner, EntityReference newOwner) {
     // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
+    validateOwner(newOwner);
     removeOwner(ownedEntity, originalOwner);
     storeOwner(ownedEntity, newOwner);
   }
@@ -1638,8 +1635,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (owner == null) {
       return null;
     }
-    // Entities can be only owned by team of type 'group'
-    if (owner.getType().equals(Entity.TEAM)) {
+    if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidOwnerType(owner.getType()));
+    } else if (owner.getType().equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
       Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
       if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
@@ -1931,7 +1929,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(
           FIELD_EXPERTS,
-          Entity.DATA_PRODUCT,
+          entityType,
           original.getId(),
           Relationship.EXPERT,
           Entity.USER,

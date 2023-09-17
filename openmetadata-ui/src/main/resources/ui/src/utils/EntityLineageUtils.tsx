@@ -1321,6 +1321,8 @@ export const getParamByEntityType = (entityType: EntityType): string => {
       return 'mlModelFqn';
     case EntityType.DASHBOARD:
       return 'dashboardFQN';
+    case EntityType.SEARCH_INDEX:
+      return 'searchIndexFQN';
     case EntityType.DATABASE:
       return 'databaseFQN';
     case EntityType.DATABASE_SCHEMA:

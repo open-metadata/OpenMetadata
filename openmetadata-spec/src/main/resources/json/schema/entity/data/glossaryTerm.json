@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GlossaryTerm",
   "description": "This schema defines te Glossary term entities.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.GlossaryTerm",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -139,6 +140,10 @@
       "description" : "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
       "type" : "boolean",
       "default" : "false"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
     "domain" : {
       "description": "Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",

@@ -95,6 +95,19 @@
       "href": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
       "owner": {
         "properties": {
           "id": {
@@ -287,7 +300,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"

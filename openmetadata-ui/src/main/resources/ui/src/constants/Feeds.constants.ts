@@ -80,6 +80,7 @@ export enum EntityField {
   REPLICATION_FACTOR = 'replicationFactor',
   SOURCE_URL = 'sourceUrl',
   MUTUALLY_EXCLUSIVE = 'mutuallyExclusive',
+  EXPERTS = 'experts',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

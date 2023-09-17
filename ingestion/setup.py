@@ -93,7 +93,7 @@ base_requirements = {
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
-    "importlib-metadata~=4.13.0",  # From airflow constraints
+    "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
@@ -108,7 +108,7 @@ base_requirements = {
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
-    "openmetadata-sqllineage>=1.0.4",
+    "collate-sqllineage>=1.0.4",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0

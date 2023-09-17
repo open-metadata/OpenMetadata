@@ -30,6 +30,29 @@ const addTags = (tag) => {
   cy.get(`.ant-select-dropdown [data-testid='tag-${tag}']`).click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 };
+const verifyTagFilter = ({ entity, tag }) => {
+  if (entity !== 'mlmodels') {
+    let columnLength = 0;
+    cy.get('.ant-table-tbody')
+      .find('tr')
+      .then(($tr) => {
+        columnLength = $tr.length;
+      });
+    cy.get('[data-testid="tag-filter"]').scrollIntoView().click();
+    cy.get(`[data-menu-id*="${tag}"]`).click();
+    // need to add manual wait as we are not making any api call for filter.
+    cy.wait(500);
+    cy.get('.ant-table-tbody')
+      .find('tr')
+      .then(($tr) => {
+        expect(columnLength).gte($tr.length);
+      });
+    cy.get('[data-testid="tag-filter"]').scrollIntoView().click();
+    cy.get(`[data-menu-id*="${tag}"]`).click();
+    // need to add manual wait as we are not making any api call for filter.
+    cy.wait(500);
+  }
+};
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
@@ -181,6 +204,9 @@ describe('Check if tags addition and removal flow working properly from tables',
           ).click();
         });
       } else {
+        if (entityDetails.entity === 'topics') {
+          cy.get('[id*=panel-schema]').contains('Collapse All').click();
+        }
         cy.get(
           '.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"]'
         ).then(($container) => {
@@ -204,7 +230,10 @@ describe('Check if tags addition and removal flow working properly from tables',
       verifyResponseStatusCode('@tagsChange', 200);
 
       entityDetails.tags.map((tag) => checkTags(tag));
-
+      verifyTagFilter({
+        entity: entityDetails.entity,
+        tag: entityDetails.tags[0],
+      });
       removeTags(false, entityDetails.separate);
     });
   });

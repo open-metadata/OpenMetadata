@@ -12,12 +12,15 @@
       "properties": {
         "created_at": {
           "description": "Timestamp of data asset when it got created",
-          "$ref": "basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
         "created_by": {
           "description": "User that created the data asset",
-          "$ref": "entityReference.json",
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "entityReference.json" }
+          ],
           "default": null
         }
       },
@@ -30,12 +33,15 @@
       "properties": {
         "updated_at": {
           "description": "Timestamp of data asset when it got updated",
-          "$ref": "basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
         "updated_by": {
           "description": "User that updated the data asset",
-          "$ref": "entityReference.json",
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "entityReference.json" }
+          ],
           "default": null
         }
       },
@@ -48,12 +54,15 @@
       "properties": {
         "accessed_at": {
           "description": "Timestamp of data asset when it got accessed",
-          "$ref": "basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
         "accessed_by": {
           "description": "User that accessed the data asset",
-          "$ref": "entityReference.json",
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "entityReference.json" }
+          ],
           "default": null
         }
       },
@@ -66,12 +75,15 @@
       "properties": {
         "deleted_at": {
           "description": "Timestamp of data asset when it got deleted",
-          "$ref": "basic.json#/definitions/dateTime",
+          "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
         "deleted_by": {
           "description": "User that deleted the data asset",
-          "$ref": "entityReference.json",
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "entityReference.json" }
+          ],
           "default": null
         }
       },
