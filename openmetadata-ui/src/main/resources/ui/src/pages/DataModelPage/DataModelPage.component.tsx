@@ -58,8 +58,7 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardDataModelFQN } =
-    useParams<{ dashboardDataModelFQN: string }>();
+  const { fqn: dashboardDataModelFQN } = useParams<{ fqn: string }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);

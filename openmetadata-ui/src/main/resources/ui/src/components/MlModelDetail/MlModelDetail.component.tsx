@@ -71,8 +71,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { mlModelFqn, tab: activeTab } =
-    useParams<{ tab: EntityTabs; mlModelFqn: string }>();
+  const { fqn: mlModelFqn, tab: activeTab } =
+    useParams<{ tab: EntityTabs; fqn: string }>();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);

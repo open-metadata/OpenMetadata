@@ -66,7 +66,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 }: TableQueriesProp) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const history = useHistory();
 
   const searchParams = useMemo(() => {

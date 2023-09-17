@@ -121,7 +121,6 @@ export type VersionData =
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: EntityTabs }>();
   const history = useHistory();
   const [tier, setTier] = useState<TagLabel>();
   const [owner, setOwner] = useState<
@@ -136,7 +135,13 @@ const EntityVersionPage: FunctionComponent = () => {
     entityType,
     version,
     fqn: entityFQN,
-  } = useParams<{ entityType: string; version: string; fqn: string }>();
+    tab,
+  } = useParams<{
+    entityType: string;
+    version: string;
+    fqn: string;
+    tab: EntityTabs;
+  }>();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityPermissions, setEntityPermissions] =

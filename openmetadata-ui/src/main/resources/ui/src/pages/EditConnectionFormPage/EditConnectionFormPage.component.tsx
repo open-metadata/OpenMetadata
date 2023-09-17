@@ -42,8 +42,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
   const { t } = useTranslation();
-  const { serviceFQN, serviceCategory } = useParams<{
-    serviceFQN: string;
+  const { fqn: serviceFQN, serviceCategory } = useParams<{
+    fqn: string;
     serviceCategory: ServiceCategory;
   }>();
 

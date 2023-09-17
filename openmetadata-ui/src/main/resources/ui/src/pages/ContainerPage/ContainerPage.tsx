@@ -78,8 +78,8 @@ const ContainerPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { entityFQN: containerName, tab = EntityTabs.SCHEMA } =
-    useParams<{ entityFQN: string; tab: EntityTabs }>();
+  const { fqn: containerName, tab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);

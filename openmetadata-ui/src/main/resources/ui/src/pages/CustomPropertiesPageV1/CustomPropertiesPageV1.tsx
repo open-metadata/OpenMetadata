@@ -42,7 +42,7 @@ import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ [key: string]: string }>();
+  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
   const history = useHistory();
 
   const [activeTab, setActiveTab] = useState<EntityTabs>(
@@ -55,7 +55,7 @@ const CustomEntityDetailV1 = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const tabAttributePath = ENTITY_PATH[tab as keyof typeof ENTITY_PATH];
+  const tabAttributePath = ENTITY_PATH[tab];
 
   const { getEntityPermission } = usePermissionProvider();
 
