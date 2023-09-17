@@ -19,7 +19,7 @@ class NonHttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListen
     boolean isTransactional = isTransactional(event);
     if (isTransactional) {
       if (type == RequestEvent.Type.RESOURCE_METHOD_START) {
-        JdbiTransactionManager.getInstance().begin(false);
+        JdbiTransactionManager.getInstance().begin();
       } else if (type == RequestEvent.Type.RESP_FILTERS_START) {
         JdbiTransactionManager.getInstance().commit();
       } else if (type == RequestEvent.Type.ON_EXCEPTION) {
