@@ -163,7 +163,6 @@ public class TagRepository extends EntityRepository<Tag> {
     public void entitySpecificUpdate() {
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled,", original.getDisabled(), updated.getDisabled());
-      recordChange("badge", original.getBadge(), updated.getBadge(), true);
       updateName(original, updated);
       updateParent(original, updated);
     }

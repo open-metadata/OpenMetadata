@@ -28,8 +28,8 @@
       "description": "Description of the glossary term.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "badge": {
-      "$ref": "../../type/basic.json#/definitions/badge"
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",

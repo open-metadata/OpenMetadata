@@ -18,7 +18,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
-import org.openmetadata.schema.entity.type.Badge;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -130,7 +130,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         .withName(name)
         .withDescription(name)
         .withDomain(DOMAIN.getFullyQualifiedName())
-        .withBadge(new Badge().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
+        .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
@@ -142,7 +142,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
     assertEntityReferences(request.getAssets(), createdEntity.getAssets());
-    assertBadge(request.getBadge(), createdEntity.getBadge());
+    assertStyle(request.getStyle(), createdEntity.getStyle());
   }
 
   @Override

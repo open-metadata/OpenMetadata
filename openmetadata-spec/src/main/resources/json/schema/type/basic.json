@@ -157,10 +157,10 @@
       "type" : "string",
       "format": "url"
     },
-    "badge": {
-      "description": "Badge is used to associate a color code and/or icon to entity.",
+    "style": {
+      "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.entity.type.Badge",
+      "javaType": "org.openmetadata.schema.entity.type.Style",
       "properties": {
         "color": {
           "description": "Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.",

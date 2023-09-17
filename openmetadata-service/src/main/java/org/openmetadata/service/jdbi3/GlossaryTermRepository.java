@@ -261,7 +261,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateReviewers(original, updated);
       updateName(original, updated);
       updateParent(original, updated);
-      recordChange("badge", original.getBadge(), updated.getBadge(), true);
     }
 
     @Override

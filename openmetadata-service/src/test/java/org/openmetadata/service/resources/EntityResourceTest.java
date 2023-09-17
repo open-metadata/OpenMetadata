@@ -138,9 +138,9 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionStepRes
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.entity.type.Badge;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AnnouncementDetails;
@@ -2420,8 +2420,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertEquals(expected.toString(), actual.toString());
     } else if (fieldName.equals("domainType")) { // Custom properties related extension field changes
       assertEquals(expected, DomainType.fromValue(actual.toString()));
-    } else if (fieldName.equals("badge")) {
-      assertBadge((Badge) expected, JsonUtils.readValue(actual.toString(), Badge.class));
+    } else if (fieldName.equals("style")) {
+      assertStyle((Style) expected, JsonUtils.readValue(actual.toString(), Style.class));
     } else {
       // All the other fields
       assertEquals(expected, actual, "Field name " + fieldName);

@@ -19,25 +19,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_CHILDREN;
-import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
-import static org.openmetadata.service.Entity.FIELD_DELETED;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_EXPERTS;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.FIELD_VOTES;
-import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.getEntityByName;
-import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.EntityResource.searchClient;
@@ -193,6 +175,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
+  @Getter protected final boolean supportsStyle;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
@@ -266,6 +249,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsDataProducts) {
       this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
       this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+    }
+    this.supportsStyle = allowedFields.contains(FIELD_STYLE);
+    if (supportsStyle) {
+      this.patchFields.addField(allowedFields, FIELD_STYLE);
+      this.putFields.addField(allowedFields, FIELD_STYLE);
     }
   }
 
@@ -1746,6 +1734,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDomain();
         updateDataProducts();
         updateExperts();
+        updateStyle();
         entitySpecificUpdate();
       }
 
@@ -1932,6 +1921,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           origExperts,
           updatedExperts,
           false);
+    }
+
+    private void updateStyle() {
+      if (!supportsStyle) {
+        return;
+      }
+      if (original.getStyle() == updated.getStyle()) return;
+
+      recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
     }
 
     public final boolean updateVersion(Double oldVersion) {

@@ -36,8 +36,8 @@
       "description": "Description of the tag.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "badge": {
-      "$ref": "../../type/basic.json#/definitions/badge"
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "classification": {
       "description": "Reference to the classification that this tag is part of.",

@@ -20,7 +20,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.entity.type.Badge;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -97,7 +97,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         .withName(name)
         .withDomainType(DomainType.AGGREGATE)
         .withDescription("name")
-        .withBadge(new Badge().withColor("#FFA07A").withIconURL("https://domainIcon"))
+        .withStyle(new Style().withColor("#FFA07A").withIconURL("https://domainIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()));
   }
 

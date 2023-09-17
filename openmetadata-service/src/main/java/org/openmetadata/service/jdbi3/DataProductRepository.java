@@ -106,7 +106,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Override
     public void entitySpecificUpdate() {
       updateAssets();
-      recordChange("badge", original.getBadge(), updated.getBadge(), true);
     }
 
     private void updateAssets() {

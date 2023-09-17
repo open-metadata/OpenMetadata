@@ -27,8 +27,8 @@
       "description": "Description of the Data Product.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "badge": {
-      "$ref": "../../type/basic.json#/definitions/badge"
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "version": {
       "description": "Metadata version of the entity.",
