@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.Badge;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
@@ -660,5 +661,10 @@ public final class TestUtils {
       LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
     }
     return null;
+  }
+
+  public static void assertBadge(Badge expected, Badge actual) {
+    assertEquals(expected.getIconURL(), actual.getIconURL());
+    assertEquals(expected.getColor(), actual.getColor());
   }
 }

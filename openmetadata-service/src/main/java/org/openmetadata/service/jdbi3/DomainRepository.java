@@ -130,6 +130,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     @Override
     public void entitySpecificUpdate() {
       recordChange("domainType", original.getDomainType(), updated.getDomainType());
+      recordChange("badge", original.getBadge(), updated.getBadge(), true);
     }
   }
 }
