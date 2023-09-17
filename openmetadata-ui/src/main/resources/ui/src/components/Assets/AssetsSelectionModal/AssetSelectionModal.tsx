@@ -19,6 +19,8 @@ import { SearchedDataProps } from 'components/searched-data/SearchedData.interfa
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
+import { Table } from 'generated/entity/data/table';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { Domain } from 'generated/entity/domains/domain';
 import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
@@ -32,6 +34,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getDataProductByName } from 'rest/dataProductAPI';
 import { getDomainByName } from 'rest/domainAPI';
 import { searchQuery } from 'rest/searchAPI';
 import {
@@ -60,7 +63,7 @@ export const AssetSelectionModal = ({
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
     SearchIndex.TABLE
   );
-  const [activeEntity, setActiveEntity] = useState<Domain>();
+  const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -99,6 +102,9 @@ export const AssetSelectionModal = ({
   const fetchCurrentEntity = useCallback(async () => {
     if (type === AssetsOfEntity.DOMAIN) {
       const data = await getDomainByName(entityFqn, '');
+      setActiveEntity(data);
+    } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+      const data = await getDataProductByName(entityFqn, '');
       setActiveEntity(data);
     }
   }, [type, entityFqn]);
@@ -143,7 +149,39 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const handleDomainSave = async () => {
+  const getJsonPatchObject = (entity: Table) => {
+    if (!activeEntity) {
+      return [];
+    }
+    const { id, description, fullyQualifiedName, name, displayName } =
+      activeEntity;
+    const patchObj = {
+      id,
+      description,
+      fullyQualifiedName,
+      name,
+      displayName,
+      type: type === AssetsOfEntity.DATA_PRODUCT ? 'dataProduct' : 'domain',
+    };
+
+    if (type === AssetsOfEntity.DATA_PRODUCT) {
+      const jsonPatch = compare(entity, {
+        ...entity,
+        dataProducts: [...(entity.dataProducts ?? []), patchObj],
+      });
+
+      return jsonPatch;
+    } else {
+      const jsonPatch = compare(entity, {
+        ...entity,
+        domain: patchObj,
+      });
+
+      return jsonPatch;
+    }
+  };
+
+  const domainAndDataProductsSave = async () => {
     setIsLoading(true);
     const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
       getEntityAPIfromSource(item.entityType)(
@@ -166,19 +204,7 @@ export const AssetSelectionModal = ({
         .map((item) => {
           if (map.has(item.fullyQualifiedName) && activeEntity) {
             const entity = map.get(item.fullyQualifiedName);
-            const { id, description, fullyQualifiedName, name, displayName } =
-              activeEntity;
-            const jsonPatch = compare(entity, {
-              ...entity,
-              domain: {
-                id,
-                description,
-                fullyQualifiedName,
-                name,
-                displayName,
-                type: 'domain',
-              },
-            });
+            const jsonPatch = getJsonPatchObject(entity);
             const api = getAPIfromSource(item.entityType);
 
             return api(item.id, jsonPatch);
@@ -252,6 +278,14 @@ export const AssetSelectionModal = ({
     }
   };
 
+  const onSaveAction = () => {
+    if (type === AssetsOfEntity.GLOSSARY) {
+      handleSave();
+    } else {
+      domainAndDataProductsSave();
+    }
+  };
+
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
       if (
@@ -281,12 +315,7 @@ export const AssetSelectionModal = ({
       footer={
         <>
           <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button
-            loading={isLoading}
-            type="primary"
-            onClick={
-              type === AssetsOfEntity.GLOSSARY ? handleSave : handleDomainSave
-            }>
+          <Button loading={isLoading} type="primary" onClick={onSaveAction}>
             {t('label.save')}
           </Button>
         </>
