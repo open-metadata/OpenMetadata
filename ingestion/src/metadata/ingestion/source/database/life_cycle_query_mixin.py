@@ -58,7 +58,7 @@ class LifeCycleQueryMixin:
 
     @lru_cache(
         maxsize=1
-    )  # Limit the caching since it cannot be repeated due to the topology ordering
+    )  # Limit the caching to 1 since we will maintain 1 dictionary for each db and schema
     def life_cycle_query_dict(
         self, query: str
     ) -> Dict[str, List[LifeCycleQueryByTable]]:
