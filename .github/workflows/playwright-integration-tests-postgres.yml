@@ -113,7 +113,7 @@ jobs:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d postgresql
         timeout-minutes: 30
-      - name: Run Playwright Integration Tests with browser py-version ${{ matrix.browser-type }} 
+      - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }} 
         continue-on-error: true
         env:
           E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
@@ -122,7 +122,7 @@ jobs:
           E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
         run: |
           source env/bin/activate
-          make run_python_tests ARGS="${{ matrix.browser-type }}"
+          make run_e2e_tests ARGS="--browser ${{ matrix.browser-type }}"
       - name: Clean Up
         run: |
           cd ./docker/development
