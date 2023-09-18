@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
@@ -37,6 +40,9 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.interface.sqlalchemy.single_store.profiler_interface import (
     SingleStoreProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import (
+    SnowflakeProfilerInterface,
 )
 
 
@@ -69,4 +75,7 @@ profiler_interface_factory.register(
 )
 profiler_interface_factory.register(
     DatalakeConnection.__name__, PandasProfilerInterface
+)
+profiler_interface_factory.register(
+    SnowflakeConnection.__name__, SnowflakeProfilerInterface
 )

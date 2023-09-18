@@ -39,6 +39,12 @@ def _(element, compiler, **kw):
     return f"MIN({col})"
 
 
+@compiles(MinFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    col = compiler.process(element.clauses, **kw)
+    return f"IF(is_nan(MIN({col})), NULL, MIN({col}))"
+
+
 @compiles(MinFn, Dialects.MySQL)
 @compiles(MinFn, Dialects.MariaDB)
 def _(element, compiler, **kw):

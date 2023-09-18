@@ -23,7 +23,6 @@ from datetime import datetime, timezone
 from typing import Dict, List
 
 from sqlalchemy import Column
-from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -217,17 +216,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 ],
             )
             return dict(row)
-        except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
-                )
-                return self._compute_static_metrics_wo_sum(
-                    metrics, runner, session, column
-                )
-
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -295,15 +283,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
             )
-        except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
-                )
-                return None
-
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
