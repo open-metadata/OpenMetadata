@@ -284,8 +284,6 @@ public class OpenSearchClientImpl implements SearchClient {
         searchSourceBuilder = buildTableSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "user_search_index":
-        searchSourceBuilder = buildUserOrTeamSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
       case "team_search_index":
         searchSourceBuilder = buildUserOrTeamSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
@@ -337,7 +335,8 @@ public class OpenSearchClientImpl implements SearchClient {
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
-        || request.getIndex().equalsIgnoreCase("data_products_search_index")) {
+        || request.getIndex().equalsIgnoreCase("data_products_search_index")
+        || request.getIndex().equalsIgnoreCase("query_search_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
