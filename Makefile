@@ -18,7 +18,7 @@ install_test:  ## Install the ingestion module with test dependencies
 	python -m pip install "ingestion[test]/"
 
 .PHONY: install_e2e_tests
-install_e2e_test:  ## Install the ingestion module with e2e test dependencies (playwright)
+install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
 	playwright install
 
