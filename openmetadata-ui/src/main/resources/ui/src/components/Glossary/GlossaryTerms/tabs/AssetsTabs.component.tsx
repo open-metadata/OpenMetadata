@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Menu, Space } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import {
   SearchedDataProps,
   SourceType,
@@ -45,15 +44,12 @@ import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { AssetsOfEntity } from './AssetsTabs.interface';
-
-interface Props {
-  onAddAsset: () => void;
-  permissions: OperationPermission;
-  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
-  isSummaryPanelOpen: boolean;
-  type?: AssetsOfEntity;
-}
+import './assets-tabs.less';
+import {
+  AssetsOfEntity,
+  AssetsTabsProps,
+  AssetsViewType,
+} from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -68,7 +64,8 @@ const AssetsTabs = forwardRef(
       isSummaryPanelOpen,
       onAddAsset,
       type = AssetsOfEntity.GLOSSARY,
-    }: Props,
+      viewType = AssetsViewType.PILLS,
+    }: AssetsTabsProps,
     ref
   ) => {
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
@@ -91,9 +88,35 @@ const AssetsTabs = forwardRef(
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedCard, setSelectedCard] = useState<SourceType>();
 
+    const tabs = useMemo(() => {
+      return AssetsFilterOptions.map((option) => {
+        return {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                {option.label}
+              </Space>
+
+              <span>
+                {getCountBadge(
+                  itemCount[option.key],
+                  '',
+                  activeFilter === option.value
+                )}
+              </span>
+            </div>
+          ),
+          key: option.value,
+          value: option.value,
+        };
+      });
+    }, [itemCount]);
+
     const queryParam = useMemo(() => {
-      if (type !== AssetsOfEntity.GLOSSARY) {
+      if (type === AssetsOfEntity.DOMAIN) {
         return `(domain.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
       } else {
         return `(tags.tagFQN:"${glossaryName}")`;
       }
@@ -220,6 +243,114 @@ const AssetsTabs = forwardRef(
       [activeFilter, currentPage]
     );
 
+    const assetListing = useMemo(
+      () =>
+        data.length ? (
+          <div className="assets-data-container">
+            {data.map(({ _source, _id = '' }, index) => (
+              <ExploreSearchCard
+                className={classNames(
+                  'm-b-sm cursor-pointer',
+                  selectedCard?.id === _source.id ? 'highlight-card' : ''
+                )}
+                handleSummaryPanelDisplay={setSelectedCard}
+                id={_id}
+                key={index}
+                showTags={false}
+                source={_source}
+              />
+            ))}
+            {total > PAGE_SIZE && data.length > 0 && (
+              <NextPrevious
+                isNumberBased
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={{ total }}
+                pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                  setCurrentPage(currentPage)
+                }
+              />
+            )}
+          </div>
+        ) : (
+          <div className="m-t-xlg">
+            <ErrorPlaceHolder
+              doc={GLOSSARIES_DOCS}
+              heading={t('label.asset')}
+              permission={permissions.Create}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={onAddAsset}
+            />
+          </div>
+        ),
+      [data, total, currentPage, selectedCard, setSelectedCard]
+    );
+
+    const assetsHeader = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return AssetsFilterOptions.map((option) => {
+          const buttonStyle =
+            activeFilter === option.value
+              ? {
+                  ghost: true,
+                  type: 'primary' as ButtonType,
+                  style: { background: 'white' },
+                }
+              : {};
+
+          return itemCount[option.key] > 0 ? (
+            <Button
+              {...buttonStyle}
+              className="m-r-sm m-b-sm"
+              key={option.value}
+              onClick={() => {
+                setCurrentPage(1);
+                setActiveFilter(option.value);
+              }}>
+              {startCase(option.label)}{' '}
+              <span className="p-l-xs">
+                {getCountBadge(
+                  itemCount[option.key],
+                  '',
+                  activeFilter === option.value
+                )}
+              </span>
+            </Button>
+          ) : null;
+        });
+      } else {
+        return (
+          <Menu
+            className="p-t-sm"
+            items={tabs}
+            selectedKeys={[activeFilter]}
+            onClick={(value) => {
+              setCurrentPage(1);
+              setActiveFilter(value.key as SearchIndex);
+              setSelectedCard(undefined);
+            }}
+          />
+        );
+      }
+    }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+
+    const layout = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return (
+          <>
+            {assetsHeader}
+            {assetListing}
+          </>
+        );
+      } else {
+        return (
+          <PageLayoutV1 leftPanel={assetsHeader} pageTitle="">
+            {assetListing}
+          </PageLayoutV1>
+        );
+      }
+    }, [viewType, assetsHeader, assetListing, selectedCard]);
+
     useEffect(() => {
       fetchAssets({ index: activeFilter, page: currentPage });
     }, [activeFilter, currentPage]);
@@ -251,75 +382,13 @@ const AssetsTabs = forwardRef(
     }
 
     return (
-      <div className="p-md assets-tab-container" data-testid="table-container">
-        {AssetsFilterOptions.map((option) => {
-          const buttonStyle =
-            activeFilter === option.value
-              ? {
-                  ghost: true,
-                  type: 'primary' as ButtonType,
-                  style: { background: 'white' },
-                }
-              : {};
-
-          return itemCount[option.key] > 0 ? (
-            <Button
-              {...buttonStyle}
-              className="m-r-sm m-b-sm"
-              key={option.value}
-              onClick={() => {
-                setCurrentPage(1);
-                setActiveFilter(option.value);
-              }}>
-              {startCase(option.label)}{' '}
-              <span className="p-l-xs">
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter === option.value
-                )}
-              </span>
-            </Button>
-          ) : null;
-        })}
-        {data.length ? (
-          <>
-            {data.map(({ _source, _id = '' }, index) => (
-              <ExploreSearchCard
-                className={classNames(
-                  'm-b-sm cursor-pointer',
-                  selectedCard?.id === _source.id ? 'highlight-card' : ''
-                )}
-                handleSummaryPanelDisplay={setSelectedCard}
-                id={_id}
-                key={index}
-                showTags={false}
-                source={_source}
-              />
-            ))}
-            {total > PAGE_SIZE && data.length > 0 && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={{ total }}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  setCurrentPage(currentPage)
-                }
-              />
-            )}
-          </>
-        ) : (
-          <div className="m-t-xlg">
-            <ErrorPlaceHolder
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              permission={permissions.Create}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-              onClick={onAddAsset}
-            />
-          </div>
+      <div
+        className={classNames(
+          'assets-tab-container',
+          viewType === AssetsViewType.PILLS ? 'p-md' : ''
         )}
+        data-testid="table-container">
+        {layout}
       </div>
     );
   }

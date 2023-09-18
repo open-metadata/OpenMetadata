@@ -329,6 +329,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     DataProduct dataProduct =
         copy(new DataProduct(), create, user)
             .withFullyQualifiedName(create.getName())
+            .withStyle(create.getStyle())
             .withExperts(EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
     dataProduct.withAssets(new ArrayList<>());
     for (EntityReference asset : listOrEmpty(create.getAssets())) {

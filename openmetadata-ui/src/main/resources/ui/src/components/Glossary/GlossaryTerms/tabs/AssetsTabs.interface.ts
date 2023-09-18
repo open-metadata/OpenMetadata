@@ -10,7 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+
 export enum AssetsOfEntity {
   GLOSSARY = 'GLOSSARY',
   DOMAIN = 'DOMAIN',
+  DATA_PRODUCT = 'DATA_PRODUCT',
+}
+
+export enum AssetsViewType {
+  PILLS = 'PILLS',
+  TABS = 'TABS',
+}
+
+export interface AssetsTabsProps {
+  onAddAsset: () => void;
+  permissions: OperationPermission;
+  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
+  isSummaryPanelOpen: boolean;
+  type?: AssetsOfEntity;
+  viewType?: AssetsViewType;
 }
