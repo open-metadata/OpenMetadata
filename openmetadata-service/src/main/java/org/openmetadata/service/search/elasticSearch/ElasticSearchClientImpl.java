@@ -806,10 +806,11 @@ public class ElasticSearchClientImpl implements SearchClient {
       LOG.error("Entity is null");
       return;
     }
-    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
+    String contextInfo = String.format("Entity Info : %s", entity);
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
+    deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     try {
       deleteEntityFromElasticSearch(deleteRequest);
     } catch (DocumentMissingException ex) {
@@ -824,6 +825,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       DeleteByQueryRequest request = new DeleteByQueryRequest("SearchAlias");
       queryBuilder.must(new TermQueryBuilder(field, entity.getFullyQualifiedName()));
       request.setQuery(queryBuilder);
+      request.setRefresh(true);
       try {
         deleteEntityFromElasticSearchByQuery(request);
       } catch (DocumentMissingException ex) {
@@ -851,6 +853,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
+    deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     try {
       deleteEntityFromElasticSearch(deleteRequest);
     } catch (DocumentMissingException ex) {
@@ -863,6 +866,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (!CommonUtil.nullOrEmpty(scriptTxt) && !CommonUtil.nullOrEmpty(field)) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
+      updateByQueryRequest.setRefresh(true);
       Script script =
           new Script(
               ScriptType.INLINE,
@@ -894,6 +898,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     String scriptTxt = "ctx._source.deleted=" + delete;
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
     updateRequest.script(script);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     try {
       updateElasticSearch(updateRequest);
     } catch (DocumentMissingException ex) {
