@@ -215,7 +215,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withJoins(getJoins(table));
   }
 
-  public Table addLifeCycle(String fqn, LifeCycle lifeCycle) {
+  public Table addLifeCycle(String fqn, LifeCycle newLifeCycle) {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityByName(fqn);
     table.setService(getContainer(table.getId()));
@@ -225,28 +225,28 @@ public class TableRepository extends EntityRepository<Table> {
       currentLifeCycle = new LifeCycle();
     }
 
-    if (lifeCycle.getCreated() != null
+    if (newLifeCycle.getCreated() != null
         && (currentLifeCycle.getCreated() == null
-            || lifeCycle.getCreated().getCreatedAt().compareTo(currentLifeCycle.getCreated().getCreatedAt()) > 0)) {
-      currentLifeCycle.setCreated(lifeCycle.getCreated());
+            || newLifeCycle.getCreated().getCreatedAt() > currentLifeCycle.getCreated().getCreatedAt())) {
+      currentLifeCycle.setCreated(newLifeCycle.getCreated());
     }
 
-    if (lifeCycle.getAccessed() != null
+    if (newLifeCycle.getAccessed() != null
         && (currentLifeCycle.getAccessed() == null
-            || lifeCycle.getAccessed().getAccessedAt().compareTo(currentLifeCycle.getAccessed().getAccessedAt()) > 0)) {
-      currentLifeCycle.setAccessed(lifeCycle.getAccessed());
+            || newLifeCycle.getAccessed().getAccessedAt() >  currentLifeCycle.getAccessed().getAccessedAt())) {
+      currentLifeCycle.setAccessed(newLifeCycle.getAccessed());
     }
 
-    if (lifeCycle.getUpdated() != null
+    if (newLifeCycle.getUpdated() != null
         && (currentLifeCycle.getUpdated() == null
-            || lifeCycle.getUpdated().getUpdatedAt().compareTo(currentLifeCycle.getUpdated().getUpdatedAt()) > 0)) {
-      currentLifeCycle.setUpdated(lifeCycle.getUpdated());
+            || newLifeCycle.getUpdated().getUpdatedAt() > currentLifeCycle.getUpdated().getUpdatedAt())) {
+      currentLifeCycle.setUpdated(newLifeCycle.getUpdated());
     }
 
-    if (lifeCycle.getDeleted() != null
+    if (newLifeCycle.getDeleted() != null
         && (currentLifeCycle.getDeleted() == null
-            || lifeCycle.getDeleted().getDeletedAt().compareTo(currentLifeCycle.getDeleted().getDeletedAt()) > 0)) {
-      currentLifeCycle.setDeleted(lifeCycle.getDeleted());
+            || newLifeCycle.getDeleted().getDeletedAt() > currentLifeCycle.getDeleted().getDeletedAt())) {
+      currentLifeCycle.setDeleted(newLifeCycle.getDeleted());
     }
 
     daoCollection

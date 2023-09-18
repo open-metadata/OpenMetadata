@@ -1872,7 +1872,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_tableLifeCycle(TestInfo test) throws IOException {
+  void putDelete_tableLifeCycle(TestInfo test) throws IOException {
     List<Column> columns =
         Arrays.asList(
             getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL).withDescription(null),
