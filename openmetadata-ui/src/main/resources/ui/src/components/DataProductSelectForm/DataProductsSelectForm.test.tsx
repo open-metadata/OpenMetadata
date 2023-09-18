@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import DataProductsSelectForm from './DataProductsSelectForm';
 
 const mockOnSubmit = jest.fn();
 const mockOnCancel = jest.fn();
 
-describe('Test Suite Form Page', () => {
+describe('Data Products Form Page', () => {
   it('renders without errors', () => {
     const { getByTestId } = render(
       <DataProductsSelectForm
@@ -45,7 +46,7 @@ describe('Test Suite Form Page', () => {
     );
 
     const cancelButton = getByTestId('cancelAssociatedTag');
-    fireEvent.click(cancelButton);
+    userEvent.click(cancelButton);
 
     // Ensure that the onCancel function is called when the Cancel button is clicked
     expect(mockOnCancel).toHaveBeenCalledTimes(1);
@@ -65,11 +66,11 @@ describe('Test Suite Form Page', () => {
       '.ant-select-selector'
     );
     if (selectRef) {
-      fireEvent.click(selectRef);
+      userEvent.click(selectRef);
     }
 
     // Simulate the Save button click
-    fireEvent.click(getByTestId('saveAssociatedTag'));
+    userEvent.click(getByTestId('saveAssociatedTag'));
 
     // Check if onSubmit was called with the selected value
     expect(mockOnSubmit).toHaveBeenCalledTimes(1);

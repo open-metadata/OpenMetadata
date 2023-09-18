@@ -77,19 +77,22 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
     fetchDomainList();
   };
 
+  const domainContextObj = useMemo(() => {
+    return {
+      domains,
+      domainOptions,
+      domainLoading,
+      updateDomains,
+      refreshDomains,
+    };
+  }, [domains, domainOptions, domainLoading, updateDomains, refreshDomains]);
+
   useEffect(() => {
     fetchDomainList();
   }, []);
 
   return (
-    <DomainContext.Provider
-      value={{
-        domains,
-        domainOptions,
-        domainLoading,
-        updateDomains,
-        refreshDomains,
-      }}>
+    <DomainContext.Provider value={domainContextObj}>
       {children}
     </DomainContext.Provider>
   );

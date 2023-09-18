@@ -18,7 +18,6 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from 'constants/constants';
-
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { Domain } from 'generated/entity/domains/domain';
@@ -150,7 +149,7 @@ const DomainPage = () => {
     if (domains.length > 0 && !domainFqn) {
       history.push(getDomainPath(domains[0].fullyQualifiedName));
     }
-  }, [domains]);
+  }, [domains, domainFqn]);
 
   if (isLoading) {
     return <Loader />;

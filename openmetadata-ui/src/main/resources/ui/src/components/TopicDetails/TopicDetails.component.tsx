@@ -37,8 +37,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
-import { getEntityReferenceFromDataProduct } from 'utils/DomainUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
@@ -244,7 +243,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
     const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromDataProduct(item);
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
     });
 
     const updatedTopicDetails = {

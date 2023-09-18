@@ -132,13 +132,15 @@ const DataProductsSelectList = forwardRef<
     );
 
     const onSelectChange = (value: string[]) => {
-      const entityObj = value
-        .map((item) => {
-          const option = options.find((option) => option.label === item);
+      const entityObj = value.reduce((result: DataProduct[], item) => {
+        const option = options.find((option) => option.label === item);
+        if (option) {
+          result.push(option.value);
+        }
 
-          return option ? option.value : undefined;
-        })
-        .filter((value) => value !== undefined);
+        return result;
+      }, []);
+
       setSelectedValue(entityObj as DataProduct[]);
     };
 
@@ -152,6 +154,7 @@ const DataProductsSelectList = forwardRef<
       <Select
         autoFocus
         showSearch
+        className="w-full"
         data-testid="data-product-selector"
         defaultValue={defaultValue}
         dropdownRender={dropdownRender}
@@ -160,7 +163,6 @@ const DataProductsSelectList = forwardRef<
         notFoundContent={isLoading ? <Loader size="small" /> : null}
         optionLabelProp="label"
         ref={selectRef}
-        style={{ width: '100%' }}
         tagRender={tagRender}
         onChange={onSelectChange}
         onFocus={() => loadOptions('')}

@@ -41,8 +41,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
-import { getEntityReferenceFromDataProduct } from 'utils/DomainUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
@@ -271,7 +270,7 @@ const DashboardDetails = ({
 
   const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
     const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromDataProduct(item);
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
     });
 
     const updatedDashboard = {

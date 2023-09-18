@@ -83,8 +83,7 @@ import {
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { defaultFields } from 'utils/DatasetDetailsUtils';
-import { getEntityReferenceFromDataProduct } from 'utils/DomainUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
@@ -425,7 +424,7 @@ const TableDetailsPageV1 = () => {
 
   const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
     const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromDataProduct(item);
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
     });
 
     const updatedTableDetails = {

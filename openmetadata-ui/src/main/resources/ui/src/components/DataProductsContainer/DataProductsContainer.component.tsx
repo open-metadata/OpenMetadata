@@ -80,7 +80,7 @@ const DataProductsContainer = ({
         onSubmit={handleSave}
       />
     );
-  }, [handleCancel, handleSave, dataProducts]);
+  }, [handleCancel, handleSave, dataProducts, fetchAPI]);
 
   const showAddTagButton = useMemo(
     () => hasPermission && isEmpty(dataProducts),
@@ -88,6 +88,10 @@ const DataProductsContainer = ({
   );
 
   const renderDataProducts = useMemo(() => {
+    if (isEmpty(dataProducts)) {
+      return null;
+    }
+
     return dataProducts.map((product) => {
       return (
         <Tag
@@ -157,7 +161,7 @@ const DataProductsContainer = ({
         <Row data-testid="data-products-list">
           <Col>
             {addTagButton}
-            {!isEmpty(dataProducts) && renderDataProducts}
+            {renderDataProducts}
           </Col>
         </Row>
       )}
