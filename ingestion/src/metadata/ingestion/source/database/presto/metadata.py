@@ -100,7 +100,8 @@ def get_columns(
 @reflection.cache
 # pylint: disable=unused-argument
 def get_table_comment(self, connection, table_name, schema=None, **kw):
-    results  = connection.execute(PRESTO_SHOW_CREATE_TABLE.format(schema=schema, table_name=table_name))
+    fmt_query = PRESTO_SHOW_CREATE_TABLE.format(schema_table_name='.'.join(filter(None, [schema, table_name])))
+    results  = connection.execute(fmt_query)
     for res in results:
         matches = re.findall(r"COMMENT '(.*)'", res[0])
         if matches:

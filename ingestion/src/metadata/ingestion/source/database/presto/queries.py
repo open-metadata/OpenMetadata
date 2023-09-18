@@ -15,4 +15,4 @@ SQL Queries used during ingestion
 
 PRESTO_SHOW_CATALOGS = "SHOW CATALOGS"
 
-PRESTO_SHOW_CREATE_TABLE = "SHOW CREATE TABLE {schema}.{table_name}"
+PRESTO_SHOW_CREATE_TABLE = "SHOW CREATE TABLE {schema_table_name}"
