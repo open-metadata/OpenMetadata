@@ -15,7 +15,7 @@
 name: MySQL Playwright Integration Tests
 
 on:
-  workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main 
@@ -23,10 +23,10 @@ on:
       - '1.[0-9]+[0-9]+'
     paths-ignore:
       - 'openmetadata-docs/**'
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
-    paths-ignore:
-      - 'openmetadata-docs/**'
+  # pull_request_target:
+  #   types: [labeled, opened, synchronize, reopened]
+  #   paths-ignore:
+  #     - 'openmetadata-docs/**'
 
 jobs:
   playwright-mysql:
