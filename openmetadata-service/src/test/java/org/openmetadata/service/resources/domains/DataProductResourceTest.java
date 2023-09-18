@@ -5,9 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.*;
 
 import java.io.IOException;
 import java.util.List;
@@ -20,6 +18,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -131,6 +130,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         .withName(name)
         .withDescription(name)
         .withDomain(DOMAIN.getFullyQualifiedName())
+        .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
@@ -142,6 +142,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
     assertEntityReferences(request.getAssets(), createdEntity.getAssets());
+    assertStyle(request.getStyle(), createdEntity.getStyle());
   }
 
   @Override

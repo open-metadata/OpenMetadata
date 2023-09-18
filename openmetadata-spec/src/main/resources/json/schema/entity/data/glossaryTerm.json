@@ -46,6 +46,9 @@
       "description": "Description of the glossary term.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
