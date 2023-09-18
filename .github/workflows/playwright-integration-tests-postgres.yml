@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser-type: [chromium, firefox, webkit]
+        browser-type: ['chromium', 'firefox', 'webkit']
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
