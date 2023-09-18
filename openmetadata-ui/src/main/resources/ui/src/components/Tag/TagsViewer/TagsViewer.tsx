@@ -140,11 +140,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   return (
     <>
-      <Space
-        direction={
-          layoutType === LayoutType.HORIZONTAL ? 'horizontal' : 'vertical'
-        }
-        size={0}>
+      <Space direction={layoutType} size={0}>
         {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
       </Space>
       {displayType === DisplayType.POPOVER
