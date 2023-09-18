@@ -406,7 +406,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable<Topic>
+          <CustomPropertyTable
             entityType={EntityType.TOPIC}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

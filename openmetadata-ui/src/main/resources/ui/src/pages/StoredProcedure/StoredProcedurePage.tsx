@@ -591,7 +591,7 @@ const StoredProcedurePage = () => {
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable<StoredProcedure>
+          <CustomPropertyTable
             entityType={EntityType.STORED_PROCEDURE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

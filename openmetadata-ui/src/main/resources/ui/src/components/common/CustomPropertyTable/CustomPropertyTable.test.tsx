@@ -21,7 +21,6 @@ import React from 'react';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
 import { CustomPropertyTable } from './CustomPropertyTable';
-import { EntityDetails } from './CustomPropertyTable.interface';
 
 const mockCustomProperties = [
   {
@@ -92,11 +91,9 @@ jest.mock('utils/CustomProperties/CustomProperty.utils', () => ({
   getEntityExtentionDetailsFromEntityType: jest.fn(),
 }));
 
-const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
-  entityDetails: mockTableDetails,
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
   hasEditAccess: true,

@@ -494,7 +494,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable<Mlmodel>
+          <CustomPropertyTable
             entityType={EntityType.MLMODEL}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

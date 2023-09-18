@@ -24,19 +24,6 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 
-export type EntityDetails =
-  | Table
-  | Topic
-  | Dashboard
-  | Pipeline
-  | Mlmodel
-  | Container
-  | StoredProcedure
-  | GlossaryTerm
-  | SearchIndex
-  | Database
-  | DatabaseSchema;
-
 export type ExtentionEntities = {
   [EntityType.TABLE]: Table;
   [EntityType.TOPIC]: Topic;
@@ -51,11 +38,13 @@ export type ExtentionEntities = {
   [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
 };
 
-export interface CustomPropertyProps<T extends EntityDetails> {
+export type ExtentionEntitiesKeys = keyof ExtentionEntities;
+
+export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   isVersionView?: boolean;
-  entityType: keyof ExtentionEntities;
-  entityDetails?: T;
-  handleExtensionUpdate?: (updatedTable: T) => Promise<void>;
+  entityType: T;
+  entityDetails?: ExtentionEntities[T];
+  handleExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;
   hasPermission: boolean;

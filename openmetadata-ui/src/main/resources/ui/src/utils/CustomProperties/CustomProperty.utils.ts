@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExtentionEntities } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import {
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
+} from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityType, TabSpecificField } from 'enums/entity.enum';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import {
@@ -27,11 +30,11 @@ import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 
 export const getEntityExtentionDetailsFromEntityType = <
-  T extends keyof ExtentionEntities
+  T extends ExtentionEntitiesKeys
 >(
   type: T,
   fqn: string
-) => {
+): Promise<ExtentionEntities[ExtentionEntitiesKeys]> | undefined => {
   switch (type) {
     case EntityType.TABLE:
       return getTableDetailsByFQN(fqn, TabSpecificField.EXTENSION);

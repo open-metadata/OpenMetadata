@@ -41,12 +41,13 @@ import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
 import Table from '../Table/Table';
 import {
   CustomPropertyProps,
-  EntityDetails,
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
 } from './CustomPropertyTable.interface';
 import { ExtensionTable } from './ExtensionTable';
 import { PropertyValue } from './PropertyValue';
 
-export const CustomPropertyTable = <T extends EntityDetails>({
+export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   handleExtensionUpdate,
   entityType,
   hasEditAccess,
@@ -57,20 +58,20 @@ export const CustomPropertyTable = <T extends EntityDetails>({
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [extentionDetails, setExtentionDetails] = useState<EntityDetails>();
+  const [extentionDetails, setExtentionDetails] =
+    useState<ExtentionEntities[T]>();
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
   const { fqn } = useParams<{ fqn: string; tab: string; version: string }>();
 
   const fetchExtentiondetails = async () => {
-    const response = await getEntityExtentionDetailsFromEntityType(
+    const response = await getEntityExtentionDetailsFromEntityType<T>(
       entityType,
       fqn
     );
-    if (response) {
-      setExtentionDetails(response);
-    }
+
+    setExtentionDetails(response as ExtentionEntities[T]);
   };
 
   useEffect(() => {
@@ -114,10 +115,10 @@ export const CustomPropertyTable = <T extends EntityDetails>({
   };
 
   const onExtensionUpdate = useCallback(
-    async (updatedExtension: EntityDetails) => {
+    async (updatedExtension: ExtentionEntities[T]) => {
       if (!isUndefined(handleExtensionUpdate) && versionDetails) {
-        const updatedData: T = {
-          ...(versionDetails as T),
+        const updatedData = {
+          ...(versionDetails as ExtentionEntities[T]),
           extension: updatedExtension,
         };
         await handleExtensionUpdate(updatedData);
@@ -128,7 +129,7 @@ export const CustomPropertyTable = <T extends EntityDetails>({
   );
 
   const extensionObject: {
-    extensionObject: EntityDetails;
+    extensionObject: ExtentionEntities[T];
     addedKeysList?: string[];
   } = useMemo(() => {
     if (isVersionView) {

@@ -692,7 +692,7 @@ const PipelineDetails = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable<Pipeline>
+          <CustomPropertyTable
             entityType={EntityType.PIPELINE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

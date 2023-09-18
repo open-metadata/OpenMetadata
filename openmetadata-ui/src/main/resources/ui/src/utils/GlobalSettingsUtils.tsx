@@ -409,6 +409,12 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
       return GlobalSettingOptions.MLMODELS;
     case EntityType.CONTAINER:
       return GlobalSettingOptions.CONTAINERS;
+    case EntityType.DATABASE:
+      return GlobalSettingOptions.DATABASE;
+    case EntityType.DATABASE_SCHEMA:
+      return GlobalSettingOptions.DATABASE_SCHEMA;
+    case EntityType.GLOSSARY_TERM:
+      return GlobalSettingOptions.GLOSSARY_TERM;
 
     case EntityType.TABLE:
     default:
