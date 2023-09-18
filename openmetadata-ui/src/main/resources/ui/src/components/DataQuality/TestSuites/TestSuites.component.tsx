@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
@@ -33,7 +34,6 @@ import { EntityTabs } from 'enums/entity.enum';
 import { TestSummary } from 'generated/entity/data/table';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
-import { Paging } from 'generated/type/paging';
 import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
@@ -151,15 +151,15 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     }
   };
 
-  const handlePagingClick = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePageChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     const { paging } = testSuites;
-    if (isString(cursorValue)) {
-      fetchTestSuites({ [cursorValue]: paging?.[cursorValue as keyof Paging] });
+    if (isString(cursorType)) {
+      fetchTestSuites({ [cursorType]: paging?.[cursorType] });
     }
-    activePage && setCurrentPage(activePage);
+    setCurrentPage(currentPage);
   };
 
   useEffect(() => {
@@ -168,7 +168,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, testSuitePermission]);
+  }, [testSuitePermission]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -198,21 +198,18 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
       <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Table
-            bordered
-            columns={columns}
-            data-testid="test-suite-table"
-            dataSource={testSuites.data}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          columns={columns}
+          data-testid="test-suite-table"
+          dataSource={testSuites.data}
+          loading={isLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          size="small"
+        />
       </Col>
       <Col span={24}>
         {testSuites.paging.total > PAGE_SIZE && (
@@ -220,8 +217,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             currentPage={currentPage}
             pageSize={PAGE_SIZE}
             paging={testSuites.paging}
-            pagingHandler={handlePagingClick}
-            totalCount={testSuites.paging.total}
+            pagingHandler={handlePageChange}
           />
         )}
       </Col>

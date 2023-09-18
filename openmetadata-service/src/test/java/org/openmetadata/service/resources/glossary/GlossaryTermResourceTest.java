@@ -17,10 +17,7 @@
 package org.openmetadata.service.resources.glossary;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -37,15 +34,9 @@ import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
-import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import java.io.IOException;
 import java.net.URI;
@@ -70,6 +61,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -86,7 +78,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
-  private final GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+  private final GlossaryResourceTest glossaryTest = new GlossaryResourceTest();
 
   public GlossaryTermResourceTest() {
     super(
@@ -189,8 +181,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a glossary term, carry it forward from the glossary
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
-    Glossary glossary = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    CreateGlossary createGlossary = glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     // Create term t1 in the glossary without domain
     CreateGlossaryTerm create =
@@ -308,23 +300,70 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  void patch_addDeleteStyle(TestInfo test) throws IOException {
+    // Create glossary term1 in glossary g1
+    CreateGlossaryTerm create =
+        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null).withStyle(null);
+    GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create glossary term11 under term1 in glossary g1
+    create =
+        createRequest("t1", "", "", null)
+            .withSynonyms(null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withParent(term1.getFullyQualifiedName());
+    GlossaryTerm term11 = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Apply tags to term11
+    String json = JsonUtils.pojoToJson(term11);
+    ChangeDescription change = new ChangeDescription();
+    Style style = new Style().withIconURL("http://termIcon").withColor("#9FE2BF");
+    fieldAdded(change, "style", style);
+    term11.setStyle(style);
+    term11 = patchEntityAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertStyle(style, term11.getStyle());
+
+    // Apply badge to term1
+    json = JsonUtils.pojoToJson(term1);
+    change = new ChangeDescription();
+    style = new Style().withIconURL("http://termIcon1").withColor("#9FE2DF");
+    fieldAdded(change, "style", style);
+    term1.setStyle(style);
+    term1 = patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertStyle(style, term1.getStyle());
+
+    // remove badge to term1
+    change = new ChangeDescription();
+    change.setPreviousVersion(term1.getVersion());
+    json = JsonUtils.pojoToJson(term1);
+    fieldDeleted(change, "style", style);
+    term1.setStyle(null);
+    patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(term1.getStyle());
+  }
+
+  @Test
   void delete_recursive(TestInfo test) throws IOException {
     Glossary g1 = createGlossary(test, null, null);
 
     // Create glossary term t1 in glossary g1
-    CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1.getFullyQualifiedName());
-    GlossaryTerm t1 = createEntity(create, ADMIN_AUTH_HEADERS);
+    GlossaryTerm t1 = createTerm(g1, null, "t1");
     TagLabel t1Label = EntityUtil.toTagLabel(t1);
 
     // Create glossary term t11 under t1
-    create.withName("t11with'quote").withParent(t1.getFullyQualifiedName());
-    GlossaryTerm t11 = createEntity(create, ADMIN_AUTH_HEADERS);
+    GlossaryTerm t11 = createTerm(g1, t1, "t11");
     TagLabel t11Label = EntityUtil.toTagLabel(t11);
 
     // Create glossary term t111 under t11
-    create.withName("t111'quote").withParent(t11.getFullyQualifiedName());
-    GlossaryTerm t111 = createEntity(create, ADMIN_AUTH_HEADERS);
+    GlossaryTerm t111 = createTerm(g1, t11, "t111");
     TagLabel t111Label = EntityUtil.toTagLabel(t111);
+
+    // Create glossary term t12, t121, t1211 under t1
+    GlossaryTerm t12 = createTerm(g1, t1, "t12");
+    GlossaryTerm t121 = createTerm(g1, t12, "t121");
+    GlossaryTerm t1211 = createTerm(g1, t121, "t121");
 
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
@@ -340,9 +379,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // g1 glossary is not empty and can't be deleted
     assertResponse(
-        () -> glossaryResourceTest.deleteEntity(g1.getId(), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        entityIsNotEmpty(GLOSSARY));
+        () -> glossaryTest.deleteEntity(g1.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY));
 
     // t1 is not empty and can't be deleted
     assertResponse(() -> deleteEntity(t1.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY_TERM));
@@ -366,8 +403,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertFalse(table.getTags().isEmpty()); // tag t1 still exists
 
     // Delete the entire glossary
-    glossaryResourceTest.deleteAndCheckEntity(g1, true, true, ADMIN_AUTH_HEADERS);
-    glossaryResourceTest.assertEntityDeleted(g1.getId(), true);
+    glossaryTest.deleteAndCheckEntity(g1, true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.assertEntityDeleted(g1.getId(), true);
     assertEntityDeleted(t1.getId(), true);
 
     // Check to see the tags assigned are deleted
@@ -386,6 +423,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     CreateGlossaryTerm createGlossaryTerm =
         createRequest(termName, "", "", null)
             .withGlossary(getFqn(glossary))
+            .withStyle(new Style().withColor("#FF5733").withIconURL("https://img"))
             .withParent(getFqn(parent))
             .withReviewers(getFqns(reviewers));
     return createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
@@ -401,6 +439,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
       assertEquals(expected.getSynonyms(), actual.getSynonyms());
       assertEquals(expected.getParent(), actual.getParent());
+      assertEquals(expected.getStyle(), actual.getStyle());
       TestUtils.assertEntityReferences(expected.getChildren(), actual.getChildren());
       TestUtils.assertEntityReferences(expected.getReviewers(), actual.getReviewers());
       TestUtils.validateTags(expected.getTags(), actual.getTags());
@@ -431,7 +470,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             ? FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName())
             : FullyQualifiedName.add(entity.getParent().getFullyQualifiedName(), entity.getName());
     assertEquals(fqn, entity.getFullyQualifiedName());
-
+    assertEquals(entity.getStyle(), request.getStyle());
     // Validate glossary that holds this term is present
     validateEntityReference(entity.getGlossary());
     // TODO fix this
@@ -620,16 +659,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   public Glossary createGlossary(TestInfo test, List<EntityReference> reviewers, EntityReference owner)
       throws IOException {
-    return createGlossary(glossaryResourceTest.getEntityName(test), reviewers, owner);
+    return createGlossary(glossaryTest.getEntityName(test), reviewers, owner);
   }
 
   public Glossary createGlossary(String name, List<EntityReference> reviewers, EntityReference owner)
       throws IOException {
-    CreateGlossary create = glossaryResourceTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
-    return glossaryResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    CreateGlossary create = glossaryTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
+    return glossaryTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   public Glossary getGlossary(String name) throws IOException {
-    return glossaryResourceTest.getEntityByName(name, glossaryResourceTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
+    return glossaryTest.getEntityByName(name, glossaryTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
   }
 }

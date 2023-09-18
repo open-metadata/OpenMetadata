@@ -10,9 +10,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -45,12 +47,12 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "analytics")
 public class ReportDataResource {
   public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
-  @Getter protected final ReportDataRepository dao;
+  @Getter protected final ReportDataRepository repository;
   protected final Authorizer authorizer;
 
-  public ReportDataResource(CollectionDAO dao, Authorizer authorizer) {
+  public ReportDataResource(CollectionDAO repository, Authorizer authorizer) {
     this.authorizer = authorizer;
-    this.dao = new ReportDataRepository(dao);
+    this.repository = new ReportDataRepository(repository);
   }
 
   public static class ReportDataResultList extends ResultList<ReportData> {
@@ -89,12 +91,11 @@ public class ReportDataResource {
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
-          Long endTs)
-      throws IOException {
+          Long endTs) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.getReportData(reportDataType, startTs, endTs);
+    return repository.getReportData(reportDataType, startTs, endTs);
   }
 
   @POST
@@ -109,11 +110,41 @@ public class ReportDataResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
       })
   public Response addReportData(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.addReportData(reportData);
+    return repository.addReportData(reportData);
+  }
+
+  @DELETE
+  @Path("/{reportDataType}/{date}")
+  @Operation(
+      operationId = "deleteReportData",
+      summary = "Delete report data for a given report data type ando date",
+      description = "Delete report data for a given report data type and date.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted report data.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
+      })
+  public Response deleteReportData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
+          @NonNull
+          @PathParam("reportDataType")
+          ReportDataType reportDataType,
+      @Parameter(description = "date in format YYYY-MM-DD", schema = @Schema(type = "String"))
+          @NonNull
+          @PathParam("date")
+          String date)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    repository.deleteReportDataAtDate(reportDataType, date);
+    return Response.ok().build();
   }
 }

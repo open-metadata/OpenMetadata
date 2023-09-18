@@ -33,7 +33,6 @@ const MlModelFeaturesList = ({
   permissions,
   isDeleted,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }: MlModelFeaturesListProp) => {
   const { t } = useTranslation();
@@ -117,13 +116,13 @@ const MlModelFeaturesList = ({
                   className="m-b-lg shadow-none"
                   data-testid={`feature-card-${feature.name ?? ''}`}
                   key={feature.fullyQualifiedName}>
-                  <Row>
-                    <Col className="m-b-xs" span={24}>
+                  <Row gutter={[0, 8]}>
+                    <Col span={24}>
                       <Typography.Text className="font-semibold">
                         {feature.name}
                       </Typography.Text>
                     </Col>
-                    <Col className="m-b-xs" span={24}>
+                    <Col span={24}>
                       <Space align="start">
                         <Space>
                           <Typography.Text className="text-grey-muted">
@@ -145,7 +144,7 @@ const MlModelFeaturesList = ({
                       </Space>
                     </Col>
 
-                    <Col className="m-b-xs" span={24}>
+                    <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
                           <Typography.Text className="text-grey-muted">
@@ -155,8 +154,6 @@ const MlModelFeaturesList = ({
 
                         <Col flex="auto">
                           <TableTags<MlFeature>
-                            showInlineEditTagButton
-                            entityFieldThreads={entityFieldThreads}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
@@ -181,8 +178,6 @@ const MlModelFeaturesList = ({
                         </Col>
                         <Col flex="auto">
                           <TableTags<MlFeature>
-                            showInlineEditTagButton
-                            entityFieldThreads={entityFieldThreads}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
@@ -211,7 +206,6 @@ const MlModelFeaturesList = ({
                               fqn: feature.fullyQualifiedName ?? '',
                               field: feature.description,
                             }}
-                            entityFieldThreads={entityFieldThreads}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             hasEditPermission={

@@ -15,10 +15,11 @@ Sample Data source ingestion
 import json
 import random
 import string
+import time
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
@@ -34,6 +35,12 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createSearchIndex import (
+    CreateSearchIndexRequest,
+)
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -57,6 +64,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
@@ -77,6 +85,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -88,9 +97,12 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.lifeCycle import Accessed, Created, Deleted, Updated
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
@@ -109,6 +121,7 @@ from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -126,7 +139,7 @@ class InvalidSampleDataException(Exception):
     """
 
 
-def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
+def get_lineage_entity_ref(edge, metadata_config) -> Optional[EntityReference]:
     metadata = OpenMetadata(metadata_config)
     edge_fqn = edge["fqn"]
     if edge["type"] == "table":
@@ -158,7 +171,7 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
 
 
 class SampleDataSource(
-    Source[Entity]
+    Source
 ):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Loads JSON data and prepares the required
@@ -236,6 +249,13 @@ class SampleDataSource(
         self.tables = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/tables.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.stored_procedures = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/datasets/stored_procedures.json",
                 "r",
                 encoding=UTF_8,
             )
@@ -458,6 +478,42 @@ class SampleDataSource(
             )
         )
 
+        self.storage_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/storage/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.search_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.search_service = self.metadata.get_service_or_create(
+            entity=SearchService,
+            config=WorkflowSource(**self.search_service_json),
+        )
+
+        self.search_indexes = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/searchIndexes/searchIndexes.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.life_cycle_data = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/lifecycle/lifeCycle.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -470,13 +526,14 @@ class SampleDataSource(
         return cls(config, metadata_config)
 
     def prepare(self):
-        pass
+        """Nothing to prepare"""
 
-    def next_record(self) -> Iterable[Entity]:
+    def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
+        yield from self.ingest_stored_procedures()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
         yield from self.ingest_data_models()
@@ -487,13 +544,15 @@ class SampleDataSource(
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
         yield from self.ingest_containers()
+        yield from self.ingest_search_indexes()
         yield from self.ingest_profiles()
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
         yield from self.ingest_logical_test_suite()
+        yield from self.ingest_life_cycle()
 
-    def ingest_teams(self):
+    def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
         Ingest sample teams
         """
@@ -519,19 +578,18 @@ class SampleDataSource(
 
                 team_to_ingest.parents = parent_list_id
 
-            yield team_to_ingest
+            yield Either(right=team_to_ingest)
 
-    def ingest_glue(self):
-        """
-        Ingest Sample Data for glue database source
-        """
+    def ingest_glue(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Data for glue database source"""
+
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
             service=self.database_service.fullyQualifiedName,
         )
 
-        yield db
+        yield Either(right=db)
 
         database_entity = fqn.build(
             self.metadata,
@@ -548,7 +606,7 @@ class SampleDataSource(
             description=self.database_schema["description"],
             database=database_object.fullyQualifiedName,
         )
-        yield schema
+        yield Either(right=schema)
 
         database_schema_entity = fqn.build(
             self.metadata,
@@ -571,20 +629,17 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
             )
-            self.status.scanned(f"Table Scanned: {table_request.name.__root__}")
-            yield table_request
+            yield Either(right=table_request)
 
-    def ingest_tables(self):
-        """
-        Ingest Sample Tables
-        """
+    def ingest_tables(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Tables"""
 
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
             service=self.database_service.fullyQualifiedName.__root__,
         )
-        yield db
+        yield Either(right=db)
 
         database_entity = fqn.build(
             self.metadata,
@@ -602,7 +657,7 @@ class SampleDataSource(
             description=self.database_schema["description"],
             database=database_object.fullyQualifiedName,
         )
-        yield schema
+        yield Either(right=schema)
 
         database_schema_entity = fqn.build(
             self.metadata,
@@ -630,8 +685,7 @@ class SampleDataSource(
                 tags=table["tags"],
             )
 
-            self.status.scanned(f"Table Scanned: {table_and_db.name}")
-            yield table_and_db
+            yield Either(right=table_and_db)
 
             if table.get("sampleData"):
 
@@ -653,6 +707,62 @@ class SampleDataSource(
                         columns=table["sampleData"]["columns"],
                     ),
                 )
+
+    def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Stored Procedures"""
+
+        db = CreateDatabaseRequest(
+            name=self.database["name"],
+            description=self.database["description"],
+            service=self.database_service.fullyQualifiedName.__root__,
+        )
+        yield Either(right=db)
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+        )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+
+        schema = CreateDatabaseSchemaRequest(
+            name=self.database_schema["name"],
+            description=self.database_schema["description"],
+            database=database_object.fullyQualifiedName,
+        )
+        yield Either(right=schema)
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+            schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
+        resp = self.metadata.list_entities(entity=User, limit=5)
+        self.user_entity = resp.entities
+
+        for stored_procedure in self.stored_procedures["storedProcedures"]:
+            stored_procedure = CreateStoredProcedureRequest(
+                name=stored_procedure["name"],
+                description=stored_procedure["description"],
+                storedProcedureCode=StoredProcedureCode(
+                    **stored_procedure["storedProcedureCode"]
+                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
+                tags=stored_procedure["tags"],
+            )
+
+            yield Either(right=stored_procedure)
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         """
@@ -688,8 +798,7 @@ class SampleDataSource(
                     schemaFields=schema_fields,
                 )
 
-            self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
-            yield create_topic
+            yield Either(right=create_topic)
 
             if topic.get("sampleData"):
 
@@ -707,10 +816,27 @@ class SampleDataSource(
                     sample_data=TopicSampleData(messages=topic["sampleData"]),
                 )
 
-    def ingest_looker(self) -> Iterable[Entity]:
-        """
-        Looker sample data
-        """
+    def ingest_search_indexes(self) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """Ingest Sample SearchIndexes"""
+
+        for search_index in self.search_indexes["searchIndexes"]:
+            search_index["service"] = EntityReference(
+                id=self.search_service.id, type="searchService"
+            )
+            create_search_index = CreateSearchIndexRequest(
+                name=search_index["name"],
+                description=search_index["description"],
+                displayName=search_index["displayName"],
+                tags=search_index["tags"],
+                fields=search_index["fields"],
+                service=self.search_service.fullyQualifiedName,
+            )
+
+            yield Either(right=create_search_index)
+
+    def ingest_looker(self) -> Iterable[Either[Entity]]:
+        """Looker sample data"""
+
         for data_model in self.looker_models:
             try:
                 data_model_ev = CreateDashboardDataModelRequest(
@@ -723,10 +849,7 @@ class SampleDataSource(
                     serviceType=data_model["serviceType"],
                     service=self.looker_service.fullyQualifiedName,
                 )
-                self.status.scanned(
-                    f"Data Model Scanned: {data_model_ev.name.__root__}"
-                )
-                yield data_model_ev
+                yield Either(right=data_model_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -743,8 +866,7 @@ class SampleDataSource(
                     sourceUrl=chart["sourceUrl"],
                     service=self.looker_service.fullyQualifiedName,
                 )
-                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
-                yield chart_ev
+                yield Either(right=chart_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
@@ -760,8 +882,7 @@ class SampleDataSource(
                     dataModels=dashboard.get("dataModels", None),
                     service=self.looker_service.fullyQualifiedName,
                 )
-                self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
-                yield dashboard_ev
+                yield Either(right=dashboard_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -781,36 +902,42 @@ class SampleDataSource(
             entity=Dashboard, fqn="sample_looker.orders"
         )
 
-        yield AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=orders_view.id.__root__, type="dashboardDataModel"
-                ),
-                toEntity=EntityReference(
-                    id=orders_explore.id.__root__, type="dashboardDataModel"
-                ),
+        yield Either(
+            right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(
+                        id=orders_view.id.__root__, type="dashboardDataModel"
+                    ),
+                    toEntity=EntityReference(
+                        id=orders_explore.id.__root__, type="dashboardDataModel"
+                    ),
+                )
             )
         )
 
-        yield AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=operations_view.id.__root__, type="dashboardDataModel"
-                ),
-                toEntity=EntityReference(
-                    id=orders_explore.id.__root__, type="dashboardDataModel"
-                ),
+        yield Either(
+            right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(
+                        id=operations_view.id.__root__, type="dashboardDataModel"
+                    ),
+                    toEntity=EntityReference(
+                        id=orders_explore.id.__root__, type="dashboardDataModel"
+                    ),
+                )
             )
         )
 
-        yield AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=orders_explore.id.__root__, type="dashboardDataModel"
-                ),
-                toEntity=EntityReference(
-                    id=orders_dashboard.id.__root__, type="dashboard"
-                ),
+        yield Either(
+            right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(
+                        id=orders_explore.id.__root__, type="dashboardDataModel"
+                    ),
+                    toEntity=EntityReference(
+                        id=orders_dashboard.id.__root__, type="dashboard"
+                    ),
+                )
             )
         )
 
@@ -825,13 +952,12 @@ class SampleDataSource(
                     sourceUrl=chart["sourceUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
-                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
-                yield chart_ev
+                yield Either(right=chart_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
-    def ingest_data_models(self) -> Iterable[CreateDashboardDataModelRequest]:
+    def ingest_data_models(self) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         for data_model in self.data_models["datamodels"]:
             try:
                 data_model_ev = CreateDashboardDataModelRequest(
@@ -844,17 +970,14 @@ class SampleDataSource(
                     serviceType=data_model["serviceType"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
-                self.status.scanned(
-                    f"Data Model Scanned: {data_model_ev.name.__root__}"
-                )
-                yield data_model_ev
+                yield Either(right=data_model_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Unexpected exception ingesting chart [{data_model}]: {err}"
                 )
 
-    def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
+    def ingest_dashboards(self) -> Iterable[Either[CreateDashboardRequest]]:
         for dashboard in self.dashboards["dashboards"]:
             dashboard_ev = CreateDashboardRequest(
                 name=dashboard["name"],
@@ -865,10 +988,9 @@ class SampleDataSource(
                 dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
             )
-            self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
-            yield dashboard_ev
+            yield Either(right=dashboard_ev)
 
-    def ingest_pipelines(self) -> Iterable[Pipeline]:
+    def ingest_pipelines(self) -> Iterable[Either[Pipeline]]:
         for pipeline in self.pipelines["pipelines"]:
             owner = None
             if pipeline.get("owner"):
@@ -885,9 +1007,9 @@ class SampleDataSource(
                 owner=owner,
                 scheduleInterval=pipeline.get("scheduleInterval"),
             )
-            yield pipeline_ev
+            yield Either(right=pipeline_ev)
 
-    def ingest_lineage(self) -> Iterable[AddLineageRequest]:
+    def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         for edge in self.lineage:
             from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
             to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
@@ -906,24 +1028,25 @@ class SampleDataSource(
                     lineageDetails=lineage_details,
                 )
             )
-            yield lineage
+            yield Either(right=lineage)
 
-    def ingest_pipeline_status(self) -> Iterable[OMetaPipelineStatus]:
-        """
-        Ingest sample pipeline status
-        """
+    def ingest_pipeline_status(self) -> Iterable[Either[OMetaPipelineStatus]]:
+        """Ingest sample pipeline status"""
+
         for status_data in self.pipeline_status:
             pipeline_fqn = status_data["pipeline"]
             for status in status_data["pipelineStatus"]:
-                yield OMetaPipelineStatus(
-                    pipeline_fqn=pipeline_fqn,
-                    pipeline_status=PipelineStatus(**status),
+                status["timestamp"] = time.time_ns() // 1_000_000
+                yield Either(
+                    right=OMetaPipelineStatus(
+                        pipeline_fqn=pipeline_fqn,
+                        pipeline_status=PipelineStatus(**status),
+                    )
                 )
 
     def get_ml_feature_sources(self, feature: dict) -> List[FeatureSource]:
-        """
-        Build FeatureSources from sample data
-        """
+        """Build FeatureSources from sample data"""
+
         return [
             FeatureSource(
                 name=source["name"],
@@ -936,9 +1059,8 @@ class SampleDataSource(
         ]
 
     def get_ml_features(self, model: dict) -> List[MlFeature]:
-        """
-        Build MlFeatures from sample data
-        """
+        """Build MlFeatures from sample data"""
+
         return [
             MlFeature(
                 name=feature["name"],
@@ -950,7 +1072,7 @@ class SampleDataSource(
             for feature in model.get("mlFeatures", [])
         ]
 
-    def ingest_mlmodels(self) -> Iterable[CreateMlModelRequest]:
+    def ingest_mlmodels(self) -> Iterable[Either[CreateMlModelRequest]]:
         """
         Convert sample model data into a Model Entity
         to feed the metastore
@@ -988,12 +1110,12 @@ class SampleDataSource(
                     ],
                     service=self.model_service.fullyQualifiedName,
                 )
-                yield model_ev
+                yield Either(right=model_ev)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
 
-    def ingest_containers(self) -> Iterable[CreateContainerRequest]:
+    def ingest_containers(self) -> Iterable[Either[CreateContainerRequest]]:
         """
         Convert sample containers data into a Container Entity
         to feed the metastore
@@ -1027,7 +1149,7 @@ class SampleDataSource(
                     fileFormats=container.get("fileFormats"),
                     service=self.storage_service.fullyQualifiedName,
                 )
-                yield container_request
+                yield Either(right=container_request)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting Container [{container}]: {exc}")
@@ -1054,21 +1176,24 @@ class SampleDataSource(
                     )
                     name = base_name.format(suffix=i)
                     parent_container_fqns.append(name)
-                    yield CreateContainerRequest(
-                        name=name,
-                        parent=EntityReference(id=parent_container.id, type="container")
-                        if parent_container
-                        else None,
-                        service=self.storage_service.fullyQualifiedName,
+                    yield Either(
+                        right=CreateContainerRequest(
+                            name=name,
+                            parent=EntityReference(
+                                id=parent_container.id, type="container"
+                            )
+                            if parent_container
+                            else None,
+                            service=self.storage_service.fullyQualifiedName,
+                        )
                     )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error ingesting nested containers: {exc}")
 
-    def ingest_users(self) -> Iterable[OMetaUserProfile]:
-        """
-        Ingest Sample User data
-        """
+    def ingest_users(self) -> Iterable[Either[OMetaUserProfile]]:
+        """Ingest Sample User data"""
+
         try:
             for user in self.users["users"]:
                 teams = [
@@ -1100,12 +1225,14 @@ class SampleDataSource(
                     email=user["email"],
                 )
 
-                yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
+                yield Either(
+                    right=OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error ingesting users: {exc}")
 
-    def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
+    def ingest_profiles(self) -> Iterable[Either[OMetaTableProfileSampleData]]:
         """Iterate over all the profile data and ingest them"""
         for table_profile in self.profiles["profiles"]:
             table = self.metadata.get_by_name(
@@ -1113,7 +1240,7 @@ class SampleDataSource(
                 fqn=table_profile["fqn"],
             )
             for days, profile in enumerate(table_profile["profile"]):
-                yield OMetaTableProfileSampleData(
+                table_profile = OMetaTableProfileSampleData(
                     table=table,
                     profile=CreateTableProfileRequest(
                         tableProfile=TableProfile(
@@ -1121,15 +1248,22 @@ class SampleDataSource(
                             rowCount=profile["rowCount"],
                             createDateTime=profile.get("createDateTime"),
                             sizeInByte=profile.get("sizeInByte"),
-                            timestamp=(
-                                datetime.now(tz=timezone.utc) - timedelta(days=days)
-                            ).timestamp(),
+                            timestamp=int(
+                                (
+                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
+                                ).timestamp()
+                                * 1000
+                            ),
                         ),
                         columnProfile=[
                             ColumnProfile(
-                                timestamp=(
-                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
-                                ).timestamp(),
+                                timestamp=int(
+                                    (
+                                        datetime.now(tz=timezone.utc)
+                                        - timedelta(days=days)
+                                    ).timestamp()
+                                    * 1000
+                                ),
                                 **col_profile,
                             )
                             for col_profile in profile["columnProfile"]
@@ -1151,19 +1285,26 @@ class SampleDataSource(
                         ],
                     ),
                 )
+                yield Either(right=table_profile)
 
-    def ingest_test_suite(self) -> Iterable[OMetaTestSuiteSample]:
+    def ingest_test_suite(self) -> Iterable[Either[OMetaTestSuiteSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
         for test_suite in self.tests_suites["tests"]:
-            yield OMetaTestSuiteSample(
-                test_suite=CreateTestSuiteRequest(
-                    name=test_suite["testSuiteName"],
-                    description=test_suite["testSuiteDescription"],
-                    executableEntityReference=test_suite["executableEntityReference"],
+            yield Either(
+                right=OMetaTestSuiteSample(
+                    test_suite=CreateTestSuiteRequest(
+                        name=test_suite["testSuiteName"],
+                        description=test_suite["testSuiteDescription"],
+                        executableEntityReference=test_suite[
+                            "executableEntityReference"
+                        ],
+                    )
                 )
             )
 
-    def ingest_logical_test_suite(self) -> Iterable[OMetaLogicalTestSuiteSample]:
+    def ingest_logical_test_suite(
+        self,
+    ) -> Iterable[Either[OMetaLogicalTestSuiteSample]]:
         """Iterate over all the logical testSuite and testCase and ingest them"""
         for logical_test_suite in self.logical_test_suites["tests"]:
             test_suite = CreateTestSuiteRequest(
@@ -1180,17 +1321,19 @@ class SampleDataSource(
                 if test_case:
                     test_cases.append(test_case)
 
-            yield OMetaLogicalTestSuiteSample(
-                test_suite=test_suite, test_cases=test_cases
+            yield Either(
+                right=OMetaLogicalTestSuiteSample(
+                    test_suite=test_suite, test_cases=test_cases
+                )
             )
 
-    def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:
+    def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
         for test_suite in self.tests_suites["tests"]:
             suite = self.metadata.get_by_name(
                 fqn=test_suite["testSuiteName"], entity=TestSuite
             )
             for test_case in test_suite["testCases"]:
-                yield OMetaTestCaseSample(
+                test_case_req = OMetaTestCaseSample(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
                         description=test_case["description"],
@@ -1203,8 +1346,9 @@ class SampleDataSource(
                         ],
                     )
                 )
+                yield Either(right=test_case_req)
 
-    def ingest_test_case_results(self) -> Iterable[OMetaTestCaseResultsSample]:
+    def ingest_test_case_results(self) -> Iterable[Either[OMetaTestCaseResultsSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
         for test_case_results in self.tests_case_results["testCaseResults"]:
             case = self.metadata.get_by_name(
@@ -1214,11 +1358,12 @@ class SampleDataSource(
             )
             if case:
                 for days, result in enumerate(test_case_results["results"]):
-                    yield OMetaTestCaseResultsSample(
+                    test_case_result_req = OMetaTestCaseResultsSample(
                         test_case_results=TestCaseResult(
-                            timestamp=(
-                                datetime.now() - timedelta(days=days)
-                            ).timestamp(),
+                            timestamp=int(
+                                (datetime.now() - timedelta(days=days)).timestamp()
+                                * 1000
+                            ),
                             testCaseStatus=result["testCaseStatus"],
                             result=result["result"],
                             testResultValue=[
@@ -1228,9 +1373,64 @@ class SampleDataSource(
                         ),
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
+                    yield Either(right=test_case_result_req)
+
+    def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:
+        """Iterate over all the life cycle data and ingest them"""
+        for life_cycle in self.life_cycle_data["lifeCycleData"]:
+            table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=life_cycle["fqn"],
+            )
+            life_cycle_data = life_cycle["lifeCycle"]
+            life_cycle_properties = init_empty_life_cycle_properties()
+            created_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["created"]["created_by"]
+            )
+            life_cycle_properties.created = Created(
+                created_at=life_cycle_data["created"]["created_at"],
+                created_by=created_by
+                if created_by
+                else life_cycle_data["created"]["created_by"],
+            )
+
+            updated_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["updated"]["updated_by"]
+            )
+            life_cycle_properties.updated = Updated(
+                updated_at=life_cycle_data["updated"]["updated_at"],
+                updated_by=updated_by
+                if updated_by
+                else life_cycle_data["updated"]["updated_by"],
+            )
+
+            accessed_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["accessed"]["accessed_by"]
+            )
+            life_cycle_properties.accessed = Accessed(
+                accessed_at=life_cycle_data["accessed"]["accessed_at"],
+                accessed_by=accessed_by
+                if accessed_by
+                else life_cycle_data["accessed"]["accessed_by"],
+            )
+
+            deleted_by = self.metadata.get_entity_reference(
+                entity=User, fqn=life_cycle_data["deleted"]["deleted_by"]
+            )
+            life_cycle_properties.deleted = Deleted(
+                deleted_at=life_cycle_data["deleted"]["deleted_at"],
+                deleted_by=deleted_by
+                if deleted_by
+                else life_cycle_data["deleted"]["deleted_by"],
+            )
+
+            life_cycle_request = OMetaLifeCycleData(
+                entity=table, life_cycle_properties=life_cycle_properties
+            )
+            yield Either(right=life_cycle_request)
 
     def close(self):
-        pass
+        """Nothing to close"""
 
     def test_connection(self) -> None:
-        pass
+        """Custom sources don't support testing connections"""

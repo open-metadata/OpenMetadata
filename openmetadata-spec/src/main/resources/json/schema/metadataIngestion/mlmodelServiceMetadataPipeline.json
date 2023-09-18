@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MlModelServiceMetadataPipeline",
   "description": "MlModelService Metadata Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "mlModelMetadataConfigType": {
       "description": "MlModel Source Config Metadata Pipeline type",
@@ -19,12 +20,14 @@
     },
     "mlModelFilterPattern": {
       "description": "Regex to only fetch MlModels with names matching the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "ML Model Filter Pattern"
     },
     "markDeletedMlModels": {
       "description": "Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc., with that MlModels will be deleted",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Mark Deleted ML Models"
     }
   },
   "additionalProperties": false

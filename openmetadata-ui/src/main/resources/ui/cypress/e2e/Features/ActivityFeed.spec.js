@@ -32,16 +32,61 @@ const reactOnFeed = (feedSelector, reaction) => {
       cy.get('[data-testid="add-reactions"]').click();
     });
   });
-
-  cy.get(
-    `#reaction-popover [data-testid="reaction-button"][title="${reaction}"]`
-  ).click();
+  cy.get('.ant-popover-inner-content')
+    .should('be.visible')
+    .then(() => {
+      cy.get(
+        `#reaction-popover [data-testid="reaction-button"][title="${reaction}"]`
+      ).click();
+    });
 };
 
-describe('Recently viwed data assets', () => {
+describe('Activity feed', () => {
   beforeEach(() => {
     cy.login();
     cy.get("[data-testid='welcome-screen-close-btn']").click();
+  });
+
+  it('Create feed', () => {
+    interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
+    interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=**teamType:Group&from=0&size=15&index=team_search_index',
+      'getTeams'
+    );
+    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
+    const value = SEARCH_ENTITY_TABLE.table_4;
+    const OWNER = 'admin';
+    interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
+
+    visitEntityDetailsPage(
+      value.term,
+      value.serviceName,
+      value.entity,
+      undefined,
+      value.entityType
+    );
+    verifyResponseStatusCode('@entityPermission', 200);
+    verifyResponseStatusCode('@activityFeed', 200);
+
+    cy.get('[data-testid="edit-owner"]').click();
+
+    cy.get('.ant-tabs [id*=tab-users]').click();
+    verifyResponseStatusCode('@getUsers', 200);
+
+    interceptURL(
+      'GET',
+      `api/v1/search/query?q=*${encodeURI(OWNER)}*`,
+      'searchOwner'
+    );
+
+    cy.get('[data-testid="owner-select-users-search-bar"]').type(OWNER);
+
+    verifyResponseStatusCode('@searchOwner', 200);
+
+    cy.get(`.ant-popover [title="${OWNER}"]`).click();
+    verifyResponseStatusCode('@patchOwner', 200);
   });
 
   it('Feed widget should be visible', () => {
@@ -88,6 +133,31 @@ describe('Recently viwed data assets', () => {
     });
   });
 
+  it('Remove Emoji reaction from feed', () => {
+    // remove reaction for latest feed
+    [
+      'thumbsUp',
+      'thumbsDown',
+      'laugh',
+      'hooray',
+      'confused',
+      'heart',
+      'eyes',
+      'rocket',
+    ].map((reaction) =>
+      reactOnFeed(
+        '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child',
+        reaction
+      )
+    );
+
+    // Verify if reaction is working or not
+    cy.get('[data-testid="message-container"]')
+      .eq(1)
+      .find('[data-testid="feed-reaction-container"]')
+      .should('not.exist');
+  });
+
   it('User should be able to reply to feed', () => {
     interceptURL('GET', '/api/v1/feed/*', 'fetchFeed');
     cy.get(
@@ -120,7 +190,7 @@ describe('Recently viwed data assets', () => {
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     ).as('editor');
     cy.get('@editor').click();
-    cy.get('@editor').type('Cypress has replied here. Thanks! @aa');
+    cy.get('@editor').type('Cypress has replied here. Thanks! @aaron_johnson0');
 
     verifyResponseStatusCode('@suggestUser', 200);
     cy.get('[data-value="@aaron_johnson0"]').click();
@@ -155,6 +225,11 @@ describe('Recently viwed data assets', () => {
 
   it('Mention should work for the feed reply', () => {
     interceptURL('GET', '/api/v1/feed/*', 'fetchFeed');
+    interceptURL(
+      'GET',
+      '/api/v1/feed?filterType=MENTIONS&userId=*',
+      'mentionsFeed'
+    );
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
     ).within(() => {
@@ -180,7 +255,6 @@ describe('Recently viwed data assets', () => {
     ).as('editor');
     cy.get('@editor').click();
     cy.get('@editor').type('Can you resolve this thread for me? @admin');
-    // verifyResponseStatusCode('@suggestUser', 200);
     cy.get('[data-value="@admin"]').click();
 
     cy.get('[data-testid="send-button"]')
@@ -202,7 +276,7 @@ describe('Recently viwed data assets', () => {
     cy.get('[data-testid="activity-feed-widget"]')
       .contains('@Mentions')
       .click();
-
+    verifyResponseStatusCode('@mentionsFeed', 200);
     // Verify mentioned thread should be there int he mentioned tab
     cy.get(
       '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'

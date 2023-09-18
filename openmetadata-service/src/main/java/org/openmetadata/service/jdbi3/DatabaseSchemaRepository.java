@@ -14,13 +14,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityReference;
@@ -31,7 +29,10 @@ import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchemaRepository(CollectionDAO dao) {
     super(
@@ -42,6 +43,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao,
         "",
         "");
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -51,12 +53,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public void prepare(DatabaseSchema schema) throws IOException {
+  public void prepare(DatabaseSchema schema, boolean update) {
     populateDatabase(schema);
   }
 
   @Override
-  public void storeEntity(DatabaseSchema schema, boolean update) throws IOException {
+  public void storeEntity(DatabaseSchema schema, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = schema.getService();
     schema.withService(null);
@@ -73,50 +75,37 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
   }
 
-  private List<EntityReference> getTables(DatabaseSchema schema) throws IOException {
-    if (schema == null) {
-      return Collections.emptyList();
-    }
-    return findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
+  private List<EntityReference> getTables(DatabaseSchema schema) {
+    return schema == null
+        ? Collections.emptyList()
+        : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
   }
 
-  public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) throws IOException {
+  public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
-    schema.setOwner(fields.contains(FIELD_OWNER) ? getOwner(schema) : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     return schema.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
   }
 
-  private void setDefaultFields(DatabaseSchema schema) throws IOException {
+  public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
+    schema.setTables(fields.contains("tables") ? schema.getTables() : null);
+    return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
+  }
+
+  private void setDefaultFields(DatabaseSchema schema) {
     EntityReference databaseRef = getContainer(schema.getId());
     Database database = Entity.getEntity(databaseRef, "", Include.ALL);
     schema.withDatabase(databaseRef).withService(database.getService());
   }
 
   @Override
-  public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) throws IOException {
-    Database database = null;
-    UUID databaseId = schema.getDatabase().getId();
-    // If schema does not have owner, then inherit parent database owner
-    if (fields.contains(FIELD_OWNER) && schema.getOwner() == null) {
-      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner,domain", ALL);
-      schema.withOwner(database.getOwner());
-    }
-
-    // If schema does not have domain, then inherit it from parent database
-    if (fields.contains(FIELD_DOMAIN) && schema.getDomain() == null) {
-      if (database == null) {
-        database = Entity.getEntity(Entity.DATABASE, databaseId, "domain", ALL);
-      }
-      schema.withDomain(database.getDomain());
-    }
-
-    // If schema does not have its own retention period, then inherit parent database retention period
-    if (schema.getRetentionPeriod() == null) {
-      database = database == null ? Entity.getEntity(Entity.DATABASE, databaseId, "", ALL) : database;
-      schema.withRetentionPeriod(database.getRetentionPeriod());
-    }
+  public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) {
+    Database database = Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
+    inheritOwner(schema, fields, database);
+    inheritDomain(schema, fields, database);
+    schema.withRetentionPeriod(
+        schema.getRetentionPeriod() == null ? database.getRetentionPeriod() : schema.getRetentionPeriod());
     return schema;
   }
 
@@ -131,12 +120,35 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
+  public void deleteFromSearch(DatabaseSchema entity, String changeType) {
+    if (supportsSearchIndex) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, DatabaseSchema.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "databaseSchema.fullyQualifiedName");
+      } else {
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, DatabaseSchema.class), "", "databaseSchema.fullyQualifiedName");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(DatabaseSchema entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, DatabaseSchema.class), false, "databaseSchema.fullyQualifiedName");
+    }
+  }
+
+  @Override
   public EntityRepository<DatabaseSchema>.EntityUpdater getUpdater(
       DatabaseSchema original, DatabaseSchema updated, Operation operation) {
     return new DatabaseSchemaUpdater(original, updated, operation);
   }
 
-  private void populateDatabase(DatabaseSchema schema) throws IOException {
+  private void populateDatabase(DatabaseSchema schema) {
     Database database = Entity.getEntity(schema.getDatabase(), "", ALL);
     schema
         .withDatabase(database.getEntityReference())
@@ -150,8 +162,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }

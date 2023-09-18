@@ -50,20 +50,23 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
 )
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
-from metadata.ingestion.api.workflow import REPORTS_INTERVAL_SECONDS
 from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
 from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
 from metadata.timer.repeated_timer import RepeatedTimer
-from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import data_insight_logger, set_loggers_level
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
-from metadata.utils.workflow_output_handler import print_data_insight_status
+from metadata.workflow.base import REPORTS_INTERVAL_SECONDS
+from metadata.workflow.workflow_output_handler import (
+    get_ingestion_status_timer,
+    print_data_insight_status,
+)
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = data_insight_logger()
@@ -74,7 +77,7 @@ RETENTION_DAYS = 7
 
 class DataInsightWorkflow(WorkflowStatusMixin):
     """
-    Configure and run the Data Insigt workflow
+    Configure and run the Data Insight workflow
 
     Attributes:
     """
@@ -82,6 +85,7 @@ class DataInsightWorkflow(WorkflowStatusMixin):
     def __init__(self, config: OpenMetadataWorkflowConfig) -> None:
         self.config = config
         self._timer: Optional[RepeatedTimer] = None
+        self.date = datetime.utcnow().strftime("%Y-%m-%d")
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 
@@ -173,6 +177,9 @@ class DataInsightWorkflow(WorkflowStatusMixin):
         """Handles scenarios where data has already been ingested for the execution data.
         If we find some data for the execution date we should deleted those documents before
         re indexing new documents.
+
+        !IMPORTANT! This should be deprecared and the logic should be handle in the event
+        publisher side once we have the event publisher handling DI indexing.
         """
         gte = get_beginning_of_day_timestamp_mill()
         lte = get_end_of_day_timestamp_mill()
@@ -211,8 +218,11 @@ class DataInsightWorkflow(WorkflowStatusMixin):
     def _execute_data_processor(self):
         """Data processor method to refine raw data into report data and ingest it in ES"""
         for report_data_type in ReportDataType:
-            has_checked_and_handled_existing_es_data = False
             logger.info(f"Processing data for report type {report_data_type}")
+            # we delete the report data for the current date to avoid duplicates
+            # entries in the database.
+            self.metadata.delete_report_data(report_data_type, self.date)
+            has_checked_and_handled_existing_es_data = False
             try:
                 self.source = DataProcessor.create(
                     _data_processor_type=report_data_type.value, metadata=self.metadata
@@ -239,10 +249,16 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                 error = f"Error while executing data insight workflow for report type {report_data_type}: {exc}"
                 logger.error(error)
                 logger.debug(traceback.format_exc())
-                self.status.failed(str(report_data_type), error, traceback.format_exc())
+                self.status.failed(
+                    StackTraceError(
+                        name=str(report_data_type),
+                        error=error,
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def _execute_kpi_runner(self):
-        """KPI runner method to run KPI definiton against platform latest metric"""
+        """KPI runner method to run KPI definition against platform latest metric"""
         kpis = self._get_kpis()
         self.kpi_runner = KpiRunner(kpis, self.metadata)
 

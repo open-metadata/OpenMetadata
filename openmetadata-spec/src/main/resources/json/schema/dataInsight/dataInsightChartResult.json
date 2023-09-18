@@ -17,7 +17,9 @@
         "DailyActiveUsers",
         "MostActiveUsers",
         "MostViewedEntities",
-        "PageViewsByEntities"
+        "PageViewsByEntities",
+        "PercentageOfServicesWithDescription",
+        "PercentageOfServicesWithOwner"
       ]
     }
   },
@@ -38,7 +40,9 @@
           {"$ref": "./type/dailyActiveUsers.json"},
           {"$ref": "./type/pageViewsByEntities.json"},
           {"$ref": "type/mostActiveUsers.json"},
-          {"$ref": "type/mostViewedEntities.json"}
+          {"$ref": "type/mostViewedEntities.json"},
+          {"$ref": "type/percentageOfServicesWithDescription.json"},
+          {"$ref": "type/percentageOfServicesWithOwner.json"}
         ]
       }
     }

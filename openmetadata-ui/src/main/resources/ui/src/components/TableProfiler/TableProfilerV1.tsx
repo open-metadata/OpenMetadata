@@ -31,7 +31,6 @@ import classNames from 'classnames';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
-import Loader from 'components/Loader/Loader';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
@@ -61,7 +60,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
-import { bytesToSize } from 'utils/StringsUtils';
+import { bytesToSize, getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
@@ -70,7 +69,6 @@ import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profi
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../constants/profiler.constant';
@@ -137,17 +135,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
-
-  const showOperationGraph = useMemo(() => {
-    if (table?.serviceType) {
-      return allowedServiceForOperationGraph.includes(table.serviceType);
-    }
-
-    return false;
-  }, [table]);
 
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
@@ -299,7 +289,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
     history.push(
-      getAddDataQualityTableTestPath(type, `${table?.fullyQualifiedName}`)
+      getAddDataQualityTableTestPath(
+        type,
+        `${getDecodedFqn(datasetFQN) ?? table?.fullyQualifiedName}`
+      )
     );
   };
 
@@ -385,7 +378,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       const { data } = await getListTestCase({
         ...params,
         fields: 'testCaseResult, testDefinition',
-        entityLink: generateEntityLink(datasetFQN || ''),
+        entityLink: generateEntityLink(getDecodedFqn(datasetFQN) || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });
@@ -498,6 +491,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
     if (fetchProfiler) {
       fetchLatestProfilerData();
+    } else {
+      setIsLoading(false);
     }
     if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);
@@ -582,14 +577,15 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   </Dropdown>
                 )}
 
-                {editDataProfile && (
+                {editDataProfile && !isDataQuality && (
                   <Tooltip
                     placement="topRight"
                     title={t('label.setting-plural')}>
                     <Button
+                      className="flex-center"
                       data-testid="profiler-setting-btn"
                       onClick={() => handleSettingModal(true)}>
-                      <SettingIcon className="self-center" />
+                      <SettingIcon />
                     </Button>
                   </Tooltip>
                 )}
@@ -599,13 +595,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isUndefined(profile) && !isDataQuality && (
             <div
-              className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+              className="border d-flex items-center border-warning rounded-4 p-xs m-b-md"
               data-testid="no-profiler-placeholder">
               <NoDataIcon />
-              <p className="tw-mb-0 tw-ml-2">
+              <p className="m-l-xs">
                 {t('message.no-profiler-message')}
                 <Link
-                  className="tw-ml-1"
                   target="_blank"
                   to={{
                     pathname:
@@ -661,50 +656,42 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             )}
           </Row>
 
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <>
-              {isColumnProfile && (
-                <ColumnProfileTable
-                  columnTests={columnTests}
-                  columns={columns.map((col) => ({
-                    ...col,
-                    key: col.name,
-                  }))}
-                  dateRangeObject={dateRangeObject}
-                  hasEditAccess={editTest}
-                />
-              )}
+          {isColumnProfile && (
+            <ColumnProfileTable
+              columnTests={columnTests}
+              columns={columns.map((col) => ({
+                ...col,
+                key: col.name,
+              }))}
+              dateRangeObject={dateRangeObject}
+              hasEditAccess={editTest}
+              isLoading={isLoading}
+            />
+          )}
 
-              {isDataQuality && (
-                <QualityTab
-                  afterDeleteAction={fetchAllTests}
-                  isLoading={isLoading}
-                  showTableColumn={false}
-                  testCases={getFilterTestCase()}
-                  testSuite={testSuite}
-                  onTestCaseResultUpdate={handleResultUpdate}
-                  onTestUpdate={handleTestUpdate}
-                />
-              )}
+          {isDataQuality && (
+            <QualityTab
+              afterDeleteAction={fetchAllTests}
+              isLoading={isLoading}
+              showTableColumn={false}
+              testCases={getFilterTestCase()}
+              testSuite={testSuite}
+              onTestCaseResultUpdate={handleResultUpdate}
+              onTestUpdate={handleTestUpdate}
+            />
+          )}
 
-              {isTableProfile && (
-                <TableProfilerChart
-                  dateRangeObject={dateRangeObject}
-                  showOperationGraph={showOperationGraph}
-                />
-              )}
+          {isTableProfile && (
+            <TableProfilerChart dateRangeObject={dateRangeObject} />
+          )}
 
-              {settingModalVisible && (
-                <ProfilerSettingsModal
-                  columns={columns}
-                  tableId={table?.id || ''}
-                  visible={settingModalVisible}
-                  onVisibilityChange={handleSettingModal}
-                />
-              )}
-            </>
+          {settingModalVisible && (
+            <ProfilerSettingsModal
+              columns={columns}
+              tableId={table?.id || ''}
+              visible={settingModalVisible}
+              onVisibilityChange={handleSettingModal}
+            />
           )}
         </Space>
       </Col>

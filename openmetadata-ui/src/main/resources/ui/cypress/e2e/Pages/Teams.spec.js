@@ -53,7 +53,9 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
 
     // Clicking on teams
     cy.get('[data-testid="settings-left-panel"]')
@@ -116,7 +118,7 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Add user to created team', () => {
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
     interceptURL('PATCH', '/api/v1/teams/*', 'updateTeam');
     // Clicking on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
@@ -146,7 +148,7 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Remove added user from created team', () => {
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
     interceptURL('PATCH', '/api/v1/teams/*', 'updateTeam');
     // Clicking on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
@@ -357,12 +359,25 @@ describe('Teams flow should work properly', () => {
       `/api/v1/teams/name/${TEAM_DETAILS.name}*`,
       'getSelectedTeam'
     );
+    interceptURL(
+      'GET',
+      `/api/v1/teams?limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      'getTeamParent'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/teams?fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      'getChildrenCount'
+    );
 
     cy.get('table').should('contain', TEAM_DETAILS.name).click();
 
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
+    verifyResponseStatusCode('@getTeamParent', 200);
+    verifyResponseStatusCode('@getChildrenCount', 200);
+
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedname);

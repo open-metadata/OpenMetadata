@@ -32,7 +32,6 @@ import static org.openmetadata.service.security.policyevaluator.OperationContext
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -260,7 +259,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void get_owner_permissions() throws HttpResponseException, JsonProcessingException {
+  void get_owner_permissions() throws HttpResponseException {
     //
     // Test getting permissions for an entity as an owner - where ORG_POLICY isOwner becomes effective
     //

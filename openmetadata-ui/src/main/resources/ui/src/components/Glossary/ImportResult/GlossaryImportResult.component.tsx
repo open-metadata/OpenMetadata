@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
-import Loader from 'components/Loader/Loader';
+import Table from 'components/common/Table/Table';
 import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -216,16 +216,13 @@ export const GlossaryImportResult: FC<Props> = ({ csvImportResult }) => {
     parseCsvFile();
   }, [csvImportResult.importResultsCsv]);
 
-  if (loading) {
-    return <Loader />;
-  }
-
   return (
     <Table
       bordered
       columns={columns}
       data-testid="import-result-table"
       dataSource={parsedRecords}
+      loading={loading}
       pagination={false}
       rowKey="name"
       scroll={{ x: true }}

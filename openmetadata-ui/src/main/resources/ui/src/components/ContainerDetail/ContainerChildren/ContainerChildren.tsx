@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from 'components/common/Table/Table';
 import { getContainerDetailPath } from 'constants/constants';
 import { Container } from 'generated/entity/data/container';
 import { EntityReference } from 'generated/type/entityReference';
-import { isEmpty } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -25,9 +25,13 @@ import { getEntityName } from 'utils/EntityUtils';
 
 interface ContainerChildrenProps {
   childrenList: Container['children'];
+  isLoading?: boolean;
 }
 
-const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
+const ContainerChildren: FC<ContainerChildrenProps> = ({
+  childrenList,
+  isLoading,
+}) => {
   const { t } = useTranslation();
 
   const columns: ColumnsType<EntityReference> = useMemo(
@@ -68,16 +72,16 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
     []
   );
 
-  if (isEmpty(childrenList)) {
-    return <ErrorPlaceHolder />;
-  }
-
   return (
     <Table
       bordered
       columns={columns}
       data-testid="container-list-table"
       dataSource={childrenList}
+      loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+      }}
       pagination={false}
       rowKey="id"
       size="small"

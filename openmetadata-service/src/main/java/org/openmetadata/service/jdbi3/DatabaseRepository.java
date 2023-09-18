@@ -15,10 +15,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
-import java.io.IOException;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
@@ -29,10 +29,14 @@ import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
   public DatabaseRepository(CollectionDAO dao) {
     super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -41,12 +45,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void prepare(Database database) throws IOException {
+  public void prepare(Database database, boolean update) {
     populateService(database);
   }
 
   @Override
-  public void storeEntity(Database database, boolean update) throws IOException {
+  public void storeEntity(Database database, boolean update) {
     // Relationships and fields such as service are not stored as part of json
     EntityReference service = database.getService();
     database.withService(null);
@@ -61,28 +65,56 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public Database setInheritedFields(Database database, Fields fields) throws IOException {
-    // If database does not have domain, then inherit it from parent database service
-    if (fields.contains(FIELD_DOMAIN) && database.getDomain() == null) {
-      DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
-      database.withDomain(service.getDomain());
-    }
-    return database;
+  public Database setInheritedFields(Database database, Fields fields) {
+    DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
+    return inheritDomain(database, fields, service);
   }
 
-  private List<EntityReference> getSchemas(Database database) throws IOException {
-    if (database == null) {
-      return null;
-    }
-    return findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+  private List<EntityReference> getSchemas(Database database) {
+    return database == null
+        ? null
+        : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
-  public Database setFields(Database database, Fields fields) throws IOException {
+  @Override
+  public void deleteFromSearch(Database entity, String changeType) {
+    if (supportsSearchIndex) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, Database.class),
+            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
+            "database.fullyQualifiedName");
+      } else {
+        searchClient.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, Database.class), "", "database.fullyQualifiedName");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(Database entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, Database.class), false, "database.fullyQualifiedName");
+    }
+  }
+
+  public Database setFields(Database database, Fields fields) {
     database.setService(getContainer(database.getId()));
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
-    database.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
+    if (database.getUsageSummary() == null) {
+      database.setUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
+              : null);
+    }
     return database;
+  }
+
+  public Database clearFields(Database database, Fields fields) {
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    return database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
   @Override
@@ -100,7 +132,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return new DatabaseUpdater(original, updated, operation);
   }
 
-  private void populateService(Database database) throws IOException {
+  private void populateService(Database database) {
     DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
@@ -112,8 +144,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }

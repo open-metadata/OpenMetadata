@@ -55,10 +55,26 @@ class DatalakeSampleTest(TestCase):
 
     import pandas as pd
 
+    col_names = [
+        "name",
+        "fullname",
+        "nickname",
+        "comments",
+        "age",
+        "dob",
+        "tob",
+        "doe",
+        "json",
+        "array",
+    ]
     root_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
-    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
+    df1 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
+    )
+    df2 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
+    )
 
     table_entity = Table(
         id=uuid4(),
@@ -99,7 +115,7 @@ class DatalakeSampleTest(TestCase):
     @mock.patch.object(
         PandasProfilerInterface,
         "_convert_table_to_list_of_dataframe_objects",
-        return_value=[df1, df2],
+        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def setUpClass(cls, mock_get_connection, mocked_dfs) -> None:
         """
@@ -137,7 +153,7 @@ class DatalakeSampleTest(TestCase):
     @mock.patch.object(
         PandasProfilerInterface,
         "_convert_table_to_list_of_dataframe_objects",
-        return_value=[df1, df2],
+        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def test_sample_property(self, mock_get_connection, mocked_dfs):
         """
@@ -209,7 +225,7 @@ class DatalakeSampleTest(TestCase):
         )
         sample_data = sampler.fetch_sample_data()
 
-        assert len(sample_data.columns) == 8
+        assert len(sample_data.columns) == 10
         # we drop na values when fecthing sample data
         assert len(sample_data.rows) == 4
 
@@ -225,5 +241,5 @@ class DatalakeSampleTest(TestCase):
         )
         sample_data = sampler.fetch_sample_data()
 
-        assert len(sample_data.columns) == 8
+        assert len(sample_data.columns) == 10
         assert len(sample_data.rows) == 3

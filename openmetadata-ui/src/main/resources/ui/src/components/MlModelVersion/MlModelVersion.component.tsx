@@ -28,36 +28,27 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getVersionPathWithTab } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { TagSource } from 'generated/type/tagLabel';
-import { cloneDeep, isEqual } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getMlFeatureVersionData } from 'utils/MlModelVersionUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { EntityField } from '../../constants/Feeds.constants';
 import { ChangeDescription } from '../../generated/entity/data/dashboard';
 import {
-  getChangedEntityName,
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
   getCommonExtraInfoForVersionDetails,
-  getDiffByFieldName,
   getEntityVersionByField,
   getEntityVersionTags,
-  getTagsDiff,
-  getTextDiff,
-  removeDuplicateTags,
 } from '../../utils/EntityVersionUtils';
-import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { MlModelVersionProp } from './MlModelVersion.interface';
 
@@ -87,90 +78,24 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     [changeDescription, owner, tier]
   );
 
-  const handleFeatureDescriptionChangeDiff = (
-    colList: Mlmodel['mlFeatures'],
-    oldDiff: MlFeature[],
-    newDiff: MlFeature[]
-  ) => {
-    colList?.forEach((i) => {
-      if (isEqual(i.name, newDiff[0]?.name)) {
-        i.description = getTextDiff(
-          oldDiff[0]?.description ?? '',
-          newDiff[0]?.description ?? ''
-        );
-      }
-    });
-  };
+  const mlFeaturesData = useMemo(
+    () => getMlFeatureVersionData(currentVersionData, changeDescription),
+    [currentVersionData, changeDescription]
+  );
 
-  const handleFeatureTagChangeDiff = (
-    colList: Mlmodel['mlFeatures'],
-    oldDiff: MlFeature[],
-    newDiff: MlFeature[]
-  ) => {
-    colList?.forEach((i) => {
-      if (isEqual(i.name, newDiff[0]?.name)) {
-        const flag: { [x: string]: boolean } = {};
-        const uniqueTags: Array<TagLabelWithStatus> = [];
-        const oldTag = removeDuplicateTags(
-          oldDiff[0].tags ?? [],
-          newDiff[0].tags ?? []
-        );
-        const newTag = removeDuplicateTags(
-          newDiff[0].tags ?? [],
-          oldDiff[0].tags ?? []
-        );
-        const tagsDiff = getTagsDiff(oldTag, newTag);
-
-        [...tagsDiff, ...((i.tags ?? []) as Array<TagLabelWithStatus>)].forEach(
-          (elem: TagLabelWithStatus) => {
-            if (!flag[elem.tagFQN]) {
-              flag[elem.tagFQN] = true;
-              uniqueTags.push(elem);
-            }
-          }
-        );
-        i.tags = uniqueTags;
-      }
-    });
-  };
-
-  const mlFeaturesData = useMemo((): Mlmodel['mlFeatures'] => {
-    const colList = cloneDeep((currentVersionData as Mlmodel).mlFeatures ?? []);
-    const columnsDiff = getDiffByFieldName(
-      EntityField.ML_FEATURES,
-      changeDescription
-    );
-
-    if (getChangedEntityName(columnsDiff) === EntityField.ML_FEATURES) {
-      const oldDiff = JSON.parse(getChangedEntityOldValue(columnsDiff) ?? '[]');
-      const newDiff = JSON.parse(getChangedEntityNewValue(columnsDiff) ?? '[]');
-
-      handleFeatureDescriptionChangeDiff(colList, oldDiff, newDiff);
-
-      handleFeatureTagChangeDiff(colList, oldDiff, newDiff);
-
-      return colList;
-    }
-
-    return colList;
-  }, [
-    currentVersionData,
-    changeDescription,
-    getDiffByFieldName,
-    handleFeatureDescriptionChangeDiff,
-    handleFeatureTagChangeDiff,
-  ]);
-
-  const handleTabChange = (activeKey: string) => {
-    history.push(
-      getVersionPathWithTab(
-        EntityType.MLMODEL,
-        currentVersionData.fullyQualifiedName ?? '',
-        String(version),
-        activeKey
-      )
-    );
-  };
+  const handleTabChange = useCallback(
+    (activeKey: string) => {
+      history.push(
+        getVersionPathWithTab(
+          EntityType.MLMODEL,
+          currentVersionData.fullyQualifiedName ?? '',
+          String(version),
+          activeKey
+        )
+      );
+    },
+    [currentVersionData, version]
+  );
 
   useEffect(() => {
     setChangeDescription(
@@ -237,7 +162,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                           <Card
                             bordered
                             className="m-b-xlg"
-                            data-testid="feature-card"
+                            data-testid={`feature-card-${feature.name ?? ''}`}
                             key={feature.fullyQualifiedName}>
                             <Row>
                               <Col className="m-b-xs" span={24}>
@@ -376,9 +301,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: !entityPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -386,16 +309,13 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             }
             entityType={EntityType.MLMODEL}
             hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
     ],
     [description, mlFeaturesData, currentVersionData, entityPermissions]
   );
-
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
 
   return (
     <>
@@ -410,8 +330,10 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                entityType={EntityType.MLMODEL}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
                 tierDisplayName={tierDisplayName}
                 version={version}
                 onVersionClick={backHandler}
@@ -429,7 +351,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={version}
         versionHandler={versionHandler}
         versionList={versionList}

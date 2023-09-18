@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from 'antd';
+import { Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { EntityField } from 'constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { ChangeDescription } from 'generated/tests/testCase';
 import { isEmpty, isUndefined } from 'lodash';
@@ -36,6 +36,7 @@ import {
 import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
+import Table from '../Table/Table';
 import {
   CustomPropertyProps,
   EntityDetails,
@@ -50,6 +51,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   hasEditAccess,
   className,
   isVersionView,
+  hasPermission,
 }) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -179,38 +181,48 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Loader />;
+    return <Skeleton active />;
   }
 
-  if (!isEmpty(entityTypeDetail.customProperties)) {
+  if (!hasPermission) {
     return (
-      <Table
-        bordered
-        className="m-md"
-        columns={tableColumn}
-        data-testid="custom-properties-table"
-        dataSource={entityTypeDetail.customProperties || []}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
+      <div className="flex-center tab-content-height">
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+      </div>
     );
   }
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails.extension)
+    isUndefined(entityDetails.extension)
   ) {
-    return <ExtensionTable extension={entityDetails.extension} />;
+    return (
+      <div className="flex-center tab-content-height">
+        <ErrorPlaceHolder className={className}>
+          <Typography.Paragraph>
+            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: t('label.custom-property-plural'),
+            })}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      </div>
+    );
   }
 
-  return (
-    <ErrorPlaceHolder className={className}>
-      <Typography.Paragraph>
-        {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-          entity: t('label.custom-property-plural'),
-        })}
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
+  return isEmpty(entityTypeDetail.customProperties) &&
+    !isUndefined(entityDetails.extension) ? (
+    <ExtensionTable extension={entityDetails.extension} />
+  ) : (
+    <Table
+      bordered
+      className="m-md"
+      columns={tableColumn}
+      data-testid="custom-properties-table"
+      dataSource={entityTypeDetail.customProperties ?? []}
+      loading={entityTypeDetailLoading}
+      pagination={false}
+      rowKey="name"
+      size="small"
+    />
   );
 };

@@ -14,6 +14,7 @@ Check that we are properly running nodes and stages
 """
 from unittest import TestCase
 
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -29,9 +30,7 @@ class MockTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=int,
-                context="numbers",
                 processor="yield_numbers",
-                ack_sink=False,
             )
         ],
         children=["strings"],
@@ -41,9 +40,7 @@ class MockTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=str,
-                context="strings",
                 processor="yield_strings",
-                ack_sink=False,
                 consumer=["numbers"],
             )
         ],
@@ -66,18 +63,25 @@ class MockSource(TopologyRunnerMixin):
 
     @staticmethod
     def yield_numbers(number: int):
-        yield number + 1
+        yield Either(right=number + 1)
 
-    def yield_strings(self, my_str: str):
-        yield my_str + str(self.context.numbers)
+    @staticmethod
+    def yield_strings(my_str: str):
+        yield Either(right=my_str)
 
 
 class TopologyRunnerTest(TestCase):
-    """
-    Validate filter patterns
-    """
+    """Validate filter patterns"""
 
-    def test_node_and_stage(self):
+    @staticmethod
+    def test_node_and_stage():
         source = MockSource()
-        processed = list(source.next_record())
-        assert processed == [2, "abc2", "def2", 3, "abc3", "def3"]
+        processed = list(source._iter())
+        assert [either.right for either in processed] == [
+            2,
+            "abc",
+            "def",
+            3,
+            "abc",
+            "def",
+        ]

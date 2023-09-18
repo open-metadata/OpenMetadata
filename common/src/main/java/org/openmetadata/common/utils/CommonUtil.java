@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -43,9 +42,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
 
 @Slf4j
@@ -181,11 +178,5 @@ public final class CommonUtil {
       return Collections.emptyList();
     }
     return new ArrayList<>(Arrays.asList(entries));
-  }
-
-  @SneakyThrows
-  public static String getCheckSum(String input) {
-    byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
-    return Hex.encodeHexString(checksum);
   }
 }

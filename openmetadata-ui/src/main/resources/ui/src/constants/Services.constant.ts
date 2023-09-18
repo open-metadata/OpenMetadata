@@ -13,10 +13,13 @@
 
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
+import lightDash from 'assets/img/service-icon-lightdash.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { EntityType } from 'enums/entity.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { StorageServiceType } from 'generated/entity/data/container';
+import { SearchServiceType } from 'generated/entity/services/searchService';
 import { ServiceType } from 'generated/entity/services/serviceType';
 import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
@@ -31,6 +34,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
@@ -80,10 +84,12 @@ import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
+import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
 import logo from '../assets/svg/logo-monogram.svg';
+import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
@@ -173,6 +179,10 @@ export const MS_AZURE = msAzure;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
+export const LIGHT_DASH = lightDash;
+export const COUCHBASE = couchbase;
+export const ELASTIC_SEARCH = elasticSearch;
+export const OPEN_SEARCH = openSearch;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -180,6 +190,7 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  SearchServiceType.OpenSearch,
 ];
 
 export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
@@ -206,6 +217,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   storageServices: (Object.values(StorageServiceType) as string[]).sort(
     customServiceComparator
   ),
+  searchServices: (Object.values(SearchServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -225,6 +239,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
+  search: ServiceCategory.SEARCH_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -235,6 +250,7 @@ export const SERVICE_CATEGORY_TYPE = {
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
   storageServices: 'storages',
+  searchServices: 'search',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -259,6 +275,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   storageServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.storage'),
   }),
+  searchServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.search'),
+  }),
   dashboardDataModel: i18n.t('label.entity-service', {
     entity: i18n.t('label.data-model'),
   }),
@@ -273,6 +292,31 @@ export const DEF_UI_SCHEMA = {
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDBTExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
+};
+
+export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
+  useSSL: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  verifyCerts: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  timeout: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  caCerts: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  useAwsCredentials: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  regionName: { 'ui:widget': 'hidden', 'ui:hideError': true },
+};
+
+export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
+  name: { 'ui:disabled': true },
+};
+
+export const INGESTION_WORKFLOW_UI_SCHEMA = {
+  type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  'ui:order': [
+    'name',
+    'databaseFilterPattern',
+    'schemaFilterPattern',
+    'tableFilterPattern',
+    'enableDebugLog',
+    '*',
+  ],
 };
 
 export const COMMON_UI_SCHEMA = {
@@ -349,6 +393,18 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
   [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
+  [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
+};
+
+export const SERVICE_TYPES_ENUM = {
+  [ServiceCategory.DASHBOARD_SERVICES]: DashboardServiceType,
+  [ServiceCategory.DATABASE_SERVICES]: DatabaseServiceType,
+  [ServiceCategory.MESSAGING_SERVICES]: MessagingServiceType,
+  [ServiceCategory.ML_MODEL_SERVICES]: MlModelServiceType,
+  [ServiceCategory.METADATA_SERVICES]: MetadataServiceType,
+  [ServiceCategory.STORAGE_SERVICES]: StorageServiceType,
+  [ServiceCategory.PIPELINE_SERVICES]: PipelineServiceType,
+  [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
 };
 
 export const BETA_SERVICES = [
@@ -356,6 +412,8 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
+  DatabaseServiceType.Couchbase,
+  SearchServiceType.ElasticSearch,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -390,12 +448,13 @@ export const ADVANCED_PROPERTIES = [
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
 
-export const SERVICE_CATEGORIES = [
-  ServiceCategory.DATABASE_SERVICES,
-  ServiceCategory.MESSAGING_SERVICES,
-  ServiceCategory.DASHBOARD_SERVICES,
-  ServiceCategory.PIPELINE_SERVICES,
-  ServiceCategory.ML_MODEL_SERVICES,
-  ServiceCategory.METADATA_SERVICES,
-  ServiceCategory.STORAGE_SERVICES,
+export const SERVICE_TYPES = [
+  EntityType.DATABASE_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
 ];

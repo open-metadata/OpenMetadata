@@ -33,9 +33,9 @@ import {
 import { useHistory, useParams } from 'react-router-dom';
 import { createExecutableTestSuite, createTestCase } from 'rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { getTableTabPath } from '../../constants/constants';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../constants/profiler.constant';
@@ -100,7 +100,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const handleRedirection = () => {
     history.push({
       pathname: getTableTabPath(
-        table.fullyQualifiedName ?? '',
+        getEncodedFqn(table.fullyQualifiedName ?? ''),
         EntityTabs.PROFILER
       ),
       search: Qs.stringify({ activeTab: TableProfilerTab.DATA_QUALITY }),
@@ -168,9 +168,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
       const successMessage = isNewTestSuite ? undefined : (
         <span>
-          <span className="tw-mr-1 tw-font-semibold">{`"${
-            testCaseRes?.name ?? t('label.test-case')
-          }"`}</span>
+          <span className="font-medium">
+            {`"${testCaseRes?.name ?? t('label.test-case')}"`}{' '}
+          </span>
           <span>
             {`${t('message.has-been-created-successfully')}.`}
             &nbsp;
@@ -231,10 +231,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         <TableProfilerChart
           dateRangeObject={DEFAULT_RANGE_DATA}
           entityFqn={entityTypeFQN}
-          showOperationGraph={
-            table.serviceType &&
-            allowedServiceForOperationGraph.includes(table.serviceType)
-          }
         />
       )}
       {isColumnFqn && (

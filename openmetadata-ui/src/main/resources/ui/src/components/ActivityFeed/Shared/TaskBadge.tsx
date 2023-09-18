@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Popover, Space, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import { isEqual } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,17 +25,12 @@ const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
   const { t } = useTranslation();
   const isTaskOpen = isEqual(status, ThreadTaskStatus.Open);
 
-  const popoverContent = isTaskOpen
+  const tooltipContent = isTaskOpen
     ? `${t('label.status')}: ${t('label.open-lowercase')}`
     : `${t('label.status')}: ${t('label.closed-lowercase')}`;
 
   return (
-    <Popover
-      align={{ targetOffset: [0, -15] }}
-      content={popoverContent}
-      overlayClassName="ant-popover-task-status"
-      trigger="hover"
-      zIndex={9999}>
+    <Tooltip align={{ targetOffset: [0, -15] }} title={tooltipContent}>
       <Space align="center" className="task-badge" size={4}>
         <Icon
           alt="task-status"
@@ -46,7 +41,7 @@ const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
           {t('label.task')}
         </Typography.Text>
       </Space>
-    </Popover>
+    </Tooltip>
   );
 };
 

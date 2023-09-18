@@ -1,0 +1,15 @@
+{
+  "type": "elasticsearch",
+  "serviceName": "elasticsearch_sample",
+  "serviceConnection": {
+    "config": {
+      "type": "ElasticSearch",
+      "hostPort": "http://localhost:9200"
+    }
+  },
+  "sourceConfig": {
+    "config": {
+      "type": "SearchMetadata"
+    }
+  }
+}

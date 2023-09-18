@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceQueryLineagePipeline",
   "description": "DatabaseService Query Lineage Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "databaseLineageConfigType": {
       "description": "Database Source Config Usage Pipeline type",
@@ -20,37 +21,45 @@
     "queryLogDuration": {
       "description": "Configuration to tune how far we want to look back in query logs to process lineage data.",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "title": "Query Log Duration"
     },
     "queryLogFilePath": {
       "description": "Configuration to set the file path for query logs",
-      "type": "string"
+      "type": "string",
+      "title": "Query Log File Path"
     },
     "resultLimit": {
       "description": "Configuration to set the limit for query logs",
       "type": "integer",
-      "default": "1000"
+      "default": 1000,
+      "title": "Result Limit"
     },
     "parsingTimeoutLimit": {
       "description": "Configuration to set the timeout for parsing the query in seconds.",
       "type": "integer",
-      "default": "300"
+      "default": 300,
+      "title": "Parsing Timeout Limit"
     },
     "filterCondition": {
       "description": "Configuration the condition to filter the query history.",
-      "type": "string"
+      "type": "string",
+      "title": "Filter Condition"
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Schema Filter Pattern"
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Table Filter Pattern"
     },
     "databaseFilterPattern": {
       "description": "Regex to only fetch databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Database Filter Pattern"
     }
   },
   "additionalProperties": false

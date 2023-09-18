@@ -18,6 +18,7 @@ import { useAuthContext } from 'components/authentication/auth-provider/AuthProv
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -244,14 +245,16 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const handleTestCasePaging = (
-    cursorValue: string | number,
-    activePage?: number | undefined
-  ) => {
-    setCurrentPage(activePage as number);
-    fetchTestCases({
-      [cursorValue]: testCasesPaging[cursorValue as keyof Paging] as string,
-    });
+  const handleTestCasePaging = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      setCurrentPage(currentPage);
+      fetchTestCases({
+        [cursorType]: testCasesPaging[cursorType],
+      });
+    }
   };
 
   const handleTestSuiteUpdate = (testCase?: TestCase) => {
@@ -319,7 +322,7 @@ const TestSuiteDetailsPage = () => {
             </Space>
           </Space>
 
-          <div className="d-flex tw-gap-1 tw-mb-2 tw-mt-1 flex-wrap">
+          <div className="w-full m-t-xxs m-b-xs">
             <OwnerLabel
               hasPermission={hasAccess}
               owner={testOwner}
@@ -327,19 +330,18 @@ const TestSuiteDetailsPage = () => {
             />
           </div>
 
-          <Space>
-            <Description
-              className="test-suite-description"
-              description={testSuiteDescription || ''}
-              entityName={testSuite?.displayName ?? testSuite?.name}
-              hasEditAccess={hasAccess}
-              isEdit={isDescriptionEditable}
-              onCancel={() => descriptionHandler(false)}
-              onDescriptionEdit={() => descriptionHandler(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
-            />
-          </Space>
+          <Description
+            className="test-suite-description"
+            description={testSuiteDescription || ''}
+            entityName={testSuite?.displayName ?? testSuite?.name}
+            hasEditAccess={hasAccess}
+            isEdit={isDescriptionEditable}
+            onCancel={() => descriptionHandler(false)}
+            onDescriptionEdit={() => descriptionHandler(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
         </Col>
+
         <Col span={24}>
           <DataQualityTab
             afterDeleteAction={fetchTestCases}

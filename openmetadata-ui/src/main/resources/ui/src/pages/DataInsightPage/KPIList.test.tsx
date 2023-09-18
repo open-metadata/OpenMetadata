@@ -53,10 +53,6 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../utils/TimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('7 Dec 2022, 00:00'),
-}));
-
 jest.mock('rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()

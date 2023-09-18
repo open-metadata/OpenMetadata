@@ -173,6 +173,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       form.setFieldsValue({
         name: testCase?.name,
         testDefinition: testCase?.testDefinition?.name,
+        displayName: testCase?.displayName,
         params: getParamsValue(),
         table: getNameFromFQN(tableFqn),
         column: getNameFromFQN(
@@ -212,7 +213,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         <Loader />
       ) : (
         <Form
-          className="tw-h-70vh tw-overflow-auto"
           data-testid="edit-test-form"
           form={form}
           layout="vertical"

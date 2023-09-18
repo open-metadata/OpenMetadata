@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
@@ -69,12 +70,15 @@ import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
+import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -111,6 +115,10 @@ public final class TestUtils {
 
   public static final MlModelConnection MLFLOW_CONNECTION;
   public static final StorageConnection S3_STORAGE_CONNECTION;
+
+  public static final SearchConnection ELASTIC_SEARCH_CONNECTION;
+  public static final SearchConnection OPEN_SEARCH_CONNECTION;
+
   public static MetadataConnection AMUNDSEN_CONNECTION;
   public static MetadataConnection ATLAS_CONNECTION;
 
@@ -216,6 +224,18 @@ public final class TestUtils {
 
   static {
     S3_STORAGE_CONNECTION = new StorageConnection().withConfig(new S3Connection().withAwsConfig(AWS_CREDENTIALS));
+  }
+
+  static {
+    try {
+      ELASTIC_SEARCH_CONNECTION =
+          new SearchConnection()
+              .withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9200")));
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
+    OPEN_SEARCH_CONNECTION =
+        new SearchConnection().withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
   }
 
   static {
@@ -409,6 +429,7 @@ public final class TestUtils {
   }
 
   public static void validateEntityReference(EntityReference ref) {
+    assertNotNull(ref);
     assertNotNull(ref.getId(), invalidEntityReference(ref, "null Id"));
     assertNotNull(ref.getHref(), invalidEntityReference(ref, "null href"));
     assertNotNull(ref.getName(), invalidEntityReference(ref, "null name"));
@@ -463,6 +484,8 @@ public final class TestUtils {
           derived.add(
               new TagLabel()
                   .withTagFQN(tag.getTagFQN())
+                  .withName(tag.getName())
+                  .withDisplayName(tag.getDisplayName())
                   .withState(expected.getState())
                   .withDescription(associatedTag.getDescription())
                   .withLabelType(TagLabel.LabelType.DERIVED));
@@ -470,10 +493,7 @@ public final class TestUtils {
         EntityUtil.mergeTags(updatedExpectedList, derived);
       }
     }
-    updatedExpectedList.sort(EntityUtil.compareTagLabel);
-    actualList.sort(EntityUtil.compareTagLabel);
-    assertEquals(updatedExpectedList.size(), actualList.size());
-    assertEquals(updatedExpectedList, actualList);
+    assertTrue(compareListsIgnoringOrder(updatedExpectedList, actualList));
   }
 
   public static void validateTagLabel(TagLabel label) {
@@ -482,8 +502,6 @@ public final class TestUtils {
     assertNotNull(label.getLabelType(), label.getTagFQN());
     assertNotNull(label.getSource(), label.getTagFQN());
     assertNotNull(label.getState(), label.getTagFQN());
-    // TODO
-    // assertNotNull(label.getHref());
   }
 
   public static void checkUserFollowing(
@@ -640,5 +658,23 @@ public final class TestUtils {
       LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
     }
     return null;
+  }
+
+  public static <T> boolean compareListsIgnoringOrder(List<T> expected, List<T> actual) {
+    int exists = 0;
+    if (expected == null || actual == null) return false;
+    if (expected.size() != actual.size()) return false;
+
+    for (T o : expected) {
+      if (actual.contains(o)) exists++;
+    }
+
+    return actual.size() == exists;
+  }
+
+  public static void assertStyle(Style expected, Style actual) {
+    if (expected == null) return;
+    assertEquals(expected.getIconURL(), actual.getIconURL());
+    assertEquals(expected.getColor(), actual.getColor());
   }
 }

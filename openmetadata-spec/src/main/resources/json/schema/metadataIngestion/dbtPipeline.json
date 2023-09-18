@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "dbtPipeline",
   "description": "DBT Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "dbtConfigType": {
       "description": "DBT Config Pipeline type",
@@ -60,20 +61,25 @@
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Schema Filter Pattern"
+
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Table Filter Pattern"
     },
     "parsingTimeoutLimit": {
       "description": "Configuration to set the timeout for parsing the query in seconds.",
       "type": "integer",
-      "default": "300"
+      "default": 300,
+      "title": "Parsing Timeout Limit (in sec.)"
     },
     "databaseFilterPattern": {
       "description": "Regex to only fetch databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Database Filter Pattern"
     }
   },
   "additionalProperties": false

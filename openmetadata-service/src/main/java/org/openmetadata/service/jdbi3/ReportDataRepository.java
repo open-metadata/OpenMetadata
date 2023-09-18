@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.service.util.JsonUtils;
@@ -19,11 +18,10 @@ public class ReportDataRepository {
     this.daoCollection = dao;
   }
 
-  @Transaction
-  public Response addReportData(ReportData reportData) throws IOException {
+  public Response addReportData(ReportData reportData) {
     reportData.setId(UUID.randomUUID());
     daoCollection
-        .entityExtensionTimeSeriesDao()
+        .reportDataTimeSeriesDao()
         .insert(
             reportData.getReportDataType().value(),
             REPORT_DATA_EXTENSION,
@@ -33,16 +31,20 @@ public class ReportDataRepository {
     return Response.ok(reportData).build();
   }
 
-  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs)
-      throws IOException {
+  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs) {
     List<ReportData> reportData;
     reportData =
         JsonUtils.readObjects(
             daoCollection
-                .entityExtensionTimeSeriesDao()
+                .reportDataTimeSeriesDao()
                 .listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
             ReportData.class);
 
     return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());
+  }
+
+  public void deleteReportDataAtDate(ReportDataType reportDataType, String date) throws IOException {
+    // We'll check if we have data to delete before we delete it
+    daoCollection.reportDataTimeSeriesDao().deleteReportDataTypeAtDate(reportDataType.value(), date);
   }
 }

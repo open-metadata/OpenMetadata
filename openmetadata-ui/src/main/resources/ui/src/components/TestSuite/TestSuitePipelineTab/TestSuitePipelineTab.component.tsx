@@ -12,12 +12,13 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Popover, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Divider, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import Table from 'components/common/Table/Table';
 import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from 'components/Loader/Loader';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
@@ -27,6 +28,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from 'generated/entity/data/table';
 import { Operation } from 'generated/entity/policies/policy';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -49,6 +51,7 @@ import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
 } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 interface Props {
@@ -59,6 +62,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
+
   const { permissions } = usePermissionProvider();
   const history = useHistory();
 
@@ -125,14 +129,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     });
   };
 
-  const getAllIngestionWorkflows = async (paging?: string) => {
+  const getAllIngestionWorkflows = async () => {
     try {
       setIsLoading(true);
-      const response = await getIngestionPipelines(
-        ['owner', 'pipelineStatuses'],
-        testSuiteFQN,
-        paging
-      );
+      const response = await getIngestionPipelines({
+        arrQueryFields: ['owner', 'pipelineStatuses'],
+        testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
+      });
       setTestSuitePipelines(response.data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -178,10 +182,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     }
   };
 
-  const separator = (
-    <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
-  );
-
   const confirmDelete = (id: string, name: string) => {
     setDeleteSelection({
       id,
@@ -223,7 +223,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
       showSuccessToast(
         `${t('label.pipeline')}  ${
           reDeployed ? t('label.re-deploy') : t('label.deployed')
-        }  ${t('label.successfully-small')}`
+        }  ${t('label.successfully-lowercase')}`
       );
     } catch (error) {
       setCurrDeployId({ id: '', state: '' });
@@ -259,7 +259,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
             </Button>
           </Tooltip>
-          {separator}
+          <Divider type="vertical" />
           <Tooltip
             title={
               editPermission
@@ -327,17 +327,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 viewPermission ? name : t('message.no-permission-to-view')
               }>
               <a
-                className="link-text tw-mr-2"
+                className="link-text"
                 data-testid="airflow-tree-view"
                 href={`${airFlowEndPoint}`}
                 rel="noopener noreferrer"
                 target="_blank">
-                <Space>
+                <Space align="center">
                   {name}
-                  <ExternalLinkIcon
-                    className="tw-align-middle tw-ml-1"
-                    width={16}
-                  />
+                  <ExternalLinkIcon className="align-middle" width={16} />
                 </Space>
               </a>
             </Tooltip>
@@ -357,22 +354,17 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           return (
             <>
               {record?.airflowConfig.scheduleInterval ? (
-                <Popover
-                  content={
-                    <div>
-                      {cronstrue.toString(
-                        record.airflowConfig.scheduleInterval || '',
-                        {
-                          use24HourTimeFormat: true,
-                          verbose: true,
-                        }
-                      )}
-                    </div>
-                  }
+                <Tooltip
                   placement="bottom"
-                  trigger="hover">
+                  title={cronstrue.toString(
+                    record.airflowConfig.scheduleInterval || '',
+                    {
+                      use24HourTimeFormat: true,
+                      verbose: true,
+                    }
+                  )}>
                   <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </Popover>
+                </Tooltip>
               ) : (
                 <span>--</span>
               )}
@@ -401,7 +393,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 {record.enabled ? (
                   <Fragment>
                     {getTriggerDeployButton(record)}
-                    {separator}
+                    <Divider type="vertical" />
                     <Tooltip
                       title={
                         editPermission
@@ -441,7 +433,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     </Button>
                   </Tooltip>
                 )}
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -457,15 +449,15 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     onClick={() => {
                       history.push(
                         getTestSuiteIngestionPath(
-                          testSuiteFQN,
-                          record.fullyQualifiedName
+                          getEncodedFqn(testSuiteFQN),
+                          getEncodedFqn(record.fullyQualifiedName ?? '')
                         )
                       );
                     }}>
                     {t('label.edit')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     deletePermission
@@ -492,7 +484,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     )}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -512,7 +504,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     {t('label.kill')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     viewPermission
@@ -523,7 +515,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     to={getLogsViewerPath(
                       EntityType.TEST_SUITE,
                       record.service?.name || '',
-                      record.fullyQualifiedName || ''
+                      getEncodedFqn(record.fullyQualifiedName || '')
                     )}>
                     <Button
                       className="p-0"
@@ -581,12 +573,13 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
+                history.push(
+                  getTestSuiteIngestionPath(getEncodedFqn(testSuiteFQN))
+                );
               }}>
               {t('label.add')}
             </Button>
           }
-          className="mt-24"
           heading={t('label.pipeline')}
           permission={createPermission}
           type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
@@ -597,11 +590,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     [testSuiteFQN]
   );
 
-  if (isLoading || isFetchingStatus) {
-    return <Loader />;
-  }
-
-  if (!isAirflowAvailable) {
+  if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
     return <ErrorPlaceHolderIngestion />;
   }
 
@@ -614,6 +603,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           ...test,
           key: test.name,
         }))}
+        loading={isLoading || isFetchingStatus}
         locale={{ emptyText: errorPlaceholder }}
         pagination={false}
         rowKey="name"

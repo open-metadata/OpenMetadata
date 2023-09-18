@@ -253,6 +253,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
+          autoClearSearchValue={false}
           className="w-full"
           data-testid="resources"
           placeholder={t('label.select-field', {
@@ -281,6 +282,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
+          autoClearSearchValue={false}
           className="w-full"
           data-testid="operations"
           placeholder={t('label.select-field', {

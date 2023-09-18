@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.exception;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -189,6 +188,11 @@ public final class CatalogExceptionMessage {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
+  public static String invalidOwnerType(String entityType) {
+    return String.format(
+        "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.", entityType);
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }
@@ -224,7 +228,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String eventPublisherFailedToPublish(
-      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) throws JsonProcessingException {
+      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) {
     return String.format(
         "Failed to publish event %s to %s due to %s ", JsonUtils.pojoToJson(event), type.value(), message);
   }

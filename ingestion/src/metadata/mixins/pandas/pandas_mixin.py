@@ -25,9 +25,7 @@ from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     ProfileSampleType,
 )
-from metadata.ingestion.source.database.datalake.models import (
-    DatalakeTableSchemaWrapper,
-)
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.logger import test_suite_logger
 
@@ -89,15 +87,15 @@ class PandasInterfaceMixin:
         """
         returns sampled ometa dataframes
         """
-        connection_args = service_connection_config.configSource.securityConfig
         data = fetch_dataframe(
             config_source=service_connection_config.configSource,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=table.name.__root__, bucket_name=table.databaseSchema.name
+                key=table.name.__root__,
+                bucket_name=table.databaseSchema.name,
+                file_extension=table.fileFormat,
             ),
             is_profiler=True,
-            connection_kwargs=connection_args,
         )
         if data:
             random.shuffle(data)

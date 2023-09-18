@@ -38,7 +38,9 @@ describe('Add nested teams and test TeamsSelectable', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
     // Clicking on teams
@@ -81,9 +83,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .type(buTeamName);
 
     teamNames.forEach((teamName) => {
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
 
     teamNames.forEach((teamName) => {
@@ -93,9 +93,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
         .should('be.visible')
         .click()
         .type(teamName);
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
   });
 });

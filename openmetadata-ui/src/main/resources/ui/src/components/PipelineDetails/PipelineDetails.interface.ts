@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
@@ -27,4 +28,6 @@ export interface PipeLineDetailsProp {
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
+  handleToggleDelete: () => void;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

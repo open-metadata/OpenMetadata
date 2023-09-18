@@ -28,15 +28,17 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from 'rest/databaseAPI';
+import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getContainerByFQN } from 'rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
@@ -52,7 +54,7 @@ const PopoverContent: React.FC<{
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
@@ -69,7 +71,7 @@ const PopoverContent: React.FC<{
         break;
       case EntityType.TEST_CASE:
         promise = getTableDetailsByFQN(
-          getTableFQNFromColumnFQN(entityFQN),
+          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
           fields
         );
 
@@ -79,6 +81,7 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.DASHBOARD:
+      case EntityType.CHART:
         promise = getDashboardByFqn(entityFQN, fields);
 
         break;
@@ -103,7 +106,7 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(entityFQN, 'owner');
+        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), 'owner');
 
         break;
       case EntityType.GLOSSARY:
@@ -113,6 +116,16 @@ const PopoverContent: React.FC<{
 
       case EntityType.CONTAINER:
         promise = getContainerByFQN(entityFQN, 'owner', Include.All);
+
+        break;
+
+      case EntityType.DASHBOARD_DATA_MODEL:
+        promise = getDataModelDetailsByFQN(entityFQN, fields);
+
+        break;
+
+      case EntityType.STORED_PROCEDURE:
+        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
 
         break;
 
@@ -133,6 +146,8 @@ const PopoverContent: React.FC<{
         .finally(() => {
           setLoading(false);
         });
+    } else {
+      setLoading(false);
     }
   }, [entityType, entityFQN]);
 
@@ -140,6 +155,7 @@ const PopoverContent: React.FC<{
     const entityData = AppState.entityData[entityFQN];
     if (entityData) {
       setEntityData(entityData);
+      setLoading(false);
     } else {
       getData();
     }
@@ -150,7 +166,7 @@ const PopoverContent: React.FC<{
   }, [entityFQN]);
 
   if (loading) {
-    return <Loader />;
+    return <Loader size="small" />;
   }
 
   return (
@@ -163,7 +179,7 @@ const PopoverContent: React.FC<{
         displayName: getEntityName(entityData),
         id: entityData.id ?? '',
         description: entityData.description ?? '',
-        fullyQualifiedName: entityFQN,
+        fullyQualifiedName: getDecodedFqn(entityFQN),
         tags: (entityData as Table).tags,
         entityType: entityType,
         serviceType: (entityData as Table).serviceType,

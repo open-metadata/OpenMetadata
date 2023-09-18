@@ -43,7 +43,7 @@ $$section
 
 This parameter specifies the host and port of the AzureSQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `azure-sql-service-name.database.windows.net:1433`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3000` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3000` as the value.
 $$
 
 $$section
@@ -61,6 +61,11 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 
+$$
+
+$$section
+### Ingest All Databases $(id="ingestAllDatabases")
+If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
 $$
 
 $$section

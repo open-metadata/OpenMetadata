@@ -44,6 +44,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
+    SNOWFLAKE_TEST_GET_TABLES,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -145,7 +146,18 @@ def test_connection(
 ) -> None:
     """
     Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
+    of a metadata workflow or during an Automation Workflow.
+
+    Note how we run a custom GetTables query:
+
+        The default inspector `get_table_names` runs a SHOW which
+        has a limit on 10000 rows in the result set:
+        https://github.com/open-metadata/OpenMetadata/issues/12798
+
+        This can cause errors if we are running tests against schemas
+        with more tables than that. There is no issues during the metadata
+        ingestion since in metadata.py we are overriding the default
+        `get_table_names` function with our custom queries.
     """
     engine_wrapper = SnowflakeEngineWrapper(
         service_connection=service_connection, engine=engine
@@ -158,7 +170,9 @@ def test_connection(
         "GetSchemas": partial(
             execute_inspector_func, engine_wrapper, "get_schema_names"
         ),
-        "GetTables": partial(execute_inspector_func, engine_wrapper, "get_table_names"),
+        "GetTables": partial(
+            test_query, statement=SNOWFLAKE_TEST_GET_TABLES, engine=engine
+        ),
         "GetViews": partial(execute_inspector_func, engine_wrapper, "get_view_names"),
         "GetQueries": partial(
             test_query, statement=SNOWFLAKE_TEST_GET_QUERIES, engine=engine

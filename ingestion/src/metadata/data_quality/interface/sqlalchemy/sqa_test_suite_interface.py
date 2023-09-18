@@ -165,7 +165,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
-                execution_date=datetime.now(tz=timezone.utc).timestamp(),
+                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()

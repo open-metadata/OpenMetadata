@@ -31,7 +31,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_E
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.time.Instant;
@@ -43,7 +42,6 @@ import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
@@ -91,9 +89,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private boolean isSelfSignUpAvailable;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
-    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
-    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
+    this.userRepository = new UserRepository(collectionDAO);
+    this.tokenRepository = new TokenRepository(collectionDAO);
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     SmtpSettings smtpSettings = config.getSmtpSettings();
@@ -103,7 +101,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User registerUser(RegistrationRequest newRegistrationRequest) throws IOException {
+  public User registerUser(RegistrationRequest newRegistrationRequest) {
     if (isSelfSignUpAvailable) {
       String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
       String[] tokens = newRegistrationRequest.getEmail().split("@");
@@ -127,7 +125,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
+  public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
     User registeredUser =
         userRepository.get(null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
@@ -319,7 +317,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
+  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
@@ -329,7 +327,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+  public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
       throw new BadRequestException("Token Cannot be Null or Empty String");
     }
@@ -368,8 +366,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest)
-      throws JsonProcessingException {
+  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest) {
     String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
     RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {

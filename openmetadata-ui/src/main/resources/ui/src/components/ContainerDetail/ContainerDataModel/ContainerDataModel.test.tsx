@@ -96,6 +96,7 @@ jest.mock('utils/GlossaryUtils', () => ({
 }));
 
 jest.mock('utils/TableTags/TableTags.utils', () => ({
+  ...jest.requireActual('utils/TableTags/TableTags.utils'),
   getFilterTags: jest.fn().mockReturnValue({
     Classification: [],
     Glossary: [],

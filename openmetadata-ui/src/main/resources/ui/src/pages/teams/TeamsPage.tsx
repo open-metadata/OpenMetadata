@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -38,11 +39,12 @@ import {
   patchTeamDetail,
 } from 'rest/teamsAPI';
 import { getUsers, updateUserDetail } from 'rest/userAPI';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
   LIST_SIZE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
@@ -113,6 +115,11 @@ const TeamsPage = () => {
 
     return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
   }, [activeTab, isGroupType]);
+
+  const hasViewPermission = useMemo(
+    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
+    [entityPermissions]
+  );
 
   const fetchPermissions = async (entityFqn: string) => {
     setIsPageLoading(true);
@@ -219,7 +226,12 @@ const TeamsPage = () => {
     loadPage = true
   ) => {
     loadPage && setIsDataLoading((isDataLoading) => ++isDataLoading);
-    getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
+    getUsers({
+      fields: 'teams,roles',
+      limit: PAGE_SIZE_BASE,
+      team,
+      ...paging,
+    })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -379,7 +391,7 @@ const TeamsPage = () => {
     searchData(
       text,
       currentPage,
-      PAGE_SIZE_MEDIUM,
+      PAGE_SIZE_BASE,
       `(teams.id:${selectedTeam?.id})`,
       '',
       '',
@@ -400,46 +412,33 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
-  const updateTeamHandler = (updatedData: Team) => {
+  const updateTeamHandler = async (updatedData: Team) => {
     const jsonPatch = compare(selectedTeam, updatedData);
 
-    return new Promise<void>((resolve, reject) => {
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            setSelectedTeam((previous) => ({
-              ...previous,
-              ...res,
-              owner: res.owner ?? undefined,
-            }));
-            resolve();
-          } else {
-            throw t('server.unexpected-response');
-          }
+    try {
+      const res = await patchTeamDetail(selectedTeam.id, jsonPatch);
+      setSelectedTeam(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.team'),
         })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-updating-error', {
-              entity: t('label.team'),
-            })
-          );
-          reject();
-        });
-    });
+      );
+    }
   };
 
-  const userPagingHandler = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const userPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (userSearchValue) {
-      setCurrentUserPage(cursorValue as number);
-      searchUsers(userSearchValue, cursorValue as number);
-    } else {
-      setCurrentUserPage(activePage as number);
+      setCurrentUserPage(currentPage);
+      searchUsers(userSearchValue, currentPage);
+    } else if (cursorType) {
+      setCurrentUserPage(currentPage);
       getCurrentTeamUsers(selectedTeam.name, {
-        [cursorValue]: userPaging[cursorValue as keyof Paging] as string,
+        [cursorType]: userPaging[cursorType] as string,
       });
     }
   };
@@ -585,8 +584,8 @@ const TeamsPage = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  const handleAssetsPaginate = (page: string | number) => {
-    setAssets((pre) => ({ ...pre, currPage: page as number }));
+  const handleAssetsPaginate = ({ currentPage }: PagingHandlerParams) => {
+    setAssets((pre) => ({ ...pre, currPage: currentPage }));
   };
 
   useEffect(() => {
@@ -594,10 +593,7 @@ const TeamsPage = () => {
   }, [assets.currPage]);
 
   useEffect(() => {
-    if (
-      (entityPermissions.ViewAll || entityPermissions.ViewBasic) &&
-      currentFqn !== fqn
-    ) {
+    if (hasViewPermission && currentFqn !== fqn) {
       if (fqn) {
         fetchTeamBasicDetails(fqn, true);
       }
@@ -611,16 +607,14 @@ const TeamsPage = () => {
 
   useEffect(() => {
     if (currentTab === TeamsPageTab.USERS) {
-      getCurrentTeamUsers(selectedTeam.name, {}, false);
+      getCurrentTeamUsers(getEncodedFqn(selectedTeam.name), {}, false);
     } else {
       setUserPaging(pagingObject);
     }
   }, [selectedTeam, currentTab]);
 
   useEffect(() => {
-    const hasPermission =
-      entityPermissions.ViewAll || entityPermissions.ViewBasic;
-    if (!isPageLoading && hasPermission && fqn) {
+    if (!isPageLoading && hasViewPermission && fqn) {
       fetchTeamAdvancedDetails(fqn);
       fetchAllTeamsBasicDetails(fqn);
     }
@@ -636,45 +630,48 @@ const TeamsPage = () => {
     return <Loader />;
   }
 
-  return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
-    <>
-      {isEmpty(selectedTeam) ? (
-        <ErrorPlaceHolder />
-      ) : (
-        <TeamDetailsV1
-          afterDeleteAction={afterDeleteAction}
-          assets={assets}
-          childTeams={allTeam}
-          currentTeam={selectedTeam}
-          currentTeamUserPage={currentUserPage}
-          currentTeamUsers={users}
-          descriptionHandler={descriptionHandler}
-          entityPermissions={entityPermissions}
-          handleAddTeam={handleAddTeam}
-          handleAddUser={addUsersToTeam}
-          handleCurrentUserPage={handleCurrentUserPage}
-          handleJoinTeamClick={handleJoinTeamClick}
-          handleLeaveTeamClick={handleLeaveTeamClick}
-          handleTeamUsersSearchAction={handleUsersSearchAction}
-          hasAccess={isAuthDisabled || isAdminUser}
-          isDescriptionEditable={isDescriptionEditable}
-          isFetchingAdvancedDetails={isFetchingAdvancedDetails}
-          isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
-          isTeamMemberLoading={isDataLoading}
-          parentTeams={parentTeams}
-          removeUserFromTeam={removeUserFromTeam}
-          showDeletedTeam={showDeletedTeam}
-          teamUserPaging={userPaging}
-          teamUserPagingHandler={userPagingHandler}
-          teamUsersSearchText={userSearchValue}
-          updateTeamHandler={updateTeamHandler}
-          onAssetsPaginate={handleAssetsPaginate}
-          onDescriptionUpdate={onDescriptionUpdate}
-          onShowDeletedTeamChange={toggleShowDeletedTeam}
-          onTeamExpand={fetchAllTeamsAdvancedDetails}
-        />
-      )}
+  if (!hasViewPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
+  if (isEmpty(selectedTeam)) {
+    return <ErrorPlaceHolder />;
+  }
+
+  return (
+    <>
+      <TeamDetailsV1
+        afterDeleteAction={afterDeleteAction}
+        assets={assets}
+        childTeams={allTeam}
+        currentTeam={selectedTeam}
+        currentTeamUserPage={currentUserPage}
+        currentTeamUsers={users}
+        descriptionHandler={descriptionHandler}
+        entityPermissions={entityPermissions}
+        handleAddTeam={handleAddTeam}
+        handleAddUser={addUsersToTeam}
+        handleCurrentUserPage={handleCurrentUserPage}
+        handleJoinTeamClick={handleJoinTeamClick}
+        handleLeaveTeamClick={handleLeaveTeamClick}
+        handleTeamUsersSearchAction={handleUsersSearchAction}
+        hasAccess={isAuthDisabled || isAdminUser}
+        isDescriptionEditable={isDescriptionEditable}
+        isFetchingAdvancedDetails={isFetchingAdvancedDetails}
+        isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
+        isTeamMemberLoading={isDataLoading}
+        parentTeams={parentTeams}
+        removeUserFromTeam={removeUserFromTeam}
+        showDeletedTeam={showDeletedTeam}
+        teamUserPaging={userPaging}
+        teamUserPagingHandler={userPagingHandler}
+        teamUsersSearchText={userSearchValue}
+        updateTeamHandler={updateTeamHandler}
+        onAssetsPaginate={handleAssetsPaginate}
+        onDescriptionUpdate={onDescriptionUpdate}
+        onShowDeletedTeamChange={toggleShowDeletedTeam}
+        onTeamExpand={fetchAllTeamsAdvancedDetails}
+      />
       <AddTeamForm
         isLoading={isLoading}
         visible={isAddingTeam}
@@ -682,8 +679,6 @@ const TeamsPage = () => {
         onSave={(data) => createNewTeam(data as Team)}
       />
     </>
-  ) : (
-    <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
   );
 };
 

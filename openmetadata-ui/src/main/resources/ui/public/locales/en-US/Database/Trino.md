@@ -29,16 +29,35 @@ $$section
 Username to connect to Trino. This user should have `SELECT` permission on the `SYSTEM.METADATA` and `INFORMATION_SCHEMA` - see the section above for more details.
 $$
 
+### Auth Config $(id="authType")
+There are 2 types of auth configs:
+- Basic Auth.
+- JWT Auth.
+
+User can authenticate the Trino Instance with auth type as `Basic Authentication` i.e. Password **or** by using `JWT Authentication`.
+
+
+## Basic Auth
+
 $$section
 ### Password $(id="password")
 Password to connect to Trino.
+$$
+
+## JWT Auth Config
+
+$$section
+### JWT $(id="jwt")
+JWT can be used to authenticate with trino.
+Follow the steps in the [official trino](https://trino.io/docs/current/security/jwt.html) documentation to setup trino with jwt.
+
 $$
 
 $$section
 ### Host Port $(id="hostPort")
 This parameter specifies the host and port of the Trino instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:8080`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:8080` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:8080` as the value.
 $$
 
 $$section
@@ -54,11 +73,6 @@ $$
 $$section
 ### Proxies $(id="proxies")
 Proxies for the connection to Trino data source
-$$
-
-$$section
-### Params $(id="params")
-URL parameters for connection to the Trino data source
 $$
 
 $$section

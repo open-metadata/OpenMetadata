@@ -14,10 +14,11 @@ Lineage Source Module
 import csv
 import traceback
 from abc import ABC
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
@@ -38,7 +39,7 @@ class LineageSource(QueryParserSource, ABC):
     - schema
     """
 
-    def yield_table_queries_from_logs(self) -> Optional[Iterator[TableQuery]]:
+    def yield_table_queries_from_logs(self) -> Iterator[TableQuery]:
         """
         Method to handle the usage from query logs
         """
@@ -58,7 +59,7 @@ class LineageSource(QueryParserSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to read queries form log file due to: {err}")
 
-    def get_table_query(self) -> Optional[Iterator[TableQuery]]:
+    def get_table_query(self) -> Iterator[TableQuery]:
         """
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data.
@@ -98,7 +99,7 @@ class LineageSource(QueryParserSource, ABC):
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error processing query_dict {query_dict}: {exc}")
 
-    def next_record(self) -> Iterable[AddLineageRequest]:
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -106,7 +107,7 @@ class LineageSource(QueryParserSource, ABC):
         connection_type = str(self.service_connection.type.value)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         for table_query in self.get_table_query():
-            lineages = get_lineage_by_query(
+            lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
                 self.metadata,
                 query=table_query.query,
                 service_name=table_query.serviceName,

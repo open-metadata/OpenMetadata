@@ -36,7 +36,7 @@ import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
 export const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers(arrQueryFields, 1)
+  getUsers({ fields: arrQueryFields, limit: 1 })
     .then((res) => {
       AppState.updateUsers(res.data);
     })
@@ -110,7 +110,12 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
       const userData = res as User;
       const profile = userData.profile?.images?.image512 || '';
 
-      AppState.updateUserProfilePic(userData.id, userData.name, profile);
+      AppState.updateUserProfilePic(
+        userData.id,
+        userData.name,
+        profile,
+        userData.displayName
+      );
     })
     .catch((err: AxiosError) => {
       // ignore exception

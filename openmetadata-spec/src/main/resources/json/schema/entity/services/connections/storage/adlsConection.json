@@ -1,16 +1,16 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/storage/adlsConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Azure Store Connection",
-  "description": "Azure Store Connection.",
+  "title": "ADLS Connection",
+  "description": "ADLS Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.storage.AzureConnection",
+  "javaType": "org.openmetadata.schema.services.connections.storage.ADLSConnection",
   "definitions": {
     "azureType": {
       "description": "ADLS service type",
       "type": "string",
-      "enum": ["Adls"],
-      "default": "Adls"
+      "enum": ["ADLS"],
+      "default": "ADLS"
     }
   },
   "properties": {
@@ -18,7 +18,7 @@
       "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/azureType",
-      "default": "Adls"
+      "default": "ADLS"
     },
     "credentials": {
       "title": "Azure Credentials",

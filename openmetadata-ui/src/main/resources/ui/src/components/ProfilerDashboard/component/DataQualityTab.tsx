@@ -11,15 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-
 import { ReactComponent as IconCheckMark } from 'assets/svg/ic-check-mark.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,17 +22,26 @@ import AppBadge from 'components/common/Badge/Badge.component';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import Table from 'components/common/Table/Table';
 import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { compare } from 'fast-json-patch';
 import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
 import { Operation } from 'generated/entity/policies/policy';
 import { isUndefined, sortBy } from 'lodash';
 import QueryString from 'qs';
-import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { patchTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
+import { formatDate, formatDateTime } from 'utils/date-time/DateTimeUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
+import { getEncodedFqn, replacePlus } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
@@ -47,17 +50,11 @@ import {
   TestCaseResult,
 } from '../../../generated/tests/testCase';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
 } from '../../../utils/TableUtils';
-import {
-  getFormattedDateFromMilliSeconds,
-  getFormattedDateFromSeconds,
-} from '../../../utils/TimeUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
-import Loader from '../../Loader/Loader';
 import {
   DataQualityTabProps,
   TableProfilerTab,
@@ -119,14 +116,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const handleStatusSubmit = async (data: TestCaseFailureStatus) => {
-    if (selectedTestCase?.data) {
+    if (selectedTestCase?.data?.testCaseResult) {
+      const timestamp = selectedTestCase.data?.testCaseResult.timestamp ?? 0;
       const updatedResult: TestCaseResult = {
         ...selectedTestCase.data?.testCaseResult,
         testCaseFailureStatus: data,
       };
       const testCaseFqn = selectedTestCase.data?.fullyQualifiedName ?? '';
+      const patch = compare(
+        selectedTestCase.data.testCaseResult,
+        updatedResult
+      );
       try {
-        await putTestCaseResult(testCaseFqn, updatedResult);
+        await patchTestCaseResult({ testCaseFqn, patch, timestamp });
 
         onTestCaseResultUpdate?.({
           ...selectedTestCase.data,
@@ -198,7 +200,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     data-testid="table-link"
                     to={{
-                      pathname: getTableTabPath(tableFqn, 'profiler'),
+                      pathname: getTableTabPath(
+                        getEncodedFqn(tableFqn),
+                        'profiler'
+                      ),
                       search: QueryString.stringify({
                         activeTab: TableProfilerTab.DATA_QUALITY,
                       }),
@@ -218,13 +223,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 150,
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
-
           if (isColumn) {
             const name = getNameFromFQN(
-              getDecodedFqn(
-                getEntityFqnFromEntityLink(entityLink, isColumn),
-                true
-              )
+              replacePlus(getEntityFqnFromEntityLink(entityLink, isColumn))
             );
 
             return name;
@@ -239,12 +240,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'lastRun',
         width: 150,
         render: (result: TestCaseResult) =>
-          result?.timestamp
-            ? getFormattedDateFromSeconds(
-                result.timestamp,
-                'MMM dd, yyyy HH:mm'
-              )
-            : '--',
+          result?.timestamp ? formatDateTime(result.timestamp) : '--',
       },
       {
         title: t('label.resolution'),
@@ -260,10 +256,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               placement="bottom"
               title={
                 failureStatus?.updatedAt &&
-                `${getFormattedDateFromMilliSeconds(
-                  failureStatus.updatedAt,
-                  'MMM dd, yyyy HH:mm'
-                )}
+                `${formatDate(failureStatus.updatedAt)}
                     ${
                       failureStatus.updatedBy
                         ? 'by ' + failureStatus.updatedBy
@@ -399,31 +392,28 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   }, [testCaseEditPermission, testCaseDeletePermission, testCases]);
 
   return (
-    <Row gutter={16}>
+    <Row gutter={[16, 16]}>
       <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Table
-            bordered
-            className="test-case-table-container"
-            columns={columns}
-            data-testid="test-case-table"
-            dataSource={sortedData}
-            expandable={{
-              ...getTableExpandableConfig<TestCase>(),
-              expandRowByClick: true,
-              rowExpandable: () => true,
-              expandedRowRender: (recode) => <TestSummary data={recode} />,
-            }}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          className="test-case-table-container"
+          columns={columns}
+          data-testid="test-case-table"
+          dataSource={sortedData}
+          expandable={{
+            ...getTableExpandableConfig<TestCase>(),
+            expandRowByClick: true,
+            rowExpandable: () => true,
+            expandedRowRender: (recode) => <TestSummary data={recode} />,
+          }}
+          loading={isLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
       </Col>
       <Col span={24}>
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
@@ -433,7 +423,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             pageSize={PAGE_SIZE}
             paging={pagingData.paging}
             pagingHandler={pagingData.onPagingClick}
-            totalCount={pagingData.paging.total}
           />
         )}
       </Col>

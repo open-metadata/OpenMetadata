@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
     OracleConnection,
     OracleDatabaseSchema,
     OracleServiceName,
+    OracleTNSConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -61,17 +62,7 @@ def get_connection_url(connection: OracleConnection) -> str:
         url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
 
-    url += connection.hostPort
-
-    if isinstance(connection.oracleConnectionType, OracleDatabaseSchema):
-        url += (
-            f"/{connection.oracleConnectionType.databaseSchema}"
-            if connection.oracleConnectionType.databaseSchema
-            else ""
-        )
-
-    elif isinstance(connection.oracleConnectionType, OracleServiceName):
-        url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
+    url = _handle_connection_type(url=url, connection=connection)
 
     options = get_connection_options_dict(connection)
     if options:
@@ -84,6 +75,34 @@ def get_connection_url(connection: OracleConnection) -> str:
             url = f"{url}?{params}"
 
     return url
+
+
+def _handle_connection_type(url: str, connection: OracleConnection) -> str:
+    """
+    Depending on the oracle connection type, we need to handle the URL differently
+    """
+
+    if isinstance(connection.oracleConnectionType, OracleTNSConnection):
+        # ref https://stackoverflow.com/questions/14140902/using-oracle-service-names-with-sqlalchemy
+        url += connection.oracleConnectionType.oracleTNSConnection
+        return url
+
+    # If not TNS, we add the hostPort
+    url += connection.hostPort
+
+    if isinstance(connection.oracleConnectionType, OracleDatabaseSchema):
+        url += (
+            f"/{connection.oracleConnectionType.databaseSchema}"
+            if connection.oracleConnectionType.databaseSchema
+            else ""
+        )
+        return url
+
+    if isinstance(connection.oracleConnectionType, OracleServiceName):
+        url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
+        return url
+
+    raise ValueError(f"Unknown connection type {connection.oracleConnectionType}")
 
 
 def get_connection(connection: OracleConnection) -> Engine:

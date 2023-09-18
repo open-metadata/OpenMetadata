@@ -40,6 +40,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
@@ -107,7 +108,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -164,12 +164,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
+    super.addHref(uriInfo, user);
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
-    Entity.withHref(uriInfo, user.getDomain());
     return user;
   }
 
@@ -189,7 +189,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
+  public void initialize(OpenMetadataApplicationConfig config)
+      throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
+          InstantiationException, IllegalAccessException {
+    super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
@@ -253,8 +256,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
@@ -282,8 +284,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -327,8 +328,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     User user = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
@@ -362,9 +362,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    User user = getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+          Include include) {
+    User user = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
   }
@@ -390,8 +389,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
+          String fieldsParam) {
     Fields fields = getFields(fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = repository.getByName(uriInfo, currentUserName, fields);
@@ -416,7 +414,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "404", description = "User not found")
       })
   public List<EntityReference> getCurrentLoggedInUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     String currentUserName = securityContext.getUserPrincipal().getName();
     return repository.getGroupTeams(uriInfo, currentUserName);
   }
@@ -470,8 +468,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               description = "User version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -488,7 +485,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
     User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext);
@@ -548,9 +545,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
     User user = getUser(securityContext, create);
-    repository.prepareInternal(user);
+    repository.prepareInternal(user, true);
 
     ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
@@ -588,8 +585,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid GenerateTokenRequest generateTokenRequest)
-      throws IOException {
+      @Valid GenerateTokenRequest generateTokenRequest) {
     authorizer.authorizeAdmin(securityContext);
     User user = repository.get(uriInfo, id, repository.getFieldsWithUserAuth("*"));
     JWTAuthMechanism jwtAuthMechanism =
@@ -618,8 +614,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response revokeToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RevokeTokenRequest revokeTokenRequest)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RevokeTokenRequest revokeTokenRequest) {
     authorizer.authorizeAdmin(securityContext);
     User user = repository.get(uriInfo, revokeTokenRequest.getId(), repository.getFieldsWithUserAuth("*"));
     if (Boolean.FALSE.equals(user.getIsBot())) {
@@ -653,8 +650,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public JWTAuthMechanism getToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
 
     User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
@@ -690,8 +686,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public AuthenticationMechanism getAuthenticationMechanism(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
 
     User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
@@ -722,8 +717,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
@@ -772,8 +766,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
@@ -796,9 +789,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
+      @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -814,8 +806,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -851,8 +842,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Parameter(description = "Token sent for Email Confirmation", schema = @Schema(type = "string"))
           @QueryParam("token")
-          String token)
-      throws IOException {
+          String token) {
     authHandler.confirmEmailRegistration(uriInfo, token);
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
@@ -899,7 +889,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       registeredUser =
           repository.getByName(uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-    } catch (IOException | EntityNotFoundException ex) {
+    } catch (EntityNotFoundException ex) {
       LOG.error(
           "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}", userName, ex.getMessage());
       return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
@@ -962,8 +952,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/checkEmailInUse")
   @Operation(
       operationId = "checkEmailInUse",
-      summary = "Check if a mail is already in use",
-      description = "Check if a mail is already in use",
+      summary = "Check if a email is already in use",
+      description = "Check if a email is already in use",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -989,7 +979,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Boolean.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
+  public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     User user = repository.getByName(uriInfo, request.getEmail().split("@")[0], getFields("isEmailVerified"));
     return Response.status(Response.Status.OK).entity(user.getIsEmailVerified()).build();
   }
@@ -1034,8 +1024,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response refreshToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest) {
     return Response.status(Response.Status.OK).entity(authHandler.getNewAccessToken(refreshRequest)).build();
   }
 
@@ -1059,14 +1048,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "User Name of the User for which to get. (Default = `false`)") @QueryParam("username")
-          String userName)
-      throws IOException {
+          String userName) {
     if (userName != null) {
       authorizer.authorizeAdmin(securityContext);
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1097,14 +1085,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("removeAll")
           @DefaultValue("false")
           boolean removeAll,
-      @Valid RevokePersonalTokenRequest request)
-      throws IOException {
+      @Valid RevokePersonalTokenRequest request) {
     if (!CommonUtil.nullOrEmpty(userName)) {
       authorizer.authorizeAdmin(securityContext);
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
       tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     } else {
@@ -1132,10 +1119,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createAccessToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersonalToken tokenRequest)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersonalToken tokenRequest) {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED);
+    User user = repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED, false);
     if (Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
@@ -1158,8 +1144,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for user import/export")
-  public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
-      throws IOException {
+  public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name) {
     return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
   }
 
@@ -1246,8 +1231,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private Response createOrUpdateBot(User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext)
-      throws IOException {
+  private Response createOrUpdateBot(User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext) {
     User original = retrieveBotUser(user, uriInfo);
     String botName = create.getBotName();
     EntityInterface bot = retrieveBot(botName);
@@ -1350,7 +1334,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User original;
     try {
       original = repository.getByName(uriInfo, user.getFullyQualifiedName(), repository.getFieldsWithUserAuth("*"));
-    } catch (EntityNotFoundException | IOException exc) {
+    } catch (EntityNotFoundException exc) {
       LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
       original = null;
     }
@@ -1397,7 +1381,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             securityContext,
             new OperationContext(entityType, MetadataOperation.VIEW_ALL),
             getResourceContextById(user.getId()));
-      } catch (AuthorizationException | IOException e) {
+      } catch (AuthorizationException e) {
         user.getAuthenticationMechanism().setConfig(null);
       }
       secretsManager.decryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
@@ -1406,12 +1390,5 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
-  }
-
-  @Override
-  public User getByNameInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
-      throws IOException {
-    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 }
