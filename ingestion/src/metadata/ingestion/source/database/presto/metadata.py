@@ -38,6 +38,8 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ometa_logger
 
+from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CREATE_TABLE
+
 logger = ometa_logger()
 
 _type_map.update(
@@ -86,6 +88,7 @@ def get_columns(
                 "name": row.Column,
                 "type": coltype,
                 "system_data_type": row.Type,
+                "comment": row.Comment,
                 # newer Presto no longer includes this column
                 "nullable": getattr(row, "Null", True),
                 "default": None,
@@ -97,7 +100,12 @@ def get_columns(
 @reflection.cache
 # pylint: disable=unused-argument
 def get_table_comment(self, connection, table_name, schema=None, **kw):
-    return {"text": None}
+    results  = connection.execute(PRESTO_SHOW_CREATE_TABLE.format(schema=schema, table_name=table_name))
+    for res in results:
+        matches = re.findall(r"COMMENT '(.*)'", res[0])
+        if matches:
+            return {"text": matches[-1]}
+        return {"text": None}
 
 
 PrestoDialect.get_columns = get_columns
