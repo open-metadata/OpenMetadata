@@ -15,7 +15,7 @@ import { Button, Col, Row, Space } from 'antd';
 import { DataProductsSelectRef } from 'components/DataProductsSelectList/DataProductSelectList.interface';
 import DataProductsSelectList from 'components/DataProductsSelectList/DataProductsSelectList';
 import React, { useRef, useState } from 'react';
-import { AutoCompleteSelectFormProps } from './DataProductsSelectForm.interface';
+import { DataProductsSelectFormProps } from './DataProductsSelectForm.interface';
 
 const DataProductsSelectForm = ({
   fetchApi,
@@ -23,7 +23,7 @@ const DataProductsSelectForm = ({
   placeholder,
   onSubmit,
   onCancel,
-}: AutoCompleteSelectFormProps) => {
+}: DataProductsSelectFormProps) => {
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const selectRef = useRef<DataProductsSelectRef>(null);
 

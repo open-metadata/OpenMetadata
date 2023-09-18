@@ -14,7 +14,7 @@ import { DataProductSelectOption } from 'components/DataProductsSelectList/DataP
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { Paging } from 'generated/type/paging';
 
-export type AutoCompleteSelectFormProps = {
+export type DataProductsSelectFormProps = {
   placeholder: string;
   defaultValue: string[];
   fieldName: string;
