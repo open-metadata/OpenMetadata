@@ -953,6 +953,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @DELETE
+  @Path("/{fqn}/lifeCycle")
+  @Operation(
+      operationId = "deleteLifeCycleData",
+      summary = "Delete life cycle data",
+      description = "Delete life cycle data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Table's lifeCycle data is deleted",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Table deleteLifeCycle(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the table", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_LIFE_CYCLE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    Table table = repository.deleteLifeCycle(fqn);
+    return addHref(uriInfo, table);
+  }
+
   public static Table validateNewTable(Table table) {
     table.setId(UUID.randomUUID());
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());

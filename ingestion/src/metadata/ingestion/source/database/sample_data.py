@@ -1388,8 +1388,8 @@ class SampleDataSource(
                 entity=User, fqn=life_cycle_data["created"]["created_by"]
             )
             life_cycle_properties.created = Created(
-                created_at=life_cycle_data["created"]["created_at"],
-                created_by=created_by
+                createdAt=life_cycle_data["created"]["created_at"],
+                createdBy=created_by
                 if created_by
                 else life_cycle_data["created"]["created_by"],
             )
@@ -1398,8 +1398,8 @@ class SampleDataSource(
                 entity=User, fqn=life_cycle_data["updated"]["updated_by"]
             )
             life_cycle_properties.updated = Updated(
-                updated_at=life_cycle_data["updated"]["updated_at"],
-                updated_by=updated_by
+                updatedAt=life_cycle_data["updated"]["updated_at"],
+                updatedBy=updated_by
                 if updated_by
                 else life_cycle_data["updated"]["updated_by"],
             )
@@ -1408,8 +1408,8 @@ class SampleDataSource(
                 entity=User, fqn=life_cycle_data["accessed"]["accessed_by"]
             )
             life_cycle_properties.accessed = Accessed(
-                accessed_at=life_cycle_data["accessed"]["accessed_at"],
-                accessed_by=accessed_by
+                accessedAt=life_cycle_data["accessed"]["accessed_at"],
+                accessedBy=accessed_by
                 if accessed_by
                 else life_cycle_data["accessed"]["accessed_by"],
             )
@@ -1418,8 +1418,8 @@ class SampleDataSource(
                 entity=User, fqn=life_cycle_data["deleted"]["deleted_by"]
             )
             life_cycle_properties.deleted = Deleted(
-                deleted_at=life_cycle_data["deleted"]["deleted_at"],
-                deleted_by=deleted_by
+                deletedAt=life_cycle_data["deleted"]["deleted_at"],
+                deletedBy=deleted_by
                 if deleted_by
                 else life_cycle_data["deleted"]["deleted_by"],
             )

@@ -58,6 +58,7 @@ import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.assertEntityReference;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -103,6 +104,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.Accessed;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -111,10 +113,12 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
+import org.openmetadata.schema.type.Created;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
@@ -126,6 +130,7 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.Updated;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -1357,12 +1362,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertDataModel(dataModel, getResponse.getDataModel());
   }
 
-  public void assertDataModel(DataModel expected, DataModel actual) {
-    assertEquals(expected.getSql(), actual.getSql());
-    assertEquals(expected.getModelType(), actual.getModelType());
-    assertEquals(expected.getGeneratedAt(), actual.getGeneratedAt());
-  }
-
   @Test
   void createUpdateDelete_tableCustomMetrics_200(TestInfo test) throws IOException {
     // Creating custom metric is allowed for the admin
@@ -1872,6 +1871,62 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertNull(tableWithProfileFromNotOwner.getColumns().get(2).getProfile());
   }
 
+  @Test
+  void put_tableLifeCycle(TestInfo test) throws IOException {
+    List<Column> columns =
+        Arrays.asList(
+            getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL).withDescription(null),
+            getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10).withDescription(null));
+
+    Table table =
+        createAndCheckEntity(createRequest(test).withColumns(columns).withDescription(null), ADMIN_AUTH_HEADERS);
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user =
+        userResourceTest.createAndCheckEntity(
+            userResourceTest.createRequest(test).withName("test1").withEmail("test1@gmail.com").withIsBot(false),
+            ADMIN_AUTH_HEADERS);
+
+    LifeCycle lifeCycle =
+        new LifeCycle().withAccessed(new Accessed().withAccessedAt(1695059942L).withAccessedBy("test"));
+    Table putResponse = putTableLifeCycle(table.getFullyQualifiedName(), lifeCycle, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, putResponse.getLifeCycle());
+    Table table1 = getEntity(putResponse.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, table1.getLifeCycle());
+
+    lifeCycle.setCreated(new Created().withCreatedAt(1695059900L).withCreatedBy(user.getEntityReference()));
+    putResponse = putTableLifeCycle(table.getFullyQualifiedName(), lifeCycle, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, putResponse.getLifeCycle());
+    table1 = getEntity(putResponse.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, table1.getLifeCycle());
+    // set createdAt to older time , this shouldn't be overriding
+    LifeCycle lifeCycle1 =
+        new LifeCycle().withCreated(new Created().withCreatedAt(1695059800L).withCreatedBy("test12"));
+    putResponse = putTableLifeCycle(table.getFullyQualifiedName(), lifeCycle1, ADMIN_AUTH_HEADERS);
+    // check against the older lifecycle, the contents should be unmodified
+    assertLifeCycle(lifeCycle, putResponse.getLifeCycle());
+    table1 = getEntity(putResponse.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, table1.getLifeCycle());
+
+    // invalid user
+    LifeCycle lifeCycle2 =
+        new LifeCycle().withUpdated(new Updated().withUpdatedAt(1695059999L).withUpdatedBy(TEAM1.getEntityReference()));
+    putResponse = putTableLifeCycle(table.getFullyQualifiedName(), lifeCycle2, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle2, putResponse.getLifeCycle());
+
+    // change user from EntityReference to String
+    lifeCycle2.setCreated(new Created().withCreatedAt(1695059989L).withCreatedBy("non-existing-user"));
+    putResponse = putTableLifeCycle(table.getFullyQualifiedName(), lifeCycle2, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle2, putResponse.getLifeCycle());
+    table1 = getEntity(putResponse.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle2, table1.getLifeCycle());
+
+    // delete life cycle data
+    table1 = deleteTableLifeCycle(table.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertNull(table1.getLifeCycle());
+    table1 = getEntity(putResponse.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertNull(table1.getLifeCycle());
+  }
+
   void assertFields(List<Table> tableList, String fieldsParam) {
     tableList.forEach(t -> assertFields(t, fieldsParam));
   }
@@ -1950,6 +2005,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNotEmpty(table.getTableConstraints());
     // Checks for other owner, tags, and followers is done in the base class
     return table;
+  }
+
+  public void assertDataModel(DataModel expected, DataModel actual) {
+    assertEquals(expected.getSql(), actual.getSql());
+    assertEquals(expected.getModelType(), actual.getModelType());
+    assertEquals(expected.getGeneratedAt(), actual.getGeneratedAt());
+  }
+
+  private static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {
+    if (expected == null) {
+      assertNull(actual);
+    } else {
+      if (expected.getAccessed() != null) {
+        assertEquals(expected.getAccessed().getAccessedAt(), actual.getAccessed().getAccessedAt());
+        assertLifeCycleUser(expected.getAccessed().getAccessedBy(), actual.getAccessed().getAccessedBy());
+      }
+      if (expected.getCreated() != null) {
+        assertEquals(expected.getCreated().getCreatedAt(), actual.getCreated().getCreatedAt());
+        assertLifeCycleUser(expected.getCreated().getCreatedBy(), actual.getCreated().getCreatedBy());
+      }
+      if (expected.getDeleted() != null) {
+        assertEquals(expected.getDeleted().getDeletedAt(), actual.getDeleted().getDeletedAt());
+        assertLifeCycleUser(expected.getDeleted().getDeletedBy(), actual.getDeleted().getDeletedBy());
+      }
+      if (expected.getUpdated() != null) {
+        assertEquals(expected.getUpdated().getUpdatedAt(), actual.getUpdated().getUpdatedAt());
+        assertLifeCycleUser(expected.getUpdated().getUpdatedBy(), actual.getUpdated().getUpdatedBy());
+      }
+    }
+  }
+
+  private static void assertLifeCycleUser(Object expectedUser, Object actualUser) {
+    if (expectedUser == null) {
+      assertNull(actualUser);
+    } else {
+      if (expectedUser instanceof String) {
+        assertEquals(expectedUser, actualUser);
+      } else {
+        assertEntityReference(
+            (EntityReference) expectedUser, JsonUtils.convertValue(actualUser, EntityReference.class));
+      }
+    }
   }
 
   private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
@@ -2093,6 +2190,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(tableId).path("/customMetric/" + columnName + "/" + metricName);
+    return TestUtils.delete(target, Table.class, authHeaders);
+  }
+
+  public Table putTableLifeCycle(String tableFQN, LifeCycle lifeCycle, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path(String.format("/%s/lifeCycle", tableFQN));
+    return TestUtils.put(target, lifeCycle, Table.class, OK, authHeaders);
+  }
+
+  public Table deleteTableLifeCycle(String tableFQN, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection().path(String.format("/%s/lifeCycle", tableFQN));
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 

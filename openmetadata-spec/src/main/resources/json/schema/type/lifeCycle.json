@@ -10,12 +10,12 @@
       "description": "Created information of the data asset",
       "type": "object",
       "properties": {
-        "created_at": {
+        "createdAt": {
           "description": "Timestamp of data asset when it got created",
           "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
-        "created_by": {
+        "createdBy": {
           "description": "User that created the data asset",
           "oneOf": [
             { "type": "string" },
@@ -25,18 +25,18 @@
         }
       },
       "additionalProperties": false,
-      "required": ["created_at"]
+      "required": ["createdAt"]
     },
     "updated": {
       "description": "Updated information of the data asset",
       "type": "object",
       "properties": {
-        "updated_at": {
+        "updatedAt": {
           "description": "Timestamp of data asset when it got updated",
           "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
-        "updated_by": {
+        "updatedBy": {
           "description": "User that updated the data asset",
           "oneOf": [
             { "type": "string" },
@@ -46,18 +46,18 @@
         }
       },
       "additionalProperties": false,
-      "required": ["updated_at"]
+      "required": ["updatedAt"]
     },
     "accessed": {
       "description": "Accessed information of the data asset",
       "type": "object",
       "properties": {
-        "accessed_at": {
+        "accessedAt": {
           "description": "Timestamp of data asset when it got accessed",
           "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
-        "accessed_by": {
+        "accessedBy": {
           "description": "User that accessed the data asset",
           "oneOf": [
             { "type": "string" },
@@ -67,18 +67,18 @@
         }
       },
       "additionalProperties": false,
-      "required": ["accessed_at"]
+      "required": ["accessedAt"]
     },
     "deleted": {
       "description": "Deleted information of the data asset",
       "type": "object",
       "properties": {
-        "deleted_at": {
+        "deletedAt": {
           "description": "Timestamp of data asset when it got deleted",
           "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
-        "deleted_by": {
+        "deletedBy": {
           "description": "User that deleted the data asset",
           "oneOf": [
             { "type": "string" },
@@ -88,7 +88,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["deleted_at"]
+      "required": ["deletedAt"]
     }
   },
   "properties": {

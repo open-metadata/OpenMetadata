@@ -603,6 +603,16 @@ public final class TestUtils {
     }
   }
 
+  public static void assertEntityReference(EntityReference expected, EntityReference actual) {
+    if (expected == null) {
+      assertNotNull(actual);
+    } else {
+      assertEquals(expected.getId(), actual.getId());
+      assertEquals(expected.getType(), actual.getType());
+      assertEquals(expected.getName(), actual.getName());
+    }
+  }
+
   public static void assertListNull(Object... values) {
     int index = 0;
     for (Object value : values) {
