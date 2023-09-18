@@ -28,6 +28,7 @@ import {
   getEntityReferenceListFromEntities,
 } from 'utils/EntityUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
+import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
 export const DomainListItemRenderer = (props: EntityReference) => {
@@ -118,7 +119,7 @@ const DomainSelectableList = ({
         />
       }
       open={popupVisible}
-      overlayClassName="user-select-popover card-shadow"
+      overlayClassName="domain-select-popover"
       placement="bottomRight"
       showArrow={false}
       trigger="click"

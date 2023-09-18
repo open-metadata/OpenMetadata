@@ -44,10 +44,11 @@ export const initializeAxiosInterceptors = async () => {
         if (config.url?.includes('/search/query')) {
           // Parse and update the query parameter
           const queryParams = Qs.parse(config.url.split('?')[1]);
+          const domainStatement = `(domain.fullyQualifiedName:${activeDomain})`;
           queryParams.q = queryParams.q || '';
           queryParams.q += isEmpty(queryParams.q)
-            ? `(domain.fullyQualifiedName:${activeDomain})`
-            : ` AND (domain.fullyQualifiedName:${activeDomain || ''})`;
+            ? domainStatement
+            : ` AND ${domainStatement}`;
 
           // Update the URL with the modified query parameter
           config.url = `${config.url.split('?')[0]}?${Qs.stringify(
@@ -56,7 +57,7 @@ export const initializeAxiosInterceptors = async () => {
         } else {
           config.params = {
             ...config.params,
-            domain: activeDomain || '',
+            domain: activeDomain,
           };
         }
       }

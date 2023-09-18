@@ -95,7 +95,6 @@ const DataProductsContainer = ({
           className="tag-chip tag-chip-content"
           key={`dp-tags-${product.fullyQualifiedName}`}>
           <div className="d-flex w-full">
-            {/* {tagColorBar} */}
             <div className="d-flex items-center p-x-xs w-full gap-1">
               <DataProductIcon
                 className="align-middle"

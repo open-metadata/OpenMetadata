@@ -184,7 +184,7 @@ export const rawSearchQuery = <
       : queryWithSlash
     : '';
 
-  const apiUrl = `/search/query?q=${apiQuery}${filters ? filters : ''}`;
+  const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 
   return APIClient.get<
     SearchResponse<
