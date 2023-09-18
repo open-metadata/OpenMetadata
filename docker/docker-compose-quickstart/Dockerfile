@@ -10,8 +10,8 @@
 #  limitations under the License.
 
 # Build stage
-ARG RI_VERSION="1.2.0"
 FROM alpine:3.15 AS build
+ARG RI_VERSION="1.2.0"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
 RUN mkdir -p /opt/openmetadata && \
@@ -21,12 +21,13 @@ RUN mkdir -p /opt/openmetadata && \
 
 # Final stage
 FROM alpine:3.15
+ARG RI_VERSION="1.2.0"
 ARG BUILD_DATE
 ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
 LABEL org.open-metadata.image.authors="support@openmetadata.org"
 LABEL org.open-metadata.vendor="OpenMetadata"
-LABEL org.open-metadata.release-version="1.2.0"
+LABEL org.open-metadata.release-version="$RI_VERSION"
 LABEL org.open-metadata.description="OpenMetadata is an open source platform for metadata management and discovery."
 LABEL org.open-metadata.url="https://open-metadata.org/"
 LABEL org.open-metadata.vcs-url="https://github.com/open-metadata/OpenMetadata"
