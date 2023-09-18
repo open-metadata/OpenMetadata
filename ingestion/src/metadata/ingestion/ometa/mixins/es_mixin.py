@@ -157,7 +157,8 @@ class ESMixin(Generic[T]):
         }
         return quote(json.dumps(query_lineage_filter))
 
-    def get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:
+    @functools.lru_cache(maxsize=12)
+    def es_get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:
         """Get a set of query checksums that have already been processed for lineage"""
         try:
             resp = self.client.get(

@@ -11,7 +11,6 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
-import hashlib
 import logging
 import time
 from unittest import TestCase
@@ -50,7 +49,7 @@ from metadata.generated.schema.type.basic import SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
-QUERY_CHECKSUM = hashlib.md5(b"select * from awesome").hexdigest()
+QUERY_CHECKSUM = fqn.get_query_checksum("select * from awesome")
 
 
 class OMetaESTest(TestCase):
@@ -293,5 +292,5 @@ class OMetaESTest(TestCase):
 
     def test_get_queries_with_lineage(self):
         """Check the payload from ES"""
-        res = self.metadata.get_queries_with_lineage(self.service.name.__root__)
+        res = self.metadata.es_get_queries_with_lineage(self.service.name.__root__)
         self.assertIn(QUERY_CHECKSUM, res)

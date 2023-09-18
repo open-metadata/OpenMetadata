@@ -13,6 +13,7 @@ Handle FQN building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+import hashlib
 import re
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
@@ -546,3 +547,11 @@ def search_table_from_es(
     return get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
+
+
+def get_query_checksum(query: str) -> str:
+    """
+    Prepare the query checksum from its string representation.
+    The checksum is used as the query's name.
+    """
+    return hashlib.md5(query.encode()).hexdigest()
