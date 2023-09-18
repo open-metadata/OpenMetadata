@@ -54,12 +54,12 @@ const ID = {
   users: {
     testid: '[data-menu-id*="users"]',
     button: 'add-user',
-    api: '/api/v1/users?fields=*isBot=false*',
+    api: '/api/v1/users?*',
   },
   admins: {
     testid: '[data-menu-id*="admins"]',
     button: 'add-user',
-    api: '/api/v1/users?fields=*isAdmin=true*',
+    api: '/api/v1/users?*',
   },
   databases: {
     testid: '[data-menu-id*="databases"]',
