@@ -61,6 +61,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["clientId", "secretToken", "sandboxDomain"]
+    "required": ["clientId", "secretToken", "instanceDomain"]
   }
   
