@@ -2,10 +2,14 @@
 
 import time
 from typing import Optional
+
 from playwright.sync_api import Page, expect
 
+
 class User:
-    def __init__(self, username: str, password: str, display_name: Optional[str] = None):
+    def __init__(
+        self, username: str, password: str, display_name: Optional[str] = None
+    ):
         """Initialize the admin user."""
         self.username = username
         self.password = password
@@ -24,7 +28,7 @@ class User:
         """Delete the user."""
         page.get_by_test_id("app-bar-item-settings").click()
         page.get_by_test_id("global-setting-left-panel").get_by_text("Users").click()
-        page.get_by_test_id("searchbar").fill(self.display_name) # type: ignore
+        page.get_by_test_id("searchbar").fill(self.display_name)  # type: ignore
         page.get_by_test_id("searchbar").press("Enter")
         page.get_by_role("row", name=self.display_name).get_by_role("button").click()
         page.get_by_test_id("hard-delete").check()

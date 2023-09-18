@@ -7,6 +7,7 @@ from ingestion.tests.e2e.configs.connectors.redshift import RedshiftConnector
 
 BASE_URL = "http://localhost:8585"
 
+
 @pytest.fixture(scope="session")
 def redshift_connector():
     redshift = RedshiftConnector(["dbt_jaffle"], ["customers"])

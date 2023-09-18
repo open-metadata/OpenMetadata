@@ -1,13 +1,14 @@
 """common navigation functions"""
 
-import re
 import random
 import string
+
 from playwright.sync_api import Page
 
 from ingestion.tests.e2e.configs.users.user import User
 
 BASE_URL = "http://localhost:8585"
+
 
 def go_to_service(service_type: str, page: Page, service_name: str):
     """navigate to the given service page
@@ -21,6 +22,7 @@ def go_to_service(service_type: str, page: Page, service_name: str):
     page.get_by_text(service_type).click()
     page.get_by_test_id(f"service-name-{service_name}").click()
 
+
 def create_user(page: Page, email: str, display_name: str, role: str) -> User:
     """create a user
 
@@ -32,7 +34,7 @@ def create_user(page: Page, email: str, display_name: str, role: str) -> User:
 
     Returns:
         _type_: User
-    """    
+    """
     page.get_by_test_id("app-bar-item-settings").click()
     page.get_by_test_id("global-setting-left-panel").get_by_text("Users").click()
     page.get_by_test_id("add-user").click()

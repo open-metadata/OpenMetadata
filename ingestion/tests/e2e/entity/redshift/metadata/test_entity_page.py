@@ -4,12 +4,13 @@ Entity metadata tests. Scenarios tested:
 """
 import re
 
-from playwright.sync_api import Page, expect
 import pytest
+from playwright.sync_api import Page, expect
 
 from ingestion.tests.e2e.configs.common import go_to_service
 from ingestion.tests.e2e.configs.users.admin import Admin
 from ingestion.tests.e2e.conftest import BASE_URL
+
 
 @pytest.mark.order(1)
 def test_assert_metadata_ingestion_status_success(redshift_connector, page: Page):
@@ -20,12 +21,21 @@ def test_assert_metadata_ingestion_status_success(redshift_connector, page: Page
     page.get_by_text("Ingestions").click()
 
     # Not best practice. Should use `expect`, though playwright does not have a `wait_until` function
-    status = page.get_by_role("row", name=re.compile(f"^{service_name}_metadata_.*")).get_by_test_id("pipeline-status").text_content()
+    status = (
+        page.get_by_role("row", name=re.compile(f"^{service_name}_metadata_.*"))
+        .get_by_test_id("pipeline-status")
+        .text_content()
+    )
     while status in ("--", "Running"):
         page.reload()
-        status = page.get_by_role("row", name=re.compile(f"^{service_name}_metadata_.*")).get_by_test_id("pipeline-status").text_content()
+        status = (
+            page.get_by_role("row", name=re.compile(f"^{service_name}_metadata_.*"))
+            .get_by_test_id("pipeline-status")
+            .text_content()
+        )
 
     assert status == "Success"
+
 
 def test_change_database_owner(redshift_connector, page: Page):
     """..."""
@@ -38,7 +48,9 @@ def test_change_database_owner(redshift_connector, page: Page):
     page.get_by_test_id("owner-select-users-search-bar").click()
     page.get_by_test_id("owner-select-users-search-bar").fill("created-user")
     page.get_by_text("created-user").click()
-    expect(page.get_by_test_id("owner-label").get_by_test_id("owner-link")).to_have_text("created-user")
+    expect(
+        page.get_by_test_id("owner-label").get_by_test_id("owner-link")
+    ).to_have_text("created-user")
 
 
 def test_data_consumer(redshift_connector, create_data_consumer_user, page: Page):

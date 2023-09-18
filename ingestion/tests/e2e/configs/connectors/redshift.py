@@ -2,8 +2,10 @@
 
 import os
 
-from .interface import DataBaseConnectorInterface
 from playwright.sync_api import Page
+
+from .interface import DataBaseConnectorInterface
+
 
 class RedshiftConnector(DataBaseConnectorInterface):
     def get_service(self, page: Page):

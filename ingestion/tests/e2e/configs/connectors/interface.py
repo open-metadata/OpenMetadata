@@ -1,9 +1,9 @@
 """connectors interface"""
 
-from abc import ABC, abstractmethod
-import re
 import random
+import re
 import string
+from abc import ABC, abstractmethod
 from typing import List
 
 from playwright.sync_api import Page, expect
@@ -12,8 +12,10 @@ from ingestion.tests.e2e.configs.users.admin import Admin
 
 BASE_URL = "http://localhost:8585"
 
+
 class DataBaseConnectorInterface(ABC):
     """Interface for connectors class for e2e tests"""
+
     def __init__(self, schema_filters: List[str] = [], table_filters: List[str] = []):
         """Initialize the connector"""
         self.schema_filters = list(schema_filters)
@@ -23,11 +25,21 @@ class DataBaseConnectorInterface(ABC):
 
     def _check_and_handle_workflow(self, page: Page, type_: str):
         try:
-            expect(page.get_by_role("row", name=re.compile(f"{self.service_name}_{type_}_.*")).get_by_test_id("re-deploy-btn")).to_be_visible(timeout=1000)
+            expect(
+                page.get_by_role(
+                    "row", name=re.compile(f"{self.service_name}_{type_}_.*")
+                ).get_by_test_id("re-deploy-btn")
+            ).to_be_visible(timeout=1000)
         except (TimeoutError, AssertionError):
-            page.get_by_role("row", name=re.compile(f"{self.service_name}_{type_}_.*")).get_by_test_id("deploy").click()
+            page.get_by_role(
+                "row", name=re.compile(f"{self.service_name}_{type_}_.*")
+            ).get_by_test_id("deploy").click()
         finally:
-            expect(page.get_by_role("row", name=re.compile(f"{self.service_name}_{type_}_.*")).get_by_test_id("re-deploy-btn")).to_be_visible()
+            expect(
+                page.get_by_role(
+                    "row", name=re.compile(f"{self.service_name}_{type_}_.*")
+                ).get_by_test_id("re-deploy-btn")
+            ).to_be_visible()
 
     @abstractmethod
     def get_service(self, page: Page):
@@ -39,23 +51,29 @@ class DataBaseConnectorInterface(ABC):
         """Set connection for redshift service"""
         raise NotImplementedError
 
-    @staticmethod    
+    @staticmethod
     def generate_service_name():
         """Generate a random service name"""
-        chinese_char = "".join([chr(random.randint(0x4e00, 0x9fbf)) for _ in range(3)])
+        chinese_char = "".join([chr(random.randint(0x4E00, 0x9FBF)) for _ in range(3)])
         cyrillic_char = "".join([chr(random.randint(1072, 1104)) for _ in range(3)])
-        return "".join(random.choices(string.ascii_lowercase, k=10)) + chinese_char + cyrillic_char + "_-1"
+        return (
+            "".join(random.choices(string.ascii_lowercase, k=10))
+            + chinese_char
+            + cyrillic_char
+            + "_-1"
+        )
 
     def _set_schema_filter(self, page: Page):
         """Set schema filter for redshift service"""
         for schema in self.schema_filters:
-            page.locator('xpath=//*[@id="root/schemaFilterPattern/includes"]')\
-                .fill(schema)  
-            
+            page.locator('xpath=//*[@id="root/schemaFilterPattern/includes"]').fill(
+                schema
+            )
+
     def _set_table_filter(self, page: Page):
         """Set schema filter for redshift service"""
         for table in self.table_filters:
-            page.locator("[id=\"root\\/tableFilterPattern\\/includes\"]").fill(table)
+            page.locator('[id="root\\/tableFilterPattern\\/includes"]').fill(table)
 
     def create_service_ingest_metadata(self, page: Page):
         """Ingest redshift service data"""
@@ -67,8 +85,7 @@ class DataBaseConnectorInterface(ABC):
         self.get_service(page)
         page.get_by_test_id("next-button").click()
         self.service_name = self.generate_service_name()
-        page.get_by_test_id("service-name")\
-            .fill(self.service_name)
+        page.get_by_test_id("service-name").fill(self.service_name)
         page.get_by_test_id("next-button").click()
         self.set_connection(page)
         page.get_by_test_id("submit-btn").click()
@@ -80,7 +97,7 @@ class DataBaseConnectorInterface(ABC):
         page.get_by_test_id("ingestions").click()
         self._check_and_handle_workflow(page, "metadata")
         return self.service_name
-    
+
     def create_profiler_workflow(self, page: Page):
         """create profiler workflow"""
         page.goto(f"{BASE_URL}/")
@@ -91,9 +108,11 @@ class DataBaseConnectorInterface(ABC):
         page.get_by_text("Ingestions").click()
         page.get_by_test_id("add-new-ingestion-button").click()
         page.get_by_text("Add Profiler Ingestion").click()
-        page.locator("div:nth-child(5) > div > div:nth-child(2) > .form-group > .ant-row > div:nth-child(2) > .ant-select > .ant-select-selector > .ant-select-selection-overflow").click()
+        page.locator(
+            "div:nth-child(5) > div > div:nth-child(2) > .form-group > .ant-row > div:nth-child(2) > .ant-select > .ant-select-selector > .ant-select-selection-overflow"
+        ).click()
         self._set_table_filter(page)
-        page.locator("[id=\"root\\/processPiiSensitive\"]").click()
+        page.locator('[id="root\\/processPiiSensitive"]').click()
         page.get_by_test_id("submit-btn").click()
         page.get_by_test_id("deploy-button").click()
         page.get_by_test_id("view-service-button").click()
