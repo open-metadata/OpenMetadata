@@ -93,3 +93,6 @@ SET json = JSON_INSERT(
     JSON_EXTRACT(json, '$.sourceConfig.config.viewParsingTimeoutLimit')
 )
 WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
+
+-- Query Entity supports service, which requires FQN for name
+ALTER TABLE query_entity CHANGE COLUMN nameHash fqnHash VARCHAR(256);

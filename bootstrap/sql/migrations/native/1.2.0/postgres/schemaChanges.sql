@@ -101,3 +101,6 @@ SET json = jsonb_set(
   true
 )
 WHERE json #>> '{pipelineType}' = 'metadata';
+
+-- Query Entity supports service, which requires FQN for name
+ALTER TABLE query_entity RENAME COLUMN nameHash TO fqnHash;
