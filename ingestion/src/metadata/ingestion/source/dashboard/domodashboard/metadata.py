@@ -19,7 +19,6 @@ from pydantic import ValidationError
 
 from metadata.clients.domo_client import (
     DomoChartDetails,
-    DomoClient,
     DomoDashboardDetails,
     DomoOwner,
 )
@@ -56,10 +55,6 @@ class DomodashboardSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.domo_client = DomoClient(self.service_connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -208,7 +203,7 @@ class DomodashboardSource(DashboardServiceSource):
         for chart_id in chart_ids:
             chart: Optional[DomoChartDetails] = None
             try:
-                chart = self.domo_client.get_chart_details(page_id=chart_id)
+                chart = self.client.custom.get_chart_details(page_id=chart_id)
                 chart_url = (
                     f"{self.service_connection.instanceDomain}/page/"
                     f"{dashboard_details.id}/kpis/details/{chart_id}"

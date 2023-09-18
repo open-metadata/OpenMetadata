@@ -81,7 +81,6 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.domo_client = get_connection(self.service_connection)
         self.connection_obj = self.domo_client
-        self.client = DomoClient(self.service_connection)
         self.test_connection()
 
     @classmethod
@@ -270,4 +269,4 @@ class DomodatabaseSource(DatabaseServiceSource):
         return table
 
     def close(self) -> None:
-        self.client.client.close()
+        """Nothing to close"""
