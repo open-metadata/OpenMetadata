@@ -45,7 +45,7 @@ export const initializeAxiosInterceptors = async () => {
           // Parse and update the query parameter
           const queryParams = Qs.parse(config.url.split('?')[1]);
           const domainStatement = `(domain.fullyQualifiedName:${activeDomain})`;
-          queryParams.q = queryParams.q || '';
+          queryParams.q = queryParams.q ?? '';
           queryParams.q += isEmpty(queryParams.q)
             ? domainStatement
             : ` AND ${domainStatement}`;
