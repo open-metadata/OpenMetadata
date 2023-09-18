@@ -31,19 +31,21 @@ public class JdbiTransactionManager {
     return instance;
   }
 
-  public void begin() {
+  public void begin(boolean autoCommit) {
     try {
       Handle handle = handleManager.get();
-      handle.getConnection().setAutoCommit(false);
-      handle.getConfig(Handles.class).setForceEndTransactions(false);
-      handle.begin();
-      IN_TRANSACTION_HANDLES.add(handle.hashCode());
-      LOG.debug(
-          "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
-          Thread.currentThread().getId(),
-          handle.hashCode(),
-          handle.isInTransaction(),
-          handle.getTransactionIsolationLevel());
+      if (!autoCommit) {
+        handle.getConnection().setAutoCommit(false);
+        handle.getConfig(Handles.class).setForceEndTransactions(false);
+        handle.begin();
+        IN_TRANSACTION_HANDLES.add(handle.hashCode());
+        LOG.debug(
+            "Begin Transaction Thread Id [{}] has handle id [{}] Transaction {} Level {}",
+            Thread.currentThread().getId(),
+            handle.hashCode(),
+            handle.isInTransaction(),
+            handle.getTransactionIsolationLevel());
+      }
     } catch (Exception ex) {
       terminateHandle();
     }
