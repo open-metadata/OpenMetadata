@@ -75,7 +75,6 @@ const DataProductsContainer = ({
           (item) => item.fullyQualifiedName ?? ''
         )}
         fetchApi={fetchAPI}
-        fieldName="dataProducts"
         placeholder={t('label.data-product-plural')}
         onCancel={handleCancel}
         onSubmit={handleSave}

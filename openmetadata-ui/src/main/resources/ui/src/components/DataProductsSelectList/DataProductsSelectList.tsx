@@ -152,7 +152,7 @@ const DataProductsSelectList = forwardRef<
       <Select
         autoFocus
         showSearch
-        data-testid="tag-selector"
+        data-testid="data-product-selector"
         defaultValue={defaultValue}
         dropdownRender={dropdownRender}
         filterOption={false}

@@ -17,7 +17,6 @@ import { Paging } from 'generated/type/paging';
 export type DataProductsSelectFormProps = {
   placeholder: string;
   defaultValue: string[];
-  fieldName: string;
   onChange?: (value: string[]) => void;
   onSubmit: (values: DataProduct[]) => Promise<void>;
   onCancel: () => void;
