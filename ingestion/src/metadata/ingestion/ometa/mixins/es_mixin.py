@@ -16,10 +16,10 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from requests.utils import quote
-from typing import Generic, List, Optional, Type, TypeVar, Set
+from typing import Generic, List, Optional, Set, Type, TypeVar
 
 from pydantic import BaseModel
+from requests.utils import quote
 
 from metadata.generated.schema.api.createEventPublisherJob import (
     CreateEventPublisherJob,
@@ -34,15 +34,7 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 
 QUERY_WITH_LINEAGE_FILTER = {
-  "query": {
-    "bool": {
-      "must": {
-        "term": {
-          "processedLineage": True
-        }
-      }
-    }
-  }
+    "query": {"bool": {"must": {"term": {"processedLineage": True}}}}
 }
 
 
@@ -162,7 +154,5 @@ class ESMixin(Generic[T]):
 
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Could not get queries from ES due to [{err}]"
-            )
+            logger.warning(f"Could not get queries from ES due to [{err}]")
             return None

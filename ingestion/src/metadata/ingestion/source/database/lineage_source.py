@@ -18,7 +18,7 @@ from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.type.basic import SqlQuery, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -134,6 +134,8 @@ class LineageSource(QueryParserSource, ABC):
                             query_type=table_query.query_type,
                             duration=table_query.duration,
                             processedLineage=True,
-                            service=FullyQualifiedEntityName(__root__=self.config.serviceName),
+                            service=FullyQualifiedEntityName(
+                                __root__=self.config.serviceName
+                            ),
                         )
                     )
