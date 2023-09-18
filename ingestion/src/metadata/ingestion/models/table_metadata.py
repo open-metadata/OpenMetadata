@@ -15,9 +15,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table, TableConstraint
-from metadata.generated.schema.type.tableQuery import TableQuery
 
 
 class OMetaTableConstraints(BaseModel):
