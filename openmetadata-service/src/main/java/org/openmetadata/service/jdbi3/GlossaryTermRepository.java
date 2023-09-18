@@ -56,8 +56,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final String UPDATE_FIELDS = "references,relatedTerms,reviewers,synonyms";
-  private static final String PATCH_FIELDS = "references,relatedTerms,reviewers,synonyms";
+  private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
+  private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(

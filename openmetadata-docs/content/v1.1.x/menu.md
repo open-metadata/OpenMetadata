@@ -609,6 +609,30 @@ site_menu:
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
+  - category: How to Guides / The Pillars of OpenMetadata
+    url: /how-to-guides/openmetadata
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance
+    url: /how-to-guides/openmetadata/data-governance
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is a Glossary
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is Classification
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/classification
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What are Tiers
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/tiers
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Setup a Glossary
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/setup-glossary
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Create Glossary Terms
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary-terms
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Bulk Import a Glossary
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/import-glossary
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Add Assets to Glossary Terms
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/assets
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Classify Data Assets
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/classify-assets
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / Best Practices for Glossary and Classification
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/best-practices
   - category: How to Guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
   - category: How to Guides / Feature configurations

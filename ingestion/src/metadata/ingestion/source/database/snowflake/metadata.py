@@ -52,6 +52,9 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
+)
 from metadata.ingestion.source.database.snowflake.constants import (
     SNOWFLAKE_REGION_ID_MAP,
 )
@@ -126,7 +129,7 @@ SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
 
 
-class SnowflakeSource(StoredProcedureMixin, CommonDbSourceService):
+class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Snowflake Source
@@ -480,21 +483,24 @@ class SnowflakeSource(StoredProcedureMixin, CommonDbSourceService):
         """
         table = self.context.table
         try:
-            results = self.engine.execute(
-                SNOWFLAKE_LIFE_CYCLE_QUERY.format(
+            life_cycle_data = self.life_cycle_query_dict(
+                query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
                     database_name=table.database.name,
                     schema_name=table.databaseSchema.name,
-                    table_name=table.name.__root__,
                 )
-            ).all()
-            for row in results:
+            ).get(table.name.__root__)
+            if life_cycle_data:
                 life_cycle = init_empty_life_cycle_properties()
                 life_cycle.created = Created(
-                    created_at=convert_timestamp_to_milliseconds(row[0].timestamp())
+                    created_at=convert_timestamp_to_milliseconds(
+                        life_cycle_data.created_at.timestamp()
+                    )
                 )
-                if row[1]:
+                if life_cycle_data.deleted_at:
                     life_cycle.deleted = Deleted(
-                        deleted_at=convert_timestamp_to_milliseconds(row[1].timestamp())
+                        deleted_at=convert_timestamp_to_milliseconds(
+                            life_cycle_data.deleted_at.timestamp()
+                        )
                     )
                 yield Either(
                     right=OMetaLifeCycleData(
