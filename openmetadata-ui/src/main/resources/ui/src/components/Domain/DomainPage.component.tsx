@@ -18,7 +18,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
+
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { Domain } from 'generated/entity/domains/domain';
@@ -170,7 +170,6 @@ const DomainPage = () => {
       <ErrorPlaceHolder
         buttonId="add-domain"
         className="mt-0-important"
-        doc={GLOSSARIES_DOCS} // Need to replace with domain docs
         heading={t('label.domain')}
         permission={createDomainPermission}
         type={
