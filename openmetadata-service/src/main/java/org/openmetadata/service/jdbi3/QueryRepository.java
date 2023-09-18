@@ -111,7 +111,8 @@ public class QueryRepository extends EntityRepository<Query> {
     // Store Query Used in Relation
     storeQueryUsedIn(queryEntity.getId(), queryEntity.getQueryUsedIn(), null);
     // The service contains the query
-    addRelationship(queryEntity.getService().getId(), queryEntity.getId(), DATABASE_SERVICE, Entity.QUERY, Relationship.CONTAINS);
+    addRelationship(
+        queryEntity.getService().getId(), queryEntity.getId(), DATABASE_SERVICE, Entity.QUERY, Relationship.CONTAINS);
   }
 
   @Override
