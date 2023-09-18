@@ -1975,6 +1975,25 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
+  public void cleanup(Map<String, String> authHeaders) throws HttpResponseException {
+    cleanup(authHeaders, true, true);
+  }
+
+  public void cleanup(Map<String, String> authHeaders, boolean recursive, boolean hardDelete)
+      throws HttpResponseException {
+    ResultList<T> listEntities = listEntities(null, 1000_000, null, null, authHeaders);
+    listEntities
+        .getData()
+        .forEach(
+            entity -> {
+              try {
+                deleteEntity(entity.getId(), recursive, hardDelete, authHeaders);
+              } catch (HttpResponseException e) {
+                LOG.error("Error cleanup entities.");
+              }
+            });
+  }
+
   public final void deleteAndCheckEntity(T entity, Map<String, String> authHeaders) throws IOException {
     deleteAndCheckEntity(entity, false, false, authHeaders);
   }
