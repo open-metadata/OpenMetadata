@@ -80,6 +80,8 @@ public final class Entity {
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
 
+  public static final String FIELD_STYLE = "style";
+
   //
   // Service entities
   //

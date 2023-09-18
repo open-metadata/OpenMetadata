@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -22,8 +21,10 @@ import { PAGE_SIZE_LARGE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { isEmpty } from 'lodash';
+import { PagingResponse } from 'Models';
 import React, {
   forwardRef,
   useCallback,
@@ -33,36 +34,54 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getDataProductList } from 'rest/dataProductAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import { searchData } from 'rest/miscAPI';
+import { formatDataProductResponse } from 'utils/APIUtils';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
   ({ permissions, onAddDataProduct }: DataProductsTabProps, ref) => {
     const { t } = useTranslation();
     const { fqn: domainFqn } = useParams<{ fqn: string }>();
-    const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
+    const [dataProducts, setDataProducts] = useState<
+      PagingResponse<DataProduct[]>
+    >({
+      data: [],
+      paging: { total: 0 },
+    });
+
     const [selectedCard, setSelectedCard] = useState<DataProduct>();
     const [loading, setLoading] = useState(true);
 
-    const fetchDataProductsList = useCallback(async () => {
+    const fetchDataProducts = async () => {
       try {
         setLoading(true);
-        const { data } = await getDataProductList({
-          fields: 'domain,owner,experts',
-          domain: domainFqn,
-          limit: PAGE_SIZE_LARGE,
+        const res = await searchData(
+          '',
+          1,
+          PAGE_SIZE_LARGE,
+          `(domain.fullyQualifiedName:"${domainFqn}")`,
+          '',
+          '',
+          SearchIndex.DATA_PRODUCT
+        );
+
+        const data = formatDataProductResponse(res.data.hits.hits);
+        setDataProducts({
+          data: data,
+          paging: { total: res.data.hits.total.value ?? 0 },
         });
-        setDataProducts(data);
         if (data.length > 0) {
           setSelectedCard(data[0]);
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        setDataProducts({
+          data: [],
+          paging: { total: 0 },
+        });
       } finally {
         setLoading(false);
       }
-    }, [domainFqn]);
+    };
 
     const updateSelectedCard = useCallback((dataProductCard: SourceType) => {
       setSelectedCard(dataProductCard as DataProduct);
@@ -70,19 +89,19 @@ const DataProductsTab = forwardRef(
 
     useImperativeHandle(ref, () => ({
       refreshDataProducts() {
-        fetchDataProductsList();
+        fetchDataProducts();
       },
     }));
 
     useEffect(() => {
-      fetchDataProductsList();
+      fetchDataProducts();
     }, [domainFqn]);
 
     if (loading) {
       return <Loader />;
     }
 
-    if (isEmpty(dataProducts) && !loading) {
+    if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
           className="m-t-xlg"
@@ -113,7 +132,7 @@ const DataProductsTab = forwardRef(
           )
         }>
         <div className="p-x-md">
-          {dataProducts.map((dataProduct) => (
+          {dataProducts.data.map((dataProduct) => (
             <ExploreSearchCard
               className={classNames(
                 'm-b-sm cursor-pointer',

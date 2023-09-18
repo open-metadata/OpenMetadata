@@ -48,6 +48,9 @@ describe('Domain page should work properly', () => {
   it('Create new data product should work properly', () => {
     DOMAIN_1.dataProducts.forEach((dataProduct) => {
       createDataProducts(dataProduct, DOMAIN_1);
+      cy.get('[data-testid="app-bar-item-domain"]')
+        .should('be.visible')
+        .click({ force: true });
     });
   });
 
