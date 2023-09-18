@@ -113,6 +113,7 @@ class DomoClient:
             base_url=self.config.instanceDomain,
             api_version="api/",
             auth_header="Authorization",
+            auth_token=lambda: ("no_token", 0),
         )
         self.client = REST(client_config)
 
@@ -194,5 +195,6 @@ class OMPyDomoClient:
     domo_client: official pydomo client https://github.com/domoinc/domo-python-sdk
     client: custom requests on the instance domain
     """
+
     domo: Domo
     custom: DomoClient

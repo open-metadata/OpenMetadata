@@ -67,7 +67,7 @@ class DomodashboardSource(DashboardServiceSource):
         return cls(config, metadata_config)
 
     def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:
-        dashboards = self.client.page_list()
+        dashboards = self.client.domo.page_list()
         dashboard_list = []
         for dashboard in dashboards:
             dashboard_detail = self.get_page_details(page_id=dashboard["id"])
@@ -94,7 +94,7 @@ class DomodashboardSource(DashboardServiceSource):
     ) -> Optional[EntityReference]:
         for owner in dashboard_details.owners:
             try:
-                owner_details = self.client.users_get(owner.id)
+                owner_details = self.client.domo.users_get(owner.id)
                 if owner_details.get("email"):
                     user = self.metadata.get_user_by_email(owner_details["email"])
                     if user:
@@ -170,7 +170,7 @@ class DomodashboardSource(DashboardServiceSource):
 
     def get_page_details(self, page_id) -> Optional[DomoDashboardDetails]:
         try:
-            pages = self.client.page_get(page_id)
+            pages = self.client.domo.page_get(page_id)
             return DomoDashboardDetails(
                 name=pages["name"],
                 id=pages["id"],

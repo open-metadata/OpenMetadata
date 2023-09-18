@@ -17,7 +17,7 @@ from typing import Optional
 
 from pydomo import Domo
 
-from metadata.clients.domo_client import OMPyDomoClient, DomoClient
+from metadata.clients.domo_client import DomoClient, OMPyDomoClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
