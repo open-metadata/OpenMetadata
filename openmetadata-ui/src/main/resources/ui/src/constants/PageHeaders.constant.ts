@@ -128,6 +128,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.stored-procedure-plural'),
     }),
   },
+  SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.search-index-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.search-index-plural'),
+    }),
+  },
   BOTS: {
     header: i18n.t('label.bot-plural'),
     subHeader: i18n.t('message.page-sub-header-for-bots'),
