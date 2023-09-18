@@ -117,8 +117,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           @QueryParam("entityId")
           UUID entityId,
       @Parameter(description = "Filter Queries by service Fully Qualified Name", schema = @Schema(type = "string"))
-      @QueryParam("service")
-      String service,
+          @QueryParam("service")
+          String service,
       @Parameter(description = "Limit the number queries returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)

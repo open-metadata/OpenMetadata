@@ -24,6 +24,7 @@ from requests.utils import quote
 from metadata.generated.schema.api.createEventPublisherJob import (
     CreateEventPublisherJob,
 )
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.utils.elasticsearch import ES_INDEX_MAP
@@ -159,9 +160,19 @@ class ESMixin(Generic[T]):
     def get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:
         """Get a set of query checksums that have already been processed for lineage"""
         try:
-            resp = self.client.get(self.get_query_with_lineage_filter(service_name))
+            resp = self.client.get(
+                f"/search/query?q=&index={ES_INDEX_MAP[Query.__name__]}"
+                "&include_source_fields=checksum&include_source_fields="
+                f"processedLineage&query_filter={self.get_query_with_lineage_filter(service_name)}"
+            )
+            return {elem["_source"]["checksum"] for elem in resp["hits"]["hits"]}
 
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not get queries from ES due to [{err}]")
+            return None
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None

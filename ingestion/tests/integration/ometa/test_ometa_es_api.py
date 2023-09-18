@@ -11,23 +11,23 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+import hashlib
 import logging
 import time
 from unittest import TestCase
 
-from metadata.generated.schema.type.basic import SqlQuery
-
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from requests.utils import quote
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -46,8 +46,11 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+
+QUERY_CHECKSUM = hashlib.md5(b"select * from awesome").hexdigest()
 
 
 class OMetaESTest(TestCase):
@@ -103,13 +106,23 @@ class OMetaESTest(TestCase):
         logging.info("Checking ES index status...")
         tries = 0
 
-        res = None
-        while not res and tries <= 5:  # Kill in 5 seconds
-            res = cls.metadata.es_search_from_fqn(
+        table_res = None
+        query_res = None
+        while not table_res and not query_res and tries <= 5:  # Kill in 5 seconds
+            table_res = cls.metadata.es_search_from_fqn(
                 entity_type=Table,
                 fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
             )
-            if not res:
+            query_res = cls.metadata.es_search_from_fqn(
+                entity_type=Query,
+                fqn_search_string=fqn.build(
+                    metadata=None,
+                    entity_type=Query,
+                    service_name="test-service-es",
+                    query_checksum=QUERY_CHECKSUM,
+                ),
+            )
+            if not table_res or query_res:
                 tries += 1
                 time.sleep(1)
 
@@ -147,6 +160,7 @@ class OMetaESTest(TestCase):
         query = CreateQueryRequest(
             query=SqlQuery(__root__="select * from awesome"),
             service=cls.service_entity.fullyQualifiedName,
+            processedLineage=True,  # Only 1 with processed lineage
         )
         cls.metadata.create_or_update(query)
 
@@ -157,11 +171,14 @@ class OMetaESTest(TestCase):
         cls.metadata.create_or_update(query2)
 
         # Create queries for another service
-        cls.another_service_entity = cls.metadata.create_or_update(data=cls.another_service)
+        cls.another_service_entity = cls.metadata.create_or_update(
+            data=cls.another_service
+        )
 
         another_query = CreateQueryRequest(
             query=SqlQuery(__root__="select * from awesome"),
             service=cls.another_service_entity.fullyQualifiedName,
+            processedLineage=True,
         )
         cls.metadata.create_or_update(another_query)
 
@@ -273,3 +290,8 @@ class OMetaESTest(TestCase):
             ' {"term": {"service.name.keyword": "my_service"}}]}}}'
         )
         self.assertEquals(res, quote(expected))
+
+    def test_get_queries_with_lineage(self):
+        """Check the payload from ES"""
+        res = self.metadata.get_queries_with_lineage(self.service.name.__root__)
+        self.assertIn(QUERY_CHECKSUM, res)
