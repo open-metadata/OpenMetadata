@@ -15,6 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CHART;
 import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.FIELD_LIFECYCLE;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.TABLE;
@@ -40,11 +42,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -93,6 +97,60 @@ public class UsageRepository {
 
   public void computePercentile(String entityType, String date) {
     dao.usageDAO().computePercentile(entityType, date);
+  }
+
+  public void addLifeCycle(String entityType, String fqn, LifeCycle newLifeCycle) {
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+    if (ref != null) {
+      // Validate the request content
+
+      LifeCycle currentLifeCycle = getLifeCycle(ref);
+      if (currentLifeCycle == null) {
+        currentLifeCycle = new LifeCycle();
+      }
+
+      if (newLifeCycle.getCreated() != null
+          && (currentLifeCycle.getCreated() == null
+          || newLifeCycle.getCreated().getCreatedAt() > currentLifeCycle.getCreated().getCreatedAt())) {
+        currentLifeCycle.setCreated(newLifeCycle.getCreated());
+      }
+
+      if (newLifeCycle.getAccessed() != null
+          && (currentLifeCycle.getAccessed() == null
+          || newLifeCycle.getAccessed().getAccessedAt() > currentLifeCycle.getAccessed().getAccessedAt())) {
+        currentLifeCycle.setAccessed(newLifeCycle.getAccessed());
+      }
+
+      if (newLifeCycle.getUpdated() != null
+          && (currentLifeCycle.getUpdated() == null
+          || newLifeCycle.getUpdated().getUpdatedAt() > currentLifeCycle.getUpdated().getUpdatedAt())) {
+        currentLifeCycle.setUpdated(newLifeCycle.getUpdated());
+      }
+
+      if (newLifeCycle.getDeleted() != null
+          && (currentLifeCycle.getDeleted() == null
+          || newLifeCycle.getDeleted().getDeletedAt() > currentLifeCycle.getDeleted().getDeletedAt())) {
+        currentLifeCycle.setDeleted(newLifeCycle.getDeleted());
+      }
+
+      dao.entityExtensionDAO()
+          .insert(
+              ref.getId().toString(), FIELD_EXTENSION, "lifeCycle", JsonUtils.pojoToJson(currentLifeCycle));
+
+    }
+  }
+
+  public void deleteLifeCycle(String entityType, String fqn) {
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+    if (ref != null) {
+      dao.entityExtensionDAO().delete(ref.getId().toString(), FIELD_LIFECYCLE);
+    }
+  }
+
+  public LifeCycle getLifeCycle(EntityReference entityRef) {
+    return JsonUtils.readValue(
+        dao.entityExtensionDAO().getExtension(entityRef.getId().toString(), FIELD_LIFECYCLE),
+        LifeCycle.class);
   }
 
   private RestUtil.PutResponse<?> addUsage(String method, String entityType, String entityId, DailyCount usage) {

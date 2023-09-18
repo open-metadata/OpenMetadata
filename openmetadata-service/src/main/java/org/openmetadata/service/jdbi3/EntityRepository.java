@@ -176,6 +176,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
   @Getter protected final boolean supportsStyle;
+  @Getter protected final boolean supportsLifeCycle;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
@@ -255,6 +256,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_STYLE);
       this.putFields.addField(allowedFields, FIELD_STYLE);
     }
+    this.supportsLifeCycle = allowedFields.contains(FIELD_LIFECYCLE);
   }
 
   /**

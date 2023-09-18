@@ -72,15 +72,6 @@ CREATE TABLE IF NOT EXISTS stored_procedure_entity (
     UNIQUE (fqnHash)
 );
 
--- create entity extension table for table entity
-CREATE TABLE IF NOT EXISTS table_entity_extension (
-    id VARCHAR(36) NOT NULL,                    -- ID of the from entity
-    extension VARCHAR(256) NOT NULL,            -- Extension name same as entity.fieldName
-    jsonSchema VARCHAR(256) NOT NULL,           -- Schema used for generating JSON
-    json JSON NOT NULL,
-    PRIMARY KEY (id, extension)
-);
-
 ALTER TABLE entity_relationship ADD INDEX from_entity_type_index(fromId, fromEntity), ADD INDEX to_entity_type_index(toId, toEntity);
 ALTER TABLE tag DROP CONSTRAINT fqnHash, ADD CONSTRAINT UNIQUE(fqnHash), ADD PRIMARY KEY(id);
 

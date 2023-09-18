@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -37,8 +38,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -323,6 +326,78 @@ public class UsageResource {
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();
   }
+
+  @PUT
+  @Path("/{entity}/name/{fqn}/lifeCycle")
+  @Operation(
+      operationId = "addLifeCycleData",
+      summary = "Add life cycle data",
+      description = "Add life cycle data to an Entity such as Table, Topic, Dashboard.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "Entity get's updated with new lifeCycle"),
+          @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response addLifeCycle(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+          description = "Entity type for which usage is reported",
+          required = true,
+          schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+      @PathParam("entity")
+      String entity,
+      @Parameter(
+          description = "Fully qualified name of the entity that uniquely identifies an entity",
+          required = true,
+          schema = @Schema(type = "string"))
+      @PathParam("fqn")
+      String fullyQualifiedName,
+      @Valid LifeCycle lifeCycle) {
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_LIFE_CYCLE);
+    ResourceContext resourceContext = new ResourceContext(entity);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    dao.addLifeCycle(entity, fullyQualifiedName, lifeCycle);
+    return Response.status(Response.Status.OK).build();
+  }
+
+  @DELETE
+  @Path("/{entity}/name/{fqn}/lifeCycle")
+  @Operation(
+      operationId = "deleteLifeCycleData",
+      summary = "Delete life cycle data",
+      description = "Delete life cycle data associated with the entity.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "Entity's lifeCycle data is deleted",
+              content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+          @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteLifeCycle(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+          description = "Entity type for which usage is reported",
+          required = true,
+          schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+      @PathParam("entity")
+      String entity,
+      @Parameter(
+          description = "Fully qualified name of the entity that uniquely identifies an entity",
+          required = true,
+          schema = @Schema(type = "string"))
+      @PathParam("fqn")
+      String fullyQualifiedName) {
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_LIFE_CYCLE);
+    ResourceContext resourceContext = new ResourceContext(entity);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    dao.deleteLifeCycle(entity, fullyQualifiedName);
+    return Response.status(Response.Status.OK).build();
+  }
+
+
 
   public static EntityUsage addHref(UriInfo uriInfo, EntityUsage entityUsage) {
     Entity.withHref(uriInfo, entityUsage.getEntity());
