@@ -14,11 +14,10 @@ ARG RI_VERSION="1.2.0"
 FROM alpine:3.15 AS build
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
-
-# RUN mkdir -p /opt/openmetadata && \
-#     wget ${RELEASE_URL} && \
-#     tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
-#     rm openmetadata-*.tar.gz
+RUN mkdir -p /opt/openmetadata && \
+    wget ${RELEASE_URL} && \
+    tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
+    rm openmetadata-*.tar.gz
 
 # Final stage
 FROM alpine:3.15
@@ -37,7 +36,7 @@ LABEL org.open-metadata.commit-id=$COMMIT_ID
 
 EXPOSE 8585 8586
 COPY docker/openmetadata-start.sh ./
-# COPY --from=build /opt/openmetadata /opt/openmetadata
+COPY --from=build /opt/openmetadata /opt/openmetadata
 RUN apk add --update --no-cache bash openjdk11-jre && \
     chmod 777 openmetadata-start.sh
 WORKDIR /opt/openmetadata
