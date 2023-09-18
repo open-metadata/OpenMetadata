@@ -38,6 +38,12 @@ export const initializeAxiosInterceptors = async () => {
     (config) => {
       const isGetRequest = config.method === 'get';
       const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
+      const currentPath = window.location.pathname;
+
+      // Do not intercept requests from domains page
+      if (currentPath.includes('/domain')) {
+        return config;
+      }
 
       if (isGetRequest && hasActiveDomain) {
         // Filter ES Query
