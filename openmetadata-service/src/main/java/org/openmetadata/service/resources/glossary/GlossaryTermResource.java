@@ -444,6 +444,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
+        .withStyle(create.getStyle())
         .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
