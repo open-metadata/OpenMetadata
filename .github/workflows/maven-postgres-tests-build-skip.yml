@@ -34,7 +34,7 @@ concurrency:
   group: maven-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
-    test:
+    maven-postgresql-ci:
         runs-on: ubuntu-latest
         strategy:
           matrix:
