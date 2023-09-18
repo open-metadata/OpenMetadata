@@ -20,8 +20,9 @@ import {
   PROFILER_FILTER_RANGE,
 } from 'constants/profiler.constant';
 import { isUndefined } from 'lodash';
+import { DateFilterType } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getCurrentMillis,
@@ -34,21 +35,37 @@ import './DatePickerMenu.style.less';
 interface DatePickerMenuProps {
   showSelectedCustomRange?: boolean;
   handleDateRangeChange: (value: DateRangeObject, days?: number) => void;
+  options?: DateFilterType;
+  defaultValue?: string;
 }
 
 function DatePickerMenu({
   showSelectedCustomRange,
   handleDateRangeChange,
+  options,
+  defaultValue,
 }: DatePickerMenuProps) {
+  const { menuOptions, defaultOptions } = useMemo(() => {
+    const defaultOptions =
+      options && defaultValue
+        ? { title: options[defaultValue].title, key: defaultValue }
+        : DEFAULT_SELECTED_RANGE;
+
+    return {
+      menuOptions: options ?? PROFILER_FILTER_RANGE,
+      defaultOptions,
+    };
+  }, [options]);
+
   const { t } = useTranslation();
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
-    DEFAULT_SELECTED_RANGE.title
+    defaultOptions.title
   );
   // state to determine the selected value to highlight in the dropdown
-  const [selectedTimeRangeKey, setSelectedTimeRangeKey] = useState<
-    keyof typeof PROFILER_FILTER_RANGE
-  >(DEFAULT_SELECTED_RANGE.key as keyof typeof PROFILER_FILTER_RANGE);
+  const [selectedTimeRangeKey, setSelectedTimeRangeKey] = useState<string>(
+    defaultOptions.key
+  );
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
@@ -70,36 +87,32 @@ function DatePickerMenu({
       );
 
       setSelectedTimeRange(selectedRangeLabel);
-      setSelectedTimeRangeKey(
-        'customRange' as keyof typeof PROFILER_FILTER_RANGE
-      );
+      setSelectedTimeRangeKey('customRange');
       setIsMenuOpen(false);
       handleDateRangeChange({ startTs, endTs }, daysCount);
     }
   };
 
   const handleOptionClick = ({ key }: MenuInfo) => {
-    const filterRange =
-      PROFILER_FILTER_RANGE[key as keyof typeof PROFILER_FILTER_RANGE];
+    const filterRange = menuOptions[key];
     if (isUndefined(filterRange)) {
       return;
     }
 
     const selectedNumberOfDays = filterRange.days;
-    const keyString = key as keyof typeof PROFILER_FILTER_RANGE;
     const startTs = getEpochMillisForPastDays(selectedNumberOfDays);
 
     const endTs = getCurrentMillis();
 
-    setSelectedTimeRange(PROFILER_FILTER_RANGE[keyString].title);
-    setSelectedTimeRangeKey(keyString);
+    setSelectedTimeRange(menuOptions[key].title);
+    setSelectedTimeRangeKey(key);
     setIsMenuOpen(false);
 
     handleDateRangeChange({ startTs, endTs }, selectedNumberOfDays);
   };
 
   const getMenuItems = () => {
-    const items: MenuProps['items'] = Object.entries(PROFILER_FILTER_RANGE).map(
+    const items: MenuProps['items'] = Object.entries(menuOptions).map(
       ([key, value]) => ({
         label: value.title,
         key,

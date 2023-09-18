@@ -261,6 +261,8 @@ declare module 'Models' {
     | Mlmodel
     | Container;
 
+  export type DateFilterType = Record<string, { days: number; title: string }>;
+
   export type TagFilterOptions = {
     text: string;
     value: string;
