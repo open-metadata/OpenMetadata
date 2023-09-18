@@ -103,4 +103,6 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ### Service Connection Changes
 
+- Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
+
 ### Other Changes

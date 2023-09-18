@@ -101,3 +101,31 @@ SET json = jsonb_set(
   true
 )
 WHERE json #>> '{pipelineType}' = 'metadata';
+
+-- Rename sandboxDomain for instanceDomain
+UPDATE dbservice_entity
+SET json = jsonb_set(
+  json::jsonb #- '{connection,config,sandboxDomain}',
+  '{connection,config,instanceDomain}',
+  (json #> '{connection,config,sandboxDomain}')::jsonb,
+  true
+)
+WHERE serviceType = 'DomoDatabase';
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json::jsonb #- '{connection,config,sandboxDomain}',
+  '{connection,config,instanceDomain}',
+  (json #> '{connection,config,sandboxDomain}')::jsonb,
+  true
+)
+WHERE serviceType = 'DomoDashboard';
+
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+  json::jsonb #- '{connection,config,sandboxDomain}',
+  '{connection,config,instanceDomain}',
+  (json #> '{connection,config,sandboxDomain}')::jsonb,
+  true
+)
+WHERE serviceType = 'DomoPipeline';

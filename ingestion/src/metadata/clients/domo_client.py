@@ -101,17 +101,16 @@ class DomoClient:
         ],
     ):
         self.config = config
-        self.config.sandboxDomain = (
-            self.config.sandboxDomain[:-1]
-            if self.config.sandboxDomain.endswith("/")
-            else self.config.sandboxDomain
+        self.config.instanceDomain = (
+            self.config.instanceDomain[:-1]
+            if self.config.instanceDomain.endswith("/")
+            else self.config.instanceDomain
         )
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.sandboxDomain,
+            base_url=self.config.instanceDomain,
             api_version="api/",
             auth_header="Authorization",
-            auth_token=lambda: ("no_token", 0),
         )
         self.client = REST(client_config)
 

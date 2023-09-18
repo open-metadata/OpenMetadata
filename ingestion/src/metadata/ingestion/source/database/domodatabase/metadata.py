@@ -258,7 +258,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         Method to get the source url for domodatabase
         """
         try:
-            return f"{clean_uri(self.service_connection.sandboxDomain)}/datasources/{table_name}/details/overview"
+            return f"{clean_uri(self.service_connection.instanceDomain)}/datasources/{table_name}/details/overview"
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url for {table_name}: {exc}")
