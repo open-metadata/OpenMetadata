@@ -9,6 +9,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -82,6 +83,8 @@ public class QueryRepository extends EntityRepository<Query> {
       entity.setName(checkSum);
     }
     entity.setUsers(EntityUtil.populateEntityReferences(entity.getUsers()));
+    DatabaseService service = Entity.getEntity(entity.getService(), "", Include.ALL);
+    entity.setService(service.getEntityReference());
   }
 
   @Override

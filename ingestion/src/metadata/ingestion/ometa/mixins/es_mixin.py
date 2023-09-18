@@ -33,10 +33,6 @@ logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
 
-QUERY_WITH_LINEAGE_FILTER = {
-    "query": {"bool": {"must": {"term": {"processedLineage": True}}}}
-}
-
 
 class ESMixin(Generic[T]):
     """
@@ -48,7 +44,6 @@ class ESMixin(Generic[T]):
     client: REST
 
     fqdn_search = "/search/query?q=fullyQualifiedName:{fqn}&from={from_}&size={size}&index={index}"
-    query_with_lineage_filter = quote(json.dumps(QUERY_WITH_LINEAGE_FILTER))
 
     @functools.lru_cache(maxsize=512)
     def _search_es_entity(
@@ -147,10 +142,24 @@ class ESMixin(Generic[T]):
             logger.debug(f"Failed to fetch reindex job status due to {err}")
             return None
 
-    def get_queries_with_lineage(self) -> Optional[Set[str]]:
+    @staticmethod
+    def get_query_with_lineage_filter(service_name: str) -> str:
+        query_lineage_filter = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"processedLineage": True}},
+                        {"term": {"service.name.keyword": service_name}},
+                    ]
+                }
+            }
+        }
+        return quote(json.dumps(query_lineage_filter))
+
+    def get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:
         """Get a set of query checksums that have already been processed for lineage"""
         try:
-            resp = self.client.get(self.query_with_lineage_search)
+            resp = self.client.get(self.get_query_with_lineage_filter(service_name))
 
         except APIError as err:
             logger.debug(traceback.format_exc())

@@ -15,6 +15,11 @@ import logging
 import time
 from unittest import TestCase
 
+from metadata.generated.schema.type.basic import SqlQuery
+
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from requests.utils import quote
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -64,6 +69,19 @@ class OMetaESTest(TestCase):
 
     service = CreateDatabaseServiceRequest(
         name="test-service-es",
+        serviceType=DatabaseServiceType.Mysql,
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                authType=BasicAuth(
+                    password="password",
+                ),
+                hostPort="http://localhost:1234",
+            )
+        ),
+    )
+    another_service = CreateDatabaseServiceRequest(
+        name="another-test-service-es",
         serviceType=DatabaseServiceType.Mysql,
         connection=DatabaseConnection(
             config=MysqlConnection(
@@ -125,6 +143,28 @@ class OMetaESTest(TestCase):
 
         cls.entity = cls.metadata.create_or_update(create)
 
+        # Create queries for the given service
+        query = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from awesome"),
+            service=cls.service_entity.fullyQualifiedName,
+        )
+        cls.metadata.create_or_update(query)
+
+        query2 = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from another_awesome"),
+            service=cls.service_entity.fullyQualifiedName,
+        )
+        cls.metadata.create_or_update(query2)
+
+        # Create queries for another service
+        cls.another_service_entity = cls.metadata.create_or_update(data=cls.another_service)
+
+        another_query = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from awesome"),
+            service=cls.another_service_entity.fullyQualifiedName,
+        )
+        cls.metadata.create_or_update(another_query)
+
         # Leave some time for indexes to get updated, otherwise this happens too fast
         cls.check_es_index()
 
@@ -143,6 +183,19 @@ class OMetaESTest(TestCase):
         cls.metadata.delete(
             entity=DatabaseService,
             entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
+        )
+
+        another_service_id = str(
+            cls.metadata.get_by_name(
+                entity=DatabaseService, fqn=cls.another_service.name.__root__
+            ).id.__root__
+        )
+
+        cls.metadata.delete(
+            entity=DatabaseService,
+            entity_id=another_service_id,
             recursive=True,
             hard_delete=True,
         )
@@ -211,3 +264,12 @@ class OMetaESTest(TestCase):
         )
 
         self.assertIsNone(res)
+
+    def test_get_query_with_lineage_filter(self):
+        """Check we are building the proper filter"""
+        res = self.metadata.get_query_with_lineage_filter("my_service")
+        expected = (
+            '{"query": {"bool": {"must": [{"term": {"processedLineage": true}},'
+            ' {"term": {"service.name.keyword": "my_service"}}]}}}'
+        )
+        self.assertEquals(res, quote(expected))
