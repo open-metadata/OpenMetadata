@@ -497,10 +497,7 @@ const TableDetailsPageV1 = () => {
             <DataProductsContainer
               activeDomain={tableDetails?.domain}
               dataProducts={tableDetails?.dataProducts ?? []}
-              hasPermission={
-                (tablePermissions.EditAll || tablePermissions.EditTags) &&
-                !tableDetails?.deleted
-              }
+              hasPermission={tablePermissions.EditAll && !tableDetails?.deleted}
               onSave={onDataProductsUpdate}
             />
 
