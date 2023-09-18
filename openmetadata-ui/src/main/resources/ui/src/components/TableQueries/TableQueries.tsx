@@ -14,6 +14,7 @@
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -33,7 +34,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { isString, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -200,11 +201,11 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const pagingHandler = (cursorType: string | number, activePage?: number) => {
+  const pagingHandler = ({ cursorType, currentPage }: PagingHandlerParams) => {
     const { paging } = tableQueries;
-    if (isString(cursorType)) {
-      fetchTableQuery({ [cursorType]: paging[cursorType] }, activePage);
-      activePage && setCurrentPage(activePage);
+    if (cursorType) {
+      fetchTableQuery({ [cursorType]: paging[cursorType] }, currentPage);
+      setCurrentPage(currentPage);
     }
   };
 

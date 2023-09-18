@@ -18,6 +18,7 @@ import { useAuthContext } from 'components/authentication/auth-provider/AuthProv
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -244,14 +245,16 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const handleTestCasePaging = (
-    cursorValue: string | number,
-    activePage?: number | undefined
-  ) => {
-    setCurrentPage(activePage as number);
-    fetchTestCases({
-      [cursorValue]: testCasesPaging[cursorValue as keyof Paging] as string,
-    });
+  const handleTestCasePaging = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      setCurrentPage(currentPage);
+      fetchTestCases({
+        [cursorType]: testCasesPaging[cursorType],
+      });
+    }
   };
 
   const handleTestSuiteUpdate = (testCase?: TestCase) => {

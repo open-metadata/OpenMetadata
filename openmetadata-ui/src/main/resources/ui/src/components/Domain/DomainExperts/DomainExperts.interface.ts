@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { Domain } from 'generated/entity/domains/domain';
 
 export interface DomainExpertsProps {
-  domain: Domain;
+  entity: Domain | DataProduct;
   isVersionsView?: boolean;
   editPermission?: boolean;
 }

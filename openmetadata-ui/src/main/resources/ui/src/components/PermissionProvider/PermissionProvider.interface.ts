@@ -73,7 +73,9 @@ export enum ResourceEntity {
   QUERY = 'query',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   EVENT_SUBSCRIPTION = 'eventsubscription',
+  SEARCH_INDEX = 'searchIndex',
   DOMAIN = 'domain',
+  DATA_PRODUCT = 'dataProduct',
   STORED_PROCEDURE = 'storedProcedure',
 }
 

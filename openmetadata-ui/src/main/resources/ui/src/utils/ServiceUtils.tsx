@@ -82,6 +82,7 @@ import {
   SAP_HANA,
   SCIKIT,
   serviceTypes,
+  SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
@@ -385,6 +386,12 @@ export const shouldTestConnection = (serviceType: string) => {
 
 export const getServiceType = (serviceCat: ServiceCategory) =>
   SERVICE_TYPE_MAP[serviceCat];
+
+export const getServiceTypesFromServiceCategory = (
+  serviceCat: ServiceCategory
+) => {
+  return SERVICE_TYPES_ENUM[serviceCat];
+};
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;

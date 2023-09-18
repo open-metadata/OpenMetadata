@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
 import { getURLWithQueryFields } from 'utils/APIUtils';
@@ -74,6 +75,27 @@ export const getDataProductList = async (params?: Params) => {
       params,
     }
   );
+
+  return response.data;
+};
+
+export const deleteDataProduct = (id: string) => {
+  return APIClient.delete(`${BASE_URL}/${id}`);
+};
+
+export const getDataProductVersionsList = async (id: string) => {
+  const url = `${BASE_URL}/${id}/versions`;
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDataProductVersionData = async (
+  id: string,
+  version: string
+) => {
+  const url = `${BASE_URL}/${id}/versions/${version}`;
+  const response = await APIClient.get<DataProduct>(url);
 
   return response.data;
 };

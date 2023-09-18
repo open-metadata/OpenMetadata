@@ -260,4 +260,16 @@ declare module 'Models' {
     | Topic
     | Mlmodel
     | Container;
+
+  export type TagFilterOptions = {
+    text: string;
+    value: string;
+    source: TagSource;
+  };
+
+  export type TagsData = {
+    tags?: TagLabel[];
+    fullyQualifiedName?: string;
+    children?: TagsData[];
+  };
 }
