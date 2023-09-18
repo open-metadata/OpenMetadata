@@ -456,7 +456,7 @@ class OMetaTableTest(TestCase):
 
         query_no_user = CreateQueryRequest(
             query=SqlQuery(__root__="select * from awesome"),
-            service=FullyQualifiedEntityName(__root__="test-service-table"),
+            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
         )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
@@ -470,7 +470,9 @@ class OMetaTableTest(TestCase):
 
         # Validate that we can properly add user information
         query_with_user = CreateQueryRequest(
-            query="select * from awesome", users=[self.owner.fullyQualifiedName]
+            query="select * from awesome",
+            users=[self.owner.fullyQualifiedName],
+            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
         )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
