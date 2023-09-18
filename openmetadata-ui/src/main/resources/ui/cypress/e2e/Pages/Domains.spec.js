@@ -18,7 +18,9 @@ import {
   createDataProducts,
   createDomain,
   deleteDomain,
+  removeAssets,
   renameDomain,
+  updateAssets,
   updateDomainDetails,
   verifyDomain,
 } from '../../common/DomainUtils';
@@ -56,6 +58,14 @@ describe('Domain page should work properly', () => {
 
   it('Update domain details should work properly', () => {
     updateDomainDetails(DOMAIN_1);
+  });
+
+  it.skip('Assets Tab should work properly', () => {
+    updateAssets(DOMAIN_1);
+  });
+
+  it.skip('Remove Domain from entity should work properly', () => {
+    removeAssets(DOMAIN_1);
   });
 
   it('Rename domain name and display name should work properly', () => {
