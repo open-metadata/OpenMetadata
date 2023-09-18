@@ -17,10 +17,7 @@
 package org.openmetadata.service.resources.glossary;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -37,15 +34,9 @@ import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
-import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import java.io.IOException;
 import java.net.URI;
@@ -70,6 +61,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -308,6 +300,51 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  void patch_addDeleteStyle(TestInfo test) throws IOException {
+    // Create glossary term1 in glossary g1
+    CreateGlossaryTerm create =
+        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null).withStyle(null);
+    GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create glossary term11 under term1 in glossary g1
+    create =
+        createRequest("t1", "", "", null)
+            .withSynonyms(null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withParent(term1.getFullyQualifiedName());
+    GlossaryTerm term11 = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Apply tags to term11
+    String json = JsonUtils.pojoToJson(term11);
+    ChangeDescription change = new ChangeDescription();
+    Style style = new Style().withIconURL("http://termIcon").withColor("#9FE2BF");
+    fieldAdded(change, "style", style);
+    term11.setStyle(style);
+    term11 = patchEntityAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertStyle(style, term11.getStyle());
+
+    // Apply badge to term1
+    json = JsonUtils.pojoToJson(term1);
+    change = new ChangeDescription();
+    style = new Style().withIconURL("http://termIcon1").withColor("#9FE2DF");
+    fieldAdded(change, "style", style);
+    term1.setStyle(style);
+    term1 = patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertStyle(style, term1.getStyle());
+
+    // remove badge to term1
+    change = new ChangeDescription();
+    change.setPreviousVersion(term1.getVersion());
+    json = JsonUtils.pojoToJson(term1);
+    fieldDeleted(change, "style", style);
+    term1.setStyle(null);
+    patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(term1.getStyle());
+  }
+
+  @Test
   void delete_recursive(TestInfo test) throws IOException {
     Glossary g1 = createGlossary(test, null, null);
 
@@ -386,6 +423,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     CreateGlossaryTerm createGlossaryTerm =
         createRequest(termName, "", "", null)
             .withGlossary(getFqn(glossary))
+            .withStyle(new Style().withColor("#FF5733").withIconURL("https://img"))
             .withParent(getFqn(parent))
             .withReviewers(getFqns(reviewers));
     return createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
@@ -401,6 +439,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
       assertEquals(expected.getSynonyms(), actual.getSynonyms());
       assertEquals(expected.getParent(), actual.getParent());
+      assertEquals(expected.getStyle(), actual.getStyle());
       TestUtils.assertEntityReferences(expected.getChildren(), actual.getChildren());
       TestUtils.assertEntityReferences(expected.getReviewers(), actual.getReviewers());
       TestUtils.validateTags(expected.getTags(), actual.getTags());
@@ -431,7 +470,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             ? FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName())
             : FullyQualifiedName.add(entity.getParent().getFullyQualifiedName(), entity.getName());
     assertEquals(fqn, entity.getFullyQualifiedName());
-
+    assertEquals(entity.getStyle(), request.getStyle());
     // Validate glossary that holds this term is present
     validateEntityReference(entity.getGlossary());
     // TODO fix this

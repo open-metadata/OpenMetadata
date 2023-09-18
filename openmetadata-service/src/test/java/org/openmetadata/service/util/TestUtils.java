@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
@@ -669,5 +670,11 @@ public final class TestUtils {
     }
 
     return actual.size() == exists;
+  }
+
+  public static void assertStyle(Style expected, Style actual) {
+    if (expected == null) return;
+    assertEquals(expected.getIconURL(), actual.getIconURL());
+    assertEquals(expected.getColor(), actual.getColor());
   }
 }

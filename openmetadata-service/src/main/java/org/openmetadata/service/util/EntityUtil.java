@@ -413,6 +413,8 @@ public final class EntityUtil {
     return new TagLabel()
         .withName(term.getName())
         .withDisplayName(term.getDisplayName())
+        .withDescription(term.getDescription())
+        .withStyle(term.getStyle())
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
@@ -422,6 +424,8 @@ public final class EntityUtil {
     return new TagLabel()
         .withName(tag.getName())
         .withDisplayName(tag.getDisplayName())
+        .withDescription(tag.getDescription())
+        .withStyle(tag.getStyle())
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
         .withSource(TagSource.CLASSIFICATION);

@@ -32,6 +32,9 @@
       "description": "Description for the tag label.",
       "$ref": "../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../type/basic.json#/definitions/style"
+    },
     "source": {
       "description": "Label is from Tags or Glossary.",
       "$ref": "#/definitions/TagSource"

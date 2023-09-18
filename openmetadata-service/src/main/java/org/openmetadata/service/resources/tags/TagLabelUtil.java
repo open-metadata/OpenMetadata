@@ -53,11 +53,13 @@ public class TagLabelUtil {
       label.setName(tag.getName());
       label.setDisplayName(tag.getDisplayName());
       label.setDescription(tag.getDescription());
+      label.setStyle(tag.getStyle());
     } else if (label.getSource() == TagSource.GLOSSARY) {
       GlossaryTerm glossaryTerm = getGlossaryTerm(label.getTagFQN());
       label.setName(glossaryTerm.getName());
       label.setDisplayName(glossaryTerm.getDisplayName());
       label.setDescription(glossaryTerm.getDescription());
+      label.setStyle(glossaryTerm.getStyle());
     } else {
       throw new IllegalArgumentException("Invalid source type " + label.getSource());
     }
