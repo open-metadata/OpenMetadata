@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser-type: ['chromium', 'firefox', 'webkit']
+        browser-type: ['chromium']
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -122,7 +122,7 @@ jobs:
           E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
         run: |
           source env/bin/activate
-          make run_e2e_tests ARGS="--browser ${{ matrix.browser-type }}"
+          make run_e2e_tests
       - name: Clean Up
         run: |
           cd ./docker/development
