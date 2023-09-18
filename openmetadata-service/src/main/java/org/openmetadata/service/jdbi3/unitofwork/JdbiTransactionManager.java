@@ -52,23 +52,19 @@ public class JdbiTransactionManager {
   }
 
   public void commit() {
-    Handle handle = handleManager.get();
-    if (handle == null) {
-      LOG.debug(
-          "Handle was found to be null during commit for Thread Id [{}]. It might have already been closed",
-          Thread.currentThread().getId());
-      return;
-    }
-    try {
-      handle.getConnection().commit();
-      LOG.debug(
-          "Performing commit Thread Id [{}] has handle id [{}] Transaction {} Level {}",
-          Thread.currentThread().getId(),
-          handle.hashCode(),
-          handle.isInTransaction(),
-          handle.getTransactionIsolationLevel());
-    } catch (Exception ex) {
-      rollback();
+    if (handleManager.handleExists()) {
+      Handle handle = handleManager.get();
+      try {
+        handle.getConnection().commit();
+        LOG.debug(
+            "Performing commit Thread Id [{}] has handle id [{}] Transaction {} Level {}",
+            Thread.currentThread().getId(),
+            handle.hashCode(),
+            handle.isInTransaction(),
+            handle.getTransactionIsolationLevel());
+      } catch (Exception ex) {
+        rollback();
+      }
     }
   }
 
