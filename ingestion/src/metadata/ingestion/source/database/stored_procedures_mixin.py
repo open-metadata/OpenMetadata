@@ -36,6 +36,7 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.stored_procedures import get_procedure_name_from_call
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 
 class QueryByProcedure(BaseModel):
@@ -169,7 +170,9 @@ class StoredProcedureMixin:
                 query_type=query_by_procedure.query_type,
                 duration=query_by_procedure.query_duration,
                 queryDate=Timestamp(
-                    __root__=int(query_by_procedure.query_start_time.timestamp()) * 1000
+                    __root__=convert_timestamp_to_milliseconds(
+                        int(query_by_procedure.query_start_time.timestamp())
+                    )
                 ),
                 triggeredBy=EntityReference(
                     id=self.context.stored_procedure.id,
