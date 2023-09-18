@@ -38,6 +38,10 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.ml-model'),
   },
   {
+    value: 'searchIndex',
+    label: t('label.search-index'),
+  },
+  {
     value: 'user',
     label: t('label.user'),
   },
