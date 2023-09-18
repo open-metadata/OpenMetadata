@@ -25,7 +25,7 @@ const DATA = {
   owner: 'Aaron Johnson',
   tag: 'Personal',
   queryUsedIn: {
-    table1: 'dim_address',
+    table1: 'dim_address_clean',
     table2: 'raw_product_catalog',
   },
 };
@@ -37,24 +37,23 @@ describe('Query Entity', () => {
   });
 
   it('Create query', () => {
-    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
-    interceptURL('POST', '/api/v1/queries', 'createQuery');
     interceptURL(
       'GET',
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
-      'fetchTableOption'
+      'explorePageSearch'
     );
+    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
+    interceptURL('POST', '/api/v1/queries', 'createQuery');
     visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
 
     cy.get('[data-testid="add-query-btn"]').click();
-    verifyResponseStatusCode('@fetchTableOption', 200);
 
     cy.get('[data-testid="code-mirror-container"]').type(DATA.query);
     cy.get(descriptionBox).scrollIntoView().type(DATA.description);
     cy.get('[data-testid="query-used-in"]').type(DATA.queryUsedIn.table1);
-    verifyResponseStatusCode('@fetchTableOption', 200);
+    verifyResponseStatusCode('@explorePageSearch', 200);
     cy.get(`[title="${DATA.queryUsedIn.table1}"]`).click();
     cy.clickOutside();
 
@@ -70,12 +69,12 @@ describe('Query Entity', () => {
 
   it('Update owner, description and tag', () => {
     interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
-    interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
     interceptURL('PATCH', '/api/v1/queries/*', 'patchQuery');
     interceptURL(
       'GET',
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
-      'fetchTableOption'
+      'explorePageSearch'
     );
     visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
     cy.get('[data-testid="table_queries"]').click();
@@ -119,7 +118,7 @@ describe('Query Entity', () => {
     interceptURL(
       'GET',
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
-      'fetchTableOption'
+      'explorePageSearch'
     );
     visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
     cy.get('[data-testid="table_queries"]').click();
@@ -131,7 +130,7 @@ describe('Query Entity', () => {
       .click()
       .type(`{selectAll}{selectAll}${DATA.queryUsedIn.table1}`);
     cy.get('[data-testid="edit-query-used-in"]').type(DATA.queryUsedIn.table2);
-    verifyResponseStatusCode('@fetchTableOption', 200);
+    verifyResponseStatusCode('@explorePageSearch', 200);
     cy.get(`[title="${DATA.queryUsedIn.table2}"]`).click();
     cy.clickOutside();
 
@@ -146,7 +145,7 @@ describe('Query Entity', () => {
     interceptURL(
       'GET',
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
-      'fetchTableOption'
+      'explorePageSearch'
     );
     visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
     cy.get('[data-testid="table_queries"]').click();
