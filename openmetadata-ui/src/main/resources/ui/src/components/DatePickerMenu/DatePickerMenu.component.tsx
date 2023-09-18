@@ -37,6 +37,7 @@ interface DatePickerMenuProps {
   handleDateRangeChange: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   defaultValue?: string;
+  allowCustomRange?: boolean;
 }
 
 function DatePickerMenu({
@@ -44,6 +45,7 @@ function DatePickerMenu({
   handleDateRangeChange,
   options,
   defaultValue,
+  allowCustomRange = true,
 }: DatePickerMenuProps) {
   const { menuOptions, defaultOptions } = useMemo(() => {
     const defaultOptions =
@@ -118,27 +120,30 @@ function DatePickerMenu({
         key,
       })
     );
-    items.push({
-      label: t('label.custom-range'),
-      key: 'customRange',
-      children: [
-        {
-          label: (
-            <DatePicker.RangePicker
-              bordered={false}
-              clearIcon={<CloseCircleOutlined />}
-              format={(value) => value.utc().format('YYYY-MM-DD')}
-              open={isMenuOpen}
-              placement="bottomRight"
-              suffixIcon={null}
-              onChange={handleCustomDateChange}
-            />
-          ),
-          key: 'datePicker',
-        },
-      ],
-      popupClassName: 'date-picker-sub-menu-popup',
-    });
+    {
+      allowCustomRange &&
+        items.push({
+          label: t('label.custom-range'),
+          key: 'customRange',
+          children: [
+            {
+              label: (
+                <DatePicker.RangePicker
+                  bordered={false}
+                  clearIcon={<CloseCircleOutlined />}
+                  format={(value) => value.utc().format('YYYY-MM-DD')}
+                  open={isMenuOpen}
+                  placement="bottomRight"
+                  suffixIcon={null}
+                  onChange={handleCustomDateChange}
+                />
+              ),
+              key: 'datePicker',
+            },
+          ],
+          popupClassName: 'date-picker-sub-menu-popup',
+        });
+    }
 
     return items;
   };
