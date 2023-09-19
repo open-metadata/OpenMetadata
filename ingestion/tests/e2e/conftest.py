@@ -2,13 +2,14 @@
 
 
 import pytest
-from playwright.sync_api import Browser
+from playwright.sync_api import Browser, expect
 
 from ingestion.tests.e2e.configs.common import create_user
-from ingestion.tests.e2e.configs.connectors.redshift import RedshiftConnector
 from ingestion.tests.e2e.configs.users.admin import Admin
 
+TIMEOUT = 60000
 BASE_URL = "http://localhost:8585"
+expect.set_options(timeout=TIMEOUT)
 
 
 @pytest.fixture(scope="session")

@@ -92,10 +92,6 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version:  3.9
       - name: Install Ubuntu dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
@@ -113,7 +109,6 @@ jobs:
         run: ./docker/run_local_docker.sh -d postgresql
         timeout-minutes: 30
       - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }} 
-        continue-on-error: true
         env:
           E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
           E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
