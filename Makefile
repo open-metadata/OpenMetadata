@@ -20,7 +20,7 @@ install_test:  ## Install the ingestion module with test dependencies
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
-	playwright install
+	playwright install --with-deps
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
@@ -75,7 +75,7 @@ unit_ingestion:  ## Run Python unit tests
 
 .PHONY: run_e2e_tests
 run_e2e_tests: ## Run e2e tests
-	pytest --tracing=retain-on-failure --output="ingestion/tests/e2e/artifacts" $(ARGS) --junitxml=ingestion/junit/test-results-e2e.xml ingestion/tests/e2e
+	pytest --video=retain-on-failure --output="ingestion/tests/e2e/artifacts" $(ARGS) --junitxml=ingestion/junit/test-results-e2e.xml ingestion/tests/e2e
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage

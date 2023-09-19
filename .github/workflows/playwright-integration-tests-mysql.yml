@@ -92,6 +92,10 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
       - name: Install Ubuntu dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
@@ -102,7 +106,7 @@ jobs:
           source env/bin/activate
           pip install --upgrade pip
           sudo make install_antlr_cli
-          make install_dev generate
+          make install_dev generate install_e2e_tests
       - name: Start Server and Ingest Sample Data
         env:
           INGESTION_DEPENDENCY: "all"

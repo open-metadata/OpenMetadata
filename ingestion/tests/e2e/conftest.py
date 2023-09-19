@@ -24,13 +24,17 @@ def browser_context_args(browser_context_args):
     return {
         **browser_context_args,
         "base_url": BASE_URL,
+        "java_script_enabled": True,
     }
 
 
 @pytest.fixture(scope="session")
 def create_data_consumer_user(browser: Browser):
     """Create a data consumer user"""
-    context_ = browser.new_context(base_url=BASE_URL)
+    context_ = browser.new_context(
+        base_url=BASE_URL,
+        java_script_enabled=True,
+    )
     page = context_.new_page()
     page.goto("/")
     Admin().login(page)
