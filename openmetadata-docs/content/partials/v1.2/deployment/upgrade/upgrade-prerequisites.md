@@ -112,4 +112,6 @@ then there is no way to link a query to a service and the query will be removed.
 
 ### Service Connection Changes
 
+- Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
+
 ### Other Changes

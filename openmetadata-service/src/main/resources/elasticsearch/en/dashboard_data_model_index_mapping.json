@@ -276,6 +276,9 @@
       "project": {
         "type": "text"
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "domain" : {
         "properties": {
           "id": {

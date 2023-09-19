@@ -82,6 +82,8 @@ public final class Entity {
 
   public static final String FIELD_STYLE = "style";
 
+  public static final String FIELD_LIFE_CYCLE = "lifeCycle";
+
   //
   // Service entities
   //
