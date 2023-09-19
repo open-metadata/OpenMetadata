@@ -121,7 +121,9 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   void post_without_query_400() {
     CreateQuery create = new CreateQuery().withDuration(0.0).withQueryDate(1673857635064L);
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null, service must not be null]");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        Response.Status.BAD_REQUEST,
+        "[query must not be null, service must not be null]");
   }
 
   @Test
