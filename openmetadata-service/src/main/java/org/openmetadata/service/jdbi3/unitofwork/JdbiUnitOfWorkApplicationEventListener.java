@@ -29,9 +29,6 @@ public class JdbiUnitOfWorkApplicationEventListener implements ApplicationEventL
     if (excludedPaths.stream().anyMatch(path::contains)) {
       return null;
     }
-    if (event.getContainerRequest().getMethod().equals(HttpMethod.GET)) {
-      return new HttpGetRequestJdbiUnitOfWorkEventListener();
-    }
     return new NonHttpGetRequestJdbiUnitOfWorkEventListener();
   }
 }
