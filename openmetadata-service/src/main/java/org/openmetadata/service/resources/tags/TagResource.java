@@ -507,6 +507,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     EntityReference parent = create.getParent() == null ? null : getEntityReference(TAG, create.getParent());
     return copy(new Tag(), create, updateBy)
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
+        .withStyle(create.getStyle())
         .withParent(parent)
         .withClassification(classification)
         .withProvider(create.getProvider())

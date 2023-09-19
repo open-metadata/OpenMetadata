@@ -284,8 +284,6 @@ public class OpenSearchClientImpl implements SearchClient {
         searchSourceBuilder = buildTableSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "user_search_index":
-        searchSourceBuilder = buildUserOrTeamSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
       case "team_search_index":
         searchSourceBuilder = buildUserOrTeamSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
@@ -336,7 +334,9 @@ public class OpenSearchClientImpl implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("domain_search_index")) {
+    if (request.getIndex().equalsIgnoreCase("domain_search_index")
+        || request.getIndex().equalsIgnoreCase("data_products_search_index")
+        || request.getIndex().equalsIgnoreCase("query_search_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -822,6 +822,7 @@ public class OpenSearchClientImpl implements SearchClient {
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
+    deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     try {
       deleteEntityFromElasticSearch(deleteRequest);
     } catch (DocumentMissingException ex) {
@@ -834,6 +835,7 @@ public class OpenSearchClientImpl implements SearchClient {
     if (!CommonUtil.nullOrEmpty(field)) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       DeleteByQueryRequest request = new DeleteByQueryRequest("SearchAlias");
+      request.setRefresh(true);
       queryBuilder.must(new TermQueryBuilder(field, entity.getFullyQualifiedName()));
       request.setQuery(queryBuilder);
       try {
@@ -863,6 +865,7 @@ public class OpenSearchClientImpl implements SearchClient {
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
+    deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     try {
       deleteEntityFromElasticSearch(deleteRequest);
     } catch (DocumentMissingException ex) {
@@ -882,6 +885,7 @@ public class OpenSearchClientImpl implements SearchClient {
               String.format(scriptTxt, entity.getFullyQualifiedName()),
               new HashMap<>());
       updateByQueryRequest.setScript(script);
+      updateByQueryRequest.setRefresh(true);
       try {
         updateElasticSearchByQuery(updateByQueryRequest);
       } catch (DocumentMissingException ex) {
@@ -907,6 +911,7 @@ public class OpenSearchClientImpl implements SearchClient {
     String scriptTxt = "ctx._source.deleted=" + delete;
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
     updateRequest.script(script);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     try {
       updateElasticSearch(updateRequest);
     } catch (DocumentMissingException ex) {
@@ -947,6 +952,7 @@ public class OpenSearchClientImpl implements SearchClient {
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     if (entity.getChangeDescription() != null
         && Objects.equals(entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
       updateRequest = applyOSChangeEvent(entity);

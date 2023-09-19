@@ -156,9 +156,15 @@ export const getDomainDetailsPath = (fqn: string, tab?: string) => {
   return path;
 };
 
-export const getDataProductsDetailsPath = (fqn: string) => {
-  let path = ROUTES.DATA_PRODUCT_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
+export const getDataProductsDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab
+    ? ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB
+    : ROUTES.DATA_PRODUCT_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
@@ -449,6 +455,18 @@ export const getAddQueryPath = (entityFqn: string) => {
   let path = ROUTES.ADD_QUERY;
 
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn);
+
+  return path;
+};
+
+export const getDataProductVersionsPath = (
+  dataProductFqn: string,
+  version: string
+) => {
+  let path = ROUTES.DATA_PRODUCT_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, dataProductFqn)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };

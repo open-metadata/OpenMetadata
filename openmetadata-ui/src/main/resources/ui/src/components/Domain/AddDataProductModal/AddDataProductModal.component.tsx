@@ -37,6 +37,7 @@ const AddDataProductModal = ({
   return (
     <Modal
       cancelText={t('label.cancel')}
+      className="add-data-product-modal"
       closable={false}
       footer={[
         <Button key="cancel-btn" type="link" onClick={onCancel}>
