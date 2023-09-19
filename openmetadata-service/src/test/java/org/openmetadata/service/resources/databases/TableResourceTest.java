@@ -94,7 +94,6 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -107,7 +106,6 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
-import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
@@ -1857,56 +1855,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table tableWithProfileFromNotOwner =
         getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER1_REF.getName()));
     assertNull(tableWithProfileFromNotOwner.getColumns().get(2).getProfile());
-  }
-
-  @Test
-  void patch_tableLifeCycle(TestInfo test) throws IOException {
-    List<Column> columns =
-        Arrays.asList(
-            getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL).withDescription(null),
-            getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10).withDescription(null));
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User user =
-        userResourceTest.createAndCheckEntity(
-            userResourceTest.createRequest(test).withName("test1").withEmail("test1@gmail.com").withIsBot(false),
-            ADMIN_AUTH_HEADERS);
-    LifeCycle lifeCycle =
-        new LifeCycle()
-            .withAccessed(new AccessDetails().withTimestamp(1695059900L).withAccessedBy(user.getEntityReference()));
-    Table table =
-        createAndCheckEntity(
-            createRequest(test).withColumns(columns).withDescription(null).withLifeCycle(lifeCycle),
-            ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, table.getLifeCycle());
-    Table table1 = getEntity(table.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, table1.getLifeCycle());
-
-    String json = JsonUtils.pojoToJson(table);
-    lifeCycle.setCreated(new AccessDetails().withTimestamp(1695059500L).withAccessedBy(user.getEntityReference()));
-    table.setLifeCycle(lifeCycle);
-    Table patchEntity = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
-    table1 = getEntity(table.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, table1.getLifeCycle());
-
-    json = JsonUtils.pojoToJson(table1);
-    lifeCycle.setUpdated(new AccessDetails().withTimestamp(1695059910L).withAccessedByAProcess("test"));
-    table1.setLifeCycle(lifeCycle);
-    patchEntity = patchEntity(table.getId(), json, table1, ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
-    table1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, table1.getLifeCycle());
-
-    // set createdAt to older time , this shouldn't be overriding
-    LifeCycle lifeCycle1 =
-        new LifeCycle().withCreated(new AccessDetails().withTimestamp(1695059400L).withAccessedByAProcess("test12"));
-    json = JsonUtils.pojoToJson(table1);
-    table1.setLifeCycle(lifeCycle1);
-    patchEntity = patchEntity(table1.getId(), json, table1, ADMIN_AUTH_HEADERS);
-    // check against the older lifecycle, the contents should be unmodified
-    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
-    table1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, table1.getLifeCycle());
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

@@ -143,6 +143,7 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -1818,6 +1819,48 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // check if the relationships of tag are also deleted in search
       assertFalse(fqnList.contains(tagLabel.getTagFQN()));
     }
+  }
+
+  @Test
+  void postPutPatch_entityLifeCycle(TestInfo test) throws IOException {
+    if (!supportsLifeCycle) {
+      return;
+    }
+    LifeCycle lifeCycle =
+        new LifeCycle().withAccessed(new AccessDetails().withTimestamp(1695059900L).withAccessedBy(USER1_REF));
+    T entity =
+        createEntity(
+            createRequest(getEntityName(test), "description", null, null).withLifeCycle(lifeCycle), ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity.getLifeCycle());
+    T entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    String json = JsonUtils.pojoToJson(entity);
+    lifeCycle.setCreated(new AccessDetails().withTimestamp(1695059500L).withAccessedBy(USER2_REF));
+    entity.setLifeCycle(lifeCycle);
+    T patchEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    json = JsonUtils.pojoToJson(entity1);
+    lifeCycle.setUpdated(new AccessDetails().withTimestamp(1695059910L).withAccessedByAProcess("test"));
+    entity1.setLifeCycle(lifeCycle);
+    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    // set createdAt to older time , this shouldn't be overriding
+    LifeCycle lifeCycle1 =
+        new LifeCycle().withCreated(new AccessDetails().withTimestamp(1695059400L).withAccessedByAProcess("test12"));
+    json = JsonUtils.pojoToJson(entity1);
+    entity1.setLifeCycle(lifeCycle1);
+    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
+    // check against the older lifecycle, the contents should be unmodified
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
   }
 
   private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
