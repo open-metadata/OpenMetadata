@@ -71,3 +71,44 @@ CREATE TABLE IF NOT EXISTS stored_procedure_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+ALTER TABLE entity_relationship ADD INDEX from_entity_type_index(fromId, fromEntity), ADD INDEX to_entity_type_index(toId, toEntity);
+ALTER TABLE tag DROP CONSTRAINT fqnHash, ADD CONSTRAINT UNIQUE(fqnHash), ADD PRIMARY KEY(id);
+
+
+-- rename viewParsingTimeoutLimit for queryParsingTimeoutLimit
+UPDATE ingestion_pipeline_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.sourceConfig.config.viewParsingTimeoutLimit'),
+    '$.sourceConfig.config.queryParsingTimeoutLimit',
+    JSON_EXTRACT(json, '$.sourceConfig.config.viewParsingTimeoutLimit')
+)
+WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
+
+-- Rename sandboxDomain for instanceDomain
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.sandboxDomain'),
+    '$.connection.config.instanceDomain',
+    JSON_EXTRACT(json, '$.connection.config.sandboxDomain')
+)
+WHERE serviceType = 'DomoDatabase';
+
+UPDATE dashboard_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.sandboxDomain'),
+    '$.connection.config.instanceDomain',
+    JSON_EXTRACT(json, '$.connection.config.sandboxDomain')
+)
+WHERE serviceType = 'DomoDashboard';
+
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.sandboxDomain'),
+    '$.connection.config.instanceDomain',
+    JSON_EXTRACT(json, '$.connection.config.sandboxDomain')
+)
+WHERE serviceType = 'DomoPipeline';
+
+-- Query Entity supports service, which requires FQN for name
+ALTER TABLE query_entity CHANGE COLUMN nameHash fqnHash VARCHAR(256);

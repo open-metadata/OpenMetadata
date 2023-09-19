@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -50,12 +49,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private static final String UPDATE_FIELDS = "entityLink,testSuite,testDefinition";
-  private static final String PATCH_FIELDS = "entityLink,testSuite,testDefinition";
+  private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
+  private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {
     super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -95,6 +95,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
       change = ENTITY_UPDATED;
     }
+
+    // set the test case result state in the test case entity if the state has changed
+    if (!Objects.equals(original, updated)) {
+      TestCase testCase = dao.findEntityByName(fqn);
+      setTestCaseResult(testCase, updated, false);
+    }
+
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
   }
 
@@ -142,7 +149,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     return records.stream()
-        .map(testSuiteId -> Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL))
+        .map(testSuiteId -> Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL, false))
         .collect(Collectors.toList());
   }
 
@@ -196,7 +203,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
@@ -211,7 +217,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             JsonUtils.pojoToJson(testCaseResult));
 
     setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, TEST_SUITE_FIELD));
-    setTestSuiteSummary(testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
+    setTestSuiteSummary(testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus(), false);
+    setTestCaseResult(testCase, testCaseResult, false);
     ChangeDescription change = addTestCaseChangeDescription(testCase.getVersion(), testCaseResult);
     ChangeEvent changeEvent =
         getChangeEvent(updatedBy, withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
@@ -219,7 +226,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
@@ -235,6 +241,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       testCase.setTestCaseResult(storedTestCaseResult);
       ChangeDescription change = deleteTestCaseChangeDescription(testCase.getVersion(), storedTestCaseResult);
       ChangeEvent changeEvent = getChangeEvent(updatedBy, testCase, change, entityType, testCase.getVersion());
+      setTestSuiteSummary(testCase, timestamp, storedTestCaseResult.getTestCaseStatus(), true);
+      setTestCaseResult(testCase, storedTestCaseResult, true);
       return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
@@ -248,44 +256,93 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withTimestamp(timestamp);
   }
 
-  private void setTestSuiteSummary(TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
+  private void setTestSuiteSummary(
+      TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus, boolean isDeleted) {
     ResultSummary resultSummary = getResultSummary(testCase, timestamp, testCaseStatus);
 
     // list all executable and logical test suite linked to the test case
-    // We'll only fetch the logical ones as we'll get the executable one from the
-    // test case object itself
-    List<TestSuite> testSuites = new ArrayList<>();
-    List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(testCase.getId().toString(), TEST_CASE, Relationship.CONTAINS.ordinal(), TEST_SUITE);
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : entityRelationshipRecords) {
-      TestSuite testSuite = Entity.getEntity(TEST_SUITE, entityRelationshipRecord.getId(), "", Include.ALL, false);
-      if (Boolean.FALSE.equals(testSuite.getExecutable())) {
-        testSuites.add(testSuite);
-      }
-    }
-    EntityReference ref = testCase.getTestSuite();
-    testSuites.add(Entity.getEntity(ref.getType(), ref.getId(), "", Include.ALL, false));
+    List<TestSuite> testSuites = getTestSuites(testCase);
 
     // update the summary for each test suite
     for (TestSuite testSuite : testSuites) {
+      testSuite.setSummary(null); // we don't want to store the summary in the database
       List<ResultSummary> resultSummaries = listOrEmpty(testSuite.getTestCaseResultSummary());
-      if (resultSummaries.isEmpty()) {
-        resultSummaries.add(resultSummary);
-      } else {
-        // We'll remove the existing summary for this test case and add the new one
-        resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(resultSummary.getTestCaseName()));
-        resultSummaries.add(resultSummary);
+      if ((isDeleted) && (resultSummaries.isEmpty())) {
+        continue; // if we try to delete the state but not state is set then nothing to do
       }
 
-      // set test case result summary for the test suite
-      // and update it in the database
+      ResultSummary storedResultSummary = findMatchingResultSummary(resultSummaries, resultSummary.getTestCaseName());
+
+      if (!shouldUpdateResultSummary(storedResultSummary, timestamp, isDeleted)) {
+        continue; // if the state should not be updated then nothing to do
+      }
+
+      if (storedResultSummary != null) {
+        resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(resultSummary.getTestCaseName()));
+      }
+
+      if (!isDeleted) {
+        resultSummaries.add(resultSummary);
+      } else {
+        // Add the latest state when removing a state
+        String json =
+            daoCollection
+                .dataQualityDataTimeSeriesDao()
+                .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION);
+        TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+        ResultSummary newResultSummary =
+            getResultSummary(testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
+        resultSummaries.add(newResultSummary);
+      }
+
+      // Update test case result summary for the test suite
       testSuite.setTestCaseResultSummary(resultSummaries);
       daoCollection
           .testSuiteDAO()
           .update(testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
     }
+  }
+
+  private ResultSummary findMatchingResultSummary(List<ResultSummary> resultSummaries, String testCaseNameToMatch) {
+    return resultSummaries.stream()
+        .filter(summary -> summary.getTestCaseName().equals(testCaseNameToMatch))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private boolean shouldUpdateResultSummary(ResultSummary storedResultSummary, Long timestamp, boolean isDeleted) {
+    return storedResultSummary == null || timestamp >= storedResultSummary.getTimestamp();
+  }
+
+  // Stores the test case result with the test case entity for the latest execution
+  private void setTestCaseResult(TestCase testCase, TestCaseResult testCaseResult, boolean isDeleted) {
+    boolean shouldUpdateState = compareTestCaseResult(testCase, testCaseResult);
+    if (!shouldUpdateState) {
+      return;
+    }
+
+    if (!isDeleted) {
+      // Test case result is updated or created
+      testCase.setTestCaseResult(testCaseResult);
+    } else {
+      TestCaseResult latestTestCaseResult =
+          JsonUtils.readValue(
+              daoCollection
+                  .dataQualityDataTimeSeriesDao()
+                  .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
+              TestCaseResult.class); // we'll fetch the new latest result to update the test case state
+      testCase.setTestCaseResult(latestTestCaseResult);
+    }
+    dao.update(testCase.getId(), testCase.getFullyQualifiedName(), JsonUtils.pojoToJson(testCase));
+  }
+
+  private boolean compareTestCaseResult(TestCase testCase, TestCaseResult testCaseResult) {
+    TestCaseResult savedTestCaseResult = testCase.getTestCaseResult();
+    if (savedTestCaseResult == null) {
+      return true;
+    }
+
+    return testCaseResult.getTimestamp() >= savedTestCaseResult.getTimestamp();
   }
 
   private ChangeDescription addTestCaseChangeDescription(Double version, Object newValue) {
@@ -318,6 +375,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private TestCaseResult getTestCaseResult(TestCase testCase) {
+    if (testCase.getTestCaseResult() != null) {
+      // we'll return the saved state if it exists otherwise we'll fetch it from the database
+      return testCase.getTestCaseResult();
+    }
     return JsonUtils.readValue(
         daoCollection
             .dataQualityDataTimeSeriesDao()
@@ -356,7 +417,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<EntityReference> testCasesEntityReferences = new ArrayList<>();
     List<ResultSummary> resultSummaries = listOrEmpty(testSuite.getTestCaseResultSummary());
     for (UUID testCaseId : testCaseIds) {
-      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
+      postUpdate(testCase);
       // Get the latest result to set the testSuite summary field
       String result =
           daoCollection
@@ -382,6 +444,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // set test case result summary for logical test suite
     // and update it in the database
     testSuite.setTestCaseResultSummary(resultSummaries);
+    testSuite.setSummary(null); // we don't want to store the summary in the database
     daoCollection
         .testSuiteDAO()
         .update(testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
@@ -394,21 +457,105 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     // remove test case from logical test suite summary and update test suite
-    TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
-    List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
-    resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(testCase.getFullyQualifiedName()));
-    testSuite.setTestCaseResultSummary(resultSummaries);
-    daoCollection
-        .testSuiteDAO()
-        .update(testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
+    removeTestCaseFromTestSuiteResultSummary(testSuiteId, testCase.getFullyQualifiedName());
     EntityReference entityReference = Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
     testCase.setTestSuite(entityReference);
     return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
   }
 
+  /** Remove test case from test suite summary and update test suite */
+  private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
+    TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
+    testSuite.setSummary(null); // we don't want to store the summary in the database
+    List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
+    resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(testCaseFqn));
+    testSuite.setTestCaseResultSummary(resultSummaries);
+    daoCollection
+        .testSuiteDAO()
+        .update(testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
+  }
+
   @Override
   public EntityUpdater getUpdater(TestCase original, TestCase updated, Operation operation) {
     return new TestUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void preDelete(TestCase entity, String deletedBy) {
+    // delete test case from test suite summary when test case is deleted
+    // from an executable test suite
+    List<TestSuite> testSuites = getTestSuites(entity);
+    if (!testSuites.isEmpty()) {
+      for (TestSuite testSuite : testSuites) {
+        removeTestCaseFromTestSuiteResultSummary(testSuite.getId(), entity.getFullyQualifiedName());
+      }
+    }
+  }
+
+  @Override
+  public ResultList<TestCase> listAfter(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
+    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
+      return super.listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+    int total = dao.listCount(filter);
+    List<TestCase> testCases = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      String decodedAfter = after == null ? "0" : RestUtil.decodeCursor(after);
+      Integer rankAfter = Integer.parseInt(decodedAfter);
+      List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
+          daoCollection.testCaseDAO().listAfterTsOrder(filter, limitParam + 1, rankAfter);
+
+      for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
+        TestCase entity = setFieldsInternal(JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
+        entity = clearFieldsInternal(entity, fields);
+        testCases.add(withHref(uriInfo, entity));
+      }
+
+      String beforeCursor;
+      String afterCursor = null;
+      beforeCursor = after == null ? null : testCaseRecords.get(0).getRank().toString();
+      if (testCaseRecords.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+        testCases.remove(limitParam);
+        testCaseRecords.remove(limitParam);
+        afterCursor = testCaseRecords.get(limitParam - 1).getRank().toString();
+      }
+      return getResultList(testCases, beforeCursor, afterCursor, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return getResultList(testCases, null, null, total);
+    }
+  }
+
+  @Override
+  public ResultList<TestCase> listBefore(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
+    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
+      return super.listBefore(uriInfo, fields, filter, limitParam, before);
+    }
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    Integer rankBefore = Integer.parseInt(RestUtil.decodeCursor(before));
+    List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
+        daoCollection.testCaseDAO().listBeforeTsOrder(filter, limitParam + 1, rankBefore);
+
+    List<TestCase> testCases = new ArrayList<>();
+    for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
+      TestCase entity = setFieldsInternal(JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
+      entity = clearFieldsInternal(entity, fields);
+      testCases.add(withHref(uriInfo, entity));
+    }
+    int total = dao.listCount(filter);
+
+    String beforeCursor = null;
+    String afterCursor;
+    if (testCases.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      testCaseRecords.remove(0);
+      testCases.remove(0);
+      beforeCursor = testCaseRecords.get(0).getRank().toString();
+    }
+    afterCursor = testCaseRecords.get(testCases.size() - 1).getRank().toString();
+    return getResultList(testCases, beforeCursor, afterCursor, total);
   }
 
   public class TestUpdater extends EntityUpdater {

@@ -19,10 +19,10 @@ import React from 'react';
 import { getEntityName } from 'utils/EntityUtils';
 
 interface AddPipeLineModalType {
-  showAddPipelineModal: boolean;
-  pipelineSearchValue: string;
-  selectedPipelineId: string | undefined;
-  pipelineOptions: EntityReference[];
+  showAddEdgeModal: boolean;
+  edgeSearchValue: string;
+  selectedEdgeId: string | undefined;
+  edgeOptions: EntityReference[];
   onModalCancel: () => void;
   onSave: () => void;
   onClear: () => void;
@@ -32,10 +32,10 @@ interface AddPipeLineModalType {
 }
 
 const AddPipeLineModal = ({
-  showAddPipelineModal,
-  pipelineOptions,
-  pipelineSearchValue,
-  selectedPipelineId,
+  showAddEdgeModal,
+  edgeOptions,
+  edgeSearchValue,
+  selectedEdgeId,
   onRemoveEdgeClick,
   onModalCancel,
   onSave,
@@ -46,7 +46,7 @@ const AddPipeLineModal = ({
   return (
     <Modal
       destroyOnClose
-      data-testid="add-pipeline-modal"
+      data-testid="add-edge-modal"
       footer={[
         <Button
           data-testid="remove-edge-button"
@@ -66,8 +66,10 @@ const AddPipeLineModal = ({
         </Button>,
       ]}
       maskClosable={false}
-      open={showAddPipelineModal}
-      title={isUndefined(selectedPipelineId) ? 'Add Pipeline' : 'Edit Pipeline'}
+      open={showAddEdgeModal}
+      title={t(`label.${isUndefined(selectedEdgeId) ? 'add' : 'edit'}-entity`, {
+        entity: t('label.edge'),
+      })}
       onCancel={onModalCancel}>
       <Select
         allowClear
@@ -77,14 +79,14 @@ const AddPipeLineModal = ({
         defaultActiveFirstOption={false}
         filterOption={false}
         notFoundContent={false}
-        options={pipelineOptions.map((option) => ({
+        options={edgeOptions.map((option) => ({
           label: getEntityName(option),
           value: option.id,
         }))}
-        placeholder="Search to Select Pipeline"
-        searchValue={pipelineSearchValue}
+        placeholder={t('message.search-for-edge')}
+        searchValue={edgeSearchValue}
         showArrow={false}
-        value={selectedPipelineId}
+        value={selectedEdgeId}
         onClear={onClear}
         onSearch={onSearch}
         onSelect={onSelect}

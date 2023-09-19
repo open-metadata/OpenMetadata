@@ -15,6 +15,7 @@ import { Col, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Table from 'components/common/Table/Table';
 import { getDatabaseSchemaDetailsPath, PAGE_SIZE } from 'constants/constants';
@@ -24,13 +25,12 @@ import { EntityReference } from 'generated/entity/type';
 import { UsageDetails } from 'generated/type/entityUsage';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { isNil } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { getUsagePercentile } from 'utils/TableUtils';
 
-export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}`;
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN}`;
 
 export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   {
@@ -83,10 +83,8 @@ export const getDatabaseSchemaTable = (
   schemaDataLoading: boolean,
   databaseSchemaPaging: Paging,
   currentPage: number,
-  databaseSchemaPagingHandler: (
-    cursorType: string | number,
-    activePage?: number
-  ) => void
+  databaseSchemaPagingHandler: NextPreviousProps['pagingHandler'],
+  isNumberBased = false
 ) => {
   return (
     <Col span={24}>
@@ -104,12 +102,10 @@ export const getDatabaseSchemaTable = (
           rowKey="id"
           size="small"
         />
-        {Boolean(
-          !isNil(databaseSchemaPaging.after) ||
-            !isNil(databaseSchemaPaging.before)
-        ) && (
+        {databaseSchemaPaging.total > PAGE_SIZE && (
           <NextPrevious
             currentPage={currentPage}
+            isNumberBased={isNumberBased}
             pageSize={PAGE_SIZE}
             paging={databaseSchemaPaging}
             pagingHandler={databaseSchemaPagingHandler}

@@ -64,6 +64,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelFeatures,
   onExtensionUpdate,
   createThread,
+  onUpdateVote,
   versionHandler,
   tagUpdateHandler,
   handleToggleDelete,
@@ -543,6 +544,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestoreMlmodel}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

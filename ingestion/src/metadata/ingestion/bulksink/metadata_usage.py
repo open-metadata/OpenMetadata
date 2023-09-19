@@ -50,7 +50,9 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp
 
 logger = ingestion_logger()
 
@@ -119,9 +121,9 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
-                    date=datetime.fromtimestamp(int(value_dict["usage_date"])).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    date=datetime.fromtimestamp(
+                        convert_timestamp(value_dict["usage_date"])
+                    ).strftime("%Y-%m-%d"),
                     count=value_dict["usage_count"],
                 )
                 self.metadata.publish_table_usage(
@@ -229,6 +231,9 @@ class MetadataUsageBulkSink(BulkSink):
                         self.metadata.ingest_entity_queries_data(
                             entity=table_entity, queries=table_usage.sqlQueries
                         )
+                        self._get_table_life_cycle_data(
+                            table_entity=table_entity, table_usage=table_usage
+                        )
                 except APIError as err:
                     error = f"Failed to update query join for {table_usage}: {err}"
                     logger.debug(traceback.format_exc())
@@ -331,6 +336,32 @@ class MetadataUsageBulkSink(BulkSink):
 
         for table_entity in table_entities:
             return get_column_fqn(table_entity=table_entity, column=table_column.column)
+
+    def _get_table_life_cycle_data(
+        self, table_entity: Table, table_usage: TableUsageCount
+    ):
+        """
+        Method to call the lifeCycle API to store the data.
+        We iterate over all the queries of a table entity and pick the life cycle
+        data according to the query.
+        The life cycle data will only be added if the current lifecycle datetime is less the datetime of
+        the query being processed.
+        """
+        try:
+            # Temporary clean up this method to be implemented following the new schema
+            life_cycle = (  # pylint: disable=unused-variable
+                init_empty_life_cycle_properties()
+            )
+
+        except Exception as err:
+            error = f"Unable to get life cycle data for table {table_entity.fullyQualifiedName}: {err}"
+            self.status.failed(
+                StackTraceError(
+                    name=table_usage.table,
+                    error=error,
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         if Path(self.config.filename).exists():

@@ -24,8 +24,11 @@ import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Table } from 'generated/entity/data/table';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -37,11 +40,14 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Topic } from '../../../generated/entity/data/topic';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
+import DataModelSummary from './DataModelSummary/DataModelSummary.component';
+import DataProductSummary from './DataProductSummary/DataProductSummary.component';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import './EntitySummaryPanel.style.less';
 import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
+import StoredProcedureSummary from './StoredProcedureSummary/StoredProcedureSummary.component';
 import TableSummary from './TableSummary/TableSummary.component';
 import TagsSummary from './TagsSummary/TagsSummary.component';
 import TopicSummary from './TopicSummary/TopicSummary.component';
@@ -115,11 +121,24 @@ export default function EntitySummaryPanel({
       case EntityType.CONTAINER:
         return <ContainerSummary entityDetails={entity as Container} />;
 
+      case EntityType.STORED_PROCEDURE:
+        return (
+          <StoredProcedureSummary entityDetails={entity as StoredProcedure} />
+        );
+
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return (
+          <DataModelSummary entityDetails={entity as DashboardDataModel} />
+        );
+
       case EntityType.GLOSSARY_TERM:
         return <GlossaryTermSummary entityDetails={entity as GlossaryTerm} />;
 
       case EntityType.TAG:
         return <TagsSummary entityDetails={entity as Tag} />;
+
+      case EntityType.DATA_PRODUCT:
+        return <DataProductSummary entityDetails={entity as DataProduct} />;
 
       default:
         return null;

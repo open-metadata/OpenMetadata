@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import { TestSuite } from 'generated/tests/testSuite';
 import { Paging } from 'generated/type/paging';
 import { CurveType } from 'recharts/types/shape/Curve';
@@ -108,7 +109,7 @@ export interface DataQualityTabProps {
   pagingData?: {
     paging: Paging;
     currentPage: number;
-    onPagingClick: (cursorValue: string | number, activePage?: number) => void;
+    onPagingClick: NextPreviousProps['pagingHandler'];
     isNumberBased?: boolean;
   };
   removeFromTestSuite?: {

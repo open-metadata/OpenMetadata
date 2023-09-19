@@ -21,8 +21,8 @@ import static org.openmetadata.schema.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.schema.type.Relationship.CREATED;
 import static org.openmetadata.schema.type.Relationship.IS_ABOUT;
 import static org.openmetadata.schema.type.Relationship.REPLIED_TO;
+import static org.openmetadata.schema.type.TaskStatus.Open;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.getEntityRepository;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -42,14 +42,13 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
-import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -58,9 +57,9 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Reaction;
@@ -103,7 +102,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class FeedRepository {
   private final CollectionDAO dao;
-  private static final MessageDecorator<FeedMessage> feedMessageFormatter = new FeedMessageDecorator();
+  private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER = new FeedMessageDecorator();
 
   public FeedRepository(CollectionDAO dao) {
     this.dao = dao;
@@ -123,50 +122,110 @@ public class FeedRepository {
     AFTER
   }
 
-  @Transaction
   public int getNextTaskId() {
     dao.feedDAO().updateTaskId();
     return dao.feedDAO().getTaskId();
   }
 
-  @Transaction
-  public Thread create(Thread thread) {
-    // Validate about data entity is valid and get the owner for that entity
-    EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityRepository<?> repository = Entity.getEntityRepository(about.getEntityType());
-    String field = repository.supportsOwner ? "owner" : "";
-    EntityInterface aboutEntity = Entity.getEntity(about, field, ALL);
-    thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
-    return createThread(thread, about, aboutEntity.getOwner());
-  }
+  public class ThreadContext {
+    @Getter protected final Thread thread;
+    @Getter @Setter protected final EntityLink about;
+    @Getter @Setter protected EntityInterface aboutEntity;
+    @Getter private EntityReference createdBy;
 
-  @Transaction
-  private Thread createThread(Thread thread, EntityLink about, EntityReference entityOwner) {
-    // Validate user creating thread
-    UUID createdByUserId = Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED).getId();
-
-    if (thread.getType() == ThreadType.Task) {
-      thread.withTask(thread.getTask().withId(getNextTaskId())); // Assign taskId for a task
-    } else if (thread.getType() == ThreadType.Announcement) {
-      // Validate start and end time for announcement
-      validateAnnouncement(thread.getAnnouncement());
-      long startTime = thread.getAnnouncement().getStartTime();
-      long endTime = thread.getAnnouncement().getEndTime();
-      // TODO fix this - overlapping announcements should be allowed
-      List<String> announcements =
-          dao.feedDAO()
-              .listAnnouncementBetween(thread.getId().toString(), thread.getEntityId().toString(), startTime, endTime);
-      if (!announcements.isEmpty()) {
-        // There is already an announcement that overlaps the new one
-        throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
-      }
+    ThreadContext(Thread thread) {
+      this.thread = thread;
+      this.about = EntityLink.parse(thread.getAbout());
+      this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+      this.createdBy = Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
+      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     }
 
-    // Insert a new thread
-    dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
+    ThreadContext(Thread thread, ChangeEvent event) {
+      this.thread = thread;
+      this.about = EntityLink.parse(thread.getAbout());
+      if (event.getEventType().equals(EventType.ENTITY_DELETED)) {
+        String json = (String) event.getEntity();
+        this.aboutEntity = JsonUtils.readValue(json, Entity.getEntityClassFromType(event.getEntityType()));
+      } else {
+        this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+      }
+      this.createdBy = Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
+      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+    }
 
+    public TaskWorkflow getTaskWorkflow() {
+      EntityRepository<?> repository = Entity.getEntityRepository(about.getEntityType());
+      return repository.getTaskWorkflow(this);
+    }
+
+    public EntityRepository<? extends EntityInterface> getEntityRepository() {
+      return Entity.getEntityRepository(about.getEntityType());
+    }
+
+    private String getFields() {
+      EntityRepository<?> repository = getEntityRepository();
+      List<String> fieldList = new ArrayList<>();
+      if (repository.supportsOwner) {
+        fieldList.add("owner");
+      }
+      if (repository.supportsTags) {
+        fieldList.add("tags");
+      }
+      return String.join(",", fieldList.toArray(new String[0]));
+    }
+  }
+
+  public abstract static class TaskWorkflow {
+    protected final ThreadContext threadContext;
+
+    TaskWorkflow(ThreadContext threadContext) {
+      this.threadContext = threadContext;
+    }
+
+    public abstract EntityInterface performTask(String user, ResolveTask resolveTask);
+
+    @SuppressWarnings("unused")
+    protected void closeTask(String user, CloseTask closeTask) {}
+
+    protected final TaskType getTaskType() {
+      return threadContext.getThread().getTask().getType();
+    }
+
+    protected final EntityLink getAbout() {
+      return threadContext.getAbout();
+    }
+  }
+
+  private ThreadContext getThreadContext(Thread thread) {
+    return new ThreadContext(thread);
+  }
+
+  private ThreadContext getThreadContext(Thread thread, ChangeEvent event) {
+    return new ThreadContext(thread, event);
+  }
+
+  public Thread create(Thread thread) {
+    ThreadContext threadContext = getThreadContext(thread);
+    return createThread(threadContext);
+  }
+
+  public Thread create(Thread thread, ChangeEvent event) {
+    ThreadContext threadContext = getThreadContext(thread, event);
+    return createThread(threadContext);
+  }
+
+  public void store(ThreadContext threadContext) {
+    // Insert a new thread
+    dao.feedDAO().insert(JsonUtils.pojoToJson(threadContext.getThread()));
+  }
+
+  public void storeRelationships(ThreadContext threadContext) {
+    Thread thread = threadContext.getThread();
+    EntityLink about = threadContext.getAbout();
     // Add relationship User -- created --> Thread relationship
-    dao.relationshipDAO().insert(createdByUserId, thread.getId(), USER, Entity.THREAD, CREATED.ordinal());
+    dao.relationshipDAO()
+        .insert(threadContext.getCreatedBy().getId(), thread.getId(), USER, Entity.THREAD, CREATED.ordinal());
 
     // Add field relationship for data asset - Thread -- isAbout ---> entity/entityField
     dao.fieldRelationshipDAO()
@@ -180,7 +239,9 @@ public class FeedRepository {
             IS_ABOUT.ordinal(),
             null);
 
-    // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
+    // Add the owner also as addressedTo as the entity he owns when addressed, the owner is
+    // actually being addressed
+    EntityReference entityOwner = threadContext.getAboutEntity().getOwner();
     if (entityOwner != null) {
       dao.relationshipDAO()
           .insert(thread.getId(), entityOwner.getId(), Entity.THREAD, entityOwner.getType(), ADDRESSED_TO.ordinal());
@@ -188,30 +249,20 @@ public class FeedRepository {
 
     // Add mentions to field relationship table
     storeMentions(thread, thread.getMessage());
-    populateAssignees(thread);
-    return thread;
   }
 
-  @Transaction
-  public Thread create(Thread thread, ContainerResponseContext responseContext) {
-    // Validate about data entity is valid and get the owner for that entity
-    EntityInterface entity;
-    // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
-    if (responseContext.getEntity() instanceof ChangeEvent) {
-      ChangeEvent change = (ChangeEvent) responseContext.getEntity();
-      entity = (EntityInterface) change.getEntity();
-    } else {
-      entity = (EntityInterface) responseContext.getEntity();
+  private Thread createThread(ThreadContext threadContext) {
+    Thread thread = threadContext.getThread();
+    if (thread.getType() == ThreadType.Task) {
+      thread.getTask().withId(getNextTaskId());
+    } else if (thread.getType() == ThreadType.Announcement) {
+      // Validate start and end time for announcement
+      validateAnnouncement(thread);
     }
-    EntityReference owner = null;
-    try {
-      owner = Entity.getOwner(entity.getEntityReference());
-    } catch (Exception ignored) {
-      // Either deleted or owner field not available
-    }
-    EntityLink about = EntityLink.parse(thread.getAbout());
-    thread.withEntityId(entity.getId()); // Add entity id to thread
-    return createThread(thread, about, owner);
+    store(threadContext);
+    storeRelationships(threadContext);
+    populateAssignees(threadContext.getThread());
+    return threadContext.getThread();
   }
 
   public Thread get(String id) {
@@ -228,27 +279,36 @@ public class FeedRepository {
 
   public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user, CloseTask closeTask) {
     // Update the attributes
-    closeTask(thread, user, closeTask.getComment());
+    ThreadContext threadContext = getThreadContext(thread);
+    closeTask(threadContext, user, closeTask);
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
 
   public PatchResponse<Thread> resolveTask(UriInfo uriInfo, Thread thread, String user, ResolveTask resolveTask) {
     // perform the task
-    TaskDetails task = thread.getTask();
-    EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-    EntityRepository<?> repository = getEntityRepository(aboutRef.getType());
-    repository.update(task, about, resolveTask.getNewValue(), user);
-
-    // Update the attributes
-    task.withNewValue(resolveTask.getNewValue());
-    closeTask(thread, user, null);
+    ThreadContext threadContext = getThreadContext(thread);
+    resolveTask(threadContext, user, resolveTask);
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
 
-  private String getTagFQNs(List<TagLabel> tags) {
+  private void resolveTask(ThreadContext threadContext, String user, ResolveTask resolveTask) {
+    TaskWorkflow taskWorkflow = threadContext.getTaskWorkflow();
+    EntityInterface aboutEntity = threadContext.getAboutEntity();
+    String origJson = JsonUtils.pojoToJson(aboutEntity);
+    EntityInterface updatedEntity = taskWorkflow.performTask(user, resolveTask);
+    String updatedEntityJson = JsonUtils.pojoToJson(updatedEntity);
+    JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+    EntityRepository<?> repository = threadContext.getEntityRepository();
+    repository.patch(null, aboutEntity.getId(), user, patch);
+
+    // Update the attributes
+    threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
+    closeTask(threadContext, user, new CloseTask());
+  }
+
+  private static String getTagFQNs(List<TagLabel> tags) {
     return tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(", "));
   }
 
@@ -256,26 +316,16 @@ public class FeedRepository {
     // Add a post to the task
     String message;
     if (closingComment != null) {
-      message = String.format("Closed the Task with comment - %s", closingComment);
+      message = closeTaskMessage(closingComment);
     } else {
       // The task was resolved with an update.
       // Add a default message to the Task thread with updated description/tag
       TaskDetails task = thread.getTask();
       TaskType type = task.getType();
       if (EntityUtil.isDescriptionTask(type)) {
-        message =
-            String.format(
-                "Resolved the Task with Description - %s",
-                feedMessageFormatter.getPlaintextDiff(task.getOldValue(), task.getNewValue()));
+        message = resolveDescriptionTaskMessage(task);
       } else if (EntityUtil.isTagTask(type)) {
-        String oldValue =
-            task.getOldValue() != null
-                ? getTagFQNs(JsonUtils.readObjects(task.getOldValue(), TagLabel.class))
-                : StringUtils.EMPTY;
-        String newValue = getTagFQNs(JsonUtils.readObjects(task.getNewValue(), TagLabel.class));
-        message =
-            String.format(
-                "Resolved the Task with Tag(s) - %s", feedMessageFormatter.getPlaintextDiff(oldValue, newValue));
+        message = resolveTagTaskMessage(task);
       } else {
         message = "Resolved the Task.";
       }
@@ -290,13 +340,19 @@ public class FeedRepository {
     addPostToThread(thread.getId().toString(), post, user);
   }
 
-  private void closeTask(Thread thread, String user, String closingComment) {
+  private void closeTask(ThreadContext threadContext, String user, CloseTask closeTask) {
+    Thread thread = threadContext.getThread();
     TaskDetails task = thread.getTask();
+    if (task.getStatus() != Open) {
+      return;
+    }
+    TaskWorkflow workflow = threadContext.getTaskWorkflow();
+    workflow.closeTask(user, closeTask);
     task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
     thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
 
     dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
-    addClosingPost(thread, user, closingComment);
+    addClosingPost(thread, user, closeTask.getComment());
     sortPosts(thread);
   }
 
@@ -321,7 +377,6 @@ public class FeedRepository {
                         null));
   }
 
-  @Transaction
   public Thread addPostToThread(String id, Post post, String userName) {
     // Validate the user posting the message
     UUID fromUserId = Entity.getEntityReferenceByName(USER, post.getFrom(), NON_DELETED).getId();
@@ -353,7 +408,6 @@ public class FeedRepository {
     return post.get();
   }
 
-  @Transaction
   public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
@@ -368,7 +422,6 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     deleteThreadInternal(thread.getId().toString());
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
@@ -386,7 +439,6 @@ public class FeedRepository {
     dao.feedDAO().delete(id);
   }
 
-  @Transaction
   public void deleteByAbout(UUID entityId) {
     List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
     for (String threadId : threadIds) {
@@ -398,7 +450,6 @@ public class FeedRepository {
     }
   }
 
-  @Transaction
   public ThreadCount getThreadsCount(FeedFilter filter, String link) {
     List<List<String>> result;
     if (link == null) {
@@ -456,7 +507,6 @@ public class FeedRepository {
   }
 
   /** List threads based on the filters and limits in the order of the updated timestamp. */
-  @Transaction
   public ResultList<Thread> list(FeedFilter filter, String link, int limitPosts, String userId, int limit) {
     int total;
     List<Thread> threads;
@@ -557,7 +607,6 @@ public class FeedRepository {
             null);
   }
 
-  @Transaction
   public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch) {
     // Apply JSON patch to the original post to get the updated post
     Post updated = JsonUtils.applyPatch(post, patch, Post.class);
@@ -582,7 +631,6 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updated, change);
   }
 
-  @Transaction
   public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original thread that can be updated during PATCH operation
     Thread original = get(id.toString());
@@ -610,18 +658,7 @@ public class FeedRepository {
     }
 
     if (updated.getAnnouncement() != null) {
-      validateAnnouncement(updated.getAnnouncement());
-      // check if the announcement start and end time clashes with other existing announcements
-      List<String> announcements =
-          dao.feedDAO()
-              .listAnnouncementBetween(
-                  id.toString(),
-                  updated.getEntityId().toString(),
-                  updated.getAnnouncement().getStartTime(),
-                  updated.getAnnouncement().getEndTime());
-      if (!announcements.isEmpty()) {
-        throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
-      }
+      validateAnnouncement(updated);
     }
 
     // Update the attributes
@@ -665,9 +702,19 @@ public class FeedRepository {
         CatalogExceptionMessage.taskOperationNotAllowed(userName, closeTask ? "closeTask" : "resolveTask"));
   }
 
-  private void validateAnnouncement(AnnouncementDetails announcementDetails) {
-    if (announcementDetails.getStartTime() >= announcementDetails.getEndTime()) {
+  private void validateAnnouncement(Thread thread) {
+    long startTime = thread.getAnnouncement().getStartTime();
+    long endTime = thread.getAnnouncement().getEndTime();
+    if (startTime >= endTime) {
       throw new IllegalArgumentException(ANNOUNCEMENT_INVALID_START_TIME);
+    }
+    // TODO fix this - overlapping announcements should be allowed
+    List<String> announcements =
+        dao.feedDAO()
+            .listAnnouncementBetween(thread.getId().toString(), thread.getEntityId().toString(), startTime, endTime);
+    if (!announcements.isEmpty()) {
+      // There is already an announcement that overlaps the new one
+      throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
     }
   }
 
@@ -916,6 +963,26 @@ public class FeedRepository {
 
   private String getUserNameHash(User user) {
     return user != null ? FullyQualifiedName.buildHash(user.getFullyQualifiedName()) : null;
+  }
+
+  public static String resolveDescriptionTaskMessage(TaskDetails task) {
+    return String.format(
+        "Resolved the Task with Description - %s",
+        FEED_MESSAGE_FORMATTER.getPlaintextDiff(task.getOldValue(), task.getNewValue()));
+  }
+
+  public static String resolveTagTaskMessage(TaskDetails task) {
+    String oldValue =
+        task.getOldValue() != null
+            ? getTagFQNs(JsonUtils.readObjects(task.getOldValue(), TagLabel.class))
+            : StringUtils.EMPTY;
+    String newValue = getTagFQNs(JsonUtils.readObjects(task.getNewValue(), TagLabel.class));
+    return String.format(
+        "Resolved the Task with Tag(s) - %s", FEED_MESSAGE_FORMATTER.getPlaintextDiff(oldValue, newValue));
+  }
+
+  public static String closeTaskMessage(String closingComment) {
+    return String.format("Closed the Task with comment - %s", closingComment);
   }
 
   public static class FilteredThreads {

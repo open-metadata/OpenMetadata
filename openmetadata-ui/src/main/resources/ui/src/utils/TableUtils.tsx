@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import Icon, { FilterOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
@@ -20,9 +20,18 @@ import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
+import { SearchIndexField } from 'generated/entity/data/searchIndex';
+import { Field } from 'generated/type/schema';
 import { t } from 'i18next';
-import { uniqueId, upperCase } from 'lodash';
-import { EntityTags } from 'Models';
+import {
+  isUndefined,
+  lowerCase,
+  reduce,
+  toString,
+  uniqueId,
+  upperCase,
+} from 'lodash';
+import { EntityTags, TagOption } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
@@ -33,6 +42,7 @@ import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
@@ -58,6 +68,7 @@ import {
   getTableTabPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
+  PRIMERY_COLOR,
   TEXT_BODY_COLOR,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -69,15 +80,17 @@ import {
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
-import { TagLabel } from '../generated/type/tagLabel';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import { getSearchIndexDetailsPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
+import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -247,9 +260,11 @@ export const getEntityLink = (
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
 
+    case SearchIndex.DASHBOARD_DATA_MODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
 
+    case SearchIndex.STORED_PROCEDURE:
     case EntityType.STORED_PROCEDURE:
       return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
 
@@ -258,6 +273,9 @@ export const getEntityLink = (
         getTableFQNFromColumnFQN(fullyQualifiedName),
         EntityTabs.PROFILER
       )}?activeTab=Data Quality`;
+
+    case EntityType.SEARCH_INDEX:
+      return getSearchIndexDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -273,6 +291,8 @@ export const getServiceIcon = (source: SourceType) => {
     return (
       <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
     );
+  } else if (source.entityType === EntityType.DATA_PRODUCT) {
+    return <></>;
   } else {
     return (
       <img
@@ -306,8 +326,13 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.CONTAINER:
       return <ContainerIcon />;
 
+    case SearchIndex.DASHBOARD_DATA_MODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
       return <IconDataModel />;
+
+    case SearchIndex.STORED_PROCEDURE:
+    case EntityType.STORED_PROCEDURE:
+      return <IconStoredProcedure />;
 
     case EntityType.TAG:
       return <ClassificationIcon />;
@@ -494,3 +519,127 @@ export const prepareConstraintIcon = ({
     </span>
   );
 };
+
+export const getAllRowKeysByKeyName = <T extends Field | SearchIndexField>(
+  data: T[],
+  keyName: keyof T
+) => {
+  let keys: string[] = [];
+
+  data.forEach((item) => {
+    if (item.children && item.children.length > 0) {
+      keys.push(toString(item[keyName]));
+      keys = [
+        ...keys,
+        ...getAllRowKeysByKeyName(item.children as T[], keyName),
+      ];
+    }
+  });
+
+  return keys;
+};
+
+export const searchInFields = <T extends SearchIndexField | Column>(
+  searchIndex: Array<T>,
+  searchText: string
+): Array<T> => {
+  const searchedValue: Array<T> = searchIndex.reduce(
+    (searchedFields, field) => {
+      const isContainData =
+        lowerCase(field.name).includes(searchText) ||
+        lowerCase(field.description).includes(searchText) ||
+        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
+
+      if (isContainData) {
+        return [...searchedFields, field];
+      } else if (!isUndefined(field.children)) {
+        const searchedChildren = searchInFields(
+          field.children as T[],
+          searchText
+        );
+        if (searchedChildren.length > 0) {
+          return [
+            ...searchedFields,
+            {
+              ...field,
+              children: searchedChildren,
+            },
+          ];
+        }
+      }
+
+      return searchedFields;
+    },
+    [] as Array<T>
+  );
+
+  return searchedValue;
+};
+
+export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
+  newFieldTags: Array<EntityTags>,
+  field?: T
+): TagLabel[] => {
+  const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
+
+  return reduce(
+    newFieldTags,
+    (acc: Array<EntityTags>, cv: TagOption) => {
+      if (prevTagsFqn?.includes(cv.fqn)) {
+        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.fqn);
+
+        return [...acc, prev];
+      } else {
+        return [
+          ...acc,
+          {
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+            source: cv.source,
+            tagFQN: cv.fqn,
+          },
+        ];
+      }
+    },
+    []
+  );
+};
+
+export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  description: string,
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.description = description;
+    } else {
+      updateFieldDescription(
+        changedFieldFQN,
+        description,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+
+export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  newFieldTags: Array<TagOption>,
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.tags = getUpdatedTags<T>(newFieldTags, field);
+    } else {
+      updateFieldTags(
+        changedFieldFQN,
+        newFieldTags,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+export const FilterIcon = (filtered: boolean) => (
+  <FilterOutlined style={{ color: filtered ? PRIMERY_COLOR : undefined }} />
+);

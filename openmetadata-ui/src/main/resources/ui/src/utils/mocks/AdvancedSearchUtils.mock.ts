@@ -18,7 +18,11 @@ import {
   TableType,
 } from 'generated/entity/data/table';
 import { DataTypeTopic } from 'generated/entity/data/topic';
-import { ExploreSearchSource, SuggestOption } from 'interface/search.interface';
+import {
+  ExploreSearchSource,
+  SuggestOption,
+  TableSearchSource,
+} from 'interface/search.interface';
 
 export const mockOptionsArray = [
   { key: 'option_1', label: 'option_1' },
@@ -142,7 +146,7 @@ export const mockGetServiceOptionDataWithoutDN: SuggestOption<
       description: 'd',
       deleted: false,
     },
-  },
+  } as TableSearchSource,
 };
 
 export const mockGetServiceOptionDataWithoutNameDN: SuggestOption<
@@ -160,7 +164,7 @@ export const mockGetServiceOptionDataWithoutNameDN: SuggestOption<
       description: 'd',
       deleted: false,
     },
-  },
+  } as TableSearchSource,
 };
 
 export const mockGetColumnOptionsData: SuggestOption<

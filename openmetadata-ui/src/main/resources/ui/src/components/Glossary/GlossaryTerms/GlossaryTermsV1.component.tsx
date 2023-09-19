@@ -17,6 +17,7 @@ import { EntityDetailsObjectInterface } from 'components/Explore/explore.interfa
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { getGlossaryTermDetailsPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
@@ -30,6 +31,7 @@ import { getCountBadge } from 'utils/CommonUtils';
 import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
+import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 type Props = {
@@ -45,6 +47,7 @@ type Props = {
   termsLoading: boolean;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
+  updateVote?: (data: VotingDataProps) => Promise<void>;
 };
 
 const GlossaryTermsV1 = ({
@@ -59,6 +62,7 @@ const GlossaryTermsV1 = ({
   termsLoading,
   onAddGlossaryTerm,
   onEditGlossaryTerm,
+  updateVote,
   isVersionView,
 }: Props) => {
   const {
@@ -228,6 +232,7 @@ const GlossaryTermsV1 = ({
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={{ ...glossaryTerm, displayName, name }}
+            updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModelVisible(true)}
             onDelete={handleGlossaryTermDelete}
@@ -247,8 +252,9 @@ const GlossaryTermsV1 = ({
       </Row>
       {glossaryTerm.fullyQualifiedName && (
         <AssetSelectionModal
-          glossaryFQN={glossaryTerm.fullyQualifiedName}
+          entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}
+          type={AssetsOfEntity.GLOSSARY}
           onCancel={() => setAssetModelVisible(false)}
           onSave={handleAssetSave}
         />

@@ -105,9 +105,11 @@ class Mean(StaticMetric):
         if is_concatenable(self.col.type):
             length_vectorize_func = vectorize(len)
             for df in dfs:
-                mean = length_vectorize_func(
-                    df[self.col.name].dropna().astype(str)
-                ).mean()
+                mean = None
+                if any(df[self.col.name]):
+                    mean = length_vectorize_func(
+                        df[self.col.name].dropna().astype(str)
+                    ).mean()
                 if not pd.isnull(mean):
                     means.append(mean)
                     weights.append(df[self.col.name].dropna().count())

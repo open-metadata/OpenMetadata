@@ -32,6 +32,7 @@ import {
 import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -60,8 +61,10 @@ import {
   patchStoredProceduresDetails,
   removeStoredProceduresFollower,
   restoreStoredProcedures,
+  updateStoredProcedureVotes,
 } from 'rest/storedProceduresAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
@@ -162,6 +165,15 @@ const StoredProcedurePage = () => {
       );
 
       setStoredProcedure(response);
+
+      addToRecentViewed({
+        displayName: getEntityName(response),
+        entityType: EntityType.STORED_PROCEDURE,
+        fqn: response.fullyQualifiedName ?? '',
+        serviceType: response.serviceType,
+        timestamp: 0,
+        id: response.id ?? '',
+      });
     } catch (error) {
       // Error here
     } finally {
@@ -323,7 +335,7 @@ const StoredProcedurePage = () => {
       await restoreStoredProcedures(storedProcedureId);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.stored-procedure'),
+          entity: t('label.stored-procedure-plural'),
         }),
         2000
       );
@@ -332,7 +344,7 @@ const StoredProcedurePage = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.stored-procedure'),
+          entity: t('label.stored-procedure-plural'),
         })
       );
     }
@@ -478,7 +490,7 @@ const StoredProcedurePage = () => {
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <Card className="m-b-md">
+                <Card className="m-b-md" data-testid="code-component">
                   <SchemaEditor
                     editorClass="custom-code-mirror-theme full-screen-editor-height"
                     mode={{ name: CSMode.SQL }}
@@ -604,6 +616,19 @@ const StoredProcedurePage = () => {
     ]
   );
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateStoredProcedureVotes(id, data);
+      const details = await getStoredProceduresDetailsByFQN(
+        storedProcedureFQN,
+        STORED_PROCEDURE_DEFAULT_FIELDS
+      );
+      setStoredProcedure(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (storedProcedureFQN) {
       fetchResourcePermission();
@@ -637,7 +662,9 @@ const StoredProcedurePage = () => {
   }
 
   return (
-    <PageLayoutV1 className="bg-white" pageTitle={t('label.stored-procedure')}>
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle={t('label.stored-procedure-plural')}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
@@ -650,6 +677,7 @@ const StoredProcedurePage = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreStoredProcedures}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
         </Col>

@@ -13,9 +13,7 @@
 
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
-import { Pipeline } from '../generated/entity/data/pipeline';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { EntityReference } from '../generated/type/entityReference';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
 import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
@@ -88,19 +86,4 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
   }
 
   return cloneDeep({ schema, uiSchema });
-};
-
-export const getEntityReferenceFromPipeline = (
-  pipeline: Pipeline
-): EntityReference => {
-  return {
-    deleted: pipeline.deleted,
-    href: pipeline.href ?? '',
-    fullyQualifiedName: pipeline.fullyQualifiedName,
-    id: pipeline.id,
-    description: pipeline.description,
-    displayName: pipeline.displayName,
-    name: pipeline.name ?? '',
-    type: 'pipeline',
-  };
 };

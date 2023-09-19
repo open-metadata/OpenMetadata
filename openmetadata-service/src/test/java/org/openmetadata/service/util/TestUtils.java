@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
@@ -226,8 +227,13 @@ public final class TestUtils {
   }
 
   static {
-    ELASTIC_SEARCH_CONNECTION =
-        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9200"));
+    try {
+      ELASTIC_SEARCH_CONNECTION =
+          new SearchConnection()
+              .withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9200")));
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
     OPEN_SEARCH_CONNECTION =
         new SearchConnection().withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
   }
@@ -478,6 +484,8 @@ public final class TestUtils {
           derived.add(
               new TagLabel()
                   .withTagFQN(tag.getTagFQN())
+                  .withName(tag.getName())
+                  .withDisplayName(tag.getDisplayName())
                   .withState(expected.getState())
                   .withDescription(associatedTag.getDescription())
                   .withLabelType(TagLabel.LabelType.DERIVED));
@@ -485,10 +493,7 @@ public final class TestUtils {
         EntityUtil.mergeTags(updatedExpectedList, derived);
       }
     }
-    updatedExpectedList.sort(EntityUtil.compareTagLabel);
-    actualList.sort(EntityUtil.compareTagLabel);
-    assertEquals(updatedExpectedList.size(), actualList.size());
-    assertEquals(updatedExpectedList, actualList);
+    assertTrue(compareListsIgnoringOrder(updatedExpectedList, actualList));
   }
 
   public static void validateTagLabel(TagLabel label) {
@@ -497,8 +502,6 @@ public final class TestUtils {
     assertNotNull(label.getLabelType(), label.getTagFQN());
     assertNotNull(label.getSource(), label.getTagFQN());
     assertNotNull(label.getState(), label.getTagFQN());
-    // TODO
-    // assertNotNull(label.getHref());
   }
 
   public static void checkUserFollowing(
@@ -655,5 +658,23 @@ public final class TestUtils {
       LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
     }
     return null;
+  }
+
+  public static <T> boolean compareListsIgnoringOrder(List<T> expected, List<T> actual) {
+    int exists = 0;
+    if (expected == null || actual == null) return false;
+    if (expected.size() != actual.size()) return false;
+
+    for (T o : expected) {
+      if (actual.contains(o)) exists++;
+    }
+
+    return actual.size() == exists;
+  }
+
+  public static void assertStyle(Style expected, Style actual) {
+    if (expected == null) return;
+    assertEquals(expected.getIconURL(), actual.getIconURL());
+    assertEquals(expected.getColor(), actual.getColor());
   }
 }

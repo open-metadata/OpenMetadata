@@ -15,6 +15,7 @@ import { Col, Row, Space, Tabs } from 'antd';
 import classNames from 'classnames';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -175,15 +176,15 @@ function DatabaseVersionPage() {
   );
 
   const databaseSchemaPagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      const pagingString = `&${cursorType}=${
-        paging[cursorType as keyof typeof paging]
-      }`;
-      setIsSchemaDataLoading(true);
-      fetchDatabaseSchemas(pagingString).finally(() => {
-        setIsSchemaDataLoading(false);
-      });
-      setCurrentPage(activePage ?? 1);
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        const pagingString = `&${cursorType}=${paging[cursorType]}`;
+        setIsSchemaDataLoading(true);
+        fetchDatabaseSchemas(pagingString).finally(() => {
+          setIsSchemaDataLoading(false);
+        });
+        setCurrentPage(currentPage);
+      }
     },
     [paging, fetchDatabaseSchemas]
   );

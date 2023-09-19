@@ -11,27 +11,37 @@
  *  limitations under the License.
  */
 
+import Icon, { FilterOutlined } from '@ant-design/icons';
 import { Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
+import { PRIMERY_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
+  groupBy,
   isEmpty,
   isUndefined,
   lowerCase,
   map,
   reduce,
+  set,
   sortBy,
   toLower,
+  uniqBy,
 } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -65,6 +75,10 @@ const SchemaTable = ({
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
+  const [editColumn, setEditColumn] = useState<Column>();
+
+  const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
     [tableColumns]
@@ -75,32 +89,34 @@ const SchemaTable = ({
     [searchedColumns]
   );
 
-  const [editColumn, setEditColumn] = useState<{
-    column: Column;
-    index: number;
-  }>();
-
-  const handleEditColumn = (column: Column, index: number): void => {
-    setEditColumn({ column, index });
+  const handleEditColumn = (column: Column): void => {
+    setEditColumn(column);
   };
   const closeEditColumnModal = (): void => {
     setEditColumn(undefined);
   };
 
-  const updateColumnDescription = (
-    tableCols: Column[],
-    changedColFQN: string,
-    description: string
-  ) => {
-    tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
-        col.description = description;
+  const updateColumnFields = ({
+    fqn,
+    field,
+    value,
+    columns,
+  }: {
+    fqn: string;
+    field: keyof Column;
+    value?: string;
+    columns: Column[];
+  }) => {
+    columns?.forEach((col) => {
+      if (col.fullyQualifiedName === fqn) {
+        set(col, field, value);
       } else {
-        updateColumnDescription(
-          col?.children as Column[],
-          changedColFQN,
-          description
-        );
+        updateColumnFields({
+          fqn,
+          field,
+          value,
+          columns: col.children as Column[],
+        });
       }
     });
   };
@@ -153,13 +169,14 @@ const SchemaTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn && editColumn.column.fullyQualifiedName) {
+    if (editColumn && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnDescription(
-        tableCols,
-        editColumn.column.fullyQualifiedName,
-        columnDescription
-      );
+      updateColumnFields({
+        fqn: editColumn.fullyQualifiedName,
+        value: columnDescription,
+        field: 'description',
+        columns: tableCols,
+      });
       await onUpdate(tableCols);
       setEditColumn(undefined);
     } else {
@@ -214,8 +231,8 @@ const SchemaTable = ({
     return searchedValue;
   };
 
-  const handleUpdate = (column: Column, index: number) => {
-    handleEditColumn(column, index);
+  const handleUpdate = (column: Column) => {
+    handleEditColumn(column);
   };
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
@@ -258,7 +275,7 @@ const SchemaTable = ({
           hasEditPermission={hasDescriptionEditAccess}
           index={index}
           isReadOnly={isReadOnly}
-          onClick={() => handleUpdate(record, index)}
+          onClick={() => handleUpdate(record)}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         {getFrequentlyJoinedColumns(
@@ -270,102 +287,6 @@ const SchemaTable = ({
     );
   };
 
-  const columns: ColumnsType<Column> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        accessor: 'name',
-        width: 180,
-        fixed: 'left',
-        render: (name: Column['name'], record: Column) => (
-          <Space
-            align="start"
-            className="w-max-90 vertical-align-inherit"
-            size={2}>
-            {prepareConstraintIcon({
-              columnName: name,
-              columnConstraint: record.constraint,
-              tableConstraints,
-            })}
-            <span className="break-word">{getEntityName(record)}</span>
-          </Space>
-        ),
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
-        accessor: 'dataTypeDisplay',
-        ellipsis: true,
-        width: 180,
-        render: renderDataTypeDisplay,
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
-        width: 320,
-        render: renderDescription,
-      },
-      {
-        title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
-        width: 250,
-        render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags<Column>
-            entityFqn={entityFqn}
-            entityType={EntityType.TABLE}
-            handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            record={record}
-            tags={tags}
-            type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        ),
-      },
-      {
-        title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
-        width: 250,
-        render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags<Column>
-            entityFqn={entityFqn}
-            entityType={EntityType.TABLE}
-            handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            record={record}
-            tags={tags}
-            type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        ),
-      },
-    ],
-    [
-      entityFqn,
-      isReadOnly,
-      tableConstraints,
-      hasTagEditAccess,
-      handleUpdate,
-      handleTagSelection,
-      renderDataTypeDisplay,
-      renderDescription,
-      handleTagSelection,
-      onThreadLinkSelect,
-    ]
-  );
   const expandableConfig: ExpandableConfig<Column> = useMemo(
     () => ({
       ...getTableExpandableConfig<Column>(),
@@ -391,6 +312,186 @@ const SchemaTable = ({
     }
   }, [searchText, sortByOrdinalPosition]);
 
+  const handleEditDisplayNameClick = (record: Column) => {
+    setEditColumnDisplayName(record);
+  };
+
+  const handleEditDisplayName = ({ displayName }: EntityName) => {
+    if (editColumnDisplayName && editColumnDisplayName.fullyQualifiedName) {
+      const tableCols = cloneDeep(tableColumns);
+      updateColumnFields({
+        fqn: editColumnDisplayName.fullyQualifiedName,
+        value: isEmpty(displayName) ? undefined : displayName,
+        field: 'displayName',
+        columns: tableCols,
+      });
+      onUpdate(tableCols).then(() => {
+        setEditColumnDisplayName(undefined);
+      });
+    } else {
+      setEditColumnDisplayName(undefined);
+    }
+  };
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(data);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [data]);
+
+  const columns: ColumnsType<Column> = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+        accessor: 'name',
+        width: 180,
+        fixed: 'left',
+        render: (name: Column['name'], record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <Space className="hover-icon-group m-0" direction="vertical">
+              <Space
+                align="center"
+                className="w-max-90 vertical-align-inherit"
+                size={2}>
+                {prepareConstraintIcon({
+                  columnName: name,
+                  columnConstraint: record.constraint,
+                  tableConstraints,
+                })}
+                <div>
+                  {/* If we do not have displayName name only be shown in the bold from the below code */}
+                  {!isEmpty(displayName) ? (
+                    <Typography.Text
+                      className="m-b-0 d-block text-grey-muted"
+                      data-testid="column-name">
+                      {name}
+                    </Typography.Text>
+                  ) : null}
+
+                  {/* It will render displayName fallback to name */}
+                  <Typography.Text
+                    className="m-b-0 d-block"
+                    data-testid="column-display-name"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(record)}
+                  </Typography.Text>
+                </div>
+              </Space>
+              <Icon
+                className="hover-cell-icon text-left"
+                component={IconEdit}
+                onClick={() => handleEditDisplayNameClick(record)}
+              />
+            </Space>
+          );
+        },
+      },
+      {
+        title: t('label.type'),
+        dataIndex: 'dataTypeDisplay',
+        key: 'dataTypeDisplay',
+        accessor: 'dataTypeDisplay',
+        ellipsis: true,
+        width: 180,
+        render: renderDataTypeDisplay,
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        accessor: 'description',
+        width: 320,
+        render: renderDescription,
+      },
+      {
+        title: t('label.tag-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 250,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        render: (tags: TagLabel[], record: Column, index: number) => (
+          <TableTags<Column>
+            entityFqn={entityFqn}
+            entityType={EntityType.TABLE}
+            handleTagSelection={handleTagSelection}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            record={record}
+            tags={tags}
+            type={TagSource.Classification}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'glossary',
+        accessor: 'tags',
+        width: 250,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        render: (tags: TagLabel[], record: Column, index: number) => (
+          <TableTags<Column>
+            entityFqn={entityFqn}
+            entityType={EntityType.TABLE}
+            handleTagSelection={handleTagSelection}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            record={record}
+            tags={tags}
+            type={TagSource.Glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
+      },
+    ],
+    [
+      entityFqn,
+      isReadOnly,
+      tableConstraints,
+      hasTagEditAccess,
+      handleUpdate,
+      handleTagSelection,
+      renderDataTypeDisplay,
+      renderDescription,
+      handleTagSelection,
+      onThreadLinkSelect,
+      tagFilter,
+    ]
+  );
+
+  useEffect(() => {
+    setExpandedRowKeys(() =>
+      data.map((value) => value?.fullyQualifiedName ?? '')
+    );
+  }, [data]);
+
   return (
     <>
       <Table
@@ -412,12 +513,23 @@ const SchemaTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumn.column.name}"`}
+          })}: "${editColumn.name}"`}
           placeholder={t('message.enter-column-description')}
-          value={editColumn.column.description as string}
+          value={editColumn.description as string}
           visible={Boolean(editColumn)}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
+        />
+      )}
+      {editColumnDisplayName && (
+        <EntityNameModal
+          entity={editColumnDisplayName}
+          title={`${t('label.edit-entity', {
+            entity: t('label.column'),
+          })}: "${editColumnDisplayName?.name}"`}
+          visible={Boolean(editColumnDisplayName)}
+          onCancel={() => setEditColumnDisplayName(undefined)}
+          onSave={handleEditDisplayName}
         />
       )}
     </>

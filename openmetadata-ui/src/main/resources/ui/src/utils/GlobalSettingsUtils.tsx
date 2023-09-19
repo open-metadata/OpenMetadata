@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchOutlined } from '@ant-design/icons';
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
@@ -102,19 +103,13 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.role-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.ROLE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.roles',
           icon: <RolesIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.policy-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.POLICY,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.policies',
           icon: <PoliciesIcon className="side-panel-icons" />,
         },
@@ -187,6 +182,15 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'services.storages',
           icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
         },
+        {
+          label: i18next.t('label.search'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.SEARCH_SERVICE,
+            permissions
+          ),
+          key: 'services.search',
+          icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+        },
       ],
     },
     {
@@ -254,7 +258,13 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <StorageIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.stored-procedure'),
+          label: i18next.t('label.search-index'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.searchIndex',
+          icon: <SearchOutlined className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.stored-procedure-plural'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.storedProcedure',
           icon: <StoredProcedureIcon className="side-panel-icons" />,

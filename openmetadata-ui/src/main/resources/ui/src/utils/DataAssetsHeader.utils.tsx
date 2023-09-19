@@ -32,6 +32,7 @@ import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
@@ -44,6 +45,7 @@ import { MessagingService } from 'generated/entity/services/messagingService';
 import { MetadataService } from 'generated/entity/services/metadataService';
 import { MlmodelService } from 'generated/entity/services/mlmodelService';
 import { PipelineService } from 'generated/entity/services/pipelineService';
+import { SearchService } from 'generated/entity/services/searchService';
 import { StorageService } from 'generated/entity/services/storageService';
 import { t } from 'i18next';
 import { isObject, isUndefined } from 'lodash';
@@ -331,11 +333,34 @@ export const getDataAssetsHeaderInfo = (
 
       break;
 
+    case EntityType.SEARCH_INDEX:
+      const searchIndexDetails = dataAsset as SearchIndex;
+      returnData.breadcrumbs =
+        getBreadcrumbForEntitiesWithServiceOnly(searchIndexDetails);
+
+      break;
+
+    case EntityType.SEARCH_SERVICE:
+      const searchServiceDetails = dataAsset as SearchService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        searchServiceDetails,
+        EntityType.SEARCH_SERVICE
+      );
+
+      break;
     case EntityType.STORED_PROCEDURE:
       const storedProcedureDetails = dataAsset as StoredProcedure;
 
       returnData.extraInfo = (
         <>
+          {storedProcedureDetails.sourceUrl && (
+            <ExtraInfoLink
+              href={storedProcedureDetails.sourceUrl}
+              label=""
+              value={getEntityName(storedProcedureDetails)}
+            />
+          )}
           {isObject(storedProcedureDetails.storedProcedureCode) && (
             <ExtraInfoLabel
               label={t('label.language')}

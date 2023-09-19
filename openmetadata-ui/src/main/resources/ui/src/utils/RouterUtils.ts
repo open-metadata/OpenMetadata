@@ -135,6 +135,40 @@ export const getEditIngestionPath = (
   return path;
 };
 
+export const getDomainPath = (fqn?: string) => {
+  let path = ROUTES.DOMAIN;
+  if (fqn) {
+    path = ROUTES.DOMAIN_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
+  }
+
+  return path;
+};
+
+export const getDomainDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab ? ROUTES.DOMAIN_DETAILS_WITH_TAB : ROUTES.DOMAIN_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getDataProductsDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab
+    ? ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB
+    : ROUTES.DATA_PRODUCT_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
@@ -421,6 +455,27 @@ export const getAddQueryPath = (entityFqn: string) => {
   let path = ROUTES.ADD_QUERY;
 
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn);
+
+  return path;
+};
+
+export const getDataProductVersionsPath = (
+  dataProductFqn: string,
+  version: string
+) => {
+  let path = ROUTES.DATA_PRODUCT_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, dataProductFqn)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDomainVersionsPath = (domainName: string, version: string) => {
+  let path = ROUTES.DOMAIN_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, domainName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };

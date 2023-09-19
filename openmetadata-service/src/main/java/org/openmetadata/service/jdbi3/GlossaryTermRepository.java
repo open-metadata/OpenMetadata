@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
@@ -50,11 +51,13 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final String UPDATE_FIELDS = "references,relatedTerms,reviewers,synonyms";
-  private static final String PATCH_FIELDS = "references,relatedTerms,reviewers,synonyms";
+  private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
+  private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -65,11 +68,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) {
-    entity.withGlossary(getGlossary(entity)).withParent(getParent(entity));
+    entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : entity.getRelatedTerms());
     return entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
   }
@@ -172,9 +176,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
+    Relationship relationship = term.getParent() != null ? Relationship.HAS : Relationship.CONTAINS;
     return term.getGlossary() != null
         ? term.getGlossary()
-        : getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
+        : getFromEntityRef(term.getId(), relationship, GLOSSARY, true);
   }
 
   public EntityReference getGlossary(String id) {
@@ -192,8 +197,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
+  @Override
+  public void deleteFromSearch(GlossaryTerm entity, String changeType) {
+    if (supportsSearchIndex) {
+      String scriptTxt =
+          "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
+      } else {
+        searchClient.deleteEntityAndRemoveRelationships(
+            JsonUtils.deepCopy(entity, GlossaryTerm.class), scriptTxt, "tags.tagFQN");
+      }
+    }
+  }
+
+  @Override
+  public void restoreFromSearch(GlossaryTerm entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(
+          JsonUtils.deepCopy(entity, GlossaryTerm.class), false, "tags.tagFQN");
+    }
+  }
+
   private void addGlossaryRelationship(GlossaryTerm term) {
-    addRelationship(term.getGlossary().getId(), term.getId(), GLOSSARY, GLOSSARY_TERM, Relationship.CONTAINS);
+    Relationship relationship = term.getParent() != null ? Relationship.HAS : Relationship.CONTAINS;
+    addRelationship(term.getGlossary().getId(), term.getId(), GLOSSARY, GLOSSARY_TERM, relationship);
   }
 
   private void addParentRelationship(GlossaryTerm term) {
@@ -330,6 +359,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateTerm(original.getId());
       }
       if (parentChanged) {
+        updateGlossaryRelationship(original, updated);
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTerm(original.getId());
@@ -351,7 +381,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     private void deleteGlossaryRelationship(GlossaryTerm term) {
-      deleteRelationship(term.getGlossary().getId(), GLOSSARY, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
+      Relationship relationship = term.getParent() == null ? Relationship.CONTAINS : Relationship.HAS;
+      deleteRelationship(term.getGlossary().getId(), GLOSSARY, term.getId(), GLOSSARY_TERM, relationship);
     }
 
     private void updateParentRelationship(GlossaryTerm orig, GlossaryTerm updated) {

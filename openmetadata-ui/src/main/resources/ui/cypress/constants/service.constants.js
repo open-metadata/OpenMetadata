@@ -21,6 +21,7 @@ export const SERVICE_CATEGORIES = {
   ML_MODEL_SERVICES: 'mlmodelServices',
   STORAGE_SERVICES: 'storageServices',
   METADATA_SERVICES: 'metadataServices',
+  SEARCH_SERVICES: 'searchServices',
 };
 
 export const REDSHIFT = {

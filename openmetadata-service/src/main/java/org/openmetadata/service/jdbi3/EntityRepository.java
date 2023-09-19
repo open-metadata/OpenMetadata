@@ -19,27 +19,10 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_CHILDREN;
-import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
-import static org.openmetadata.service.Entity.FIELD_DELETED;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_EXPERTS;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.FIELD_VOTES;
-import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.getEntityByName;
-import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -81,16 +64,17 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.json.JsonPatch;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -105,12 +89,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -123,7 +108,8 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -168,6 +154,7 @@ import org.openmetadata.service.util.ResultList;
  */
 @Slf4j
 public abstract class EntityRepository<T extends EntityInterface> {
+
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
           .maximumSize(5000)
@@ -184,16 +171,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final Class<T> entityClass;
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
-  protected final CollectionDAO daoCollection;
+  @Getter protected final CollectionDAO daoCollection;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
+  @Getter protected final boolean supportsStyle;
+  @Getter protected final boolean supportsLifeCycle;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
+  @Getter protected final boolean supportsReviewers;
   protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
@@ -201,6 +191,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
+
+  protected boolean supportsSearchIndex = false;
 
   protected EntityRepository(
       String collectionPath,
@@ -241,12 +233,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_EXTENSION);
     }
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
+    if (supportsVotes) {
+      this.patchFields.addField(allowedFields, FIELD_VOTES);
+      this.putFields.addField(allowedFields, FIELD_VOTES);
+    }
     this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
     if (supportsDomain) {
       this.patchFields.addField(allowedFields, FIELD_DOMAIN);
       this.putFields.addField(allowedFields, FIELD_DOMAIN);
     }
+    this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
+    if (supportsReviewers) {
+      this.patchFields.addField(allowedFields, FIELD_REVIEWERS);
+      this.putFields.addField(allowedFields, FIELD_REVIEWERS);
+    }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
+    if (supportsDataProducts) {
+      this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+      this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+    }
+    this.supportsStyle = allowedFields.contains(FIELD_STYLE);
+    if (supportsStyle) {
+      this.patchFields.addField(allowedFields, FIELD_STYLE);
+      this.putFields.addField(allowedFields, FIELD_STYLE);
+    }
+    this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
+    if (supportsLifeCycle) {
+      this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
+      this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
+    }
   }
 
   /**
@@ -330,26 +345,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
   }
 
-  /** Update an entity based suggested description and tags in the task */
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
-    TaskType taskType = task.getType();
-    T entity = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL, false);
-    String origJson = JsonUtils.pojoToJson(entity);
-    if (EntityUtil.isDescriptionTask(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
-      entity.setDescription(newValue);
-    } else if (supportsTags && EntityUtil.isTagTask(taskType) && entityLink.getFieldName().equals("tags")) {
-      List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-      entity.setTags(tags);
-    } else {
-      // Not supported
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), task.getType()));
-    }
-    String updatedEntityJson = JsonUtils.pojoToJson(entity);
-    JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
-    patch(null, entity.getId(), user, patch);
-  }
-
   /**
    * Initialize data from json files if seed data does not exist in corresponding tables. Seed data is stored under
    * openmetadata-service/src/main/resources/json/data/{entityType}
@@ -389,7 +384,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Initialize a given entity if it does not exist. */
-  @Transaction
   public void initializeEntity(T entity) {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
@@ -409,13 +403,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityUpdater(original, updated, operation);
   }
 
-  @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
     return get(uriInfo, id, fields, NON_DELETED, false);
   }
 
   /** Used for getting an entity with a set of requested fields */
-  @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include, boolean fromCache) {
     if (!fromCache) {
       // Clear the cache and always get the entity from the database to ensure read-after-write consistency
@@ -429,13 +421,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Clone the entity from the cache and reset all the fields that are not already set
     // Cloning is necessary to ensure different threads making a call to this method don't
     // overwrite the fields of the entity being returned
-    T entityClone = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entityClass);
+    T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
 
   /** getReference is used for getting the entity references from the entity in the cache. */
-  @Transaction
   public final EntityReference getReference(UUID id, Include include) throws EntityNotFoundException {
     return find(id, include).getEntityReference();
   }
@@ -443,7 +434,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @Transaction
   public T find(UUID id, Include include) throws EntityNotFoundException {
     try {
       @SuppressWarnings("unchecked")
@@ -458,12 +448,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public T getByName(UriInfo uriInfo, String fqn, Fields fields) {
     return getByName(uriInfo, fqn, fields, NON_DELETED, false);
   }
 
-  @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     if (!fromCache) {
@@ -478,18 +466,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Clone the entity from the cache and reset all the fields that are not already set
     // Cloning is necessary to ensure different threads making a call to this method don't
     // overwrite the fields of the entity being returned
-    T entityClone = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entityClass);
+    T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
 
-  @Transaction
   public final EntityReference getReferenceByName(String fqn, Include include) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     return findByName(fqn, include).getEntityReference();
   }
 
-  @Transaction
   public T findByNameOrNull(String fqn, Include include) {
     try {
       return findByName(fqn, include);
@@ -501,7 +487,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
-  @Transaction
   public T findByName(String fqn, Include include) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     try {
@@ -517,7 +502,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public final List<T> listAll(Fields fields, ListFilter filter) {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
@@ -530,7 +514,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entities;
   }
 
-  @Transaction
   public ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     int total = dao.listCount(filter);
     List<T> entities = new ArrayList<>();
@@ -558,7 +541,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
     List<String> errors = new ArrayList<>();
@@ -589,7 +571,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   public ResultList<T> listBefore(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
@@ -612,7 +593,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
-  @Transaction
   public T getVersion(UUID id, String version) {
     Double requestedVersion = Double.parseDouble(version);
     String extension = EntityUtil.getVersionExtension(entityType, requestedVersion);
@@ -631,7 +611,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
   }
 
-  @Transaction
   public EntityHistory listVersions(UUID id) {
     T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
@@ -648,11 +627,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T create(UriInfo uriInfo, T entity) {
     entity = withHref(uriInfo, createInternal(entity));
-    postCreate(entity);
     return entity;
   }
 
-  @Transaction
   public final T createInternal(T entity) {
     prepareInternal(entity, false);
     return createNewEntity(entity);
@@ -687,6 +664,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+    entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
     setFields(entity, fields);
     return entity;
   }
@@ -701,22 +679,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? entity.getExperts() : null);
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? entity.getReviewers() : null);
+    entity.setVotes(fields.contains(FIELD_VOTES) ? entity.getVotes() : null);
     clearFields(entity, fields);
     return entity;
   }
 
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
-    PutResponse<T> response = createOrUpdateInternal(uriInfo, updated);
-    if (response.getStatus() == Status.CREATED) {
-      postCreate(response.getEntity());
-    } else if (response.getStatus() == Status.OK) {
-      postUpdate(response.getEntity());
-    }
-    return response;
-  }
-
-  @Transaction
-  public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) {
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
@@ -726,17 +694,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    // Override to perform any operation required after creation.
-    // For example ingestion pipeline creates a pipeline in AirFlow.
+    if (supportsSearchIndex) {
+      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
+      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+    }
   }
 
   @SuppressWarnings("unused")
-  protected void postUpdate(T entity) {
-    // Override to perform any operation required after an entity update.
-    // For example ingestion pipeline creates a pipeline in AirFlow.
+  public void postUpdate(T entity) {
+    if (supportsSearchIndex) {
+      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, entityClass), scriptTxt, "");
+    }
   }
 
-  @Transaction
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
@@ -754,7 +725,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);
@@ -776,7 +746,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @Transaction
   public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
     // Get entity
     T entity = dao.findEntityById(entityId);
@@ -805,11 +774,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
-
+    entity.setChangeDescription(change);
+    postUpdate(entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
   public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) {
     T originalEntity = dao.findEntityById(entityId);
 
@@ -872,9 +841,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {
-    // Override this method to perform any operation required after deletion.
-    // For example ingestion pipeline deletes a pipeline in AirFlow.
+  protected void postDelete(T entity) {}
+
+  public void deleteFromSearch(T entity, String changeType) {
+    if (supportsSearchIndex) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
+        searchClient.softDeleteOrRestoreEntityFromSearch(
+            JsonUtils.deepCopy(entity, entityClass), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+      } else {
+        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
+      }
+    }
+  }
+
+  public void restoreFromSearch(T entity) {
+    if (supportsSearchIndex) {
+      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
+    }
   }
 
   private DeleteResponse<T> delete(String deletedBy, T original, boolean recursive, boolean hardDelete) {
@@ -885,9 +868,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     String changeType;
     T updated = get(null, original.getId(), putFields, ALL, false);
-    //    clearFields(updated, Fields.EMPTY_FIELDS); // Clear the entity and set the fields again
-    //    setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from
-    // ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(deletedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -903,7 +883,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new DeleteResponse<>(updated, changeType);
   }
 
-  @Transaction
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     // Validate entity
@@ -911,7 +890,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
-  @Transaction
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
     T entity = dao.findEntityById(id, ALL);
@@ -927,7 +905,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 id.toString(), entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (childrenRecords.isEmpty()) {
-      System.out.println("No children to delete");
+      LOG.info("No children to delete");
       return;
     }
     // Entity being deleted contains children entities
@@ -984,7 +962,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
   }
 
-  @Transaction
   public PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) {
     T entity = find(entityId, NON_DELETED);
 
@@ -1027,6 +1004,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeExtension(entity);
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
+    postCreate(entity);
     return entity;
   }
 
@@ -1082,15 +1060,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public List<String> getResultsFromAndToTimestamps(
       String fullyQualifiedName, String extension, Long startTs, Long endTs) {
     return getResultsFromAndToTimestamps(
-        fullyQualifiedName, extension, startTs, endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy.DESC);
+        fullyQualifiedName, extension, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC);
   }
 
   public List<String> getResultsFromAndToTimestamps(
-      String fqn,
-      String extension,
-      Long startTs,
-      Long endTs,
-      CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+      String fqn, String extension, Long startTs, Long endTs, EntityTimeSeriesDAO.OrderBy orderBy) {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
@@ -1126,6 +1100,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
       }
+    }
+  }
+
+  private void validateLifecycle(T entity) {
+    if (entity.getLifeCycle() == null) {
+      return;
     }
   }
 
@@ -1592,6 +1572,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public void updateOwner(T ownedEntity, EntityReference originalOwner, EntityReference newOwner) {
     // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
+    validateOwner(newOwner);
     removeOwner(ownedEntity, originalOwner);
     storeOwner(ownedEntity, newOwner);
   }
@@ -1651,8 +1632,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (owner == null) {
       return null;
     }
-    // Entities can be only owned by team of type 'group'
-    if (owner.getType().equals(Entity.TEAM)) {
+    if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidOwnerType(owner.getType()));
+    } else if (owner.getType().equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
       Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
       if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
@@ -1681,6 +1663,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public List<TagLabel> getAllTags(EntityInterface entity) {
     return entity.getTags();
+  }
+
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else {
+      throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
+    }
+  }
+
+  public void validateTaskThread(ThreadContext threadContext) {
+    ThreadType threadType = threadContext.getThread().getType();
+    if (threadType != ThreadType.Task) {
+      throw new IllegalArgumentException(String.format("Thread type %s is not task related", threadType));
+    }
   }
 
   public enum Operation {
@@ -1746,6 +1747,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDomain();
         updateDataProducts();
         updateExperts();
+        updateStyle();
+        updateLifeCycle();
         entitySpecificUpdate();
       }
 
@@ -1925,13 +1928,57 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
       updateToRelationships(
           FIELD_EXPERTS,
-          Entity.DATA_PRODUCT,
+          entityType,
           original.getId(),
           Relationship.EXPERT,
           Entity.USER,
           origExperts,
           updatedExperts,
           false);
+    }
+
+    private void updateStyle() {
+      if (!supportsStyle) {
+        return;
+      }
+      if (original.getStyle() == updated.getStyle()) return;
+
+      recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
+    }
+
+    private void updateLifeCycle() {
+      if (!supportsLifeCycle) {
+        return;
+      }
+
+      if (original.getLifeCycle() == updated.getLifeCycle()) return;
+
+      if (original.getLifeCycle() == null) {
+        original.setLifeCycle(new LifeCycle());
+      }
+
+      if (original.getLifeCycle().getCreated() != null
+          && (updated.getLifeCycle().getCreated() == null
+              || updated.getLifeCycle().getCreated().getTimestamp()
+                  < original.getLifeCycle().getCreated().getTimestamp())) {
+        updated.getLifeCycle().setCreated(original.getLifeCycle().getCreated());
+      }
+
+      if (original.getLifeCycle().getAccessed() != null
+          && (updated.getLifeCycle().getAccessed() == null
+              || updated.getLifeCycle().getAccessed().getTimestamp()
+                  < original.getLifeCycle().getAccessed().getTimestamp())) {
+        updated.getLifeCycle().setAccessed(original.getLifeCycle().getAccessed());
+      }
+
+      if (original.getLifeCycle().getUpdated() != null
+          && (updated.getLifeCycle().getUpdated() == null
+              || updated.getLifeCycle().getUpdated().getTimestamp()
+                  < original.getLifeCycle().getUpdated().getTimestamp())) {
+        updated.getLifeCycle().setUpdated(original.getLifeCycle().getUpdated());
+      }
+
+      recordChange(FIELD_STYLE, original.getLifeCycle(), updated.getLifeCycle(), true);
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -2321,11 +2368,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
     @Override
-    public EntityInterface load(@CheckForNull Pair<String, UUID> idPair) throws IOException {
+    public EntityInterface load(@NotNull Pair<String, UUID> idPair) throws IOException {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
       return repository.getDao().findEntityById(id, ALL);
+    }
+  }
+
+  public static class DescriptionTaskWorkflow extends TaskWorkflow {
+    DescriptionTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      EntityInterface aboutEntity = threadContext.getAboutEntity();
+      aboutEntity.setDescription(resolveTask.getNewValue());
+      return aboutEntity;
+    }
+  }
+
+  public static class TagTaskWorkflow extends TaskWorkflow {
+    TagTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      EntityInterface aboutEntity = threadContext.getAboutEntity();
+      aboutEntity.setTags(tags);
+      return aboutEntity;
     }
   }
 }

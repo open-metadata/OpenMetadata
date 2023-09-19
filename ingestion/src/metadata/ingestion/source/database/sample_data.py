@@ -97,10 +97,12 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
@@ -503,6 +505,14 @@ class SampleDataSource(
             )
         )
 
+        self.life_cycle_data = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/lifecycle/lifeCycle.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -539,6 +549,7 @@ class SampleDataSource(
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
         yield from self.ingest_logical_test_suite()
+        yield from self.ingest_life_cycle()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -676,7 +687,6 @@ class SampleDataSource(
             yield Either(right=table_and_db)
 
             if table.get("sampleData"):
-
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -789,7 +799,6 @@ class SampleDataSource(
             yield Either(right=create_topic)
 
             if topic.get("sampleData"):
-
                 topic_fqn = fqn.build(
                     self.metadata,
                     entity_type=Topic,
@@ -1362,6 +1371,32 @@ class SampleDataSource(
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
                     yield Either(right=test_case_result_req)
+
+    def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:
+        """Iterate over all the life cycle data and ingest them"""
+        for life_cycle in self.life_cycle_data["lifeCycleData"]:
+            table = self.metadata.get_by_name(
+                entity=Table, fqn=life_cycle["fqn"], fields=["lifeCycle"]
+            )
+            life_cycle = LifeCycle(**(life_cycle["lifeCycle"]))
+
+            if life_cycle.created.accessedBy:
+                created_by = self.get_accessed_by(life_cycle.created.accessedBy.name)
+                life_cycle.created.accessedBy.id = created_by.id
+
+            if life_cycle.updated.accessedBy:
+                updated_by = self.get_accessed_by(life_cycle.updated.accessedBy.name)
+                life_cycle.created.accessedBy.id = updated_by.id
+
+            if life_cycle.accessed.accessedBy:
+                accessed_by = self.get_accessed_by(life_cycle.accessed.accessedBy.name)
+                life_cycle.accessed.accessedBy.id = accessed_by.id
+
+            life_cycle_request = OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+            yield Either(right=life_cycle_request)
+
+    def get_accessed_by(self, accessed_by) -> EntityReference:
+        return self.metadata.get_entity_reference(entity=User, fqn=accessed_by)
 
     def close(self):
         """Nothing to close"""

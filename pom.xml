@@ -95,7 +95,7 @@
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.13.0</commons-io.version>
-    <flyway.version>9.20.0</flyway.version>
+    <flyway.version>9.22.0</flyway.version>
     <redshift-jdbc.version>2.1.0.18</redshift-jdbc.version>
     <gson.version>2.10.1</gson.version>
     <mysql.connector.version>8.0.33</mysql.connector.version>
@@ -120,7 +120,7 @@
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.3</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
-    <antlr.version>4.13.0</antlr.version>
+    <antlr.version>4.13.1</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -148,7 +148,7 @@
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
     <unboundsdk.version>6.0.9</unboundsdk.version>
     <dropwizard-web.version>1.5.1</dropwizard-web.version>
-    <snakeyaml.version>2.1</snakeyaml.version>
+    <snakeyaml.version>2.2</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
     <slack.version>1.29.2</slack.version>
   </properties>

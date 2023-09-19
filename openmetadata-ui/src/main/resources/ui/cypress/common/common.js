@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-// / <reference types="cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import { isEmpty } from 'lodash';
 import {
@@ -151,9 +152,10 @@ export const handleIngestionRetry = (
       .as('checkRun');
     // the latest run should be success
     cy.get('@checkRun').then(($ingestionStatus) => {
+      const text = $ingestionStatus.text();
       if (
-        $ingestionStatus.text() !== 'Success' &&
-        $ingestionStatus.text() !== 'Failed' &&
+        text !== 'Success' &&
+        text !== 'Failed' &&
         retryCount <= RETRY_TIMES
       ) {
         // retry after waiting with log1 method [20s,40s,80s,160s,320s]
@@ -162,7 +164,7 @@ export const handleIngestionRetry = (
         cy.reload();
         checkSuccessState();
       } else {
-        cy.get('@checkRun').should('have.text', 'Success');
+        cy.get('@checkRun').should('contain', 'Success');
       }
     });
   };
@@ -664,15 +666,11 @@ export const restoreUser = (username) => {
 };
 
 export const deleteSoftDeletedUser = (username) => {
-  interceptURL(
-    'GET',
-    '/api/v1/users?fields=profile,teams,roles&include=*&limit=*',
-    'getSoftDeletedUser'
-  );
+  interceptURL('GET', '/api/v1/users?*', 'getUsers');
 
   cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
 
-  verifyResponseStatusCode('@getSoftDeletedUser', 200);
+  verifyResponseStatusCode('@getUsers', 200);
 
   cy.get(`[data-testid="delete-user-btn-${username}"]`)
     .should('exist')
@@ -1008,10 +1006,7 @@ export const retryIngestionRun = () => {
         verifyResponseStatusCode('@pipelineStatus', 200);
         checkSuccessState();
       } else {
-        cy.get('[data-testid="pipeline-status"]').should(
-          'have.text',
-          'Success'
-        );
+        cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
       }
     });
   };
@@ -1112,7 +1107,7 @@ export const addOwner = (
     cy.get('[data-testid="edit-owner"]').click();
   }
 
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
 
@@ -1216,7 +1211,7 @@ export const deleteEntity = (
   toastNotification(`${successMessageEntityName} deleted successfully!`, false);
 };
 
-const navigateToService = (serviceName) => {
+const navigateToService = (serviceName, serviceCategory) => {
   cy.get('[data-testid="services-container"]').then(($body) => {
     // Find if the service name is present in the list
     const serviceTitle = $body.find(
@@ -1224,7 +1219,16 @@ const navigateToService = (serviceName) => {
     );
     // If the service is not present
     if (isEmpty(serviceTitle)) {
+      interceptURL(
+        'GET',
+        `/api/v1/services/${serviceCategory}*`,
+        'getServices'
+      );
+
       cy.get('[data-testid="next"]').click();
+
+      verifyResponseStatusCode('@getServices', 200);
+
       navigateToService(serviceName);
     } else {
       cy.get(`[data-testid="service-name-${serviceName}"]`).click();
@@ -1255,7 +1259,7 @@ export const visitServiceDetailsPage = (
     'getServiceDetails'
   );
 
-  navigateToService(serviceName);
+  navigateToService(serviceName, serviceCategory);
 
   verifyResponseStatusCode('@getServiceDetails', 200);
 };

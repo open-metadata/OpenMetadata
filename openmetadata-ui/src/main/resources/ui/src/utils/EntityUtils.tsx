@@ -28,6 +28,7 @@ import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
+import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import { EntityField } from 'constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -43,6 +44,8 @@ import {
   StoredProcedureCodeObject,
 } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Votes } from 'generated/type/votes';
 import i18next from 'i18next';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import {
@@ -68,6 +71,7 @@ import {
   getMlModelDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
+  getStoredProcedureDetailPath,
   getTableDetailsPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
@@ -95,7 +99,12 @@ import {
 } from './CommonUtils';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import {
@@ -526,7 +535,10 @@ export const getEntityOverview = (
             }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: `${i18next.t('label.data-model')} ${i18next.t(
@@ -549,7 +561,10 @@ export const getEntityOverview = (
           ),
           isExternal: false,
           isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
 
         {
@@ -557,14 +572,20 @@ export const getEntityOverview = (
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
           isLink: false,
           isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.data-model-type'),
           value: dataModelType,
           isLink: false,
           isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
       ];
 
@@ -592,7 +613,10 @@ export const getEntityOverview = (
             }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.service'),
@@ -628,13 +652,19 @@ export const getEntityOverview = (
             )
           ),
           isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
           isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         ...(isObject(storedProcedureCode)
           ? [
@@ -644,7 +674,10 @@ export const getEntityOverview = (
                   (storedProcedureCode as StoredProcedureCodeObject).language ??
                   NO_DATA,
                 isLink: false,
-                visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+                visible: [
+                  DRAWER_NAVIGATION_OPTIONS.lineage,
+                  DRAWER_NAVIGATION_OPTIONS.explore,
+                ],
               },
             ]
           : []),
@@ -1037,6 +1070,12 @@ export const getEntityLinkFromType = (
       return getContainerDetailPath(fullyQualifiedName);
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
+    case EntityType.DATA_PRODUCT:
+      return getDataProductsDetailsPath(getEncodedFqn(fullyQualifiedName));
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(fullyQualifiedName);
+    case EntityType.STORED_PROCEDURE:
+      return getStoredProcedureDetailPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1161,6 +1200,7 @@ export const getEntityBreadcrumbs = (
   entity:
     | SearchedDataProps['data'][number]['_source']
     | DashboardDataModel
+    | StoredProcedure
     | Database
     | DatabaseSchema
     | DataAssetsWithoutServiceField,
@@ -1169,6 +1209,7 @@ export const getEntityBreadcrumbs = (
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
+    case EntityType.STORED_PROCEDURE:
       return getBreadcrumbForTable(entity as Table, includeCurrent);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
@@ -1325,6 +1366,17 @@ export const getEntityBreadcrumbs = (
         },
       ];
 
+    case EntityType.SEARCH_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.SEARCH_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.SEARCH_SERVICES)
+          ),
+        },
+      ];
+
     case EntityType.CONTAINER: {
       const data = entity as Container;
 
@@ -1333,6 +1385,17 @@ export const getEntityBreadcrumbs = (
         includeCurrent: true,
         parents: isUndefined(data.parent) ? [] : [data.parent],
       });
+    }
+
+    case EntityType.DATA_PRODUCT: {
+      const data = entity as DataProduct;
+
+      return [
+        {
+          name: getEntityName(data.domain),
+          url: getDomainPath(data.domain.fullyQualifiedName),
+        },
+      ];
     }
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
@@ -1370,4 +1433,27 @@ export const getEntityThreadLink = (
   );
 
   return thread[0]?.entityLink;
+};
+
+/**
+ * Take entity vote and userId as input and return name for vote status type
+ * @param votes - entity votes
+ * @param userId - current user id
+ * @returns - vote status type
+ */
+export const getEntityVoteStatus = (userId: string, votes?: Votes) => {
+  if (isUndefined(votes)) {
+    return QueryVoteType.unVoted;
+  }
+
+  const upVoters = votes.upVoters ?? [];
+  const downVoters = votes.downVoters ?? [];
+
+  if (upVoters.some((user) => user.id === userId)) {
+    return QueryVoteType.votedUp;
+  } else if (downVoters.some((user) => user.id === userId)) {
+    return QueryVoteType.votedDown;
+  } else {
+    return QueryVoteType.unVoted;
+  }
 };

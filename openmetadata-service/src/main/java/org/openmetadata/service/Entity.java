@@ -80,6 +80,10 @@ public final class Entity {
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
 
+  public static final String FIELD_STYLE = "style";
+
+  public static final String FIELD_LIFE_CYCLE = "lifeCycle";
+
   //
   // Service entities
   //
@@ -179,6 +183,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
   }
 
   //

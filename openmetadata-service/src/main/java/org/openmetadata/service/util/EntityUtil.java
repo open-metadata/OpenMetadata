@@ -411,6 +411,10 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
+        .withName(term.getName())
+        .withDisplayName(term.getDisplayName())
+        .withDescription(term.getDescription())
+        .withStyle(term.getStyle())
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
@@ -418,6 +422,10 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
+        .withName(tag.getName())
+        .withDisplayName(tag.getDisplayName())
+        .withDescription(tag.getDescription())
+        .withStyle(tag.getStyle())
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
         .withSource(TagSource.CLASSIFICATION);
@@ -535,5 +543,13 @@ public final class EntityUtil {
 
   public static boolean isTagTask(TaskType taskType) {
     return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
+  }
+
+  public static Column findColumn(List<Column> columns, String columnName) {
+    return columns.stream()
+        .filter(c -> c.getName().equals(columnName))
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 }

@@ -43,7 +43,7 @@ const StoredProcedureSummary = ({
   );
 
   return (
-    <SummaryPanelSkeleton loading={isLoading}>
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
