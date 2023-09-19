@@ -17,10 +17,10 @@ import React from 'react';
 import AddPipeLineModal from './AddPipeLineModal';
 
 const mockProps = {
-  showAddPipelineModal: true,
-  pipelineSearchValue: '',
-  selectedPipelineId: undefined,
-  pipelineOptions: [
+  showAddEdgeModal: true,
+  edgeSearchValue: '',
+  selectedEdgeId: undefined,
+  edgeOptions: [
     {
       displayName: 'Pipeline 1',
       name: 'Pipeline 1',
@@ -40,12 +40,12 @@ describe('Test CustomEdge Component', () => {
   it('AddPipeLineModal should render properly', async () => {
     render(<AddPipeLineModal {...mockProps} />);
 
-    const pipelineModal = await screen.findByTestId('add-pipeline-modal');
+    const edgeModal = await screen.findByTestId('add-edge-modal');
     const fieldSelect = await screen.findByTestId('field-select');
     const removeEdge = await screen.findByTestId('remove-edge-button');
     const saveButton = await screen.findByTestId('save-button');
 
-    expect(pipelineModal).toBeInTheDocument();
+    expect(edgeModal).toBeInTheDocument();
     expect(fieldSelect).toBeInTheDocument();
     expect(removeEdge).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('Test CustomEdge Component', () => {
 
   it('CTA should work properly', async () => {
     render(
-      <AddPipeLineModal {...mockProps} selectedPipelineId="test-pipeline-1" />
+      <AddPipeLineModal {...mockProps} selectedEdgeId="test-pipeline-1" />
     );
 
     const removeEdge = await screen.findByTestId('remove-edge-button');

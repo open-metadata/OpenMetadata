@@ -19,7 +19,7 @@ import { PAGE_SIZE } from 'constants/constants';
 import { EntityType, FqnPart } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/type';
-import { capitalize, debounce, upperCase } from 'lodash';
+import { capitalize, debounce } from 'lodash';
 import { FormattedTableData } from 'Models';
 import React, {
   FC,
@@ -75,7 +75,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         '',
         '',
         SearchIndex[
-          upperCase(entityType) as keyof typeof SearchIndex
+          entityType as keyof typeof SearchIndex
         ] as ExploreSearchIndex
       );
       setData(formatDataResponse(data.data.hits.hits));
