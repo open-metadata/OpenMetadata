@@ -17,6 +17,8 @@ import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
+import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
@@ -292,7 +294,11 @@ export const getServiceIcon = (source: SourceType) => {
       <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
     );
   } else if (source.entityType === EntityType.DATA_PRODUCT) {
-    return <></>;
+    return (
+      <DataProductIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+    );
+  } else if (source.entityType === EntityType.DOMAIN) {
+    return <DomainIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
   } else {
     return (
       <img

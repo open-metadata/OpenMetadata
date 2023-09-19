@@ -10,8 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DataProductSelectOption } from 'components/DataProductsSelectList/DataProductSelectList.interface';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Paging } from 'generated/type/paging';
 
-import { TabSpecificField } from '../enums/entity.enum';
-
-// eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.VIEW_DEFINITION},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES}`;
+export type DataProductsSelectFormProps = {
+  placeholder: string;
+  defaultValue: string[];
+  onChange?: (value: string[]) => void;
+  onSubmit: (values: DataProduct[]) => Promise<void>;
+  onCancel: () => void;
+  fetchApi: (
+    search: string,
+    page: number
+  ) => Promise<{
+    data: DataProductSelectOption[];
+    paging: Paging;
+  }>;
+};

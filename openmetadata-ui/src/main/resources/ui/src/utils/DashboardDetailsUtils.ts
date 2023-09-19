@@ -19,7 +19,7 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.EXTENSION},
-${TabSpecificField.VOTES}`;
+${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const sortTagsForCharts = (charts: ChartType[]) => {
   return charts.map((chart) => ({

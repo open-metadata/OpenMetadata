@@ -10,8 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+.domain-select-popover {
+  min-width: 275px;
+  padding-top: 0;
+  .ant-popover-inner-content {
+    padding: 0;
+  }
 
-import { TabSpecificField } from '../enums/entity.enum';
+  .page-search-bar {
+    padding: 0;
+  }
 
-// eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.VIEW_DEFINITION},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES}`;
+  .dropdown-control-bar {
+    padding: 8px;
+  }
+
+  .ant-list-header,
+  .ant-list-footer {
+    padding: 12px;
+  }
+}
