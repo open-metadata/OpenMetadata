@@ -92,6 +92,10 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "$ref": "../../entity/data/table.json#/definitions/fileFormat"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "columns", "databaseSchema"],

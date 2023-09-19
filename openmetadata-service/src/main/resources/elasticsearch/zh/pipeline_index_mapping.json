@@ -271,6 +271,9 @@
       "entityType": {
         "type": "keyword"
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [
