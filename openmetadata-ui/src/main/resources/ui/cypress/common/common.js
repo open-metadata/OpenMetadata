@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { isEmpty } from 'lodash';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -1211,36 +1210,16 @@ export const deleteEntity = (
   toastNotification(`${successMessageEntityName} deleted successfully!`, false);
 };
 
-const navigateToService = (serviceName, serviceCategory) => {
-  cy.get('[data-testid="services-container"]').then(($body) => {
-    // Find if the service name is present in the list
-    const serviceTitle = $body.find(
-      `[data-testid="service-name-${serviceName}"]`
-    );
-    // If the service is not present
-    if (isEmpty(serviceTitle)) {
-      interceptURL(
-        'GET',
-        `/api/v1/services/${serviceCategory}*`,
-        'getServices'
-      );
-
-      cy.get('[data-testid="next"]').click();
-
-      verifyResponseStatusCode('@getServices', 200);
-
-      navigateToService(serviceName);
-    } else {
-      cy.get(`[data-testid="service-name-${serviceName}"]`).click();
-    }
-  });
-};
-
 export const visitServiceDetailsPage = (
   settingsMenuId,
   serviceCategory,
   serviceName
 ) => {
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
   cy.get('[data-testid="app-bar-item-settings"]').click();
@@ -1259,7 +1238,11 @@ export const visitServiceDetailsPage = (
     'getServiceDetails'
   );
 
-  navigateToService(serviceName, serviceCategory);
+  cy.get('[data-testid="searchbar"]').type(serviceName);
+
+  verifyResponseStatusCode('@searchService', 200);
+
+  cy.get(`[data-testid="service-name-${serviceName}"]`).click();
 
   verifyResponseStatusCode('@getServiceDetails', 200);
 };
