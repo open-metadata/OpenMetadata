@@ -76,7 +76,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(QUERY)
         .withDuration(0.0)
-        .withQueryDate(1673857635064L);
+        .withQueryDate(1673857635064L)
+        .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
   }
 
   @Override
@@ -118,7 +119,11 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   @Test
   void post_without_query_400() {
-    CreateQuery create = new CreateQuery().withDuration(0.0).withQueryDate(1673857635064L);
+    CreateQuery create =
+        new CreateQuery()
+            .withDuration(0.0)
+            .withQueryDate(1673857635064L)
+            .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
   }

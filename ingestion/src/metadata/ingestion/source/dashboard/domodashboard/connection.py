@@ -17,6 +17,7 @@ from typing import Optional
 
 from pydomo import Domo
 
+from metadata.clients.domo_client import DomoClient, OMPyDomoClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -30,7 +31,7 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-def get_connection(connection: DomoDashboardConnection) -> Domo:
+def get_connection(connection: DomoDashboardConnection) -> OMPyDomoClient:
     """
     Create connection
     """
@@ -40,7 +41,12 @@ def get_connection(connection: DomoDashboardConnection) -> Domo:
             connection.secretToken.get_secret_value(),
             api_host=connection.apiHost,
         )
-        return domo
+        client = DomoClient(connection)
+
+        return OMPyDomoClient(
+            domo=domo,
+            custom=client,
+        )
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)
@@ -48,7 +54,7 @@ def get_connection(connection: DomoDashboardConnection) -> Domo:
 
 def test_connection(
     metadata: OpenMetadata,
-    domo: Domo,
+    client: OMPyDomoClient,
     service_connection: DomoDashboardConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
@@ -57,11 +63,14 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    def custom_executor():
-        result = domo.page_list()
+    def custom_test_page_list():
+        result = client.domo.page_list()
         return list(result)
 
-    test_fn = {"GetDashboards": custom_executor}
+    test_fn = {
+        "GetDashboards": custom_test_page_list,
+        "GetCharts": client.custom.test_list_cards,
+    }
 
     test_connection_steps(
         metadata=metadata,
