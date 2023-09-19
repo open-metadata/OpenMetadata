@@ -86,6 +86,7 @@ class DataBaseConnectorInterface(ABC):
         page.get_by_test_id("next-button").click()
         self.service_name = self.generate_service_name()
         page.get_by_test_id("service-name").fill(self.service_name)
+        expect(page.get_by_test_id("service-name")).to_have_value(self.service_name)
         page.get_by_test_id("next-button").click()
         self.set_connection(page)
         page.get_by_test_id("submit-btn").click()
@@ -128,4 +129,5 @@ class DataBaseConnectorInterface(ABC):
         page.get_by_test_id("manage-button").click()
         page.get_by_test_id("delete-button-title").click()
         page.get_by_test_id("confirmation-text-input").fill("DELETE")
+        expect(page.get_by_test_id("confirmation-text-input")).to_have_value("DELETE")
         page.get_by_test_id("confirm-button").click()

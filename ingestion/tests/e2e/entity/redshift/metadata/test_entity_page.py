@@ -9,13 +9,11 @@ from playwright.sync_api import Page, expect
 
 from ingestion.tests.e2e.configs.common import go_to_service
 from ingestion.tests.e2e.configs.users.admin import Admin
-from ingestion.tests.e2e.conftest import BASE_URL, TIMEOUT
 
 
 @pytest.mark.order(1)
 def test_assert_metadata_ingestion_status_success(redshift_connector, page: Page):
     """Assert that the ingestion status is success"""
-    page.set_default_timeout(TIMEOUT)
 
     redshift_connector.create_service_ingest_metadata(page)
     service_name = redshift_connector.service_name
@@ -41,10 +39,9 @@ def test_assert_metadata_ingestion_status_success(redshift_connector, page: Page
 
 def test_change_database_owner(redshift_connector, page: Page):
     """..."""
-    page.set_default_timeout(TIMEOUT)
 
     service_name = redshift_connector.service_name
-    page.goto(f"{BASE_URL}/")
+    page.goto("/")
     Admin().login(page)
     go_to_service("Databases", page, service_name)
     page.get_by_test_id("edit-owner").click()
@@ -59,11 +56,10 @@ def test_change_database_owner(redshift_connector, page: Page):
 
 def test_data_consumer(redshift_connector, create_data_consumer_user, page: Page):
     """..."""
-    page.set_default_timeout(TIMEOUT)
 
     service_name = redshift_connector.service_name
     user = create_data_consumer_user
-    page.goto(f"{BASE_URL}/")
+    page.goto("/")
     user.login(page)
     go_to_service("Databases", page, service_name)
     expect(page.get_by_test_id("ingestions")).not_to_be_visible()

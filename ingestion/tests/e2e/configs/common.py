@@ -3,7 +3,7 @@
 import random
 import string
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from ingestion.tests.e2e.configs.users.user import User
 
@@ -40,7 +40,9 @@ def create_user(page: Page, email: str, display_name: str, role: str) -> User:
     page.get_by_test_id("add-user").click()
     page.get_by_test_id("email").click()
     page.get_by_test_id("email").fill(email)
+    expect(page.get_by_test_id("email")).to_have_value(email)
     page.get_by_test_id("displayName").fill(display_name)
+    expect(page.get_by_test_id("displayName")).to_have_value(display_name)
 
     password = "".join(random.choice(string.ascii_uppercase) for _ in range(3))
     password += "".join(random.choice(string.digits) for _ in range(3))
@@ -48,7 +50,9 @@ def create_user(page: Page, email: str, display_name: str, role: str) -> User:
     password += "".join(random.choice("%^&*#@$!)(?") for _ in range(3))
     page.get_by_label("Create Password").check()
     page.get_by_placeholder("Enter Password").fill(password)
+    expect(page.get_by_placeholder("Enter Password")).to_have_value(password)
     page.get_by_placeholder("Confirm Password").fill(password)
+    expect(page.get_by_placeholder("Confirm Password")).to_have_value(password)
 
     page.get_by_test_id("roles-dropdown").locator("div").nth(1).click()
     page.get_by_text(role).click()

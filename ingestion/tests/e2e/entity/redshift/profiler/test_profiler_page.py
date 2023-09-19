@@ -8,12 +8,10 @@ import time
 from playwright.sync_api import Page
 
 from ingestion.tests.e2e.configs.common import go_to_service
-from ingestion.tests.e2e.conftest import TIMEOUT
 
 
 def test_assert_profiler_ingestion_status_success(redshift_connector, page: Page):
     """test profiler ingestion status"""
-    page.set_default_timeout(TIMEOUT)
 
     service_name = redshift_connector.service_name
     redshift_connector.create_profiler_workflow(page)
