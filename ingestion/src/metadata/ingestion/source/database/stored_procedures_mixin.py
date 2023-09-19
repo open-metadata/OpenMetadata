@@ -179,5 +179,6 @@ class StoredProcedureMixin:
                     type="storedProcedure",
                 ),
                 processedLineage=bool(self.context.stored_procedure_query_lineage),
+                service=self.context.database_service.name.__root__,
             )
         )
