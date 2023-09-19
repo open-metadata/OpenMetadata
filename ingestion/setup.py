@@ -265,6 +265,12 @@ test = {
     "dbt-artifacts-parser",
 }
 
+e2e_test = {
+    # playwright dependencies
+    "pytest-playwright",
+    "pytest-base-url",
+}
+
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
@@ -298,6 +304,7 @@ setup(
         "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "e2e_test": list(e2e_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(

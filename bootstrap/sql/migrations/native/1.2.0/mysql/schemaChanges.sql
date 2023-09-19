@@ -85,5 +85,30 @@ SET json = JSON_INSERT(
 )
 WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
 
+-- Rename sandboxDomain for instanceDomain
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.sandboxDomain'),
+    '$.connection.config.instanceDomain',
+    JSON_EXTRACT(json, '$.connection.config.sandboxDomain')
+)
+WHERE serviceType = 'DomoDatabase';
+
+UPDATE dashboard_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.sandboxDomain'),
+    '$.connection.config.instanceDomain',
+    JSON_EXTRACT(json, '$.connection.config.sandboxDomain')
+)
+WHERE serviceType = 'DomoDashboard';
+
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.sandboxDomain'),
+    '$.connection.config.instanceDomain',
+    JSON_EXTRACT(json, '$.connection.config.sandboxDomain')
+)
+WHERE serviceType = 'DomoPipeline';
+
 -- Query Entity supports service, which requires FQN for name
 ALTER TABLE query_entity CHANGE COLUMN nameHash fqnHash VARCHAR(256);
