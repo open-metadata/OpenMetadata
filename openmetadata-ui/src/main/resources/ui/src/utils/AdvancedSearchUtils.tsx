@@ -66,6 +66,10 @@ export const getDropDownItems = (index: string) => {
       ];
     case SearchIndex.CONTAINER:
       return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
+    case SearchIndex.STORED_PROCEDURE:
+      return [...COMMON_DROPDOWN_ITEMS];
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+      return [...COMMON_DROPDOWN_ITEMS];
     case SearchIndex.GLOSSARY:
       return [...GLOSSARY_DROPDOWN_ITEMS];
     case SearchIndex.TAG:
