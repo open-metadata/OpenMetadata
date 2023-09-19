@@ -445,7 +445,7 @@
         "type": "keyword"
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object"
       },
       "domain" : {
         "properties": {

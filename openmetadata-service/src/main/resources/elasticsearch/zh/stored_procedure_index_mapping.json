@@ -417,7 +417,7 @@
         }
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object"
       },
       "extension": {
         "type": "keyword"

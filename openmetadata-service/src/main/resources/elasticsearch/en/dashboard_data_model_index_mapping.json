@@ -277,7 +277,7 @@
         "type": "text"
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object"
       },
       "domain" : {
         "properties": {

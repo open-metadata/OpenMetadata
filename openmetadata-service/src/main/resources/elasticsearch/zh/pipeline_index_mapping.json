@@ -272,7 +272,7 @@
         "type": "keyword"
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object"
       },
       "suggest": {
         "type": "completion",

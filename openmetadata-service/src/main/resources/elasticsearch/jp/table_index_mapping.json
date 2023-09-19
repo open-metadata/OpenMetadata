@@ -405,7 +405,7 @@
         }
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object"
       },
       "location": {
         "properties": {

@@ -275,7 +275,7 @@
         }
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object"
       },
       "usageSummary": {
         "properties": {

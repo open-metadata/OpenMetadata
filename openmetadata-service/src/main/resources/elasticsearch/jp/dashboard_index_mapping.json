@@ -441,7 +441,7 @@
         }
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object"
       },
       "serviceType": {
         "type": "keyword"

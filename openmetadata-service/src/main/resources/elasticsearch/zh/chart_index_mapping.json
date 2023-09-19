@@ -277,7 +277,7 @@
           }
         },
         "lifeCycle": {
-          "type": "keyword"
+          "type": "object"
         },
         "dataProducts" : {
           "properties": {
