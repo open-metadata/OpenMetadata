@@ -271,6 +271,9 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "usageSummary": {
         "properties": {
           "dailyStats": {

@@ -370,6 +370,9 @@
       "entityType": {
         "type": "keyword"
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [

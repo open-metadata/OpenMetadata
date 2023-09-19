@@ -89,6 +89,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -176,6 +177,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
   @Getter protected final boolean supportsStyle;
+  @Getter protected final boolean supportsLifeCycle;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
@@ -254,6 +256,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsStyle) {
       this.patchFields.addField(allowedFields, FIELD_STYLE);
       this.putFields.addField(allowedFields, FIELD_STYLE);
+    }
+    this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
+    if (supportsLifeCycle) {
+      this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
+      this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
     }
   }
 
@@ -898,7 +905,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 id.toString(), entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (childrenRecords.isEmpty()) {
-      System.out.println("No children to delete");
+      LOG.info("No children to delete");
       return;
     }
     // Entity being deleted contains children entities
@@ -1093,6 +1100,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
       }
+    }
+  }
+
+  private void validateLifecycle(T entity) {
+    if (entity.getLifeCycle() == null) {
+      return;
     }
   }
 
@@ -1735,6 +1748,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDataProducts();
         updateExperts();
         updateStyle();
+        updateLifeCycle();
         entitySpecificUpdate();
       }
 
@@ -1930,6 +1944,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (original.getStyle() == updated.getStyle()) return;
 
       recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
+    }
+
+    private void updateLifeCycle() {
+      if (!supportsLifeCycle) {
+        return;
+      }
+
+      if (original.getLifeCycle() == updated.getLifeCycle()) return;
+
+      if (original.getLifeCycle() == null) {
+        original.setLifeCycle(new LifeCycle());
+      }
+
+      if (original.getLifeCycle().getCreated() != null
+          && (updated.getLifeCycle().getCreated() == null
+              || updated.getLifeCycle().getCreated().getTimestamp()
+                  < original.getLifeCycle().getCreated().getTimestamp())) {
+        updated.getLifeCycle().setCreated(original.getLifeCycle().getCreated());
+      }
+
+      if (original.getLifeCycle().getAccessed() != null
+          && (updated.getLifeCycle().getAccessed() == null
+              || updated.getLifeCycle().getAccessed().getTimestamp()
+                  < original.getLifeCycle().getAccessed().getTimestamp())) {
+        updated.getLifeCycle().setAccessed(original.getLifeCycle().getAccessed());
+      }
+
+      if (original.getLifeCycle().getUpdated() != null
+          && (updated.getLifeCycle().getUpdated() == null
+              || updated.getLifeCycle().getUpdated().getTimestamp()
+                  < original.getLifeCycle().getUpdated().getTimestamp())) {
+        updated.getLifeCycle().setUpdated(original.getLifeCycle().getUpdated());
+      }
+
+      recordChange(FIELD_STYLE, original.getLifeCycle(), updated.getLifeCycle(), true);
     }
 
     public final boolean updateVersion(Double oldVersion) {
