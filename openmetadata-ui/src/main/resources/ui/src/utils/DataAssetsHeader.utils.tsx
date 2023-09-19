@@ -120,6 +120,15 @@ export const getDataAssetsHeaderInfo = (
               value={dashboardDetails.project}
             />
           )}
+          {dashboardDetails?.usageSummary && (
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                dashboardDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                false
+              )}
+            />
+          )}
         </>
       );
 
@@ -177,6 +186,15 @@ export const getDataAssetsHeaderInfo = (
               )}
               label={t('label.dashboard')}
               value={entityName}
+            />
+          )}
+          {mlModelDetail?.usageSummary && (
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
+                false
+              )}
             />
           )}
         </>
