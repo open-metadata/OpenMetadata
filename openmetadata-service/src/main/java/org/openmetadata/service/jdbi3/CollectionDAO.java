@@ -3154,12 +3154,85 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
+    default List<TestCaseRecord> listBeforeTsOrder(ListFilter filter, int limit, Integer before) {
+      return listBeforeTsOrdered(getTableName(), getNameColumn(), filter.getCondition(), limit, before);
+    }
+
+    default List<TestCaseRecord> listAfterTsOrder(ListFilter filter, int limit, Integer after) {
+      return listAfterTsOrdered(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
+    }
+
     default int countOfTestCases(List<UUID> testCaseIds) {
       return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).collect(Collectors.toList()));
     }
 
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
     int countOfTestCases(@Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT * FROM (SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) executionTimeSorted "
+                + "<cond> AND ranked < :before "
+                + "ORDER BY ranked DESC "
+                + "LIMIT :limit) rankedBefore ORDER BY ranked",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT * FROM (SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> ORDER BY (json ->> 'testCaseResult,timestamp') DESC NULLS LAST) executionTimeSorted "
+                + "<cond> AND ranked < : before "
+                + "ORDER BY ranked DESC "
+                + "LIMIT :limit) rankedBefore ORDER BY ranked",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(TestCaseRecordMapper.class)
+    List<TestCaseRecord> listBeforeTsOrdered(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("before") int before);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> "
+                + "ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) executionTimeSorted "
+                + "<cond> AND ranked > :after "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> "
+                + "ORDER BY (json ->> 'testCaseResult,timestamp') DESC NULLS LAST) executionTimeSorted "
+                + "<cond> AND ranked > :after "
+                + "LIMIT : limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(TestCaseRecordMapper.class)
+    List<TestCaseRecord> listAfterTsOrdered(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("after") int after);
+
+    class TestCaseRecord {
+      @Getter String json;
+      @Getter Integer rank;
+
+      public TestCaseRecord(String json, Integer rank) {
+        this.json = json;
+        this.rank = rank;
+      }
+    }
+
+    class TestCaseRecordMapper implements RowMapper<TestCaseRecord> {
+      @Override
+      public TestCaseRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new TestCaseRecord(rs.getString("json"), rs.getInt("ranked"));
+      }
+    }
   }
 
   interface WebAnalyticEventDAO extends EntityDAO<WebAnalyticEvent> {
