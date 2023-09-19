@@ -16,7 +16,6 @@ Domo Database source to extract metadata
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 
-from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
