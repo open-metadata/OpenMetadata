@@ -82,7 +82,7 @@ describe('Bots Page should work properly', () => {
       .click();
     interceptURL(
       'GET',
-      'api/v1/bots?limit=100&include=non-deleted',
+      'api/v1/bots?limit=*&include=non-deleted',
       'getBotsList'
     );
     cy.get('[data-testid="settings-left-panel"]')
@@ -111,9 +111,6 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="email"]').should('exist').type(botEmail);
     // Enter display name
     cy.get('[data-testid="displayName"]').should('exist').type(botName);
-    // Select token type
-    cy.get('[data-testid="auth-mechanism"]').should('be.visible').click();
-    cy.contains(JWTToken).should('exist').should('be.visible').click();
     // Select expiry time
     cy.get('[data-testid="token-expiry"]').should('be.visible').click();
     cy.contains('1 hr').should('exist').should('be.visible').click();
