@@ -118,6 +118,12 @@ jobs:
           source env/bin/activate
           make install_e2e_tests
           make run_e2e_tests
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-artifacts
+          path: ingestion/tests/e2e/artifacts/
+          retention-days: 1
       - name: Clean Up
         run: |
           cd ./docker/development
