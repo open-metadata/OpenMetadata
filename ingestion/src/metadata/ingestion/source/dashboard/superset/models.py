@@ -35,7 +35,7 @@ class DashOwner(BaseModel):
     email: Optional[str]
 
 
-class DashboradResult(BaseModel):
+class DashboardResult(BaseModel):
     dashboard_title: Optional[str]
     url: Optional[str]
     owners: Optional[List[DashOwner]] = []
@@ -48,7 +48,7 @@ class SupersetDashboardCount(BaseModel):
     count: Optional[int]
     ids: Optional[List[int]] = []
     dashboard_title: Optional[str]
-    result: Optional[List[DashboradResult]] = []
+    result: Optional[List[DashboardResult]] = []
 
 
 # Chart

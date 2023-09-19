@@ -116,6 +116,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "UUID of the entity for which to list the Queries", schema = @Schema(type = "UUID"))
           @QueryParam("entityId")
           UUID entityId,
+      @Parameter(description = "Filter Queries by service Fully Qualified Name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
       @Parameter(description = "Limit the number queries returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -132,6 +135,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
+    filter.addQueryParam("service", service);
     ResultList<Query> queries =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return PIIMasker.getQueries(queries, authorizer, securityContext);
@@ -509,6 +513,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return copy(new Query(), create, user)
         .withTags(create.getTags())
         .withQuery(create.getQuery())
+        .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
         .withUsers(getEntityReferences(USER, create.getUsers()))

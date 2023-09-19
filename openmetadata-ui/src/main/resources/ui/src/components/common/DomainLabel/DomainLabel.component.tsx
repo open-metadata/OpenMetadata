@@ -92,7 +92,7 @@ export const DomainLabel = ({
         {activeDomain || domainDisplayName ? (
           <Link
             className="text-primary font-medium text-xs no-underline"
-            data-testid="owner-link"
+            data-testid="domain-link"
             to={getDomainPath(activeDomain?.fullyQualifiedName)}>
             {isUndefined(domainDisplayName)
               ? getEntityName(activeDomain)
@@ -101,7 +101,7 @@ export const DomainLabel = ({
         ) : (
           <Typography.Text
             className="font-medium text-xs"
-            data-testid="owner-link">
+            data-testid="domain-link">
             {t('label.no-entity', { entity: t('label.domain') })}
           </Typography.Text>
         )}

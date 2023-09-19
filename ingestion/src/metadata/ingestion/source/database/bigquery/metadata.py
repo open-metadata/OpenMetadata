@@ -630,18 +630,21 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         Pick the stored procedure name from the context
         and return the list of associated queries
         """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-            region=self.service_connection.usageLocation,
-        )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-            schema_name=self.context.database_schema.name.__root__,
-            database_name=self.context.database.name.__root__,
-        )
+        # Only process if we actually have yield a stored procedure
+        if self.context.stored_procedure:
+            start, _ = get_start_and_end(self.source_config.queryLogDuration)
+            query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
+                start_date=start,
+                region=self.service_connection.usageLocation,
+            )
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+                schema_name=self.context.database_schema.name.__root__,
+                database_name=self.context.database.name.__root__,
+            )
 
-        for query_by_procedure in (
-            queries_dict.get(self.context.stored_procedure.name.__root__.lower()) or []
-        ):
-            yield query_by_procedure
+            for query_by_procedure in (
+                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
+                or []
+            ):
+                yield query_by_procedure
