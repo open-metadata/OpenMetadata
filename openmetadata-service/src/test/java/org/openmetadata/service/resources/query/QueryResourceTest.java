@@ -76,7 +76,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(QUERY)
         .withDuration(0.0)
-        .withQueryDate(1673857635064L);
+        .withQueryDate(1673857635064L)
+        .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
   }
 
   @Override
