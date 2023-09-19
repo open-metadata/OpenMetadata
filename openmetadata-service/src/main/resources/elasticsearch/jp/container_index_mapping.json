@@ -431,6 +431,9 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "serviceType": {
         "type": "keyword"
       },

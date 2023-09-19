@@ -260,6 +260,9 @@
       "deleted": {
         "type": "text"
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "domain" : {
         "properties": {
           "id": {

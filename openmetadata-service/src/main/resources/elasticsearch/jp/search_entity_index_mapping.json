@@ -273,6 +273,9 @@
       "extension": {
         "type": "keyword"
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "dataProducts": {
         "properties": {
           "id": {

@@ -97,7 +97,7 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.lifeCycle import Accessed, Created, Deleted, Updated
+from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
@@ -688,7 +688,6 @@ class SampleDataSource(
             yield Either(right=table_and_db)
 
             if table.get("sampleData"):
-
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -801,7 +800,6 @@ class SampleDataSource(
             yield Either(right=create_topic)
 
             if topic.get("sampleData"):
-
                 topic_fqn = fqn.build(
                     self.metadata,
                     entity_type=Topic,
@@ -1379,55 +1377,27 @@ class SampleDataSource(
         """Iterate over all the life cycle data and ingest them"""
         for life_cycle in self.life_cycle_data["lifeCycleData"]:
             table = self.metadata.get_by_name(
-                entity=Table,
-                fqn=life_cycle["fqn"],
+                entity=Table, fqn=life_cycle["fqn"], fields=["lifeCycle"]
             )
-            life_cycle_data = life_cycle["lifeCycle"]
-            life_cycle_properties = init_empty_life_cycle_properties()
-            created_by = self.metadata.get_entity_reference(
-                entity=User, fqn=life_cycle_data["created"]["created_by"]
-            )
-            life_cycle_properties.created = Created(
-                createdAt=life_cycle_data["created"]["created_at"],
-                createdBy=created_by
-                if created_by
-                else life_cycle_data["created"]["created_by"],
-            )
+            life_cycle = LifeCycle(**(life_cycle["lifeCycle"]))
 
-            updated_by = self.metadata.get_entity_reference(
-                entity=User, fqn=life_cycle_data["updated"]["updated_by"]
-            )
-            life_cycle_properties.updated = Updated(
-                updatedAt=life_cycle_data["updated"]["updated_at"],
-                updatedBy=updated_by
-                if updated_by
-                else life_cycle_data["updated"]["updated_by"],
-            )
+            if life_cycle.created.accessedBy:
+                created_by = self.get_accessed_by(life_cycle.created.accessedBy.name)
+                life_cycle.created.accessedBy.id = created_by.id
 
-            accessed_by = self.metadata.get_entity_reference(
-                entity=User, fqn=life_cycle_data["accessed"]["accessed_by"]
-            )
-            life_cycle_properties.accessed = Accessed(
-                accessedAt=life_cycle_data["accessed"]["accessed_at"],
-                accessedBy=accessed_by
-                if accessed_by
-                else life_cycle_data["accessed"]["accessed_by"],
-            )
+            if life_cycle.updated.accessedBy:
+                updated_by = self.get_accessed_by(life_cycle.updated.accessedBy.name)
+                life_cycle.created.accessedBy.id = updated_by.id
 
-            deleted_by = self.metadata.get_entity_reference(
-                entity=User, fqn=life_cycle_data["deleted"]["deleted_by"]
-            )
-            life_cycle_properties.deleted = Deleted(
-                deletedAt=life_cycle_data["deleted"]["deleted_at"],
-                deletedBy=deleted_by
-                if deleted_by
-                else life_cycle_data["deleted"]["deleted_by"],
-            )
+            if life_cycle.accessed.accessedBy:
+                accessed_by = self.get_accessed_by(life_cycle.accessed.accessedBy.name)
+                life_cycle.accessed.accessedBy.id = accessed_by.id
 
-            life_cycle_request = OMetaLifeCycleData(
-                entity=table, life_cycle_properties=life_cycle_properties
-            )
+            life_cycle_request = OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
             yield Either(right=life_cycle_request)
+
+    def get_accessed_by(self, accessed_by) -> EntityReference:
+        return self.metadata.get_entity_reference(entity=User, fqn=accessed_by)
 
     def close(self):
         """Nothing to close"""

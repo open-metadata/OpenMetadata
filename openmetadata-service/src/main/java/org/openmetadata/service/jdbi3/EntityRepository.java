@@ -89,6 +89,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -1951,6 +1952,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (original.getLifeCycle() == updated.getLifeCycle()) return;
+
+      if (original.getLifeCycle() == null) {
+        original.setLifeCycle(new LifeCycle());
+      }
 
       if (original.getLifeCycle().getCreated() != null
           && (updated.getLifeCycle().getCreated() == null

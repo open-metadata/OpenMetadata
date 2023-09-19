@@ -416,6 +416,9 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "extension": {
         "type": "keyword"
       },

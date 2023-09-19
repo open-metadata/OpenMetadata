@@ -333,6 +333,9 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "usageSummary": {
         "properties": {
           "dailyStats": {
