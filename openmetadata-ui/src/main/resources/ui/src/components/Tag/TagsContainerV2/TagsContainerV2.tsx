@@ -35,6 +35,7 @@ import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
+import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
@@ -45,6 +46,7 @@ const TagsContainerV2 = ({
   entityFqn,
   tagType,
   displayType,
+  layoutType,
   showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
@@ -59,19 +61,19 @@ const TagsContainerV2 = ({
   const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
 
-  const isGlossaryType = useMemo(
-    () => tagType === TagSource.Glossary,
-    [tagType]
-  );
-
-  const showAddTagButton = useMemo(
-    () => permission && isEmpty(tags?.[tagType]),
-    [permission, tags?.[tagType]]
-  );
-
-  const selectedTagsInternal = useMemo(
-    () => tags?.[tagType].map(({ tagFQN }) => tagFQN),
-    [tags, tagType]
+  const {
+    isGlossaryType,
+    showAddTagButton,
+    selectedTagsInternal,
+    isHoriZontalLayout,
+  } = useMemo(
+    () => ({
+      isGlossaryType: tagType === TagSource.Glossary,
+      showAddTagButton: permission && isEmpty(tags?.[tagType]),
+      selectedTagsInternal: tags?.[tagType].map(({ tagFQN }) => tagFQN),
+      isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
+    }),
+    [tagType, permission, tags?.[tagType], tags, layoutType]
   );
 
   const fetchGlossaryList = useCallback(
@@ -167,12 +169,13 @@ const TagsContainerV2 = ({
       <Col span={24}>
         <TagsViewer
           displayType={displayType}
+          layoutType={layoutType}
           showNoDataPlaceholder={showNoDataPlaceholder}
           tags={tags?.[tagType] ?? []}
         />
       </Col>
     ),
-    [displayType, showNoDataPlaceholder, tags?.[tagType]]
+    [displayType, showNoDataPlaceholder, tags?.[tagType], layoutType]
   );
 
   const tagsSelectContainer = useMemo(() => {
@@ -313,6 +316,33 @@ const TagsContainerV2 = ({
     [permission, tags, tagType, handleAddClick]
   );
 
+  const horizontalLayout = useMemo(() => {
+    return (
+      <Space>
+        {showAddTagButton ? (
+          <div onClick={handleAddClick}>
+            <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+          </div>
+        ) : null}
+        <TagsViewer
+          displayType={displayType}
+          layoutType={layoutType}
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          tags={tags?.[tagType] ?? []}
+        />
+        {showInlineEditButton ? editTagButton : null}
+      </Space>
+    );
+  }, [
+    showAddTagButton,
+    displayType,
+    layoutType,
+    showNoDataPlaceholder,
+    tags?.[tagType],
+    showInlineEditButton,
+    handleAddClick,
+  ]);
+
   useEffect(() => {
     setTags(getFilterTags(selectedTags));
   }, [selectedTags]);
@@ -323,13 +353,16 @@ const TagsContainerV2 = ({
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
 
-      {!isEditTags && (
-        <Row data-testid="entity-tags">
-          {addTagButton}
-          {renderTags}
-          {showInlineEditButton && <Col>{editTagButton}</Col>}
-        </Row>
-      )}
+      {!isEditTags &&
+        (isHoriZontalLayout ? (
+          horizontalLayout
+        ) : (
+          <Row data-testid="entity-tags">
+            {addTagButton}
+            {renderTags}
+            {showInlineEditButton && <Col>{editTagButton}</Col>}
+          </Row>
+        ))}
       {isEditTags && tagsSelectContainer}
 
       <Space align="baseline" className="m-t-xs w-full" size="middle">
