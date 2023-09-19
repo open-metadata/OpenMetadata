@@ -206,7 +206,7 @@ const fillForm = (formObj, type) => {
   cy.get('[data-testid="owner-container"]').children().should('have.length', 1);
 
   cy.get('[data-testid="add-experts"]').scrollIntoView().click();
-  cy.get('.domain-select-popover [data-testid="searchbar"]').type(
+  cy.get('.user-select-popover [data-testid="searchbar"]').type(
     formObj.experts
   );
   cy.get(`[title="${formObj.experts}"]`).scrollIntoView().click();
