@@ -59,7 +59,6 @@ import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
@@ -927,7 +926,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
-
 
   public static Table validateNewTable(Table table) {
     table.setId(UUID.randomUUID());
