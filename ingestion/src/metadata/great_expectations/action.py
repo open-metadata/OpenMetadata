@@ -17,7 +17,7 @@ checkpoints actions.
 """
 import traceback
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Union, cast, Tuple
+from typing import Dict, List, Optional, Union, cast
 
 from great_expectations.checkpoint.actions import ValidationAction
 from great_expectations.core.batch import Batch
