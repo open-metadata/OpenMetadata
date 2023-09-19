@@ -38,7 +38,7 @@ def test_assert_metadata_ingestion_status_success(redshift_connector, page: Page
 
 
 def test_change_database_owner(redshift_connector, page: Page):
-    """..."""
+    """Test changing the database owner works as expected"""
 
     service_name = redshift_connector.service_name
     page.goto("/")
