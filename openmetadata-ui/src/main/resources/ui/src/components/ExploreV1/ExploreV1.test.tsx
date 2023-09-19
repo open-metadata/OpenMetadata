@@ -68,6 +68,8 @@ const props = {
     pipeline_search_index: 0,
     mlmodel_search_index: 0,
     container_search_index: 0,
+    stored_procedure_search_index: 0,
+    dashboard_data_model_search_index: 0,
     glossary_search_index: 0,
     tag_search_index: 10,
   },

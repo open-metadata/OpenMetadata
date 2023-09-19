@@ -18,7 +18,7 @@ import Table from 'components/common/Table/Table';
 import { getContainerDetailPath } from 'constants/constants';
 import { Container } from 'generated/entity/data/container';
 import { EntityReference } from 'generated/type/entityReference';
-import React, { FC, useMemo } from 'react';
+import React, { FC, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -26,11 +26,13 @@ import { getEntityName } from 'utils/EntityUtils';
 interface ContainerChildrenProps {
   childrenList: Container['children'];
   isLoading?: boolean;
+  fetchChildren: () => void;
 }
 
 const ContainerChildren: FC<ContainerChildrenProps> = ({
   childrenList,
   isLoading,
+  fetchChildren,
 }) => {
   const { t } = useTranslation();
 
@@ -71,6 +73,10 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
     ],
     []
   );
+
+  useEffect(() => {
+    fetchChildren();
+  }, []);
 
   return (
     <Table

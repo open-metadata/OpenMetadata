@@ -535,7 +535,10 @@ export const getEntityOverview = (
             }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: `${i18next.t('label.data-model')} ${i18next.t(
@@ -558,7 +561,10 @@ export const getEntityOverview = (
           ),
           isExternal: false,
           isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
 
         {
@@ -566,14 +572,20 @@ export const getEntityOverview = (
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
           isLink: false,
           isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.data-model-type'),
           value: dataModelType,
           isLink: false,
           isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
       ];
 
@@ -601,7 +613,10 @@ export const getEntityOverview = (
             }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.service'),
@@ -637,13 +652,19 @@ export const getEntityOverview = (
             )
           ),
           isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
           isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         ...(isObject(storedProcedureCode)
           ? [
@@ -653,7 +674,10 @@ export const getEntityOverview = (
                   (storedProcedureCode as StoredProcedureCodeObject).language ??
                   NO_DATA,
                 isLink: false,
-                visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+                visible: [
+                  DRAWER_NAVIGATION_OPTIONS.lineage,
+                  DRAWER_NAVIGATION_OPTIONS.explore,
+                ],
               },
             ]
           : []),

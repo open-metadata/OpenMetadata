@@ -28,8 +28,16 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { serviceTypeLogo } from './ServiceUtils';
-import SVGIcons, { Icons } from './SvgUtils';
 import { getEntityLink } from './TableUtils';
+
+import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
+import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
+import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -80,55 +88,67 @@ export const getQueryWithSlash = (query: string): string =>
 
 export const getGroupLabel = (index: string) => {
   let label = '';
-  let icon = '';
+  let Icon: SvgComponent;
   switch (index) {
     case SearchIndex.TOPIC:
       label = i18next.t('label.topic-plural');
-      icon = Icons.TOPIC_GREY;
+      Icon = IconTopic;
 
       break;
     case SearchIndex.DASHBOARD:
       label = i18next.t('label.dashboard-plural');
-      icon = Icons.DASHBOARD_GREY;
+      Icon = IconDashboard;
 
       break;
     case SearchIndex.PIPELINE:
       label = i18next.t('label.pipeline-plural');
-      icon = Icons.PIPELINE_GREY;
+      Icon = IconPipeline;
 
       break;
     case SearchIndex.MLMODEL:
       label = i18next.t('label.ml-model-plural');
-      icon = Icons.MLMODAL;
+      Icon = IconMlModal;
 
       break;
     case SearchIndex.GLOSSARY:
       label = i18next.t('label.glossary-term-plural');
-      icon = Icons.FLAT_FOLDER;
+      Icon = IconTable;
 
       break;
     case SearchIndex.TAG:
       label = i18next.t('label.tag-plural');
-      icon = Icons.TAG_GREY;
+      Icon = IconTag;
 
       break;
     case SearchIndex.CONTAINER:
       label = i18next.t('label.container-plural');
-      icon = Icons.CONTAINER;
+      Icon = IconContainer;
+
+      break;
+
+    case SearchIndex.STORED_PROCEDURE:
+      label = i18next.t('label.stored-procedure-plural');
+      Icon = IconStoredProcedure;
+
+      break;
+
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+      label = i18next.t('label.data-model-plural');
+      Icon = IconDashboard;
 
       break;
 
     case SearchIndex.TABLE:
     default:
       label = i18next.t('label.table-plural');
-      icon = Icons.TABLE_GREY;
+      Icon = IconTable;
 
       break;
   }
 
   const groupLabel = (
     <div className="d-flex items-center p-y-xs">
-      <SVGIcons alt="icon" className="m-r-sm" icon={icon} />
+      <Icon className="m-r-sm" height={16} width={16} />
       <p className="text-grey-muted text-xs">{label}</p>
     </div>
   );
