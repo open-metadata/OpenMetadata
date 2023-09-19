@@ -403,7 +403,7 @@ export const AuthProvider = ({
     }
   };
 
-  const addDomainFilter = (config: AxiosRequestConfig) => {
+  const withDomainFilter = (config: AxiosRequestConfig) => {
     const activeDomain =
       localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
     const isGetRequest = config.method === 'get';
@@ -467,7 +467,7 @@ export const AuthProvider = ({
         }
       }
 
-      return addDomainFilter(config);
+      return withDomainFilter(config);
     });
 
     // Axios response interceptor for statusCode 401,403
