@@ -339,7 +339,7 @@ export const DataAssetsHeader = ({
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
-                  hasPermission={permissions.EditAll || permissions.EditOwner}
+                  hasPermission={permissions.EditAll}
                 />
                 <Divider className="self-center m-x-sm" type="vertical" />
                 <OwnerLabel

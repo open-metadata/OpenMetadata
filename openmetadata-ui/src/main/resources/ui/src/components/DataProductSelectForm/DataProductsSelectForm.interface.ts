@@ -10,15 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+import { DataProductSelectOption } from 'components/DataProductsSelectList/DataProductSelectList.interface';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Paging } from 'generated/type/paging';
 
-.frequently-joint-data-container {
-  max-height: 200px;
-  overflow-y: scroll;
-
-  .frequently-joint-data {
-    .frequently-joint-name {
-      font-weight: 300;
-    }
-  }
-}
+export type DataProductsSelectFormProps = {
+  placeholder: string;
+  defaultValue: string[];
+  onChange?: (value: string[]) => void;
+  onSubmit: (values: DataProduct[]) => Promise<void>;
+  onCancel: () => void;
+  fetchApi: (
+    search: string,
+    page: number
+  ) => Promise<{
+    data: DataProductSelectOption[];
+    paging: Paging;
+  }>;
+};

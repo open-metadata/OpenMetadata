@@ -1387,8 +1387,19 @@ export const getEntityBreadcrumbs = (
       });
     }
 
+    case EntityType.DOMAIN:
+      return [
+        {
+          name: i18next.t('label.domain-plural'),
+          url: getDomainPath(),
+        },
+      ];
+
     case EntityType.DATA_PRODUCT: {
       const data = entity as DataProduct;
+      if (!data.domain) {
+        return [];
+      }
 
       return [
         {

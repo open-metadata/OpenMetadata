@@ -15,12 +15,14 @@ import {
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
+  SEARCH_ENTITY_TABLE,
 } from '../constants/constants';
 import {
   descriptionBox,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
+  visitEntityDetailsPage,
 } from './common';
 
 export const validateDomainForm = () => {
@@ -95,6 +97,75 @@ const updateOwner = (newOwner) => {
     });
 };
 
+const goToAssetsTab = (domainObj) => {
+  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  checkDisplayName(domainObj.name);
+  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
+};
+
+export const updateAssets = (domainObj) => {
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*&index=domain_search_index*`,
+    'searchDomain'
+  );
+
+  const entity = SEARCH_ENTITY_TABLE.table_2;
+  goToAssetsTab(domainObj);
+  cy.contains('Adding a new Asset is easy, just give it a spin!').should(
+    'be.visible'
+  );
+  visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+
+  cy.get('[data-testid="add-domain"]').click();
+
+  // Enter domain name
+  cy.get('.domain-select-popover [data-testid="searchbar"]')
+    .click()
+    .type(domainObj.name);
+  verifyResponseStatusCode('@searchDomain', 200);
+
+  cy.get('[data-testid="selectable-list"]')
+    .find(`[title="${domainObj.name}"]`)
+    .click();
+
+  cy.get('[data-testid="domain-link"]').should('contain', domainObj.name);
+
+  goToAssetsTab(domainObj);
+
+  cy.get('.assets-data-container [data-testid="entity-header-display-name"]')
+    .contains(entity.term)
+    .should('be.visible');
+};
+
+export const removeAssets = (domainObj) => {
+  const entity = SEARCH_ENTITY_TABLE.table_2;
+  interceptURL('GET', '/api/v1/search/query*', 'assetTab');
+  // go assets tab
+  goToAssetsTab(domainObj);
+  verifyResponseStatusCode('@assetTab', 200);
+
+  interceptURL('GET', '/api/v1/domain*', 'domains');
+  interceptURL('PATCH', '/api/v1/table/*', 'patchDomain');
+
+  cy.get('[data-testid="entity-header-display-name"]')
+    .contains(entity.term)
+    .click();
+
+  visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+
+  cy.get('[data-testid="add-domain"]').click();
+  verifyResponseStatusCode('@domains', 200);
+  cy.get('[data-testid="remove-owner"]').click();
+  verifyResponseStatusCode('@patchDomain', 200);
+
+  goToAssetsTab(domainObj);
+  cy.contains('Adding a new Asset is easy, just give it a spin!').should(
+    'be.visible'
+  );
+};
+
 const updateDescription = (newDescription) => {
   interceptURL('PATCH', '/api/v1/domains/*', 'saveDomain');
   cy.get('[data-testid="edit-description"]').should('be.visible').click();
@@ -135,7 +206,9 @@ const fillForm = (formObj, type) => {
   cy.get('[data-testid="owner-container"]').children().should('have.length', 1);
 
   cy.get('[data-testid="add-experts"]').scrollIntoView().click();
-  cy.get('[data-testid="searchbar"]').type(formObj.experts);
+  cy.get('.user-select-popover [data-testid="searchbar"]').type(
+    formObj.experts
+  );
   cy.get(`[title="${formObj.experts}"]`).scrollIntoView().click();
   cy.get('[data-testid="selectable-list-update-btn"]')
     .should('exist')

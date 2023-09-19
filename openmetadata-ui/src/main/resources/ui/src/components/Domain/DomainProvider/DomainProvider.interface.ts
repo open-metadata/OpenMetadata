@@ -10,15 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Domain } from 'generated/entity/domains/domain';
 
-.frequently-joint-data-container {
-  max-height: 200px;
-  overflow-y: scroll;
-
-  .frequently-joint-data {
-    .frequently-joint-name {
-      font-weight: 300;
-    }
-  }
+export interface DomainContextType {
+  domains: Domain[];
+  domainLoading: boolean;
+  domainOptions: ItemType[];
+  updateDomains: (domainsArr: Domain[]) => void;
+  refreshDomains: () => void;
 }
