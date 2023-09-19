@@ -95,11 +95,9 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
-from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
