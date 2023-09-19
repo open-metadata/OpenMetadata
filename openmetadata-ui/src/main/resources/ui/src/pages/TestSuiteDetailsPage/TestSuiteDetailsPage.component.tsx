@@ -123,6 +123,7 @@ const TestSuiteDetailsPage = () => {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite',
         testSuiteId: testSuiteId,
+        orderByLastExecutionDate: true,
         ...param,
       });
 

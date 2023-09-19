@@ -1,112 +1,47 @@
 {
   "$id": "https://open-metadata.org/schema/type/lifeCycle.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Life Cycle Properties",
+  "title": "Life Cycle",
   "description": "This schema defines Life Cycle Properties.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.LifeCycle",
   "definitions": {
-    "created": {
-      "description": "Created information of the data asset",
+    "accessDetails": {
+      "description": "Access details of an entity ",
       "type": "object",
       "properties": {
-        "created_at": {
-          "description": "Timestamp of data asset when it got created",
+        "timestamp": {
+          "description": "Timestamp of data asset accessed for creation, update, read.",
           "$ref": "basic.json#/definitions/timestamp",
           "default": null
         },
-        "created_by": {
-          "description": "User that created the data asset",
-          "oneOf": [
-            { "type": "string" },
-            { "$ref": "entityReference.json" }
-          ],
+        "accessedBy": {
+          "description": "User, Pipeline, Query that created,updated or accessed the data asset",
+          "$ref": "entityReference.json",
+          "default": null
+        },
+        "accessedByAProcess": {
+          "description": "Any process that accessed the data asset that is not captured in OpenMetadata.",
+          "type": "string",
           "default": null
         }
       },
       "additionalProperties": false,
-      "required": ["created_at"]
-    },
-    "updated": {
-      "description": "Updated information of the data asset",
-      "type": "object",
-      "properties": {
-        "updated_at": {
-          "description": "Timestamp of data asset when it got updated",
-          "$ref": "basic.json#/definitions/timestamp",
-          "default": null
-        },
-        "updated_by": {
-          "description": "User that updated the data asset",
-          "oneOf": [
-            { "type": "string" },
-            { "$ref": "entityReference.json" }
-          ],
-          "default": null
-        }
-      },
-      "additionalProperties": false,
-      "required": ["updated_at"]
-    },
-    "accessed": {
-      "description": "Accessed information of the data asset",
-      "type": "object",
-      "properties": {
-        "accessed_at": {
-          "description": "Timestamp of data asset when it got accessed",
-          "$ref": "basic.json#/definitions/timestamp",
-          "default": null
-        },
-        "accessed_by": {
-          "description": "User that accessed the data asset",
-          "oneOf": [
-            { "type": "string" },
-            { "$ref": "entityReference.json" }
-          ],
-          "default": null
-        }
-      },
-      "additionalProperties": false,
-      "required": ["accessed_at"]
-    },
-    "deleted": {
-      "description": "Deleted information of the data asset",
-      "type": "object",
-      "properties": {
-        "deleted_at": {
-          "description": "Timestamp of data asset when it got deleted",
-          "$ref": "basic.json#/definitions/timestamp",
-          "default": null
-        },
-        "deleted_by": {
-          "description": "User that deleted the data asset",
-          "oneOf": [
-            { "type": "string" },
-            { "$ref": "entityReference.json" }
-          ],
-          "default": null
-        }
-      },
-      "additionalProperties": false,
-      "required": ["deleted_at"]
+      "required": ["timestamp"]
     }
   },
   "properties": {
     "created": {
-      "description": "Information about created aspect of the data asset",
-      "$ref": "#/definitions/created"
+      "description": "Access Details about created aspect of the data asset",
+      "$ref": "#/definitions/accessDetails"
     },
     "updated": {
-      "description": "Information about updated aspect of the data asset",
-      "$ref": "#/definitions/updated"
+      "description": "Access Details about updated aspect of the data asset",
+      "$ref": "#/definitions/accessDetails"
     },
     "accessed": {
-      "description": "Information about accessed aspect of the data asset",
-      "$ref": "#/definitions/accessed"
-    },
-    "deleted": {
-      "description": "Information about deleted aspect of the data asset",
-      "$ref": "#/definitions/deleted"
+      "description": "Access Details about accessed aspect of the data asset",
+      "$ref": "#/definitions/accessDetails"
     }
   },
   "additionalProperties": false

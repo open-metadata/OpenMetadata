@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -274,6 +275,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     CreateTag createTag =
         createRequest(name)
             .withParent(parentFqn)
+            .withStyle(new Style().withColor("#6495ED").withIconURL("https://tagIcon"))
             .withClassification(classification)
             .withAssociatedTags(associatedTagList);
     return createEntity(createTag, ADMIN_AUTH_HEADERS);

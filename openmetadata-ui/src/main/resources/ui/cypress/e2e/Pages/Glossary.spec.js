@@ -468,7 +468,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .type('Personal');
     verifyResponseStatusCode('@fetchTags', 200);
-    cy.get('.ant-select-item-option-content').contains('Personal').click();
+    cy.get('[data-testid="tag-PersonalData.Personal"]').click();
     cy.get('[data-testid="right-panel"]').click();
 
     cy.get('[data-testid="add-reviewers"]').scrollIntoView().click();
