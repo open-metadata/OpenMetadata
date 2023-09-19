@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3.unitofwork;
 
 import java.util.Set;
 import javax.annotation.Nullable;
-import javax.ws.rs.HttpMethod;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
