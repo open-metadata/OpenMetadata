@@ -42,7 +42,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
-from metadata.generated.schema.type.lifeCycle import Created, Deleted
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
@@ -490,23 +489,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                 )
             ).get(table.name.__root__)
             if life_cycle_data:
-                life_cycle = init_empty_life_cycle_properties()
-                life_cycle.created = Created(
-                    created_at=convert_timestamp_to_milliseconds(
-                        life_cycle_data.created_at.timestamp()
-                    )
-                )
-                if life_cycle_data.deleted_at:
-                    life_cycle.deleted = Deleted(
-                        deleted_at=convert_timestamp_to_milliseconds(
-                            life_cycle_data.deleted_at.timestamp()
-                        )
-                    )
-                yield Either(
-                    right=OMetaLifeCycleData(
-                        entity=table, life_cycle_properties=life_cycle
-                    )
-                )
+                logger.info("found lifecycle data")
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
