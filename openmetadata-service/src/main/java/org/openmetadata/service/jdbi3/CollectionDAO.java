@@ -1893,7 +1893,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameHashColumn() {
-      return "nameHash";
+      return "fqnHash";
     }
 
     @Override
