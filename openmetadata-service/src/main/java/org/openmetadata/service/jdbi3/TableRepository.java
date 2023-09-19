@@ -99,7 +99,6 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
-  public static final String TABLE_LIFE_CYCLE_EXTENSION = "lifeCycle";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_COLUMN_EXTENSION = "table.column.";
   public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
