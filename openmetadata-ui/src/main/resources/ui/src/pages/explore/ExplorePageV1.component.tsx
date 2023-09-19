@@ -282,6 +282,8 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.PIPELINE,
           SearchIndex.MLMODEL,
           SearchIndex.CONTAINER,
+          SearchIndex.STORED_PROCEDURE,
+          SearchIndex.DASHBOARD_DATA_MODEL,
           SearchIndex.GLOSSARY,
           SearchIndex.TAG,
         ].map((index) =>
@@ -305,6 +307,8 @@ const ExplorePageV1: FunctionComponent = () => {
           pipelineResponse,
           mlmodelResponse,
           containerResponse,
+          storeProcedureResponse,
+          dataModelResponse,
           glossaryResponse,
           tagsResponse,
         ]) => {
@@ -315,6 +319,10 @@ const ExplorePageV1: FunctionComponent = () => {
             [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
             [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
             [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
+            [SearchIndex.STORED_PROCEDURE]:
+              storeProcedureResponse.hits.total.value,
+            [SearchIndex.DASHBOARD_DATA_MODEL]:
+              dataModelResponse.hits.total.value,
             [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
             [SearchIndex.TAG]: tagsResponse.hits.total.value,
           });
