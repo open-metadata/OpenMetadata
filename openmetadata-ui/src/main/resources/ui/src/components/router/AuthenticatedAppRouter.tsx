@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import DataProductsPage from 'components/DataProducts/DataProductsPage/DataProductsPage.component';
 import AddDomain from 'components/Domain/AddDomain/AddDomain.component';
 import DomainPage from 'components/Domain/DomainPage.component';
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
@@ -298,6 +299,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
+  const dataProductPermission = useMemo(
+    () =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.DATA_PRODUCT,
+        permissions
+      ),
+    [permissions]
+  );
+
   const tagCategoryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(
@@ -370,6 +380,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={ClassificationVersionPage}
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_VERSION}
+      />
+
+      <Route
+        exact
+        component={DataProductsPage}
+        path={ROUTES.DATA_PRODUCT_VERSION}
       />
       <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
       <Route
@@ -602,6 +618,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
+
+      <AdminProtectedRoute
+        exact
+        component={DataProductsPage}
+        hasPermission={dataProductPermission}
+        path={ROUTES.DATA_PRODUCT_DETAILS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DataProductsPage}
+        hasPermission={dataProductPermission}
+        path={ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB}
+      />
+
       <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
       <AdminProtectedRoute
         exact

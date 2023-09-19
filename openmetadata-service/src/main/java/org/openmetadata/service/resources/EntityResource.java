@@ -23,10 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -245,7 +242,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response = repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
-    repository.postUpdate(response.getEntity());
     return response.toResponse();
   }
 
@@ -304,6 +300,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     entity.setOwner(owner);
     entity.setDomain(domain);
     entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
+    entity.setLifeCycle(request.getLifeCycle());
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());

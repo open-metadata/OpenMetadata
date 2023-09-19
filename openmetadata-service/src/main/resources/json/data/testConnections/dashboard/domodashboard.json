@@ -9,6 +9,12 @@
         "errorMessage": "Failed to fetch dashboards, please validate the credentials or validate if user has access to fetch dashboards",
         "shortCircuit": true,
         "mandatory": true
+      },
+      {
+        "name": "GetCharts",
+        "description": "We can get the chart information using the Access Token and the Instance Domain.",
+        "errorMessage": "Failed to fetch chart information. Please make sure that the Access Token used has enough permissions to get chart details.",
+        "mandatory": false
       }
     ]
   }

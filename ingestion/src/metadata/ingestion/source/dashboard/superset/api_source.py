@@ -28,7 +28,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
     ChartResult,
-    DashboradResult,
+    DashboardResult,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
@@ -63,7 +63,7 @@ class SupersetAPISource(SupersetSourceMixin):
             for index, chart_result in enumerate(charts.result):
                 self.all_charts[charts.ids[index]] = chart_result
 
-    def get_dashboards_list(self) -> Iterable[DashboradResult]:
+    def get_dashboards_list(self) -> Iterable[DashboardResult]:
         """
         Get List of all dashboards
         """
@@ -77,7 +77,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 yield dashboard
 
     def yield_dashboard(
-        self, dashboard_details: DashboradResult
+        self, dashboard_details: DashboardResult
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
@@ -119,7 +119,7 @@ class SupersetAPISource(SupersetSourceMixin):
         )
 
     def yield_dashboard_chart(
-        self, dashboard_details: DashboradResult
+        self, dashboard_details: DashboardResult
     ) -> Iterable[Either[CreateChartRequest]]:
         """Method to fetch charts linked to dashboard"""
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
@@ -175,7 +175,7 @@ class SupersetAPISource(SupersetSourceMixin):
         return None
 
     def yield_datamodel(
-        self, dashboard_details: DashboradResult
+        self, dashboard_details: DashboardResult
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
 
         if self.source_config.includeDataModels:

@@ -92,6 +92,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       const response = await getListTestCase({
         ...params,
         fields: 'testDefinition,testCaseResult,testSuite',
+        orderByLastExecutionDate: true,
       });
       setTestCase(response);
     } catch (error) {

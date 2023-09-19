@@ -45,24 +45,9 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
-import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
-import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
-import static org.openmetadata.service.util.TestUtils.validateEntityReference;
-import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -155,8 +140,10 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -166,6 +153,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -234,6 +222,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected String supportedNameCharacters = "_'-.&()" + RANDOM_STRING_GENERATOR.generate(1);
 
   protected final boolean supportsCustomExtension;
+
+  protected final boolean supportsLifeCycle;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -397,6 +387,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
+    this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
     this.systemEntityName = systemEntityName;
   }
 
@@ -1830,6 +1821,48 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
+  @Test
+  void postPutPatch_entityLifeCycle(TestInfo test) throws IOException {
+    if (!supportsLifeCycle) {
+      return;
+    }
+    LifeCycle lifeCycle =
+        new LifeCycle().withAccessed(new AccessDetails().withTimestamp(1695059900L).withAccessedBy(USER1_REF));
+    T entity =
+        createEntity(
+            createRequest(getEntityName(test), "description", null, null).withLifeCycle(lifeCycle), ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity.getLifeCycle());
+    T entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    String json = JsonUtils.pojoToJson(entity);
+    lifeCycle.setCreated(new AccessDetails().withTimestamp(1695059500L).withAccessedBy(USER2_REF));
+    entity.setLifeCycle(lifeCycle);
+    T patchEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    json = JsonUtils.pojoToJson(entity1);
+    lifeCycle.setUpdated(new AccessDetails().withTimestamp(1695059910L).withAccessedByAProcess("test"));
+    entity1.setLifeCycle(lifeCycle);
+    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    // set createdAt to older time , this shouldn't be overriding
+    LifeCycle lifeCycle1 =
+        new LifeCycle().withCreated(new AccessDetails().withTimestamp(1695059400L).withAccessedByAProcess("test12"));
+    json = JsonUtils.pojoToJson(entity1);
+    entity1.setLifeCycle(lifeCycle1);
+    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
+    // check against the older lifecycle, the contents should be unmodified
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+  }
+
   private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
     Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
     map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
@@ -2434,6 +2467,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertEquals(expected.toString(), actual.toString());
     } else if (fieldName.equals("domainType")) { // Custom properties related extension field changes
       assertEquals(expected, DomainType.fromValue(actual.toString()));
+    } else if (fieldName.equals("style")) {
+      assertStyle((Style) expected, JsonUtils.readValue(actual.toString(), Style.class));
     } else {
       // All the other fields
       assertEquals(expected, actual, "Field name " + fieldName);
@@ -2803,5 +2838,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
+  }
+
+  public static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {
+    if (expected == null) {
+      assertNull(actual);
+    } else {
+      if (expected.getAccessed() != null) {
+        assertEquals(expected.getAccessed().getTimestamp(), actual.getAccessed().getTimestamp());
+        if (expected.getAccessed().getAccessedBy() != null) {
+          assertReference(
+              expected.getAccessed().getAccessedBy(),
+              JsonUtils.convertValue(actual.getAccessed().getAccessedBy(), EntityReference.class));
+        }
+        assertEquals(expected.getAccessed().getAccessedByAProcess(), actual.getAccessed().getAccessedByAProcess());
+      }
+      if (expected.getCreated() != null) {
+        assertEquals(expected.getCreated().getTimestamp(), actual.getCreated().getTimestamp());
+        if (expected.getCreated().getAccessedBy() != null) {
+          assertReference(
+              expected.getCreated().getAccessedBy(),
+              JsonUtils.convertValue(actual.getCreated().getAccessedBy(), EntityReference.class));
+        }
+        assertEquals(expected.getCreated().getAccessedByAProcess(), actual.getCreated().getAccessedByAProcess());
+      }
+      if (expected.getUpdated() != null) {
+        assertEquals(expected.getUpdated().getTimestamp(), actual.getUpdated().getTimestamp());
+        if (expected.getUpdated().getAccessedBy() != null) {
+          assertReference(
+              expected.getUpdated().getAccessedBy(),
+              JsonUtils.convertValue(actual.getUpdated().getAccessedBy(), EntityReference.class));
+          assertEquals(expected.getUpdated().getAccessedByAProcess(), actual.getUpdated().getAccessedByAProcess());
+        }
+      }
+    }
   }
 }
