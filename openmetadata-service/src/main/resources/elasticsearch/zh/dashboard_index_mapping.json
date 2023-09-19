@@ -368,6 +368,9 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "serviceType": {
         "type": "keyword"
       },

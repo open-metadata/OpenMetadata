@@ -360,7 +360,7 @@ export const AssetSelectionModal = ({
               <TableDataCardV2
                 openEntityInNewPage
                 showCheckboxes
-                checked={selectedItems?.has(item.id)}
+                checked={selectedItems?.has(item.id ?? '')}
                 className="m-b-sm asset-selection-model-card cursor-pointer"
                 handleSummaryPanelDisplay={handleCardClick}
                 id={`tabledatacard-${item.id}`}

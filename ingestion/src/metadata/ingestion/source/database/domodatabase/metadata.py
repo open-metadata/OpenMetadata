@@ -16,7 +16,6 @@ Domo Database source to extract metadata
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 
-from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -81,7 +80,6 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.domo_client = get_connection(self.service_connection)
         self.connection_obj = self.domo_client
-        self.client = DomoClient(self.service_connection)
         self.test_connection()
 
     @classmethod
@@ -258,7 +256,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         Method to get the source url for domodatabase
         """
         try:
-            return f"{clean_uri(self.service_connection.sandboxDomain)}/datasources/{table_name}/details/overview"
+            return f"{clean_uri(self.service_connection.instanceDomain)}/datasources/{table_name}/details/overview"
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url for {table_name}: {exc}")
@@ -270,4 +268,4 @@ class DomodatabaseSource(DatabaseServiceSource):
         return table
 
     def close(self) -> None:
-        self.client.client.close()
+        """Nothing to close"""

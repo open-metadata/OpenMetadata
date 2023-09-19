@@ -39,6 +39,8 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
         SearchIndex.GLOSSARY,
         SearchIndex.MLMODEL,
         SearchIndex.PIPELINE,
+        SearchIndex.STORED_PROCEDURE,
+        SearchIndex.DASHBOARD_DATA_MODEL,
       ]);
       const sources = res.data.hits.hits.map((hit) => hit._source);
       setSelectedData(sources);

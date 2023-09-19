@@ -151,6 +151,8 @@ export const globalSearchOptions = [
   { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
   { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
   { value: SearchIndex.CONTAINER, label: t('label.container') },
+  { value: SearchIndex.STORED_PROCEDURE, label: t('label.stored-procedure') },
+  { value: SearchIndex.DASHBOARD_DATA_MODEL, label: t('label.data-model') },
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
 ];

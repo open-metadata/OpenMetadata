@@ -130,6 +130,8 @@ const AssetsTabs = forwardRef(
         SearchIndex.PIPELINE,
         SearchIndex.MLMODEL,
         SearchIndex.CONTAINER,
+        SearchIndex.STORED_PROCEDURE,
+        SearchIndex.DASHBOARD_DATA_MODEL,
       ];
       if (type !== AssetsOfEntity.GLOSSARY) {
         indexesToFetch.push(SearchIndex.GLOSSARY);
@@ -152,6 +154,8 @@ const AssetsTabs = forwardRef(
             pipelineResponse,
             mlmodelResponse,
             containerResponse,
+            storedProcedureResponse,
+            dashboardDataModelResponse,
             glossaryResponse,
           ]) => {
             const counts = {
@@ -161,6 +165,10 @@ const AssetsTabs = forwardRef(
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
               [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
+              [EntityType.STORED_PROCEDURE]:
+                storedProcedureResponse.data.hits.total.value,
+              [EntityType.DASHBOARD_DATA_MODEL]:
+                dashboardDataModelResponse.data.hits.total.value,
               [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY
                   ? glossaryResponse.data.hits.total.value

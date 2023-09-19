@@ -444,6 +444,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "domain" : {
         "properties": {
           "id": {

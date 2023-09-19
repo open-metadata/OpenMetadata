@@ -55,4 +55,14 @@ export const AssetsFilterOptions: Array<{
     key: EntityType.GLOSSARY_TERM,
     value: SearchIndex.GLOSSARY,
   },
+  {
+    label: i18n.t('label.stored-procedure-plural'),
+    key: EntityType.STORED_PROCEDURE,
+    value: SearchIndex.STORED_PROCEDURE,
+  },
+  {
+    label: i18n.t('label.data-model-plural'),
+    key: EntityType.DASHBOARD_DATA_MODEL,
+    value: SearchIndex.DASHBOARD_DATA_MODEL,
+  },
 ];

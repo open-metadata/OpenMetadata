@@ -1037,7 +1037,7 @@
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {
-      "description": "Life Cycle properties of the entity",
+      "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
     }
   },
