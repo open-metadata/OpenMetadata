@@ -38,8 +38,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import StackTraceError
@@ -52,10 +50,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
-from metadata.utils.life_cycle_utils import (
-    get_query_type,
-    init_empty_life_cycle_properties,
-)
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp
 
@@ -353,7 +348,10 @@ class MetadataUsageBulkSink(BulkSink):
         the query being processed.
         """
         try:
-            life_cycle = init_empty_life_cycle_properties()
+            # Temporary clean up this method to be implemented following the new schema
+            life_cycle = (  # pylint: disable=unused-variable
+                init_empty_life_cycle_properties()
+            )
 
         except Exception as err:
             error = f"Unable to get life cycle data for table {table_entity.fullyQualifiedName}: {err}"
