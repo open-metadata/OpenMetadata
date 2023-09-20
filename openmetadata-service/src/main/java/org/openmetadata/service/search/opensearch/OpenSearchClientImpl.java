@@ -1006,7 +1006,7 @@ public class OpenSearchClientImpl implements SearchClient {
   }
 
   public void handleDocumentMissingException(EntityInterface entity, DocumentMissingException ex) {
-     LOG.error("Missing Document", ex);
+    LOG.error("Missing Document", ex);
     SearchEventPublisher.updateElasticSearchFailureStatus(
         entity,
         EventPublisherJob.Status.ACTIVE_WITH_ERROR,
