@@ -418,7 +418,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<ResultSummary> resultSummaries = listOrEmpty(testSuite.getTestCaseResultSummary());
     for (UUID testCaseId : testCaseIds) {
       TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
-      postUpdate(testCase);
+      postUpdate(testCase, testCase);
       // Get the latest result to set the testSuite summary field
       String result =
           daoCollection

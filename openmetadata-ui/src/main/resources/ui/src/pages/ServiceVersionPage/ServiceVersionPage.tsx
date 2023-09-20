@@ -103,25 +103,28 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
-    () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
-    [currentVersionData, entityType]
-  );
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+    useMemo(
+      () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
+      [currentVersionData, entityType]
+    );
 
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () =>
-      getCommonExtraInfoForVersionDetails(
-        currentVersionData.changeDescription as ChangeDescription,
-        owner,
-        tier
-      ),
-    [currentVersionData.changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          currentVersionData.changeDescription as ChangeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [currentVersionData.changeDescription, owner, tier, domain]
+    );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -436,6 +439,7 @@ function ServiceVersionPage() {
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  domainDisplayName={domainDisplayName}
                   entityType={entityType}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}

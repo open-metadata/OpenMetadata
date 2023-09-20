@@ -41,6 +41,8 @@ import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
+  String GLOBAL_SEARCH_ALIAS = "SearchAlias";
+
   boolean createIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
 
   void updateIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
@@ -50,6 +52,8 @@ public interface SearchClient {
   Response search(SearchRequest request) throws IOException;
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
+
+  Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 

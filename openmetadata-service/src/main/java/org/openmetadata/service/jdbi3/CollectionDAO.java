@@ -145,9 +145,6 @@ public interface CollectionDAO {
   EntityExtensionDAO entityExtensionDAO();
 
   @CreateSqlObject
-  TableEntityExtensionDAO tableEntityExtensionDAO();
-
-  @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
 
   @CreateSqlObject
@@ -624,44 +621,6 @@ public interface CollectionDAO {
     void deleteExtension(@Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
-    void deleteAll(@Bind("id") String id);
-  }
-
-  interface TableEntityExtensionDAO {
-    @ConnectionAwareSqlUpdate(
-        value =
-            "REPLACE INTO table_entity_extension(id, extension, jsonSchema, json) "
-                + "VALUES (:id, :extension, :jsonSchema, :json)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO table_entity_extension(id, extension, jsonSchema, json) "
-                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
-                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
-        connectionType = POSTGRES)
-    void insert(
-        @Bind("id") String id,
-        @Bind("extension") String extension,
-        @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM table_entity_extension WHERE id = :id AND extension = :extension")
-    String getExtension(@Bind("id") String id, @Bind("extension") String extension);
-
-    @RegisterRowMapper(ExtensionMapper.class)
-    @SqlQuery(
-        "SELECT extension, json FROM table_entity_extension WHERE id = :id AND extension "
-            + "LIKE CONCAT (:extensionPrefix, '.%') "
-            + "ORDER BY extension")
-    List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
-
-    @SqlUpdate("DELETE FROM table_entity_extension WHERE id = :id AND extension = :extension")
-    void delete(@Bind("id") String id, @Bind("extension") String extension);
-
-    @SqlUpdate("DELETE FROM table_entity_extension WHERE extension = :extension")
-    void deleteExtension(@Bind("extension") String extension);
-
-    @SqlUpdate("DELETE FROM table_entity_extension WHERE id = :id")
     void deleteAll(@Bind("id") String id);
   }
 
@@ -1318,6 +1277,13 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
+        "SELECT fromFQN, fromType, json FROM field_relationship WHERE "
+            + "toFQNHash = :toFQNHash AND toType = :toType AND relation = :relation")
+    @RegisterRowMapper(FromFieldMapper.class)
+    List<Triple<String, String, String>> findFrom(
+        @BindFQN("toFQNHash") String toFQNHash, @Bind("toType") String toType, @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "fromFQNHash LIKE CONCAT(:fqnPrefixHash, '%') AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
@@ -1389,6 +1355,13 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
+
+    class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
+      @Override
+      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Triple.of(rs.getString("fromFQN"), rs.getString("fromType"), rs.getString("json"));
+      }
+    }
 
     class ToFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override

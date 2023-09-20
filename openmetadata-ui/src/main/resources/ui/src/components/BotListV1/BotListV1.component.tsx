@@ -205,7 +205,7 @@ const BotListV1 = ({
     setBotUsers([]);
     setSearchedData([]);
     fetchBots(showDeleted);
-  }, [showDeleted]);
+  }, [showDeleted, pageSize]);
 
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 

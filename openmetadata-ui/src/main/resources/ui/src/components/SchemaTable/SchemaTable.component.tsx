@@ -12,7 +12,7 @@
  */
 
 import Icon, { FilterOutlined } from '@ant-design/icons';
-import { Space, Table, Tooltip, Typography } from 'antd';
+import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
@@ -355,41 +355,36 @@ const SchemaTable = ({
           const { displayName } = record;
 
           return (
-            <Space className="hover-icon-group m-0" direction="vertical">
-              <Space
-                align="center"
-                className="w-max-90 vertical-align-inherit"
-                size={2}>
+            <div className="d-inline-flex flex-column hover-icon-group w-full">
+              <div className="d-inline-flex">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,
                   tableConstraints,
                 })}
-                <div>
-                  {/* If we do not have displayName name only be shown in the bold from the below code */}
-                  {!isEmpty(displayName) ? (
-                    <Typography.Text
-                      className="m-b-0 d-block text-grey-muted"
-                      data-testid="column-name">
-                      {name}
-                    </Typography.Text>
-                  ) : null}
-
-                  {/* It will render displayName fallback to name */}
+                {/* If we do not have displayName name only be shown in the bold from the below code */}
+                {!isEmpty(displayName) ? (
                   <Typography.Text
-                    className="m-b-0 d-block"
-                    data-testid="column-display-name"
-                    ellipsis={{ tooltip: true }}>
-                    {getEntityName(record)}
+                    className="m-b-0 d-block text-grey-muted"
+                    data-testid="column-name">
+                    {name}
                   </Typography.Text>
-                </div>
-              </Space>
+                ) : null}
+
+                {/* It will render displayName fallback to name */}
+                <Typography.Text
+                  className="m-b-0 d-block"
+                  data-testid="column-display-name"
+                  ellipsis={{ tooltip: true }}>
+                  {getEntityName(record)}
+                </Typography.Text>
+              </div>
               <Icon
-                className="hover-cell-icon text-left"
+                className="hover-cell-icon text-left m-t-xss"
                 component={IconEdit}
                 onClick={() => handleEditDisplayNameClick(record)}
               />
-            </Space>
+            </div>
           );
         },
       },

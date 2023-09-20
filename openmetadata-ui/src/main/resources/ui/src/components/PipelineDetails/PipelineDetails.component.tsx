@@ -74,6 +74,7 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
+  updatePipelineDetailsState,
   pipelineDetails,
   fetchPipeline,
   descriptionUpdateHandler,
@@ -745,6 +746,7 @@ const PipelineDetails = ({
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updatePipelineDetailsState}
             dataAsset={pipelineDetails}
             entityType={EntityType.PIPELINE}
             permissions={pipelinePermissions}

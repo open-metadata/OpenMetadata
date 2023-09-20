@@ -24,11 +24,13 @@ import {
   Space,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from 'components/AppBar/SearchOptions';
 import Suggestions from 'components/AppBar/Suggestions';
 import BrandImage from 'components/common/BrandImage/BrandImage';
+import { useDomainProvider } from 'components/Domain/DomainProvider/DomainProvider';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
@@ -49,6 +51,8 @@ import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import {
+  ACTIVE_DOMAIN_STORAGE_KEY,
+  DE_ACTIVE_COLOR,
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
@@ -105,6 +109,7 @@ const NavBar = ({
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
   const history = useHistory();
+  const { domainOptions } = useDomainProvider();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -119,6 +124,7 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
+  const activeDomain = localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? '';
 
   const entitiesSelect = useMemo(
     () => (
@@ -312,6 +318,11 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
+  const handleDomainChange = useCallback(({ key }) => {
+    localStorage.setItem(ACTIVE_DOMAIN_STORAGE_KEY, key);
+    refreshPage();
+  }, []);
+
   const handleLanguageChange = useCallback(({ key }) => {
     i18next.changeLanguage(key);
     refreshPage();
@@ -436,6 +447,31 @@ const NavBar = ({
         </div>
 
         <Space align="center" size={24}>
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: domainOptions,
+              onClick: handleDomainChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Row gutter={6}>
+              <Col className="flex-center">
+                <DomainIcon
+                  className="d-flex"
+                  color={DE_ACTIVE_COLOR}
+                  height={16}
+                  name="folder"
+                  width={16}
+                />
+              </Col>
+              <Col>{activeDomain}</Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
+          </Dropdown>
+
           <Dropdown
             destroyPopupOnHide
             className="cursor-pointer"

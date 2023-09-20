@@ -38,8 +38,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.lifeCycle import Accessed, Created, Deleted, Updated
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import StackTraceError
@@ -52,10 +50,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
-from metadata.utils.life_cycle_utils import (
-    get_query_type,
-    init_empty_life_cycle_properties,
-)
+from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp
 
@@ -353,52 +348,11 @@ class MetadataUsageBulkSink(BulkSink):
         the query being processed.
         """
         try:
-            life_cycle = init_empty_life_cycle_properties()
-
-            for create_query in table_usage.sqlQueries:
-                user = None
-                if create_query.users:
-                    user = self.metadata.get_entity_reference(
-                        entity=User, fqn=create_query.users[0]
-                    )
-                elif create_query.usedBy:
-                    user = create_query.usedBy[0]
-                query_type = get_query_type(create_query=create_query)
-                if query_type == Created and (
-                    not life_cycle.created
-                    or life_cycle.created.created_at.__root__
-                    < create_query.queryDate.__root__
-                ):
-                    life_cycle.created = Created(
-                        created_at=create_query.queryDate.__root__, created_by=user
-                    )
-                elif query_type == Updated and (
-                    not life_cycle.updated
-                    or life_cycle.updated.updated_at.__root__
-                    < create_query.queryDate.__root__
-                ):
-                    life_cycle.updated = Updated(
-                        updated_at=create_query.queryDate.__root__, updated_by=user
-                    )
-                elif query_type == Deleted and (
-                    not life_cycle.deleted
-                    or life_cycle.deleted.deleted_at.__root__
-                    < create_query.queryDate.__root__
-                ):
-                    life_cycle.deleted = Deleted(
-                        deleted_at=create_query.queryDate.__root__, deleted_by=user
-                    )
-                elif query_type == Accessed and (
-                    not life_cycle.accessed
-                    or life_cycle.accessed.accessed_at.__root__
-                    < create_query.queryDate.__root__
-                ):
-                    life_cycle.accessed = Accessed(
-                        accessed_at=create_query.queryDate.__root__, accessed_by=user
-                    )
-            self.metadata.ingest_life_cycle_data(
-                entity=table_entity, life_cycle_data=life_cycle
+            # Temporary clean up this method to be implemented following the new schema
+            life_cycle = (  # pylint: disable=unused-variable
+                init_empty_life_cycle_properties()
             )
+
         except Exception as err:
             error = f"Unable to get life cycle data for table {table_entity.fullyQualifiedName}: {err}"
             self.status.failed(

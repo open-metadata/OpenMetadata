@@ -95,11 +95,12 @@ public class MigrationUtil {
   public static <T extends EntityInterface> void updateFQNHashForEntity(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
     String nameHashColumn = dao.getNameHashColumn();
-    if (dao instanceof CollectionDAO.TestSuiteDAO) {
-      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
-      // the migrations here
-      nameHashColumn = "nameHash";
-    }
+    updateFQNHashForEntity(handle, clazz, dao, limitParam, nameHashColumn);
+  }
+
+  @SneakyThrows
+  public static <T extends EntityInterface> void updateFQNHashForEntity(
+      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
           handle,
@@ -107,7 +108,8 @@ public class MigrationUtil {
           clazz,
           dao,
           false,
-          limitParam);
+          limitParam,
+          nameHashColumn);
     } else {
       readAndProcessEntity(
           handle,
@@ -115,7 +117,8 @@ public class MigrationUtil {
           clazz,
           dao,
           false,
-          limitParam);
+          limitParam,
+          nameHashColumn);
     }
   }
 
@@ -123,14 +126,21 @@ public class MigrationUtil {
   public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
     String nameHashColumn = dao.getNameHashColumn();
-    if (dao instanceof CollectionDAO.TestSuiteDAO) {
-      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
-      // the migrations here
-      nameHashColumn = "nameHash";
-    }
+    updateFQNHashForEntityWithName(handle, clazz, dao, limitParam, nameHashColumn);
+  }
+
+  @SneakyThrows
+  public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
+      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
-          handle, String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn), clazz, dao, true, limitParam);
+          handle,
+          String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+          clazz,
+          dao,
+          true,
+          limitParam,
+          nameHashColumn);
     } else {
       readAndProcessEntity(
           handle,
@@ -138,14 +148,20 @@ public class MigrationUtil {
           clazz,
           dao,
           true,
-          limitParam);
+          limitParam,
+          nameHashColumn);
     }
   }
 
   public static <T extends EntityInterface> void readAndProcessEntity(
-      Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName, int limitParam) {
+      Handle handle,
+      String updateSql,
+      Class<T> clazz,
+      EntityDAO<T> dao,
+      boolean withName,
+      int limitParam,
+      String nameHashColumn) {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
-    String nameHashColumn = dao.getNameHashColumn();
     if (dao instanceof CollectionDAO.TestSuiteDAO) {
       // We have to do this since this column in changed in the dao in latest version after this , and this will fail
       // the migrations here
@@ -247,7 +263,7 @@ public class MigrationUtil {
     updateFQNHashForEntity(handle, Database.class, collectionDAO.databaseDAO(), limitParam);
     updateFQNHashForEntity(handle, DatabaseSchema.class, collectionDAO.databaseSchemaDAO(), limitParam);
     updateFQNHashForEntity(handle, Table.class, collectionDAO.tableDAO(), limitParam);
-    updateFQNHashForEntity(handle, Query.class, collectionDAO.queryDAO(), limitParam);
+    updateFQNHashForEntity(handle, Query.class, collectionDAO.queryDAO(), limitParam, "nameHash");
     updateFQNHashForEntity(handle, Topic.class, collectionDAO.topicDAO(), limitParam);
     updateFQNHashForEntity(handle, Dashboard.class, collectionDAO.dashboardDAO(), limitParam);
     updateFQNHashForEntity(handle, DashboardDataModel.class, collectionDAO.dashboardDataModelDAO(), limitParam);
@@ -272,7 +288,7 @@ public class MigrationUtil {
     updateFQNHashForEntity(
         handle, TestConnectionDefinition.class, collectionDAO.testConnectionDefinitionDAO(), limitParam);
     updateFQNHashForEntity(handle, TestDefinition.class, collectionDAO.testDefinitionDAO(), limitParam);
-    updateFQNHashForEntity(handle, TestSuite.class, collectionDAO.testSuiteDAO(), limitParam);
+    updateFQNHashForEntity(handle, TestSuite.class, collectionDAO.testSuiteDAO(), limitParam, "nameHash");
 
     // Update Misc
     updateFQNHashForEntity(handle, Policy.class, collectionDAO.policyDAO(), limitParam);

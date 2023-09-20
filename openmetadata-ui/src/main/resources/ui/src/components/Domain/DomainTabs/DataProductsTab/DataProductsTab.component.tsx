@@ -18,7 +18,6 @@ import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSea
 import Loader from 'components/Loader/Loader';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -105,7 +104,6 @@ const DataProductsTab = forwardRef(
       return (
         <ErrorPlaceHolder
           className="m-t-xlg"
-          doc={GLOSSARIES_DOCS}
           heading={t('label.data-product')}
           permission={permissions.Create}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}

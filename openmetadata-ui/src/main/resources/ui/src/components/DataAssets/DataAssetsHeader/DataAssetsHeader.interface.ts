@@ -20,6 +20,7 @@ import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { SearchIndex } from 'generated/entity/data/searchIndex';
@@ -79,10 +80,16 @@ export type DataAssetsWithServiceField = Exclude<
   DataAssetsWithoutServiceField
 >;
 
+export type DataAssetWithDomains =
+  | Exclude<DataAssetsType, MetadataService>
+  | GlossaryTerm;
+
 export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
   allowSoftDelete?: boolean;
+  showDomain?: boolean;
   isRecursiveDelete?: boolean;
+  afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean) => void;
   onTierUpdate: (tier?: string) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
@@ -203,3 +210,8 @@ export interface DataAssetHeaderInfo {
   extraInfo: ReactNode;
   breadcrumbs: TitleBreadcrumbProps['titleLinks'];
 }
+
+export type EntitiesWithDomainField = Exclude<
+  DataAssetsHeaderProps['dataAsset'],
+  MetadataService
+>;

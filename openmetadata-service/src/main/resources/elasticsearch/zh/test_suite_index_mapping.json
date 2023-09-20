@@ -66,6 +66,9 @@
       "entityType": {
         "type": "keyword"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [

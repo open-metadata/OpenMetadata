@@ -56,6 +56,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
+  domain,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -64,10 +65,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const handleTabChange = (activeKey: string) => {
     history.push(
@@ -244,6 +252,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.DASHBOARD}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
