@@ -22,7 +22,7 @@ import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { uniqueId } from 'lodash';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.EXTENSION},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER}`;
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.EXTENSION},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN}`;
 
 export const makeRow = (column: SearchIndexField) => {
   return {
