@@ -34,11 +34,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CREATE_TABLE
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ometa_logger
-
-from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CREATE_TABLE
 
 logger = ometa_logger()
 
@@ -100,8 +99,10 @@ def get_columns(
 @reflection.cache
 # pylint: disable=unused-argument
 def get_table_comment(self, connection, table_name, schema=None, **kw):
-    fmt_query = PRESTO_SHOW_CREATE_TABLE.format(schema_table_name='.'.join(filter(None, [schema, table_name])))
-    results  = connection.execute(fmt_query)
+    fmt_query = PRESTO_SHOW_CREATE_TABLE.format(
+        schema_table_name=".".join(filter(None, [schema, table_name]))
+    )
+    results = connection.execute(fmt_query)
     for res in results:
         matches = re.findall(r"COMMENT '(.*)'", res[0])
         if matches:
