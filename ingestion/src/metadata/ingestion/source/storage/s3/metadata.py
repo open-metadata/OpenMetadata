@@ -376,7 +376,7 @@ class S3Source(StorageServiceSource):
                 bucket_name=bucket_name,
                 verbose=False,
             )
-            content = json.load(response_object["Body"])
+            content = json.loads(response_object)
             metadata_config = StorageContainerConfig.parse_obj(content)
             return metadata_config
         except ReadException:
