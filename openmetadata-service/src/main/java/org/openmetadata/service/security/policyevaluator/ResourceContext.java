@@ -86,6 +86,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       if (entityRepository.isSupportsDomain()) {
         fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
       }
+      if (entityRepository.isSupportsReviewers()) {
+        fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+      }
       Fields fieldList = entityRepository.getFields(fields);
       try {
         if (id != null) {

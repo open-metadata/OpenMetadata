@@ -43,7 +43,7 @@
       "description": "Optional configuration to automatically tag columns that might contain sensitive information",
       "type": "boolean",
       "default": false,
-      "title": "Process PII Sensitive"
+      "title": "Auto Tag PII"
     },
     "confidence": {
       "description": "Set the Confidence value for which you want the column to be marked",

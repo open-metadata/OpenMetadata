@@ -100,6 +100,18 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'containers',
   },
+  [SearchIndex.STORED_PROCEDURE]: {
+    label: i18n.t('label.stored-procedure-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'storedProcedure',
+  },
+  [SearchIndex.DASHBOARD_DATA_MODEL]: {
+    label: i18n.t('label.data-model-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'dashboardDataModel',
+  },
   [SearchIndex.GLOSSARY]: {
     label: i18n.t('label.glossary-plural'),
     sortingFields: entitySortingFields,
@@ -111,6 +123,12 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
+  },
+  [SearchIndex.SEARCH_INDEX]: {
+    label: i18n.t('label.search-index-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'searchIndexes',
   },
 };
 

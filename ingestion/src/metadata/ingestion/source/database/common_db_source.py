@@ -254,8 +254,8 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
+        schema_name = self.context.database_schema.name.__root__
         try:
-            schema_name = self.context.database_schema.name.__root__
             if self.source_config.includeTables:
                 for table_and_type in self.query_table_names_and_types(schema_name):
                     table_name = self.standardize_table_name(

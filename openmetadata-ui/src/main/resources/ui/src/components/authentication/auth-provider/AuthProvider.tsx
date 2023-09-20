@@ -17,12 +17,13 @@ import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import appState from 'AppState';
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosRequestConfig } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { compare } from 'fast-json-patch';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
+import Qs from 'qs';
 import React, {
   ComponentType,
   createContext,
@@ -40,7 +41,12 @@ import axiosClient from 'rest/index';
 import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
 import { getLoggedInUser, updateUserDetail } from 'rest/userAPI';
 import { NO_AUTH } from '../../../constants/auth.constants';
-import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
+import {
+  ACTIVE_DOMAIN_STORAGE_KEY,
+  DEFAULT_DOMAIN_VALUE,
+  REDIRECT_PATHNAME,
+  ROUTES,
+} from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthType, User } from '../../../generated/entity/teams/user';
@@ -397,6 +403,42 @@ export const AuthProvider = ({
     }
   };
 
+  const withDomainFilter = (config: AxiosRequestConfig) => {
+    const activeDomain =
+      localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
+    const isGetRequest = config.method === 'get';
+    const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
+    const currentPath = window.location.pathname;
+
+    // Do not intercept requests from domains page
+    if (currentPath.includes('/domain')) {
+      return config;
+    }
+
+    if (isGetRequest && hasActiveDomain) {
+      // Filter ES Query
+      if (config.url?.includes('/search/query')) {
+        // Parse and update the query parameter
+        const queryParams = Qs.parse(config.url.split('?')[1]);
+        const domainStatement = `(domain.fullyQualifiedName:${activeDomain})`;
+        queryParams.q = queryParams.q ?? '';
+        queryParams.q += isEmpty(queryParams.q)
+          ? domainStatement
+          : ` AND ${domainStatement}`;
+
+        // Update the URL with the modified query parameter
+        config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
+      } else {
+        config.params = {
+          ...config.params,
+          domain: activeDomain,
+        };
+      }
+    }
+
+    return config;
+  };
+
   /**
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
@@ -425,7 +467,7 @@ export const AuthProvider = ({
         }
       }
 
-      return config;
+      return withDomainFilter(config);
     });
 
     // Axios response interceptor for statusCode 401,403

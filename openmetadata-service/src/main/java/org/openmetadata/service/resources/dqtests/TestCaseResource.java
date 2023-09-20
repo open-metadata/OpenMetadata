@@ -149,6 +149,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Returns list of tests filtered by the testSuite id", schema = @Schema(type = "string"))
           @QueryParam("testSuiteId")
           String testSuiteId,
+      @Parameter(
+              description = "Returns the list of tests ordered by the most recent execution date",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("orderByLastExecutionDate")
+          @DefaultValue("false")
+          Boolean orderByLastExecutionDate,
       @Parameter(description = "Include all the tests at the entity level", schema = @Schema(type = "boolean"))
           @QueryParam("includeAllTests")
           @DefaultValue("false")
@@ -162,7 +168,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
-            .addQueryParam("includeAllTests", includeAllTests.toString());
+            .addQueryParam("includeAllTests", includeAllTests.toString())
+            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString());
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);

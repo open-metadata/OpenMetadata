@@ -49,6 +49,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -127,11 +128,11 @@ public class FeedRepository {
     return dao.feedDAO().getTaskId();
   }
 
-  public class ThreadContext {
+  public static class ThreadContext {
     @Getter protected final Thread thread;
-    @Getter @Setter protected final EntityLink about;
+    @Getter protected final EntityLink about;
     @Getter @Setter protected EntityInterface aboutEntity;
-    @Getter private EntityReference createdBy;
+    @Getter private final EntityReference createdBy;
 
     ThreadContext(Thread thread) {
       this.thread = thread;
@@ -251,6 +252,23 @@ public class FeedRepository {
     storeMentions(thread, thread.getMessage());
   }
 
+  public Thread getTask(EntityLink about, TaskType taskType) {
+    List<Triple<String, String, String>> tasks =
+        dao.fieldRelationshipDAO()
+            .findFrom(about.getFullyQualifiedFieldValue(), about.getFullyQualifiedFieldType(), IS_ABOUT.ordinal());
+    for (Triple<String, String, String> task : tasks) {
+      if (task.getMiddle().equals(Entity.THREAD)) {
+        String threadId = task.getLeft();
+        Thread thread = EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
+        if (thread.getTask() != null && thread.getTask().getType() == taskType) {
+          return thread;
+        }
+      }
+    }
+    throw new EntityNotFoundException(
+        String.format("Task for entity %s of type %s was not found", about.getEntityType(), taskType));
+  }
+
   private Thread createThread(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
     if (thread.getType() == ThreadType.Task) {
@@ -279,8 +297,7 @@ public class FeedRepository {
 
   public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user, CloseTask closeTask) {
     // Update the attributes
-    ThreadContext threadContext = getThreadContext(thread);
-    closeTask(threadContext, user, closeTask);
+    closeTask(thread, user, closeTask);
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
@@ -305,7 +322,7 @@ public class FeedRepository {
 
     // Update the attributes
     threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
-    closeTask(threadContext, user, new CloseTask());
+    closeTask(threadContext.getThread(), user, new CloseTask());
   }
 
   private static String getTagFQNs(List<TagLabel> tags) {
@@ -340,8 +357,8 @@ public class FeedRepository {
     addPostToThread(thread.getId().toString(), post, user);
   }
 
-  private void closeTask(ThreadContext threadContext, String user, CloseTask closeTask) {
-    Thread thread = threadContext.getThread();
+  public void closeTask(Thread thread, String user, CloseTask closeTask) {
+    ThreadContext threadContext = getThreadContext(thread);
     TaskDetails task = thread.getTask();
     if (task.getStatus() != Open) {
       return;

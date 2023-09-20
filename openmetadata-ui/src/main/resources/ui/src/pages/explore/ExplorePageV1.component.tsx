@@ -282,8 +282,11 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.PIPELINE,
           SearchIndex.MLMODEL,
           SearchIndex.CONTAINER,
+          SearchIndex.STORED_PROCEDURE,
+          SearchIndex.DASHBOARD_DATA_MODEL,
           SearchIndex.GLOSSARY,
           SearchIndex.TAG,
+          SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
             query: searchQueryParam,
@@ -305,8 +308,11 @@ const ExplorePageV1: FunctionComponent = () => {
           pipelineResponse,
           mlmodelResponse,
           containerResponse,
+          storeProcedureResponse,
+          dataModelResponse,
           glossaryResponse,
           tagsResponse,
+          searchIndexResponse,
         ]) => {
           setSearchHitCounts({
             [SearchIndex.TABLE]: tableResponse.hits.total.value,
@@ -315,8 +321,13 @@ const ExplorePageV1: FunctionComponent = () => {
             [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
             [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
             [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
+            [SearchIndex.STORED_PROCEDURE]:
+              storeProcedureResponse.hits.total.value,
+            [SearchIndex.DASHBOARD_DATA_MODEL]:
+              dataModelResponse.hits.total.value,
             [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
             [SearchIndex.TAG]: tagsResponse.hits.total.value,
+            [SearchIndex.SEARCH_INDEX]: searchIndexResponse.hits.total.value,
           });
         }
       ),

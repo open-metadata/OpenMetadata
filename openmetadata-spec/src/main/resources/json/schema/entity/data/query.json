@@ -119,8 +119,12 @@
       "description": "Flag if this query has already been successfully processed for lineage",
       "type": "boolean",
       "default": false
+    },
+    "service": {
+      "description": "Link to the service this query belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name","query"],
+  "required": ["name", "query", "service"],
   "additionalProperties": false
 }

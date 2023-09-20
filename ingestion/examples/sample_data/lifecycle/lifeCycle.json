@@ -4,20 +4,16 @@
             "fqn": "sample_data.ecommerce_db.shopify.dim_address",
             "lifeCycle": {
                 "created": {
-                  "created_at": 1662900600000,
-                  "created_by": "Alice"
+                  "timestamp": 1662900600000,
+                  "accessedByAProcess": "Alice"
                 },
                 "updated": {
-                  "updated_at": 1662986700000,
-                  "updated_by": "Bob"
+                  "timestamp": 1662986700000,
+                  "accessedByAProcess": "Bob"
                 },
                 "accessed": {
-                  "accessed_at": 1663071300000,
-                  "accessed_by": "Charlie"
-                },
-                "deleted": {
-                  "deleted_at": 1663155600000,
-                  "deleted_by": "David"
+                  "timestamp": 1663071300000,
+                  "accessedByAProcess": "Charlie"
                 }
             }
         },
@@ -25,20 +21,28 @@
             "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
             "lifeCycle": {
                 "created": {
-                  "created_at": 1693579104000,
-                  "created_by": "aaron_johnson0"
+                  "timestamp": 1693579104000,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "aaron_johnson0",
+                    "type": "user"
+                  }
                 },
                 "updated": {
-                  "updated_at": 1693665504000,
-                  "updated_by": "amber_green0"
+                  "timestamp": 1693665504000,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "amber_green0",
+                    "type": "user"
+                  }
                 },
                 "accessed": {
-                  "accessed_at": 1693838304000,
-                  "accessed_by": "alex_pollard9"
-                },
-                "deleted": {
-                  "deleted_at": 1693924704000,
-                  "deleted_by": "aaron_johnson0"
+                  "timestamp": 1693838304000,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "alex_pollard9",
+                    "type": "user"
+                  }
                 }
             }
         },
@@ -46,20 +50,20 @@
             "fqn": "sample_data.ecommerce_db.shopify.dim_location",
             "lifeCycle": {
                 "created": {
-                  "created_at": 1688567904000,
-                  "created_by": "anthony_wall4"
+                  "timestamp": 1688567904000,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "anthony_wall4",
+                    "type": "user"
+                  }
                 },
                 "updated": {
-                  "updated_at": 1688827104000,
-                  "updated_by": "Alice"
+                  "timestamp": 1688827104000,
+                  "accessedByAProcess": "Alice"
                 },
                 "accessed": {
-                  "accessed_at": 1688654304000,
-                  "accessed_by": "David"
-                },
-                "deleted": {
-                  "deleted_at": 1688999904000,
-                  "deleted_by": "anthony_wall4"
+                  "timestamp": 1688654304000,
+                  "accessedByAProcess": "David"
                 }
             }
         }

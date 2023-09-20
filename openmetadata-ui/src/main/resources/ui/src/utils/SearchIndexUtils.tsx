@@ -54,7 +54,7 @@ export const getSearchIndexDetailsPath = (searchIndexFQN: string) => {
 };
 
 export const getSearchIndexTabPath = (
-  tableFQN: string,
+  searchIndexFQN: string,
   tab = 'fields',
   subTab = 'all'
 ) => {
@@ -65,7 +65,7 @@ export const getSearchIndexTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_SEARCH_INDEX_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_SEARCH_INDEX_FQN, searchIndexFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
