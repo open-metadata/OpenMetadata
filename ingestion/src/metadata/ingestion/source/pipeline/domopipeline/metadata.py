@@ -171,7 +171,7 @@ class DomopipelineSource(PipelineServiceSource):
     ) -> Optional[str]:
         try:
             return (
-                f"{clean_uri(self.service_connection.sandboxDomain)}/datacenter/dataflows/"
+                f"{clean_uri(self.service_connection.instanceDomain)}/datacenter/dataflows/"
                 f"{pipeline_id}/details#history"
             )
         except Exception as exc:

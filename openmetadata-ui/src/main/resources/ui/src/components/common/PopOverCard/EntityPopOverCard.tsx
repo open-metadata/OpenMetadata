@@ -29,6 +29,8 @@ import {
   getDatabaseSchemaDetailsByFQN,
 } from 'rest/databaseAPI';
 import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
+import { getDataProductByName } from 'rest/dataProductAPI';
+import { getDomainByName } from 'rest/domainAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
@@ -126,6 +128,15 @@ const PopoverContent: React.FC<{
 
       case EntityType.STORED_PROCEDURE:
         promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
+
+        break;
+      case EntityType.DOMAIN:
+        promise = getDomainByName(entityFQN, 'owner');
+
+        break;
+
+      case EntityType.DATA_PRODUCT:
+        promise = getDataProductByName(entityFQN, 'owner,domain');
 
         break;
 

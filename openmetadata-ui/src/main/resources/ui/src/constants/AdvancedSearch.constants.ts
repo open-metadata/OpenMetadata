@@ -88,6 +88,13 @@ export const PIPELINE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const SEARCH_INDEX_DROPDOWN_ITEMS = [
+  {
+    label: t('label.field'),
+    key: 'fields.displayName.keyword',
+  },
+];
+
 export const TOPIC_DROPDOWN_ITEMS = [
   {
     label: t('label.schema-field'),

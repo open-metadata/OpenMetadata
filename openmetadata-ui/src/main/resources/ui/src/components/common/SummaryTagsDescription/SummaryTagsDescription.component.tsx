@@ -56,7 +56,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
-            data-testid="schema-header">
+            data-testid="description-header">
             {t('label.description')}
           </Typography.Text>
         </Col>

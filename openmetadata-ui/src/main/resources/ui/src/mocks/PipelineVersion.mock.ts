@@ -15,6 +15,7 @@ import { PipelineServiceType } from 'generated/entity/data/pipeline';
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
@@ -113,6 +114,7 @@ export const pipelineVersionMockProps: PipelineVersionProp = {
   currentVersionData: mockPipelineData,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   slashedPipelineName: [],
   topicFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',

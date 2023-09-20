@@ -62,7 +62,7 @@ mock_domopipeline_config = {
                 "secretToken": "abcdefg",
                 "accessToken": "accessTpokem",
                 "apiHost": "api.domo.com",
-                "sandboxDomain": "https://domain.domo.com",
+                "instanceDomain": "https://domain.domo.com",
             }
         },
         "sourceConfig": {
@@ -187,12 +187,10 @@ class DomoDashboardUnitTest(TestCase):
             for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
                 self.assertEqual(expected, original)
 
+        # Cover error responses
         with patch.object(REST, "_request", return_value=mock_data[1]):
-            result = self.domodashboard.domo_client.get_chart_details(
-                MOCK_DASHBOARD.cardIds[0]
-            )
             assert (
-                self.domodashboard.domo_client.get_chart_details(
+                self.domodashboard.client.custom.get_chart_details(
                     MOCK_DASHBOARD.cardIds[0]
                 )
                 is None
@@ -200,7 +198,7 @@ class DomoDashboardUnitTest(TestCase):
 
         with patch.object(REST, "_request", return_value=mock_data[2]):
             assert (
-                self.domodashboard.domo_client.get_chart_details(
+                self.domodashboard.client.custom.get_chart_details(
                     MOCK_DASHBOARD.cardIds[0]
                 )
                 is None

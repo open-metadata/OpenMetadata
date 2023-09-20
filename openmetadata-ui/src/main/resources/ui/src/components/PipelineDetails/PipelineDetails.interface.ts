@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
 
 export interface PipeLineDetailsProp {
+  updatePipelineDetailsState?: (data: DataAssetWithDomains) => void;
   pipelineFQN: string;
   pipelineDetails: Pipeline;
   paging: Paging;

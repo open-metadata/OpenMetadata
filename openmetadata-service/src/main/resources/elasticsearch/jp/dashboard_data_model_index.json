@@ -75,6 +75,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
@@ -278,6 +281,9 @@
       },
       "project": {
         "type": "text"
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "domain" : {
         "properties": {
