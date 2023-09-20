@@ -13,11 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
-
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -31,6 +26,12 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+
+import java.util.List;
+
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DATABASE_SERVICE;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 @Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
@@ -81,8 +82,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (supportsSearchIndex) {
       if (updated.getOwner() != null) {
         String scriptTxt =
-            "if (ctx._source.database.id == '%s') { if(ctx._source.owner == null){ ctx._source.put('owner', params)}}";
-        searchClient.updateSearchByQuery(JsonUtils.deepCopy(updated, Database.class), scriptTxt, "database.id");
+            "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
+        searchClient.updateSearchByQuery(JsonUtils.deepCopy(updated, Database.class), scriptTxt, "database.id",updated.getOwner());
+      }
+      if (updated.getDomain() != null) {
+        String scriptTxt =
+            "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
+        searchClient.updateSearchByQuery(
+            JsonUtils.deepCopy(updated, Database.class), scriptTxt, "database.id",updated.getDomain());
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
       searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, Database.class), scriptTxt, "");

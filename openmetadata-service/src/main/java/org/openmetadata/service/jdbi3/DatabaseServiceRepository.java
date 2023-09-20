@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchClient;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -23,6 +21,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 @Slf4j
 public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
@@ -42,8 +42,14 @@ public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseS
     if (supportsSearchIndex) {
       if (updated.getOwner() != null) {
         String scriptTxt =
-            "if (ctx._source.service.id == '%s') { if(ctx._source.owner == null){ ctx._source.put('owner', params)}}";
-        searchClient.updateSearchByQuery(JsonUtils.deepCopy(updated, DatabaseService.class), scriptTxt, "service.id");
+            "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
+        searchClient.updateSearchByQuery(JsonUtils.deepCopy(updated, DatabaseService.class), scriptTxt, "service.id",updated.getOwner());
+      }
+      if (updated.getDomain() != null) {
+        String scriptTxt =
+            "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
+        searchClient.updateSearchByQuery(
+            JsonUtils.deepCopy(updated, DatabaseService.class), scriptTxt, "service.id",updated.getDomain());
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
       searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, DatabaseService.class), scriptTxt, "");

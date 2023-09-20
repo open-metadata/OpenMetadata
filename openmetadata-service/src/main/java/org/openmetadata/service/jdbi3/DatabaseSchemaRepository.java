@@ -13,11 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
-
-import java.util.Collections;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -31,6 +26,12 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+
+import java.util.Collections;
+import java.util.List;
+
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
@@ -124,9 +125,15 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (supportsSearchIndex) {
       if (updated.getOwner() != null) {
         String scriptTxt =
-            "if (ctx._source.databaseSchema.id == '%s') { if(ctx._source.owner == null){ ctx._source.put('owner', params)}}";
+            "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
         searchClient.updateSearchByQuery(
-            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id");
+            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id",updated.getOwner());
+      }
+      if (updated.getDomain() != null) {
+        String scriptTxt =
+            "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
+        searchClient.updateSearchByQuery(
+            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id",updated.getDomain());
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
       searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "");
