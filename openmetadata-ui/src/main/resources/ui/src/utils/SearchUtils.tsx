@@ -30,6 +30,7 @@ import { getPartialNameFromTableFQN } from './CommonUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getEntityLink } from './TableUtils';
 
+import { SearchOutlined } from '@ant-design/icons';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
@@ -88,7 +89,7 @@ export const getQueryWithSlash = (query: string): string =>
 
 export const getGroupLabel = (index: string) => {
   let label = '';
-  let Icon: SvgComponent;
+  let Icon;
   switch (index) {
     case SearchIndex.TOPIC:
       label = i18next.t('label.topic-plural');
@@ -140,7 +141,7 @@ export const getGroupLabel = (index: string) => {
 
     case SearchIndex.SEARCH_INDEX:
       label = i18next.t('label.search-index-plural');
-      icon = Icons.SEARCH;
+      Icon = SearchOutlined;
 
       break;
 
