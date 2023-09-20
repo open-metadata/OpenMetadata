@@ -3,7 +3,11 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.*;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,6 +38,12 @@ public class ContainerIndex implements ColumnIndex {
       EntityReference owner = container.getOwner();
       owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
       container.setOwner(owner);
+    }
+    if (container.getDomain() != null) {
+      EntityReference domain = container.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      container.setDomain(domain);
     }
     Map<String, Object> doc = JsonUtils.getMap(container);
     List<SearchSuggest> suggest = new ArrayList<>();

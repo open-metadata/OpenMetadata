@@ -3,7 +3,11 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.*;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +36,12 @@ public class MlModelIndex implements ElasticSearchIndex {
       EntityReference owner = mlModel.getOwner();
       owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
       mlModel.setOwner(owner);
+    }
+    if (mlModel.getDomain() != null) {
+      EntityReference domain = mlModel.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      mlModel.setDomain(domain);
     }
     Map<String, Object> doc = JsonUtils.getMap(mlModel);
     List<SearchSuggest> suggest = new ArrayList<>();

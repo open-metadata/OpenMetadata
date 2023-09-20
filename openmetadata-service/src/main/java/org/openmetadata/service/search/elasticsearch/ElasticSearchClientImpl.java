@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
@@ -615,7 +616,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
-        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD));
+        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -653,11 +655,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder
-        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD).size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"))
-        .aggregation(AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD).field(OWNER_DISPLAY_NAME_KEYWORD));
-    return searchSourceBuilder;
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
@@ -679,8 +678,11 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.field(highlightTagName);
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
-    return searchBuilder(queryBuilder, hb, from, size)
-        .aggregation(AggregationBuilders.terms("classification.name.keyword").field("classification.name.keyword"));
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("classification.name.keyword").field("classification.name.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
@@ -780,8 +782,9 @@ public class ElasticSearchClientImpl implements SearchClient {
 
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
-
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildDashboardDataModelsSearch(String query, int from, int size) {
@@ -802,7 +805,13 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
 
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms("dataModelType").field("dataModelType"))
+        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
@@ -844,7 +853,10 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
 
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("fields.name.keyword").field("fields.name.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
@@ -860,10 +872,14 @@ public class ElasticSearchClientImpl implements SearchClient {
             AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("entityType.keyword").field("entityType.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
+                .field(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD));
 
@@ -944,7 +960,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       try {
         deleteEntityFromElasticSearch(deleteRequest);
         if (!CommonUtil.nullOrEmpty(scriptTxt) && !CommonUtil.nullOrEmpty(field)) {
-          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
+          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
           updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
           updateByQueryRequest.setRefresh(true);
           Script script =

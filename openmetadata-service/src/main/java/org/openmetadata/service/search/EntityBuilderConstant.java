@@ -11,6 +11,7 @@ public class EntityBuilderConstant {
 
   public static final String COLUMNS_NAME_KEYWORD = "columns.name.keyword";
   public static final String OWNER_DISPLAY_NAME_KEYWORD = "owner.displayName.keyword";
+  public static final String DOMAIN_DISPLAY_NAME_KEYWORD = "domain.displayName.keyword";
   public static final String DATA_MODEL_COLUMNS_NAME_KEYWORD = "dataModel.columns.name.keyword";
   public static final String NAME_KEYWORD = "name.keyword";
   public static final String FIELD_NAME_NGRAM = "name.ngram";
