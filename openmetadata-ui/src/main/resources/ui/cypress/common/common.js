@@ -632,36 +632,26 @@ export const softDeleteUser = (username, isAdmin) => {
 export const restoreUser = (username) => {
   // Click on deleted user toggle
   interceptURL('GET', '/api/v1/users*', 'deletedUser');
-  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
+  cy.get('[data-testid="show-deleted"]').click();
   verifyResponseStatusCode('@deletedUser', 200);
 
-  cy.get(`[data-testid="restore-user-btn-${username}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get(`[data-testid="restore-user-btn-${username}"]`).click();
   cy.get('.ant-modal-body > p').should(
     'contain',
     `Are you sure you want to restore ${username}?`
   );
   interceptURL('PUT', '/api/v1/users', 'restoreUser');
-  cy.get('.ant-modal-footer > .ant-btn-primary')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('.ant-modal-footer > .ant-btn-primary').click();
   verifyResponseStatusCode('@restoreUser', 200);
   toastNotification('User restored successfully');
 
   // Verifying the restored user
-  cy.get('.ant-switch').should('exist').should('be.visible').click();
+  cy.get('[data-testid="show-deleted"]').click();
 
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
-  cy.get('[data-testid="searchbar"]')
-    .should('exist')
-    .should('be.visible')
-    .type(username);
+  cy.get('[data-testid="searchbar"]').type(username);
   verifyResponseStatusCode('@searchUser', 200);
-
-  cy.get('.ant-table-row > :nth-child(1)').should('contain', username);
+  cy.get(`[data-testid=${username}]`).should('exist');
 };
 
 export const deleteSoftDeletedUser = (username) => {

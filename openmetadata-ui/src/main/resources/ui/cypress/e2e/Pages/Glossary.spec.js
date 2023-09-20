@@ -253,7 +253,7 @@ const updateTags = (inTerm) => {
   // visit glossary page
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=disabled%3Afalse&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
+    '/api/v1/search/query?q=disabled:false&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
     'tags'
   );
   cy.get(
@@ -430,7 +430,7 @@ describe('Glossary page should work properly', () => {
     interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=disabled%3Afalse&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
+      '/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
       'fetchTags'
     );
 
@@ -678,7 +678,6 @@ describe('Glossary page should work properly', () => {
       ['@glossaryTermDetails', '@listGlossaryTerm', '@glossaryTermPermission'],
       200
     );
-    cy.wait(5000); // adding manual wait as edit icon takes time to appear on screen
     // Updating synonyms
     updateSynonyms(uSynonyms);
 
