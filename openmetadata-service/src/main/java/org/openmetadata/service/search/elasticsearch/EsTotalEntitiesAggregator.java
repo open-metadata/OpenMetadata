@@ -1,19 +1,19 @@
-package org.openmetadata.service.search.openSearch;
+package org.openmetadata.service.search.elasticsearch;
 
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
+import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
+import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.opensearch.search.aggregations.bucket.histogram.Histogram;
-import org.opensearch.search.aggregations.metrics.Sum;
 
-public class OsTotalEntitiesAggregator extends DataInsightAggregatorInterface {
+public class EsTotalEntitiesAggregator extends DataInsightAggregatorInterface {
 
-  public OsTotalEntitiesAggregator(
+  public EsTotalEntitiesAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -26,7 +26,7 @@ public class OsTotalEntitiesAggregator extends DataInsightAggregatorInterface {
 
   @Override
   public List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregationsOs.get(TIMESTAMP);
+    Histogram timestampBuckets = this.aggregationsEs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
     List<Double> entityCount = new ArrayList<>();
 

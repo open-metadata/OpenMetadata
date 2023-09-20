@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "min_gram": 3,
+          "max_gram": 10,
           "filter": [
             "lowercase"
           ]
@@ -74,13 +74,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -118,12 +112,14 @@
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "norms": false
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fqnParts": {
+            "type": "keyword"
           },
           "tags": {
             "properties": {

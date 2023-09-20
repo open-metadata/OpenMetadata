@@ -128,7 +128,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
-            ? Entity.getEntity(entity.getParent(), "owner,reviewers", Include.NON_DELETED)
+            ? Entity.getEntity(entity.getParent().withType(GLOSSARY_TERM), "owner,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
       parentReviewers = parentTerm.getReviewers();

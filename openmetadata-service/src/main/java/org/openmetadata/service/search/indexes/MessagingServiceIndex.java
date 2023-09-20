@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,6 +33,11 @@ public class MessagingServiceIndex implements ElasticSearchIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(messagingService.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(messagingService.getFullyQualifiedName()).weight(5).build());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            messagingService.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MESSAGING_SERVICE);
     return doc;

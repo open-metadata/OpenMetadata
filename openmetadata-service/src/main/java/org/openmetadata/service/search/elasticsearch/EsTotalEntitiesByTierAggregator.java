@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.elasticSearch;
+package org.openmetadata.service.search.elasticsearch;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -8,11 +8,11 @@ import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithOwner;
+import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 
-public class EsServicesOwnerAggregator extends DataInsightAggregatorInterface {
-  protected EsServicesOwnerAggregator(
+public class EsTotalEntitiesByTierAggregator extends DataInsightAggregatorInterface {
+  public EsTotalEntitiesByTierAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -27,21 +27,31 @@ public class EsServicesOwnerAggregator extends DataInsightAggregatorInterface {
   public List<Object> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregationsEs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
+
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
+      List<TotalEntitiesByTier> timestampData = new ArrayList<>();
+      double totalEntityCount = 0.0;
+
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
-      MultiBucketsAggregation servicesBuckets = timestampBucket.getAggregations().get(SERVICE_NAME);
-      for (MultiBucketsAggregation.Bucket serviceBucket : servicesBuckets.getBuckets()) {
-        String serviceName = serviceBucket.getKeyAsString();
-        Sum sumHasOwner = serviceBucket.getAggregations().get(HAS_OWNER_FRACTION);
-        Sum sumEntityCount = serviceBucket.getAggregations().get(ENTITY_COUNT);
-        data.add(
-            new PercentageOfServicesWithOwner()
+      MultiBucketsAggregation entityTypeBuckets = timestampBucket.getAggregations().get(ENTITY_TIER);
+      for (MultiBucketsAggregation.Bucket entityTierBucket : entityTypeBuckets.getBuckets()) {
+        String entityTier = entityTierBucket.getKeyAsString();
+        Sum sumEntityCount = entityTierBucket.getAggregations().get(ENTITY_COUNT);
+        timestampData.add(
+            new TotalEntitiesByTier()
                 .withTimestamp(timestamp)
-                .withServiceName(serviceName)
-                .withEntityCount(sumEntityCount.getValue())
-                .withHasOwner(sumHasOwner.getValue())
-                .withHasOwnerFraction(sumHasOwner.getValue() / sumEntityCount.getValue()));
+                .withEntityTier(entityTier)
+                .withEntityCount(sumEntityCount.getValue()));
+        totalEntityCount = totalEntityCount + sumEntityCount.getValue();
+      }
+      for (TotalEntitiesByTier el : timestampData) {
+        if (totalEntityCount != 0.0) {
+          el.withEntityCountFraction(el.getEntityCount() / totalEntityCount);
+        } else {
+          el.withEntityCountFraction(Double.NaN);
+        }
+        data.add((el));
       }
     }
 
