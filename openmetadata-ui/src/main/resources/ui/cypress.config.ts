@@ -29,17 +29,6 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:8585',
-    specPattern: [
-      'cypress/e2e/Pages/ServiceVersionPage.spec.js',
-      'cypress/e2e/Pages/DataQualityAndProfiler.spec.j','cypress/e2e/AddNewService/Alerts.spec.js',
-      'cypress/e2e/AddNewService/AddAndRemoveTierAndOwner.spec.js',
-      'cypress/e2e/AddNewService/bigquery.spec.js',
-      'cypress/e2e/Pages/Glossary.spec.js',
-      'cypress/e2e/Pages/Tags.spec.js',
-      'cypress/e2e/Pages/Domains.spec.js',
-      'cypress/e2e/AddNewService/redshiftWithDBT.spec.js',
-      'cypress/e2e/Features/SchemaSearch.spec.js',
-      'cypress/e2e/Features/RecentlyViewed.spec.js  ',
-    ],
+    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
   },
 });
