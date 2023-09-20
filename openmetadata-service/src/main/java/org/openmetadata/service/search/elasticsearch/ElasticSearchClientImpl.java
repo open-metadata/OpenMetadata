@@ -251,7 +251,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (exists) {
-        // check if the alias is exist or not
+        // check if the alias is exists or not
         GetAliasesRequest getAliasesRequest = new GetAliasesRequest(GLOBAL_SEARCH_ALIAS);
         GetAliasesResponse getAliasesResponse = client.indices().getAlias(getAliasesRequest, RequestOptions.DEFAULT);
         boolean aliasExists = getAliasesResponse.getAliases().containsKey(elasticSearchIndexType.indexName);
@@ -1028,7 +1028,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (updateRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       ActionListener<UpdateResponse> listener =
-          new ActionListener<UpdateResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(UpdateResponse updateResponse) {
               LOG.info("Created successfully: " + updateResponse.toString());
@@ -1047,7 +1047,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (updateByQueryRequest != null) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<BulkByScrollResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(BulkByScrollResponse response) {
               LOG.info("Update by query succeeded: " + response.toString());
@@ -1076,7 +1076,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (deleteRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       ActionListener<DeleteResponse> listener =
-          new ActionListener<DeleteResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(DeleteResponse response) {
               LOG.info("Delete succeeded: " + response.toString());
@@ -1097,7 +1097,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
       ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<BulkByScrollResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(BulkByScrollResponse response) {
               LOG.info("Delete by query succeeded: " + response.toString());
