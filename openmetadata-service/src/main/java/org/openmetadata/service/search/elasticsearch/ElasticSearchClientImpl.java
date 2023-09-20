@@ -416,7 +416,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     org.elasticsearch.action.search.SearchRequest searchRequest =
         new org.elasticsearch.action.search.SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(fieldName, fieldValue)));
+    searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();

@@ -404,7 +404,7 @@ public class OpenSearchClientImpl implements SearchClient {
   public Response searchByField(String fieldName, String fieldValue, String index) throws IOException {
     org.opensearch.action.search.SearchRequest searchRequest = new org.opensearch.action.search.SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(fieldName, fieldValue)));
+    searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
