@@ -118,7 +118,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     async (updatedExtension: ExtentionEntities[T]) => {
       if (!isUndefined(handleExtensionUpdate) && versionDetails) {
         const updatedData = {
-          ...(versionDetails as ExtentionEntities[T]),
+          ...versionDetails,
           extension: updatedExtension,
         };
         await handleExtensionUpdate(updatedData);

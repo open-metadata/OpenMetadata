@@ -34,7 +34,7 @@ export const getEntityExtentionDetailsFromEntityType = <
 >(
   type: T,
   fqn: string
-): Promise<ExtentionEntities[ExtentionEntitiesKeys]> | undefined => {
+): Promise<ExtentionEntities[ExtentionEntitiesKeys]> | void => {
   switch (type) {
     case EntityType.TABLE:
       return getTableDetailsByFQN(fqn, TabSpecificField.EXTENSION);
@@ -62,6 +62,4 @@ export const getEntityExtentionDetailsFromEntityType = <
       // eslint-disable-next-line no-console
       console.error(`Custom properties for Entity: ${type} not supported yet.`);
   }
-
-  return;
 };

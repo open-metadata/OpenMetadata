@@ -126,7 +126,7 @@ const RequestDescription = () => {
           );
           history.push(
             getEntityDetailLink(
-              entityType as EntityType,
+              entityType,
               entityType === EntityType.TABLE
                 ? entityFQN
                 : getDecodedFqn(entityFQN),
@@ -142,11 +142,7 @@ const RequestDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(
-      entityType as EntityType,
-      entityFQN as string,
-      setEntityData
-    );
+    fetchEntityDetail(entityType, entityFQN as string, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -178,7 +174,7 @@ const RequestDescription = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),

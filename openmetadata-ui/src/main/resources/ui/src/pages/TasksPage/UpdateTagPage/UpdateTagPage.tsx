@@ -97,7 +97,7 @@ const UpdateTag = () => {
     return getColumnObject(
       column[0],
       getEntityColumnsDetails(entityType, entityData),
-      entityType as EntityType,
+      entityType,
       chartData
     );
   }, [field, entityData, chartData, entityType]);
@@ -147,7 +147,7 @@ const UpdateTag = () => {
         );
         history.push(
           getEntityDetailLink(
-            entityType as EntityType,
+            entityType,
             entityType === EntityType.TABLE
               ? entityFQN
               : getDecodedFqn(entityFQN),
@@ -161,7 +161,7 @@ const UpdateTag = () => {
 
   useEffect(() => {
     fetchEntityDetail(
-      entityType as EntityType,
+      entityType,
       entityFQN as string,
       setEntityData,
       setChartData
@@ -203,7 +203,7 @@ const UpdateTag = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),

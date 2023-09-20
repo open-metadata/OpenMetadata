@@ -23,11 +23,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import VersionTable from 'components/VersionTable/VersionTable.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import {
-  ChangeDescription,
-  Column,
-  Container,
-} from 'generated/entity/data/container';
+import { ChangeDescription, Column } from 'generated/entity/data/container';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -80,9 +76,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep(
-      (currentVersionData as Container).dataModel?.columns
-    );
+    const colList = cloneDeep(currentVersionData.dataModel?.columns);
 
     return getColumnsDataWithVersionChanges<Column>(
       changeDescription,

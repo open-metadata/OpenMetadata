@@ -33,7 +33,6 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   ChangeDescription,
-  Dashboard,
   EntityReference,
 } from '../../generated/entity/data/dashboard';
 import {
@@ -186,7 +185,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                     bordered
                     columns={tableColumn}
                     data-testid="schema-table"
-                    dataSource={(currentVersionData as Dashboard)?.charts}
+                    dataSource={currentVersionData?.charts}
                     pagination={false}
                     rowKey="id"
                     size="small"

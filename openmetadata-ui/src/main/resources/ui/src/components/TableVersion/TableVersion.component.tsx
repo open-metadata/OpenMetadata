@@ -34,7 +34,6 @@ import {
   ChangeDescription,
   Column,
   ColumnJoins,
-  Table,
 } from '../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
@@ -81,7 +80,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep((currentVersionData as Table).columns);
+    const colList = cloneDeep(currentVersionData.columns);
 
     return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
   }, [currentVersionData, changeDescription]);
@@ -168,10 +167,8 @@ const TableVersion: React.FC<TableVersionProp> = ({
                     columns={columns}
                     deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
                     deletedTableConstraintDiffs={deletedTableConstraintDiffs}
-                    joins={(currentVersionData as Table).joins as ColumnJoins[]}
-                    tableConstraints={
-                      (currentVersionData as Table).tableConstraints
-                    }
+                    joins={currentVersionData.joins as ColumnJoins[]}
+                    tableConstraints={currentVersionData.tableConstraints}
                   />
                 </Col>
               </Row>

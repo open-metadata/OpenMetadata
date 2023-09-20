@@ -34,7 +34,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
+import { MlFeature } from 'generated/entity/data/mlmodel';
 import { TagSource } from 'generated/type/tagLabel';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -152,8 +152,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  {(currentVersionData as Mlmodel).mlFeatures &&
-                  (currentVersionData as Mlmodel).mlFeatures?.length ? (
+                  {currentVersionData.mlFeatures &&
+                  currentVersionData.mlFeatures?.length ? (
                     <Row data-testid="feature-list">
                       <Col span={24}>
                         <Divider className="m-y-md" />

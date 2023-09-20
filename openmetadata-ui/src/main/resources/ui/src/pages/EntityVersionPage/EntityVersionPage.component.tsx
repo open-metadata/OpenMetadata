@@ -141,7 +141,7 @@ const EntityVersionPage: FunctionComponent = () => {
     fqn: entityFQN,
     tab,
   } = useParams<{
-    entityType: string;
+    entityType: EntityType;
     version: string;
     fqn: string;
     tab: EntityTabs;
@@ -692,7 +692,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <SearchIndexVersion
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as SearchIndex}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
