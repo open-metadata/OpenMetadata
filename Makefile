@@ -17,6 +17,11 @@ install_apis:  ## Install the REST APIs module to the current environment
 install_test:  ## Install the ingestion module with test dependencies
 	python -m pip install "ingestion[test]/"
 
+.PHONY: install_e2e_tests
+install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
+	python -m pip install "ingestion[e2e_test]/"
+	playwright install --with-deps
+
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
 	python -m pip install "ingestion[dev]/"
@@ -67,6 +72,10 @@ run_ometa_integration_tests:  ## Run Python integration tests
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
 	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
+
+.PHONY: run_e2e_tests
+run_e2e_tests: ## Run e2e tests
+	pytest --screenshot=only-on-failure --output="ingestion/tests/e2e/artifacts" $(ARGS) --junitxml=ingestion/junit/test-results-e2e.xml ingestion/tests/e2e
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage

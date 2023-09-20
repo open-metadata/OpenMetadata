@@ -125,6 +125,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.TAGS,
         TabSpecificField.EXTENSION,
         TabSpecificField.DOMAIN,
+        TabSpecificField.DATA_PRODUCTS,
         TabSpecificField.VOTES,
       ]);
       const { id, fullyQualifiedName, serviceType } = res;

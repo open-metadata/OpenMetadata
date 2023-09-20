@@ -19,5 +19,5 @@ export interface StoredProcedureSummaryProps {
   entityDetails: StoredProcedure;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
-  isLoading: boolean;
+  isLoading?: boolean;
 }

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { ContainerSearchSource } from 'interface/search.interface';
+import {
+  ContainerSearchSource,
+  DashboardDataModelSearchSource,
+  StoredProcedureSearchSource,
+} from 'interface/search.interface';
 import { BaseSelectRef } from 'rc-select';
 
 export interface GlobalSearchSuggestionsProp {
@@ -72,6 +76,16 @@ export interface TagSource extends CommonSource {
   tag_name: string;
 }
 
+export interface StoredProcedureSource extends CommonSource {
+  stored_procedure_id: string;
+  stored_procedure_name: string;
+}
+
+export interface DashboardDataModelSource extends CommonSource {
+  data_model_id: string;
+  data_model_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
@@ -81,6 +95,8 @@ export interface Option {
     PipelineSource &
     MlModelSource &
     ContainerSearchSource &
+    StoredProcedureSearchSource &
+    DashboardDataModelSearchSource &
     GlossarySource &
     TagSource &
     SearchIndexSource;
@@ -95,4 +111,6 @@ export type SearchSuggestions =
   | ContainerSearchSource[]
   | DashboardSource[]
   | MlModelSource[]
-  | SearchIndexSource[];
+  | SearchIndexSource[]
+  | StoredProcedureSearchSource[]
+  | DashboardDataModelSearchSource[];

@@ -17,6 +17,8 @@ import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
+import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
@@ -42,6 +44,7 @@ import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
@@ -259,9 +262,11 @@ export const getEntityLink = (
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
 
+    case SearchIndex.DASHBOARD_DATA_MODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(getDecodedFqn(fullyQualifiedName));
 
+    case SearchIndex.STORED_PROCEDURE:
     case EntityType.STORED_PROCEDURE:
       return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
 
@@ -290,7 +295,11 @@ export const getServiceIcon = (source: SourceType) => {
       <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
     );
   } else if (source.entityType === EntityType.DATA_PRODUCT) {
-    return <></>;
+    return (
+      <DataProductIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+    );
+  } else if (source.entityType === EntityType.DOMAIN) {
+    return <DomainIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
   } else {
     return (
       <img
@@ -324,8 +333,13 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.CONTAINER:
       return <ContainerIcon />;
 
+    case SearchIndex.DASHBOARD_DATA_MODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
       return <IconDataModel />;
+
+    case SearchIndex.STORED_PROCEDURE:
+    case EntityType.STORED_PROCEDURE:
+      return <IconStoredProcedure />;
 
     case EntityType.TAG:
       return <ClassificationIcon />;
