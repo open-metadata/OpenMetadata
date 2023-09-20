@@ -581,7 +581,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
             .fields(TableIndex.getFields())
-            .analyzer("standard")
             .type(MultiMatchQueryBuilder.Type.BEST_FIELDS)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);

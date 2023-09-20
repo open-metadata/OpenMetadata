@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
@@ -66,10 +67,7 @@ public class TableIndex implements ColumnIndex {
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    doc.put("fqnParts", getFQNParts(table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);
@@ -104,6 +102,7 @@ public class TableIndex implements ColumnIndex {
     fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
     fields.put(NAME_KEYWORD, 25.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 1.0f);
     fields.put(FIELD_DESCRIPTION, 1.0f);
     fields.put(COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("columns.name", 2.0f);
