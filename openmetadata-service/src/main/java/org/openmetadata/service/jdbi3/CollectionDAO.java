@@ -145,9 +145,6 @@ public interface CollectionDAO {
   EntityExtensionDAO entityExtensionDAO();
 
   @CreateSqlObject
-  TableEntityExtensionDAO tableEntityExtensionDAO();
-
-  @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
 
   @CreateSqlObject
@@ -624,44 +621,6 @@ public interface CollectionDAO {
     void deleteExtension(@Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
-    void deleteAll(@Bind("id") String id);
-  }
-
-  interface TableEntityExtensionDAO {
-    @ConnectionAwareSqlUpdate(
-        value =
-            "REPLACE INTO table_entity_extension(id, extension, jsonSchema, json) "
-                + "VALUES (:id, :extension, :jsonSchema, :json)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO table_entity_extension(id, extension, jsonSchema, json) "
-                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
-                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
-        connectionType = POSTGRES)
-    void insert(
-        @Bind("id") String id,
-        @Bind("extension") String extension,
-        @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM table_entity_extension WHERE id = :id AND extension = :extension")
-    String getExtension(@Bind("id") String id, @Bind("extension") String extension);
-
-    @RegisterRowMapper(ExtensionMapper.class)
-    @SqlQuery(
-        "SELECT extension, json FROM table_entity_extension WHERE id = :id AND extension "
-            + "LIKE CONCAT (:extensionPrefix, '.%') "
-            + "ORDER BY extension")
-    List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
-
-    @SqlUpdate("DELETE FROM table_entity_extension WHERE id = :id AND extension = :extension")
-    void delete(@Bind("id") String id, @Bind("extension") String extension);
-
-    @SqlUpdate("DELETE FROM table_entity_extension WHERE extension = :extension")
-    void deleteExtension(@Bind("extension") String extension);
-
-    @SqlUpdate("DELETE FROM table_entity_extension WHERE id = :id")
     void deleteAll(@Bind("id") String id);
   }
 
@@ -1318,6 +1277,13 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
+        "SELECT fromFQN, fromType, json FROM field_relationship WHERE "
+            + "toFQNHash = :toFQNHash AND toType = :toType AND relation = :relation")
+    @RegisterRowMapper(FromFieldMapper.class)
+    List<Triple<String, String, String>> findFrom(
+        @BindFQN("toFQNHash") String toFQNHash, @Bind("toType") String toType, @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "fromFQNHash LIKE CONCAT(:fqnPrefixHash, '%') AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
@@ -1389,6 +1355,13 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
+
+    class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
+      @Override
+      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Triple.of(rs.getString("fromFQN"), rs.getString("fromType"), rs.getString("json"));
+      }
+    }
 
     class ToFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
@@ -1893,7 +1866,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameHashColumn() {
-      return "nameHash";
+      return "fqnHash";
     }
 
     @Override
@@ -2159,7 +2132,7 @@ public interface CollectionDAO {
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
-      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelUtil.getDescription(tagLabel)));
+      tags.forEach(TagLabelUtil::applyTagCommonFields);
       return tags;
     }
 
@@ -3154,12 +3127,85 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
+    default List<TestCaseRecord> listBeforeTsOrder(ListFilter filter, int limit, Integer before) {
+      return listBeforeTsOrdered(getTableName(), getNameColumn(), filter.getCondition(), limit, before);
+    }
+
+    default List<TestCaseRecord> listAfterTsOrder(ListFilter filter, int limit, Integer after) {
+      return listAfterTsOrdered(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
+    }
+
     default int countOfTestCases(List<UUID> testCaseIds) {
       return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).collect(Collectors.toList()));
     }
 
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
     int countOfTestCases(@Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT * FROM (SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) executionTimeSorted "
+                + "<cond> AND ranked < :before "
+                + "ORDER BY ranked DESC "
+                + "LIMIT :limit) rankedBefore ORDER BY ranked",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT * FROM (SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> ORDER BY (json ->> 'testCaseResult,timestamp') DESC NULLS LAST) executionTimeSorted "
+                + "<cond> AND ranked < : before "
+                + "ORDER BY ranked DESC "
+                + "LIMIT :limit) rankedBefore ORDER BY ranked",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(TestCaseRecordMapper.class)
+    List<TestCaseRecord> listBeforeTsOrdered(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("before") int before);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> "
+                + "ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) executionTimeSorted "
+                + "<cond> AND ranked > :after "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, ranked FROM "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> "
+                + "ORDER BY (json ->> 'testCaseResult,timestamp') DESC NULLS LAST) executionTimeSorted "
+                + "<cond> AND ranked > :after "
+                + "LIMIT : limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(TestCaseRecordMapper.class)
+    List<TestCaseRecord> listAfterTsOrdered(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("after") int after);
+
+    class TestCaseRecord {
+      @Getter String json;
+      @Getter Integer rank;
+
+      public TestCaseRecord(String json, Integer rank) {
+        this.json = json;
+        this.rank = rank;
+      }
+    }
+
+    class TestCaseRecordMapper implements RowMapper<TestCaseRecord> {
+      @Override
+      public TestCaseRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new TestCaseRecord(rs.getString("json"), rs.getInt("ranked"));
+      }
+    }
   }
 
   interface WebAnalyticEventDAO extends EntityDAO<WebAnalyticEvent> {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import ContainerVersion from 'components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from 'components/DashboardVersion/DashboardVersion.component';
 import DataModelVersion from 'components/DataModelVersion/DataModelVersion.component';
@@ -97,16 +96,24 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import SearchIndexVersion from 'components/SearchIndexVersion/SearchIndexVersion';
 import StoredProcedureVersion from 'components/StoredProcedureVersion/StoredProcedureVersion.component';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { isEmpty } from 'lodash';
+import {
+  getSearchIndexDetailsByFQN,
+  getSearchIndexVersion,
+  getSearchIndexVersions,
+} from 'rest/SearchIndexAPI';
 import {
   getStoredProceduresDetailsByFQN,
   getStoredProceduresVersion,
   getStoredProceduresVersionsList,
 } from 'rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getSearchIndexTabPath } from 'utils/SearchIndexUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import './EntityVersionPage.less';
 
@@ -117,6 +124,7 @@ export type VersionData =
   | Pipeline
   | Mlmodel
   | Container
+  | SearchIndex
   | StoredProcedure
   | DashboardDataModel;
 
@@ -124,17 +132,13 @@ const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const history = useHistory();
-  const [tier, setTier] = useState<TagLabel>();
-  const [owner, setOwner] = useState<
-    Table['owner'] & { displayName?: string }
-  >();
   const [entityId, setEntityId] = useState<string>('');
   const [currentVersionData, setCurrentVersionData] = useState<VersionData>(
     {} as VersionData
   );
 
   const { entityType, version, entityFQN } =
-    useParams<{ entityType: string; version: string; entityFQN: string }>();
+    useParams<{ entityType: EntityType; version: string; entityFQN: string }>();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityPermissions, setEntityPermissions] =
@@ -144,9 +148,6 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as EntityHistory
   );
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
-  const [slashedEntityName, setSlashedEntityName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
 
   const backHandler = useCallback(() => {
     switch (entityType) {
@@ -179,6 +180,12 @@ const EntityVersionPage: FunctionComponent = () => {
         history.push(getContainerDetailPath(entityFQN, tab));
 
         break;
+
+      case EntityType.SEARCH_INDEX:
+        history.push(getSearchIndexTabPath(entityFQN, tab));
+
+        break;
+
       case EntityType.DASHBOARD_DATA_MODEL:
         history.push(getDataModelDetailsPath(entityFQN, tab));
 
@@ -205,21 +212,6 @@ const EntityVersionPage: FunctionComponent = () => {
       }
     },
     [entityType, entityFQN, tab]
-  );
-
-  const setEntityState = useCallback(
-    (
-      tags: TagLabel[],
-      owner: Table['owner'],
-      data: VersionData,
-      titleBreadCrumb: TitleBreadcrumbProps['titleLinks']
-    ) => {
-      setTier(getTierTags(tags));
-      setOwner(owner);
-      setCurrentVersionData(data);
-      setSlashedEntityName(titleBreadCrumb);
-    },
-    []
   );
 
   const fetchResourcePermission = useCallback(
@@ -271,6 +263,11 @@ const EntityVersionPage: FunctionComponent = () => {
         }
         case EntityType.CONTAINER: {
           await fetchResourcePermission(ResourceEntity.CONTAINER);
+
+          break;
+        }
+        case EntityType.SEARCH_INDEX: {
+          await fetchResourcePermission(ResourceEntity.SEARCH_INDEX);
 
           break;
         }
@@ -402,6 +399,18 @@ const EntityVersionPage: FunctionComponent = () => {
           break;
         }
 
+        case EntityType.SEARCH_INDEX: {
+          const { id } = await getSearchIndexDetailsByFQN(entityFQN, '');
+
+          setEntityId(id);
+
+          const versions = await getSearchIndexVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
         case EntityType.DASHBOARD_DATA_MODEL: {
           const { id } = await getDataModelDetailsByFQN(entityFQN, '');
 
@@ -443,14 +452,7 @@ const EntityVersionPage: FunctionComponent = () => {
             case EntityType.TABLE: {
               const currentVersion = await getTableVersion(id, version);
 
-              const { owner, tags = [] } = currentVersion;
-
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(currentVersion, EntityType.TABLE)
-              );
+              setCurrentVersionData(currentVersion);
 
               break;
             }
@@ -458,42 +460,21 @@ const EntityVersionPage: FunctionComponent = () => {
             case EntityType.TOPIC: {
               const currentVersion = await getTopicVersion(id, version);
 
-              const { owner, tags = [] } = currentVersion;
-
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(currentVersion, EntityType.TOPIC)
-              );
+              setCurrentVersionData(currentVersion);
 
               break;
             }
             case EntityType.DASHBOARD: {
               const currentVersion = await getDashboardVersion(id, version);
 
-              const { owner, tags = [] } = currentVersion;
-
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(currentVersion, EntityType.DASHBOARD)
-              );
+              setCurrentVersionData(currentVersion);
 
               break;
             }
             case EntityType.PIPELINE: {
               const currentVersion = await getPipelineVersion(id, version);
 
-              const { owner, tags = [] } = currentVersion;
-
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(currentVersion, EntityType.PIPELINE)
-              );
+              setCurrentVersionData(currentVersion);
 
               break;
             }
@@ -501,26 +482,21 @@ const EntityVersionPage: FunctionComponent = () => {
             case EntityType.MLMODEL: {
               const currentVersion = await getMlModelVersion(id, version);
 
-              const { owner, tags = [] } = currentVersion;
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(currentVersion, EntityType.MLMODEL)
-              );
+              setCurrentVersionData(currentVersion);
 
               break;
             }
             case EntityType.CONTAINER: {
               const currentVersion = await getContainerVersion(id, version);
-              const { owner, tags = [] } = currentVersion;
 
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(currentVersion, EntityType.CONTAINER)
-              );
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
+            case EntityType.SEARCH_INDEX: {
+              const currentVersion = await getSearchIndexVersion(id, version);
+
+              setCurrentVersionData(currentVersion);
 
               break;
             }
@@ -528,17 +504,7 @@ const EntityVersionPage: FunctionComponent = () => {
             case EntityType.DASHBOARD_DATA_MODEL: {
               const currentVersion = await getDataModelVersion(id, version);
 
-              const { owner, tags = [] } = currentVersion;
-
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(
-                  currentVersion,
-                  EntityType.DASHBOARD_DATA_MODEL
-                )
-              );
+              setCurrentVersionData(currentVersion);
 
               break;
             }
@@ -549,17 +515,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 version
               );
 
-              const { owner, tags = [] } = currentVersion;
-
-              setEntityState(
-                tags,
-                owner,
-                currentVersion,
-                getEntityBreadcrumbs(
-                  currentVersion,
-                  EntityType.STORED_PROCEDURE
-                )
-              );
+              setCurrentVersionData(currentVersion);
 
               break;
             }
@@ -572,8 +528,17 @@ const EntityVersionPage: FunctionComponent = () => {
         setIsVersionLoading(false);
       }
     },
-    [entityType, version, setEntityState, viewVersionPermission]
+    [entityType, version, viewVersionPermission]
   );
+
+  const { owner, domain, tier, slashedEntityName } = useMemo(() => {
+    return {
+      owner: currentVersionData.owner,
+      tier: getTierTags(currentVersionData.tags ?? []),
+      domain: currentVersionData.domain,
+      slashedEntityName: getEntityBreadcrumbs(currentVersionData, entityType),
+    };
+  }, [currentVersionData, entityType]);
 
   const versionComponent = () => {
     if (isLoading) {
@@ -592,6 +557,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData}
             datasetFQN={entityFQN}
             deleted={currentVersionData.deleted}
+            domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
@@ -609,6 +575,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
@@ -628,12 +595,12 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDashboardName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
@@ -647,6 +614,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
@@ -666,6 +634,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
@@ -685,9 +654,29 @@ const EntityVersionPage: FunctionComponent = () => {
             containerFQN={entityFQN}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.SEARCH_INDEX: {
+        return (
+          <SearchIndexVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData}
+            deleted={currentVersionData.deleted}
+            domain={domain}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owner={owner}
+            searchIndexFQN={entityFQN}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -703,6 +692,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData}
             dataModelFQN={entityFQN}
             deleted={currentVersionData.deleted}
+            domain={domain}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDataModelName={slashedEntityName}
@@ -721,6 +711,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}

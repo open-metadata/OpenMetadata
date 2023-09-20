@@ -95,7 +95,7 @@ const DomainVersion = () => {
 
   return (
     <PageLayoutV1 pageTitle="Domain version">
-      <div className="version-data page-container">
+      <div className="version-data page-container p-0">
         {selectedData && (
           <DomainDetailsPage
             isVersionsView

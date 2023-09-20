@@ -120,16 +120,16 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public void postUpdate(DatabaseSchema entity) {
+  public void postUpdate(DatabaseSchema original, DatabaseSchema updated) {
     if (supportsSearchIndex) {
-      if (entity.getOwner() != null) {
+      if (updated.getOwner() != null) {
         String scriptTxt =
             "if (ctx._source.databaseSchema.id == '%s') { if(ctx._source.owner == null){ ctx._source.put('owner', params)}}";
         searchClient.updateSearchByQuery(
-            JsonUtils.deepCopy(entity, DatabaseSchema.class), scriptTxt, "databaseSchema.id");
+            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id");
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, DatabaseSchema.class), scriptTxt, "");
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "");
     }
   }
 

@@ -591,6 +591,12 @@ site_menu:
     url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-users
   - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Change the Team Type
     url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/change-team-type
+  - category: How to Guides / Admin Guide for Roles and Policies
+    url: /how-to-guides/admin-guide-roles-policies
+  - category: How to Guides / Admin Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
+    url: /how-to-guides/admin-guide-roles-policies/authorization
+  - category: How to Guides / Admin Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
+    url: /how-to-guides/admin-guide-roles-policies/use-cases
   - category: How to Guides / User Guide for Data Stewards
     url: /how-to-guides/user-guide-for-data-stewards
   - category: How to Guides / User Guide for Data Stewards / Understanding the Basics of OpenMetadata
@@ -603,6 +609,30 @@ site_menu:
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
+  - category: How to Guides / The Pillars of OpenMetadata
+    url: /how-to-guides/openmetadata
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance
+    url: /how-to-guides/openmetadata/data-governance
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is a Glossary
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is Classification
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/classification
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What are Tiers
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/tiers
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Setup a Glossary
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/setup-glossary
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Create Glossary Terms
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary-terms
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Bulk Import a Glossary
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/import-glossary
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Add Assets to Glossary Terms
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/assets
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Classify Data Assets
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/classify-assets
+  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / Best Practices for Glossary and Classification
+    url: /how-to-guides/openmetadata/data-governance/glossary-classification/best-practices
   - category: How to Guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
   - category: How to Guides / Feature configurations

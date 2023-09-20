@@ -14,6 +14,7 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -37,7 +38,7 @@ import { Table } from 'generated/entity/data/table';
 import { ChangeDescription } from 'generated/entity/type';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isString, toString } from 'lodash';
+import { isEmpty, toString } from 'lodash';
 import { PagingResponse } from 'Models';
 import SchemaTablesTab from 'pages/DatabaseSchemaPage/SchemaTablesTab';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -91,24 +92,27 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
-    () =>
-      getBasicEntityInfoFromVersionData(
-        currentVersionData,
-        EntityType.DATABASE_SCHEMA
-      ),
-    [currentVersionData]
-  );
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+    useMemo(
+      () =>
+        getBasicEntityInfoFromVersionData(
+          currentVersionData,
+          EntityType.DATABASE_SCHEMA
+        ),
+      [currentVersionData]
+    );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () =>
-      getCommonExtraInfoForVersionDetails(
-        currentVersionData.changeDescription as ChangeDescription,
-        owner,
-        tier
-      ),
-    [currentVersionData.changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          currentVersionData.changeDescription as ChangeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [currentVersionData.changeDescription, owner, tier, domain]
+    );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -177,11 +181,11 @@ function DatabaseSchemaVersionPage() {
   );
 
   const tablePaginationHandler = useCallback(
-    (cursorValue: string | number, activePage?: number) => {
-      if (isString(cursorValue)) {
-        getSchemaTables({ [cursorValue]: tableData.paging[cursorValue] });
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getSchemaTables({ [cursorType]: tableData.paging[cursorType] });
       }
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+      setCurrentPage(currentPage);
     },
     [tableData, getSchemaTables]
   );
@@ -277,6 +281,7 @@ function DatabaseSchemaVersionPage() {
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  domainDisplayName={domainDisplayName}
                   entityType={EntityType.DATABASE}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -320,6 +325,7 @@ function DatabaseSchemaVersionPage() {
     tabs,
     versionHandler,
     versionList,
+    domainDisplayName,
   ]);
 
   useEffect(() => {

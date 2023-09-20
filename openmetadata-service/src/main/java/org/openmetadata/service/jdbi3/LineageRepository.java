@@ -157,7 +157,7 @@ public class LineageRepository {
     }
     List<EntityRelationshipRecord> records;
     // pipeline information is not maintained
-    if (entityType.equals(Entity.PIPELINE)) {
+    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
       records = dao.relationshipDAO().findFromPipleine(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
@@ -188,7 +188,7 @@ public class LineageRepository {
       return;
     }
     List<EntityRelationshipRecord> records;
-    if (entityType.equals(Entity.PIPELINE)) {
+    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
       records = dao.relationshipDAO().findToPipeline(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());

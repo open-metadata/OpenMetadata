@@ -19,6 +19,7 @@ import DashboardSummary from 'components/Explore/EntitySummaryPanel/DashboardSum
 import DataModelSummary from 'components/Explore/EntitySummaryPanel/DataModelSummary/DataModelSummary.component';
 import MlModelSummary from 'components/Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from 'components/Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
+import SearchIndexSummary from 'components/Explore/EntitySummaryPanel/SearchIndexSummary/SearchIndexSummary.component';
 import StoredProcedureSummary from 'components/Explore/EntitySummaryPanel/StoredProcedureSummary/StoredProcedureSummary.component';
 import TableSummary from 'components/Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
 import TopicSummary from 'components/Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
@@ -26,6 +27,7 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -34,6 +36,7 @@ import { getDashboardByFqn } from 'rest/dashboardAPI';
 import { getDataModelsByName } from 'rest/dataModelsAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
 import { getContainerByName } from 'rest/storageAPI';
 import { getStoredProceduresByName } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
@@ -139,6 +142,13 @@ const EntityInfoDrawer = ({
 
           break;
         }
+
+        case EntityType.SEARCH_INDEX: {
+          response = await getSearchIndexDetailsByFQN(encodedFqn, 'owner,tags');
+
+          break;
+        }
+
         default:
           break;
       }
@@ -235,6 +245,16 @@ const EntityInfoDrawer = ({
           <StoredProcedureSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as StoredProcedure}
+            isLoading={isLoading}
+            tags={tags}
+          />
+        );
+
+      case EntityType.SEARCH_INDEX:
+        return (
+          <SearchIndexSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as SearchIndex}
             isLoading={isLoading}
             tags={tags}
           />

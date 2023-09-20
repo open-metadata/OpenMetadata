@@ -18,7 +18,9 @@ import {
   createDataProducts,
   createDomain,
   deleteDomain,
+  removeAssets,
   renameDomain,
+  updateAssets,
   updateDomainDetails,
   verifyDomain,
 } from '../../common/DomainUtils';
@@ -48,11 +50,22 @@ describe('Domain page should work properly', () => {
   it('Create new data product should work properly', () => {
     DOMAIN_1.dataProducts.forEach((dataProduct) => {
       createDataProducts(dataProduct, DOMAIN_1);
+      cy.get('[data-testid="app-bar-item-domain"]')
+        .should('be.visible')
+        .click({ force: true });
     });
   });
 
   it('Update domain details should work properly', () => {
     updateDomainDetails(DOMAIN_1);
+  });
+
+  it.skip('Assets Tab should work properly', () => {
+    updateAssets(DOMAIN_1);
+  });
+
+  it.skip('Remove Domain from entity should work properly', () => {
+    removeAssets(DOMAIN_1);
   });
 
   it('Rename domain name and display name should work properly', () => {

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 
@@ -71,6 +72,9 @@ public class DefaultAuthorizer implements Authorizer {
     if (subjectContext.isAdmin()) {
       return;
     }
+    if (isReviewer(resourceContext, subjectContext)) {
+      return; // Reviewer of a resource gets admin level privilege on the resource
+    }
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
 
@@ -122,5 +126,16 @@ public class DefaultAuthorizer implements Authorizer {
       return SubjectContext.getSubjectContext(user);
     }
     return loggedInUser;
+  }
+
+  private boolean isReviewer(ResourceContextInterface resourceContext, SubjectContext subjectContext) {
+    if (resourceContext.getEntity() == null) {
+      return false;
+    }
+    String updatedBy = subjectContext.getUser().getName();
+    List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
+    return !nullOrEmpty(reviewers)
+        ? reviewers.stream().anyMatch(e -> e.getName().equals(updatedBy) || e.getFullyQualifiedName().equals(updatedBy))
+        : false;
   }
 }

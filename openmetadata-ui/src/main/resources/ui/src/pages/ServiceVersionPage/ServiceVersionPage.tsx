@@ -14,6 +14,7 @@
 import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -44,6 +45,7 @@ import { getDashboards } from 'rest/dashboardAPI';
 import { getDatabases } from 'rest/databaseAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
+import { getSearchIndexes } from 'rest/SearchIndexAPI';
 import {
   getServiceByFQN,
   getServiceVersionData,
@@ -101,25 +103,28 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
-    () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
-    [currentVersionData, entityType]
-  );
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+    useMemo(
+      () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
+      [currentVersionData, entityType]
+    );
 
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () =>
-      getCommonExtraInfoForVersionDetails(
-        currentVersionData.changeDescription as ChangeDescription,
-        owner,
-        tier
-      ),
-    [currentVersionData.changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          currentVersionData.changeDescription as ChangeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [currentVersionData.changeDescription, owner, tier, domain]
+    );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -237,6 +242,22 @@ function ServiceVersionPage() {
     [serviceFQN]
   );
 
+  const fetchSearchIndexes = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getSearchIndexes({
+        service: getDecodedFqn(serviceFQN),
+        fields: 'owner,tags',
+        paging,
+        root: true,
+        include: Include.NonDeleted,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [serviceFQN]
+  );
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
       try {
@@ -269,6 +290,11 @@ function ServiceVersionPage() {
           }
           case ServiceCategory.STORAGE_SERVICES: {
             await fetchContainers(paging);
+
+            break;
+          }
+          case ServiceCategory.SEARCH_SERVICES: {
+            await fetchSearchIndexes(paging);
 
             break;
           }
@@ -333,11 +359,13 @@ function ServiceVersionPage() {
   }, [serviceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails({
-        [cursorType]: paging[cursorType as keyof typeof paging],
-      });
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails({
+          [cursorType]: paging[cursorType],
+        });
+        setCurrentPage(currentPage);
+      }
     },
     [paging, getOtherDetails]
   );
@@ -411,6 +439,7 @@ function ServiceVersionPage() {
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  domainDisplayName={domainDisplayName}
                   entityType={entityType}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}

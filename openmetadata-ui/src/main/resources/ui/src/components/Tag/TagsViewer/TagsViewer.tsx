@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Tag, Typography } from 'antd';
+import { Button, Popover, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
@@ -27,12 +27,17 @@ import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
-import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
+import {
+  DisplayType,
+  LayoutType,
+  TagsViewerProps,
+} from './TagsViewer.interface';
 
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
   displayType = DisplayType.POPOVER,
+  layoutType = LayoutType.VERTICAL,
   showNoDataPlaceholder = true,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
@@ -135,7 +140,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   return (
     <>
-      {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
+      <Space direction={layoutType} size={0}>
+        {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
+      </Space>
       {displayType === DisplayType.POPOVER
         ? popoverRenderElement
         : readMoreRenderElement}

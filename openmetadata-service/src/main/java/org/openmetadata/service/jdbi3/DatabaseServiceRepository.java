@@ -38,15 +38,15 @@ public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseS
   }
 
   @Override
-  public void postUpdate(DatabaseService entity) {
+  public void postUpdate(DatabaseService original, DatabaseService updated) {
     if (supportsSearchIndex) {
-      if (entity.getOwner() != null) {
+      if (updated.getOwner() != null) {
         String scriptTxt =
             "if (ctx._source.service.id == '%s') { if(ctx._source.owner == null){ ctx._source.put('owner', params)}}";
-        searchClient.updateSearchByQuery(JsonUtils.deepCopy(entity, DatabaseService.class), scriptTxt, "service.id");
+        searchClient.updateSearchByQuery(JsonUtils.deepCopy(updated, DatabaseService.class), scriptTxt, "service.id");
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, DatabaseService.class), scriptTxt, "");
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, DatabaseService.class), scriptTxt, "");
     }
   }
 

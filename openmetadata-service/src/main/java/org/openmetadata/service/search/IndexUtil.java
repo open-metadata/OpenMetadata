@@ -19,8 +19,8 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
-import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClientImpl;
+import org.openmetadata.service.search.opensearch.OpenSearchClientImpl;
 import org.openmetadata.service.util.SSLUtil;
 
 @Slf4j

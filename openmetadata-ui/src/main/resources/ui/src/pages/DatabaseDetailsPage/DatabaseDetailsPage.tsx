@@ -20,6 +20,8 @@ import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/Activit
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
+import Searchbar from 'components/common/searchbar/Searchbar';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import Loader from 'components/Loader/Loader';
@@ -35,13 +37,15 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
 import { Include } from 'generated/type/include';
 import { State, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isUndefined, toString } from 'lodash';
+import { isEmpty, isString, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
+import QueryString from 'qs';
 import React, {
   FunctionComponent,
   useCallback,
@@ -60,6 +64,7 @@ import {
   updateDatabaseVotes,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
+import { searchQuery } from 'rest/searchAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
 import { getDatabaseVersionPath } from 'utils/RouterUtils';
@@ -69,6 +74,7 @@ import {
   getDatabaseDetailsPath,
   getExplorePath,
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -87,6 +93,14 @@ const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.schema as string | undefined;
+  }, [location.search]);
 
   const { databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ databaseFQN: string; tab: EntityTabs }>();
@@ -177,9 +191,43 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const searchSchema = async (
+    searchValue: string,
+    pageNumber = INITIAL_PAGING_VALUE
+  ) => {
+    setSchemaDataLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${searchValue}*`,
+        pageNumber,
+        pageSize: PAGE_SIZE,
+        queryFilter: {
+          query: {
+            bool: {
+              must: [{ term: { 'database.fullyQualifiedName': databaseFQN } }],
+            },
+          },
+        },
+        searchIndex: SearchIndex.DATABASE_SCHEMA,
+        includeDeleted: showDeletedSchemas,
+        trackTotalHits: true,
+      });
+      const data = response.hits.hits.map((schema) => schema._source);
+      const total = response.hits.total.value;
+      setSchemaData(data);
+      setSchemaPaging({ total });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setSchemaDataLoading(false);
+    }
+  };
+
   const fetchDatabaseSchemasAndDBTModels = () => {
     setIsLoading(true);
-    Promise.allSettled([fetchDatabaseSchemas()]).finally(() => {
+    Promise.allSettled([
+      searchValue ? searchSchema(searchValue) : fetchDatabaseSchemas(),
+    ]).finally(() => {
       setIsLoading(false);
     });
   };
@@ -285,18 +333,25 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseSchemaPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${
-      databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-    }`;
-    setSchemaDataLoading(true);
-    fetchDatabaseSchemas(pagingString).finally(() => {
-      setSchemaDataLoading(false);
-    });
-    setCurrentPage(activePage ?? 1);
+  const databaseSchemaPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      if (isString(cursorType)) {
+        const pagingString = `&${cursorType}=${
+          databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
+        }`;
+        setSchemaDataLoading(true);
+        fetchDatabaseSchemas(pagingString).finally(() => {
+          setSchemaDataLoading(false);
+        });
+        setCurrentPage(currentPage);
+      } else {
+        setCurrentPage(cursorType);
+        searchValue && searchSchema(searchValue, cursorType);
+      }
+    }
   };
 
   const settingsUpdateHandler = async (data: Database) => {
@@ -459,7 +514,8 @@ const DatabaseDetails: FunctionComponent = () => {
         schemaDataLoading,
         databaseSchemaPaging,
         currentPage,
-        databaseSchemaPagingHandler
+        databaseSchemaPagingHandler,
+        Boolean(searchSchema)
       ),
     [
       schemaData,
@@ -467,6 +523,7 @@ const DatabaseDetails: FunctionComponent = () => {
       databaseSchemaPaging,
       currentPage,
       databaseSchemaPagingHandler,
+      searchSchema,
     ]
   );
 
@@ -532,6 +589,28 @@ const DatabaseDetails: FunctionComponent = () => {
     []
   );
 
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as Database;
+
+    setDatabase((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
+  const onSchemaSearch = (value: string) => {
+    history.push({
+      search: QueryString.stringify({
+        schema: isEmpty(value) ? undefined : value,
+      }),
+    });
+    if (value) {
+      searchSchema(value);
+    } else {
+      fetchDatabaseSchemas();
+    }
+  };
+
   const tabs = useMemo(
     () => [
       {
@@ -564,8 +643,19 @@ const DatabaseDetails: FunctionComponent = () => {
                   />
                 </Col>
                 <Col span={24}>
-                  <Row justify="end">
-                    <Col className="p-x-xss">
+                  <Row>
+                    <Col span={12}>
+                      <Searchbar
+                        removeMargin
+                        placeholder={t('label.search-for-type', {
+                          type: t('label.schema'),
+                        })}
+                        searchValue={searchValue}
+                        typingInterval={500}
+                        onSearch={onSchemaSearch}
+                      />
+                    </Col>
+                    <Col className="flex items-center justify-end" span={12}>
                       <Switch
                         checked={showDeletedSchemas}
                         data-testid="show-deleted"
@@ -694,6 +784,7 @@ const DatabaseDetails: FunctionComponent = () => {
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
+              afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
               permissions={databasePermission}

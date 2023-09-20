@@ -183,6 +183,31 @@ public class SearchResource {
   }
 
   @GET
+  @Path("/fieldQuery")
+  @Operation(
+      operationId = "searchEntitiesWithSpecificFieldAndValue",
+      summary = "Search entities",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchByField(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "field name") @QueryParam("fieldName") String fieldName,
+      @Parameter(description = "field value") @QueryParam("fieldValue") String fieldValue,
+      @Parameter(description = "Search Index name, defaults to table_search_index")
+          @DefaultValue("table_search_index")
+          @QueryParam("index")
+          String index)
+      throws IOException {
+
+    return searchClient.searchByField(fieldName, fieldValue, index);
+  }
+
+  @GET
   @Path("/sourceUrl")
   @Operation(
       operationId = "searchEntitiesWithSourceUrl",

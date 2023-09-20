@@ -101,6 +101,7 @@ class TableUsageStage(Stage):
                     queryDate=record.date,
                     usedBy=used_by,
                     duration=record.duration,
+                    service=record.serviceName,
                 )
             )
         else:
@@ -113,6 +114,7 @@ class TableUsageStage(Stage):
                     queryDate=record.date,
                     usedBy=used_by,
                     duration=record.duration,
+                    service=record.serviceName,
                 )
             ]
 

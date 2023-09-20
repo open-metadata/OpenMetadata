@@ -19,25 +19,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_CHILDREN;
-import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
-import static org.openmetadata.service.Entity.FIELD_DELETED;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_EXPERTS;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.FIELD_VOTES;
-import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.getEntityByName;
-import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.EntityResource.searchClient;
@@ -107,6 +89,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -193,11 +176,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
+  @Getter protected final boolean supportsStyle;
+  @Getter protected final boolean supportsLifeCycle;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
+  @Getter protected final boolean supportsReviewers;
   protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
@@ -256,10 +242,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_DOMAIN);
       this.putFields.addField(allowedFields, FIELD_DOMAIN);
     }
+    this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
+    if (supportsReviewers) {
+      this.patchFields.addField(allowedFields, FIELD_REVIEWERS);
+      this.putFields.addField(allowedFields, FIELD_REVIEWERS);
+    }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
     if (supportsDataProducts) {
       this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
       this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
+    }
+    this.supportsStyle = allowedFields.contains(FIELD_STYLE);
+    if (supportsStyle) {
+      this.patchFields.addField(allowedFields, FIELD_STYLE);
+      this.putFields.addField(allowedFields, FIELD_STYLE);
+    }
+    this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
+    if (supportsLifeCycle) {
+      this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
+      this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
     }
   }
 
@@ -626,7 +627,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T create(UriInfo uriInfo, T entity) {
     entity = withHref(uriInfo, createInternal(entity));
-    postCreate(entity);
     return entity;
   }
 
@@ -685,16 +685,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
-    PutResponse<T> response = createOrUpdateInternal(uriInfo, updated);
-    if (response.getStatus() == Status.CREATED) {
-      postCreate(response.getEntity());
-    } else if (response.getStatus() == Status.OK) {
-      postUpdate(response.getEntity());
-    }
-    return response;
-  }
-
-  public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) {
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
@@ -711,10 +701,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @SuppressWarnings("unused")
-  public void postUpdate(T entity) {
+  protected void postUpdate(T original, T updated) {
     if (supportsSearchIndex) {
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, entityClass), scriptTxt, "");
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), scriptTxt, "");
     }
   }
 
@@ -785,7 +775,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    postUpdate(JsonUtils.deepCopy(entity, entityClass));
+    postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -878,9 +868,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     String changeType;
     T updated = get(null, original.getId(), putFields, ALL, false);
-    //    clearFields(updated, Fields.EMPTY_FIELDS); // Clear the entity and set the fields again
-    //    setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from
-    // ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(deletedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -905,7 +892,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
-
     T entity = dao.findEntityById(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
@@ -919,7 +905,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 id.toString(), entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (childrenRecords.isEmpty()) {
-      System.out.println("No children to delete");
+      LOG.info("No children to delete");
       return;
     }
     // Entity being deleted contains children entities
@@ -1018,6 +1004,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeExtension(entity);
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
+    postCreate(entity);
     return entity;
   }
 
@@ -1073,15 +1060,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public List<String> getResultsFromAndToTimestamps(
       String fullyQualifiedName, String extension, Long startTs, Long endTs) {
     return getResultsFromAndToTimestamps(
-        fullyQualifiedName, extension, startTs, endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy.DESC);
+        fullyQualifiedName, extension, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC);
   }
 
   public List<String> getResultsFromAndToTimestamps(
-      String fqn,
-      String extension,
-      Long startTs,
-      Long endTs,
-      CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+      String fqn, String extension, Long startTs, Long endTs, EntityTimeSeriesDAO.OrderBy orderBy) {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
@@ -1758,11 +1741,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDomain();
         updateDataProducts();
         updateExperts();
+        updateStyle();
+        updateLifeCycle();
         entitySpecificUpdate();
       }
 
       // Store the updated entity
       storeUpdate();
+      postUpdate(original, updated);
     }
 
     public void entitySpecificUpdate() {
@@ -1944,6 +1930,50 @@ public abstract class EntityRepository<T extends EntityInterface> {
           origExperts,
           updatedExperts,
           false);
+    }
+
+    private void updateStyle() {
+      if (!supportsStyle) {
+        return;
+      }
+      if (original.getStyle() == updated.getStyle()) return;
+
+      recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
+    }
+
+    private void updateLifeCycle() {
+      if (!supportsLifeCycle) {
+        return;
+      }
+
+      if (original.getLifeCycle() == updated.getLifeCycle() || updated.getLifeCycle() == null) return;
+
+      if (original.getLifeCycle() == null) {
+        original.setLifeCycle(new LifeCycle());
+      }
+
+      if (original.getLifeCycle().getCreated() != null
+          && (updated.getLifeCycle().getCreated() == null
+              || updated.getLifeCycle().getCreated().getTimestamp()
+                  < original.getLifeCycle().getCreated().getTimestamp())) {
+        updated.getLifeCycle().setCreated(original.getLifeCycle().getCreated());
+      }
+
+      if (original.getLifeCycle().getAccessed() != null
+          && (updated.getLifeCycle().getAccessed() == null
+              || updated.getLifeCycle().getAccessed().getTimestamp()
+                  < original.getLifeCycle().getAccessed().getTimestamp())) {
+        updated.getLifeCycle().setAccessed(original.getLifeCycle().getAccessed());
+      }
+
+      if (original.getLifeCycle().getUpdated() != null
+          && (updated.getLifeCycle().getUpdated() == null
+              || updated.getLifeCycle().getUpdated().getTimestamp()
+                  < original.getLifeCycle().getUpdated().getTimestamp())) {
+        updated.getLifeCycle().setUpdated(original.getLifeCycle().getUpdated());
+      }
+
+      recordChange(FIELD_STYLE, original.getLifeCycle(), updated.getLifeCycle(), true);
     }
 
     public final boolean updateVersion(Double oldVersion) {

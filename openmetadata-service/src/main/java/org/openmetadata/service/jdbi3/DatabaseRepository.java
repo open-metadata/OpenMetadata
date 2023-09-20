@@ -77,15 +77,15 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void postUpdate(Database entity) {
+  public void postUpdate(Database original, Database updated) {
     if (supportsSearchIndex) {
-      if (entity.getOwner() != null) {
+      if (updated.getOwner() != null) {
         String scriptTxt =
             "if (ctx._source.database.id == '%s') { if(ctx._source.owner == null){ ctx._source.put('owner', params)}}";
-        searchClient.updateSearchByQuery(JsonUtils.deepCopy(entity, Database.class), scriptTxt, "database.id");
+        searchClient.updateSearchByQuery(JsonUtils.deepCopy(updated, Database.class), scriptTxt, "database.id");
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, Database.class), scriptTxt, "");
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, Database.class), scriptTxt, "");
     }
   }
 

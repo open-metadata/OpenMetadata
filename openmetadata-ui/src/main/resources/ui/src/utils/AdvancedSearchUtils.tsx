@@ -37,6 +37,7 @@ import {
   DASHBOARD_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
+  SEARCH_INDEX_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
   TAG_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
@@ -60,12 +61,19 @@ export const getDropDownItems = (index: string) => {
     case SearchIndex.PIPELINE:
       return [...COMMON_DROPDOWN_ITEMS, ...PIPELINE_DROPDOWN_ITEMS];
 
+    case SearchIndex.SEARCH_INDEX:
+      return [...COMMON_DROPDOWN_ITEMS, ...SEARCH_INDEX_DROPDOWN_ITEMS];
+
     case SearchIndex.MLMODEL:
       return [
         ...COMMON_DROPDOWN_ITEMS.filter((item) => item.key !== 'service_type'),
       ];
     case SearchIndex.CONTAINER:
       return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
+    case SearchIndex.STORED_PROCEDURE:
+      return [...COMMON_DROPDOWN_ITEMS];
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+      return [...COMMON_DROPDOWN_ITEMS];
     case SearchIndex.GLOSSARY:
       return [...GLOSSARY_DROPDOWN_ITEMS];
     case SearchIndex.TAG:

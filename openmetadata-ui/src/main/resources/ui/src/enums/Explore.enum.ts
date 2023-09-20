@@ -27,4 +27,5 @@ export enum ExplorePageTabs {
   TAG = 'tags',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   STORED_PROCEDURE = 'storedProcedure',
+  SEARCH_INDEX = 'searchIndexes',
 }

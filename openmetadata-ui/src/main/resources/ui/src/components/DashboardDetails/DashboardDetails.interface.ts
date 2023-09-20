@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
@@ -27,6 +28,7 @@ export interface ChartsPermissions {
   permissions: OperationPermission;
 }
 export interface DashboardDetailsProps {
+  updateDashboardDetailsState?: (data: DataAssetWithDomains) => void;
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
   fetchDashboard: () => void;

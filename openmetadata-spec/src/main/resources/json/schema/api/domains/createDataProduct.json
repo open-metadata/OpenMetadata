@@ -25,6 +25,9 @@
       "description": "Description of the DataProduct.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "owner": {
       "description": "Owner of this DataProduct.",
       "$ref": "../../type/entityReference.json",
