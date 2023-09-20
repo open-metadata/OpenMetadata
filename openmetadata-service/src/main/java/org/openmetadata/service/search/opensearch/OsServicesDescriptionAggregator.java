@@ -1,18 +1,18 @@
-package org.openmetadata.service.search.openSearch;
+package org.openmetadata.service.search.opensearch;
 
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
+import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithDescription;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.opensearch.search.aggregations.bucket.histogram.Histogram;
 import org.opensearch.search.aggregations.metrics.Sum;
 
-public class OsTotalEntitiesByTierAggregator extends DataInsightAggregatorInterface {
-  public OsTotalEntitiesByTierAggregator(
+public class OsServicesDescriptionAggregator extends DataInsightAggregatorInterface {
+  protected OsServicesDescriptionAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -27,31 +27,22 @@ public class OsTotalEntitiesByTierAggregator extends DataInsightAggregatorInterf
   public List<Object> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregationsOs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
-
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
-      List<TotalEntitiesByTier> timestampData = new ArrayList<>();
-      double totalEntityCount = 0.0;
-
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
-      MultiBucketsAggregation entityTypeBuckets = timestampBucket.getAggregations().get(ENTITY_TIER);
-      for (MultiBucketsAggregation.Bucket entityTierBucket : entityTypeBuckets.getBuckets()) {
-        String entityTier = entityTierBucket.getKeyAsString();
-        Sum sumEntityCount = entityTierBucket.getAggregations().get(ENTITY_COUNT);
-        timestampData.add(
-            new TotalEntitiesByTier()
+      MultiBucketsAggregation servicesBuckets = timestampBucket.getAggregations().get(SERVICE_NAME);
+      for (MultiBucketsAggregation.Bucket serviceBucket : servicesBuckets.getBuckets()) {
+        String serviceName = serviceBucket.getKeyAsString();
+        Sum sumCompletedDescriptions = serviceBucket.getAggregations().get(COMPLETED_DESCRIPTION_FRACTION);
+        Sum sumEntityCount = serviceBucket.getAggregations().get(ENTITY_COUNT);
+
+        data.add(
+            new PercentageOfServicesWithDescription()
                 .withTimestamp(timestamp)
-                .withEntityTier(entityTier)
-                .withEntityCount(sumEntityCount.getValue()));
-        totalEntityCount = totalEntityCount + sumEntityCount.getValue();
-      }
-      for (TotalEntitiesByTier el : timestampData) {
-        if (totalEntityCount != 0.0) {
-          el.withEntityCountFraction(el.getEntityCount() / totalEntityCount);
-        } else {
-          el.withEntityCountFraction(Double.NaN);
-        }
-        data.add((el));
+                .withServiceName(serviceName)
+                .withEntityCount(sumEntityCount.getValue())
+                .withCompletedDescription(sumCompletedDescriptions.getValue())
+                .withCompletedDescriptionFraction(sumCompletedDescriptions.getValue() / sumEntityCount.getValue()));
       }
     }
 

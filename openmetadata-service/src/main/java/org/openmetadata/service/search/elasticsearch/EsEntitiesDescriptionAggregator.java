@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.elasticSearch;
+package org.openmetadata.service.search.elasticsearch;
 
 import java.text.ParseException;
 import java.util.ArrayList;

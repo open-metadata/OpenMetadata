@@ -1,19 +1,19 @@
-package org.openmetadata.service.search.elasticSearch;
+package org.openmetadata.service.search.opensearch;
 
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
-import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
+import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithOwner;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
+import org.opensearch.search.aggregations.Aggregations;
+import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
+import org.opensearch.search.aggregations.bucket.histogram.Histogram;
+import org.opensearch.search.aggregations.metrics.Sum;
 
-public class EsEntitiesOwnerAggregator extends DataInsightAggregatorInterface {
+public class OsServicesOwnerAggregator extends DataInsightAggregatorInterface {
 
-  public EsEntitiesOwnerAggregator(
+  protected OsServicesOwnerAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -26,20 +26,20 @@ public class EsEntitiesOwnerAggregator extends DataInsightAggregatorInterface {
 
   @Override
   public List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregationsEs.get(TIMESTAMP);
+    Histogram timestampBuckets = this.aggregationsOs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
-      MultiBucketsAggregation entityTypeBuckets = timestampBucket.getAggregations().get(ENTITY_TYPE);
-      for (MultiBucketsAggregation.Bucket entityTypeBucket : entityTypeBuckets.getBuckets()) {
-        String entityType = entityTypeBucket.getKeyAsString();
-        Sum sumHasOwner = entityTypeBucket.getAggregations().get(HAS_OWNER_FRACTION);
-        Sum sumEntityCount = entityTypeBucket.getAggregations().get(ENTITY_COUNT);
+      MultiBucketsAggregation servicesBuckets = timestampBucket.getAggregations().get(SERVICE_NAME);
+      for (MultiBucketsAggregation.Bucket serviceBucket : servicesBuckets.getBuckets()) {
+        String serviceName = serviceBucket.getKeyAsString();
+        Sum sumHasOwner = serviceBucket.getAggregations().get(HAS_OWNER_FRACTION);
+        Sum sumEntityCount = serviceBucket.getAggregations().get(ENTITY_COUNT);
         data.add(
-            new PercentageOfEntitiesWithOwnerByType()
+            new PercentageOfServicesWithOwner()
                 .withTimestamp(timestamp)
-                .withEntityType(entityType)
+                .withServiceName(serviceName)
                 .withEntityCount(sumEntityCount.getValue())
                 .withHasOwner(sumHasOwner.getValue())
                 .withHasOwnerFraction(sumHasOwner.getValue() / sumEntityCount.getValue()));

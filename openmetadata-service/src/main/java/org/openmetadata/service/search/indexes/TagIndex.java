@@ -4,11 +4,13 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -29,6 +31,10 @@ public class TagIndex implements ElasticSearchIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(tag.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(tag.getName()).weight(10).build());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            tag.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     if (tag.getDisabled() != null && tag.getDisabled()) {
       doc.put("disabled", tag.getDisabled());
     } else {
@@ -46,6 +52,7 @@ public class TagIndex implements ElasticSearchIndex {
     fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put("classification.name", 1.0f);
     fields.put(FIELD_DESCRIPTION, 3.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
     return fields;
   }
 }

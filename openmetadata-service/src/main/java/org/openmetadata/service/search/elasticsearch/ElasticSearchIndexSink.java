@@ -1,24 +1,24 @@
-package org.openmetadata.service.search.openSearch;
+package org.openmetadata.service.search.elasticsearch;
 
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponseEs;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.client.RequestOptions;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.workflows.interfaces.Sink;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.RequestOptions;
 
 @Slf4j
-public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
+public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final SearchClient client;
 
-  public OpenSearchIndexSink(SearchClient client) {
+  public ElasticSearchIndexSink(SearchClient client) {
     this.client = client;
   }
 
@@ -27,8 +27,7 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
     LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
       BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
-      //      BulkResponse response = null;
-      int currentSuccess = getSuccessFromBulkResponse(response);
+      int currentSuccess = getSuccessFromBulkResponseEs(response);
       int currentFailed = response.getItems().length - currentSuccess;
 
       // Update Stats

@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.openSearch;
+package org.openmetadata.service.search.opensearch;
 
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -61,12 +61,15 @@ import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.indexes.ContainerIndex;
+import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
+import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.ElasticSearchIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
+import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -181,7 +184,7 @@ public class OpenSearchClientImpl implements SearchClient {
         // creating alias for indexes
         IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
         IndicesAliasesRequest.AliasActions aliasAction =
-            IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias("SearchAlias");
+            IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias(GLOBAL_SEARCH_ALIAS);
         aliasesRequest.addAliasAction(aliasAction);
         client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
       }
@@ -209,7 +212,7 @@ public class OpenSearchClientImpl implements SearchClient {
       // creating alias for indexes
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       IndicesAliasesRequest.AliasActions aliasAction =
-          IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias("SearchAlias");
+          IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias(GLOBAL_SEARCH_ALIAS);
       aliasesRequest.addAliasAction(aliasAction);
       client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
       if (exists) {
@@ -241,14 +244,16 @@ public class OpenSearchClientImpl implements SearchClient {
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (exists) {
         // check if the alias is exist or not
-        GetAliasesRequest getAliasesRequest = new GetAliasesRequest("SearchAlias");
+        GetAliasesRequest getAliasesRequest = new GetAliasesRequest(GLOBAL_SEARCH_ALIAS);
         GetAliasesResponse getAliasesResponse = client.indices().getAlias(getAliasesRequest, RequestOptions.DEFAULT);
         boolean aliasExists = getAliasesResponse.getAliases().containsKey(elasticSearchIndexType.indexName);
         // deleting alias for indexes if exists
         if (aliasExists) {
           IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
           IndicesAliasesRequest.AliasActions aliasAction =
-              IndicesAliasesRequest.AliasActions.remove().index(elasticSearchIndexType.indexName).alias("SearchAlias");
+              IndicesAliasesRequest.AliasActions.remove()
+                  .index(elasticSearchIndexType.indexName)
+                  .alias(GLOBAL_SEARCH_ALIAS);
           aliasesRequest.addAliasAction(aliasAction);
           client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
         }
@@ -301,6 +306,15 @@ public class OpenSearchClientImpl implements SearchClient {
         break;
       case "test_case_search_index":
         searchSourceBuilder = buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
+      case "stored_procedure_search_index":
+        searchSourceBuilder = buildStoredProcedureSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
+      case "dashboard_data_model_search_index":
+        searchSourceBuilder = buildDashboardDataModelsSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
+      case "domain_search_index":
+        searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -374,17 +388,23 @@ public class OpenSearchClientImpl implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  /**
-   * @param sourceUrl
-   * @return
-   */
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     QueryBuilder wildcardQuery = QueryBuilders.queryStringQuery(sourceUrl).field("sourceUrl").escape(true);
     org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest("SearchAlias");
+        new org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(wildcardQuery);
+    searchRequest.source(searchSourceBuilder);
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    return Response.status(OK).entity(response).build();
+  }
+
+  @Override
+  public Response searchByField(String fieldName, String fieldValue, String index) throws IOException {
+    org.opensearch.action.search.SearchRequest searchRequest = new org.opensearch.action.search.SearchRequest(index);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(fieldName, fieldValue)));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
@@ -421,7 +441,7 @@ public class OpenSearchClientImpl implements SearchClient {
     if (updateRequest != null) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       ActionListener<UpdateResponse> listener =
-          new ActionListener<UpdateResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(UpdateResponse updateResponse) {
               LOG.info("Created successfully: " + updateResponse.toString());
@@ -750,6 +770,68 @@ public class OpenSearchClientImpl implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
+  private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(StoredProcedureIndex.getFields())
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightName.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightName);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
+  private static SearchSourceBuilder buildDashboardDataModelsSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(DashboardDataModelIndex.getFields())
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightName.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightName);
+
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
+  private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(DomainIndex.getFields())
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightName.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightName);
+
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
@@ -789,166 +871,114 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public void updateSearchEntityCreated(EntityInterface entity) {
-    if (entity == null) {
-      LOG.error("Entity is null");
-      return;
-    }
-    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-    String entityType = entity.getEntityReference().getType();
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityType, entity);
-    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    try {
-      updateElasticSearch(updateRequest);
-    } catch (DocumentMissingException ex) {
-      handleDocumentMissingException(contextInfo, ex);
-    } catch (OpenSearchException e) {
-      handleOpenSearchException(contextInfo, e);
-    } catch (IOException ie) {
-      handleIOException(contextInfo, ie);
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityType, entity);
+      updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      try {
+        updateElasticSearch(updateRequest);
+      } catch (DocumentMissingException ex) {
+        handleDocumentMissingException(entity, ex);
+      } catch (OpenSearchException e) {
+        handleOpenSearchException(entity, e);
+      } catch (IOException ie) {
+        handleIOException(entity, ie);
+      }
     }
   }
 
   @Override
   public void updateSearchEntityDeleted(EntityInterface entity, String scriptTxt, String field) {
-    if (entity == null) {
-      LOG.error("Entity is null");
-      return;
-    }
-    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-    String entityType = entity.getEntityReference().getType();
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-    DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
-    deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    try {
-      deleteEntityFromElasticSearch(deleteRequest);
-    } catch (DocumentMissingException ex) {
-      handleDocumentMissingException(contextInfo, ex);
-    } catch (OpenSearchException e) {
-      handleOpenSearchException(contextInfo, e);
-    } catch (IOException ie) {
-      handleIOException(contextInfo, ie);
-    }
-    if (!CommonUtil.nullOrEmpty(field)) {
-      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      DeleteByQueryRequest request = new DeleteByQueryRequest("SearchAlias");
-      request.setRefresh(true);
-      queryBuilder.must(new TermQueryBuilder(field, entity.getFullyQualifiedName()));
-      request.setQuery(queryBuilder);
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+      DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
+      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       try {
-        deleteEntityFromElasticSearchByQuery(request);
+        deleteEntityFromElasticSearch(deleteRequest);
+        if (!CommonUtil.nullOrEmpty(field)) {
+          BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+          DeleteByQueryRequest request = new DeleteByQueryRequest(GLOBAL_SEARCH_ALIAS);
+          request.setRefresh(true);
+          queryBuilder.must(new TermQueryBuilder(field, entity.getFullyQualifiedName()));
+          request.setQuery(queryBuilder);
+        }
       } catch (DocumentMissingException ex) {
-        handleDocumentMissingException(contextInfo, ex);
+        handleDocumentMissingException(entity, ex);
       } catch (OpenSearchException e) {
-        handleOpenSearchException(contextInfo, e);
+        handleOpenSearchException(entity, e);
       } catch (IOException ie) {
-        handleIOException(contextInfo, ie);
+        handleIOException(entity, ie);
       }
     }
   }
 
-  /**
-   * @param entity
-   * @param scriptTxt
-   * @param field
-   */
   @Override
   public void deleteEntityAndRemoveRelationships(EntityInterface entity, String scriptTxt, String field) {
-    if (entity == null) {
-      LOG.error("Entity is null");
-      return;
-    }
-    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-    String entityType = entity.getEntityReference().getType();
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-    DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
-    deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    try {
-      deleteEntityFromElasticSearch(deleteRequest);
-    } catch (DocumentMissingException ex) {
-      handleDocumentMissingException(contextInfo, ex);
-    } catch (OpenSearchException e) {
-      handleOpenSearchException(contextInfo, e);
-    } catch (IOException ie) {
-      handleIOException(contextInfo, ie);
-    }
-    if (!CommonUtil.nullOrEmpty(scriptTxt) && !CommonUtil.nullOrEmpty(field)) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
-      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
-      Script script =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              String.format(scriptTxt, entity.getFullyQualifiedName()),
-              new HashMap<>());
-      updateByQueryRequest.setScript(script);
-      updateByQueryRequest.setRefresh(true);
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+      DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
+      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       try {
-        updateElasticSearchByQuery(updateByQueryRequest);
+        deleteEntityFromElasticSearch(deleteRequest);
+        if (!CommonUtil.nullOrEmpty(scriptTxt) && !CommonUtil.nullOrEmpty(field)) {
+          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
+          updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
+          Script script =
+              new Script(
+                  ScriptType.INLINE,
+                  Script.DEFAULT_SCRIPT_LANG,
+                  String.format(scriptTxt, entity.getFullyQualifiedName()),
+                  new HashMap<>());
+          updateByQueryRequest.setScript(script);
+          updateByQueryRequest.setRefresh(true);
+          updateElasticSearchByQuery(updateByQueryRequest);
+        }
       } catch (DocumentMissingException ex) {
-        handleDocumentMissingException(contextInfo, ex);
+        handleDocumentMissingException(entity, ex);
       } catch (OpenSearchException e) {
-        handleOpenSearchException(contextInfo, e);
+        handleOpenSearchException(entity, e);
       } catch (IOException ie) {
-        handleIOException(contextInfo, ie);
+        handleIOException(entity, ie);
       }
     }
   }
 
   @Override
   public void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete, String field) {
-    if (entity == null) {
-      LOG.error("Entity is null");
-      return;
-    }
-    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-    String entityType = entity.getEntityReference().getType();
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-    String scriptTxt = "ctx._source.deleted=" + delete;
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-    updateRequest.script(script);
-    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    try {
-      updateElasticSearch(updateRequest);
-    } catch (DocumentMissingException ex) {
-      handleDocumentMissingException(contextInfo, ex);
-    } catch (OpenSearchException e) {
-      handleOpenSearchException(contextInfo, e);
-    } catch (IOException ie) {
-      handleIOException(contextInfo, ie);
-    }
-    if (!CommonUtil.nullOrEmpty(field)) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
-      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
-      updateByQueryRequest.setScript(script);
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      String scriptTxt = "ctx._source.deleted=" + delete;
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateRequest.script(script);
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       try {
-        updateElasticSearchByQuery(updateByQueryRequest);
+        updateElasticSearch(updateRequest);
+        if (!CommonUtil.nullOrEmpty(field)) {
+          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
+          updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
+          updateByQueryRequest.setScript(script);
+          updateElasticSearchByQuery(updateByQueryRequest);
+        }
       } catch (DocumentMissingException ex) {
-        handleDocumentMissingException(contextInfo, ex);
+        handleDocumentMissingException(entity, ex);
       } catch (OpenSearchException e) {
-        handleOpenSearchException(contextInfo, e);
+        handleOpenSearchException(entity, e);
       } catch (IOException ie) {
-        handleIOException(contextInfo, ie);
+        handleIOException(entity, ie);
       }
     }
   }
 
-  /**
-   * @param entity
-   * @param scriptTxt
-   * @throws IOException
-   */
   @Override
   public void updateSearchEntityUpdated(EntityInterface entity, String scriptTxt, String field) {
-    if (entity == null) {
-      LOG.error("Entity is null");
-      return;
-    }
-    String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
     String entityType = entity.getEntityReference().getType();
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
@@ -967,30 +997,30 @@ public class OpenSearchClientImpl implements SearchClient {
     try {
       updateElasticSearch(updateRequest);
     } catch (DocumentMissingException ex) {
-      handleDocumentMissingException(contextInfo, ex);
+      handleDocumentMissingException(entity, ex);
     } catch (OpenSearchException e) {
-      handleOpenSearchException(contextInfo, e);
+      handleOpenSearchException(entity, e);
     } catch (IOException ie) {
-      handleIOException(contextInfo, ie);
+      handleIOException(entity, ie);
     }
   }
 
-  public void handleDocumentMissingException(String contextInfo, DocumentMissingException ex) {
+  public void handleDocumentMissingException(EntityInterface entity, DocumentMissingException ex) {
     LOG.error("Missing Document", ex);
     SearchEventPublisher.updateElasticSearchFailureStatus(
-        contextInfo,
+        entity,
         EventPublisherJob.Status.ACTIVE_WITH_ERROR,
         String.format(
             "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
             ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
   }
 
-  public void handleOpenSearchException(String contextInfo, OpenSearchException e) {
+  public void handleOpenSearchException(EntityInterface entity, OpenSearchException e) {
     LOG.debug(e.getMessage());
     if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
       LOG.error("Error in publishing to ElasticSearch");
       SearchEventPublisher.updateElasticSearchFailureStatus(
-          contextInfo,
+          entity,
           EventPublisherJob.Status.ACTIVE_WITH_ERROR,
           String.format(
               "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
@@ -998,7 +1028,7 @@ public class OpenSearchClientImpl implements SearchClient {
       throw new SearchRetriableException(e.getMessage());
     } else {
       SearchEventPublisher.updateElasticSearchFailureStatus(
-          contextInfo,
+          entity,
           EventPublisherJob.Status.ACTIVE_WITH_ERROR,
           String.format(
               "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
@@ -1007,9 +1037,9 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
-  public void handleIOException(String contextInfo, IOException ie) {
+  public void handleIOException(EntityInterface entity, IOException ie) {
     SearchEventPublisher.updateElasticSearchFailureStatus(
-        contextInfo,
+        entity,
         EventPublisherJob.Status.ACTIVE_WITH_ERROR,
         String.format(
             "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
@@ -1040,7 +1070,7 @@ public class OpenSearchClientImpl implements SearchClient {
     if (deleteRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       ActionListener<DeleteResponse> listener =
-          new ActionListener<DeleteResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(DeleteResponse response) {
               LOG.info("Delete succeeded: " + response.toString());
@@ -1061,7 +1091,7 @@ public class OpenSearchClientImpl implements SearchClient {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
       ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<BulkByScrollResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(BulkByScrollResponse response) {
               LOG.info("Delete by query succeeded: " + response.toString());

@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.elasticSearch;
+package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;

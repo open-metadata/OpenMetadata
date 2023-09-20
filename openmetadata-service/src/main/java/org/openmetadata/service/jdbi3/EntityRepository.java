@@ -1952,7 +1952,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (original.getLifeCycle() == updated.getLifeCycle()) return;
+      if (original.getLifeCycle() == updated.getLifeCycle() || updated.getLifeCycle() == null) return;
 
       if (original.getLifeCycle() == null) {
         original.setLifeCycle(new LifeCycle());

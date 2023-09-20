@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.openSearch;
+package org.openmetadata.service.search.opensearch;
 
 import java.util.ArrayList;
 import java.util.List;
