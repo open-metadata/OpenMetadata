@@ -2,14 +2,13 @@ package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
@@ -37,7 +36,10 @@ public class UserIndex implements ElasticSearchIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
-
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            user.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
     return doc;
@@ -50,6 +52,7 @@ public class UserIndex implements ElasticSearchIndex {
     fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_NAME, 2.0f);
     fields.put(NAME_KEYWORD, 3.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
     return fields;
   }
 }

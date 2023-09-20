@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 2,
-          "max_gram": 3,
+          "min_gram": 3,
+          "max_gram": 10,
           "filter": [
             "lowercase"
           ]
@@ -64,6 +64,9 @@
       "fullyQualifiedName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "fqnParts": {
+        "type": "keyword"
       },
       "service": {
         "properties": {
@@ -115,12 +118,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "index_options": "freqs"
       },
       "version": {
         "type": "float"
@@ -386,14 +384,7 @@
         "type": "keyword"
       },
       "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
+        "type": "completion"
       },
       "column_suggest": {
         "type": "completion"

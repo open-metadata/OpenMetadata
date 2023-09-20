@@ -44,7 +44,10 @@ class ESMixin(Generic[T]):
 
     client: REST
 
-    fqdn_search = "/search/query?q=fullyQualifiedName:{fqn}&from={from_}&size={size}&index={index}"
+    fqdn_search = (
+        "/search/fieldQuery?fieldName=fullyQualifiedName&fieldValue={fqn}&from={from_}"
+        "&size={size}&index={index}"
+    )
 
     @functools.lru_cache(maxsize=512)
     def _search_es_entity(

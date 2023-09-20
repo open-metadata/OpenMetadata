@@ -21,7 +21,7 @@ import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { updateChart } from 'rest/chartAPI';
@@ -303,6 +303,15 @@ const DashboardDetailsPage = () => {
     }
   };
 
+  const updateDashboardDetailsState = useCallback((data) => {
+    const updatedData = data as Dashboard;
+
+    setDashboardDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
@@ -338,6 +347,7 @@ const DashboardDetailsPage = () => {
       followDashboardHandler={followDashboard}
       handleToggleDelete={handleToggleDelete}
       unFollowDashboardHandler={unFollowDashboard}
+      updateDashboardDetailsState={updateDashboardDetailsState}
       versionHandler={versionHandler}
       onDashboardUpdate={onDashboardUpdate}
       onUpdateVote={updateVote}

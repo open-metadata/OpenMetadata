@@ -22,6 +22,7 @@ export interface MlModelVersionProp {
   currentVersionData: Mlmodel;
   isVersionLoading: boolean;
   owner: Mlmodel['owner'];
+  domain: Mlmodel['domain'];
   tier: TagLabel;
   slashedMlModelName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

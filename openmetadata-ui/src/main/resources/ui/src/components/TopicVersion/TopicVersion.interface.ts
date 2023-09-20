@@ -22,6 +22,7 @@ export interface TopicVersionProp {
   currentVersionData: Topic;
   isVersionLoading: boolean;
   owner: Topic['owner'];
+  domain: Topic['domain'];
   tier: TagLabel;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   topicFQN: string;

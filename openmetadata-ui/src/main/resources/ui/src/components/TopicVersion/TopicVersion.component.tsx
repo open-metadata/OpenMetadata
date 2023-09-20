@@ -51,6 +51,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
+  domain,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -59,10 +60,17 @@ const TopicVersion: FC<TopicVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const messageSchemaDiff = useMemo(
     () => getUpdatedMessageSchema(currentVersionData, changeDescription),
@@ -212,6 +220,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.TOPIC}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

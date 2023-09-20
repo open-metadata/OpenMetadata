@@ -51,6 +51,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   slashedTableName,
   datasetFQN,
@@ -67,10 +68,17 @@ const TableVersion: React.FC<TableVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const columns = useMemo(() => {
     const colList = cloneDeep((currentVersionData as Table).columns);
@@ -233,6 +241,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.TABLE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

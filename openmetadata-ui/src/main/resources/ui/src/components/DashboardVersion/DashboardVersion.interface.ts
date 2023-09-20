@@ -22,9 +22,9 @@ export interface DashboardVersionProp {
   currentVersionData: Dashboard;
   isVersionLoading: boolean;
   owner: Dashboard['owner'];
+  domain: Dashboard['domain'];
   tier: TagLabel;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

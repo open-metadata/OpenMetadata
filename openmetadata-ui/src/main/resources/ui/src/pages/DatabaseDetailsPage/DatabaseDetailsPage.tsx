@@ -594,6 +594,16 @@ const DatabaseDetails: FunctionComponent = () => {
       isSoftDelete ? handleToggleDelete : history.push('/'),
     []
   );
+
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as Database;
+
+    setDatabase((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   const onSchemaSearch = (value: string) => {
     history.push({
       search: QueryString.stringify({
@@ -801,6 +811,7 @@ const DatabaseDetails: FunctionComponent = () => {
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
+              afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
               permissions={databasePermission}

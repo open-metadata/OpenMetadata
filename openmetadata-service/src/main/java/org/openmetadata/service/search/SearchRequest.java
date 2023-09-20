@@ -17,7 +17,7 @@ public class SearchRequest {
   private final String sortOrder;
   private final List<String> includeSourceFields;
 
-  private SearchRequest(ElasticSearchRequestBuilder builder) {
+  public SearchRequest(ElasticSearchRequestBuilder builder) {
     this.query = builder.query;
     this.from = builder.from;
     this.size = builder.size;
