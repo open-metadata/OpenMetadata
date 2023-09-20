@@ -38,7 +38,6 @@ import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { SERVICE_TYPES } from 'constants/Services.constant';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
-import { Table } from 'generated/entity/data/table';
 import {
   Thread,
   ThreadTaskStatus,
@@ -67,6 +66,7 @@ import {
   DataAssetsType,
   DataAssetsWithFollowersField,
   DataAssetsWithServiceField,
+  EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
 
 export const ExtraInfoLabel = ({
@@ -112,6 +112,7 @@ export const ExtraInfoLink = ({
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
+  showDomain = true,
   afterDeleteAction,
   dataAsset,
   onUpdateVote,
@@ -124,6 +125,7 @@ export const DataAssetsHeader = ({
   isRecursiveDelete,
   onRestoreDataAsset,
   onDisplayNameUpdate,
+  afterDomainUpdateAction,
 }: DataAssetsHeaderProps) => {
   const USER_ID = getCurrentUserId();
   const { t } = useTranslation();
@@ -334,14 +336,19 @@ export const DataAssetsHeader = ({
             </Col>
             <Col span={24}>
               <div className="d-flex no-wrap">
-                <DomainLabel
-                  domain={(dataAsset as Table).domain}
-                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
-                  entityId={dataAsset.id ?? ''}
-                  entityType={entityType}
-                  hasPermission={permissions.EditAll}
-                />
-                <Divider className="self-center m-x-sm" type="vertical" />
+                {showDomain && (
+                  <>
+                    <DomainLabel
+                      afterDomainUpdateAction={afterDomainUpdateAction}
+                      domain={(dataAsset as EntitiesWithDomainField).domain}
+                      entityFqn={dataAsset.fullyQualifiedName ?? ''}
+                      entityId={dataAsset.id ?? ''}
+                      entityType={entityType}
+                      hasPermission={permissions.EditAll}
+                    />
+                    <Divider className="self-center m-x-sm" type="vertical" />
+                  </>
+                )}
                 <OwnerLabel
                   hasPermission={permissions.EditAll || permissions.EditOwner}
                   owner={dataAsset?.owner}

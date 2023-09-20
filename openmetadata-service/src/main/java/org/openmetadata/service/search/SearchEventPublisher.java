@@ -24,6 +24,7 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -67,7 +68,7 @@ public class SearchEventPublisher extends AbstractEventPublisher {
   }
 
   public static void updateElasticSearchFailureStatus(
-      String context, EventPublisherJob.Status status, String failureMessage) {
+      EntityInterface entity, EventPublisherJob.Status status, String failureMessage) {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
@@ -80,7 +81,7 @@ public class SearchEventPublisher extends AbstractEventPublisher {
           new Failure()
               .withSinkError(
                   new FailureDetails()
-                      .withContext(context)
+                      .withContext(entity.toString())
                       .withLastFailedAt(updateTime)
                       .withLastFailedReason(failureMessage)));
 

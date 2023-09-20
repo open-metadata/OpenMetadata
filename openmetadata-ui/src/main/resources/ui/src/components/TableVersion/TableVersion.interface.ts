@@ -23,6 +23,7 @@ export interface TableVersionProp {
   currentVersionData: VersionData;
   isVersionLoading: boolean;
   owner: Table['owner'];
+  domain: Table['domain'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   datasetFQN: string;

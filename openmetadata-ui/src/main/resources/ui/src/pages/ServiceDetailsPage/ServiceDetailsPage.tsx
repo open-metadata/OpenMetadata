@@ -140,16 +140,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
     tab: string;
   }>();
 
+  const isMetadataService = useMemo(
+    () => serviceCategory === ServiceCategory.METADATA_SERVICES,
+    [serviceCategory]
+  );
+
   const activeTab = useMemo(() => {
     if (tab) {
       return tab;
     }
-    if (serviceCategory === ServiceCategory.METADATA_SERVICES) {
+    if (isMetadataService) {
       return EntityTabs.INGESTIONS;
     }
 
     return getCountLabel(serviceCategory).toLowerCase();
-  }, [tab, serviceCategory]);
+  }, [tab, serviceCategory, isMetadataService]);
 
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
@@ -216,10 +221,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const isTestingDisabled = useMemo(
     () =>
       !servicePermission.EditAll ||
-      (serviceCategory === ServiceCategory.METADATA_SERVICES &&
-        serviceFQN === OPEN_METADATA) ||
+      (isMetadataService && serviceFQN === OPEN_METADATA) ||
       isUndefined(connectionDetails),
-    [servicePermission, serviceCategory, serviceFQN, connectionDetails]
+    [
+      servicePermission,
+      serviceCategory,
+      serviceFQN,
+      connectionDetails,
+      isMetadataService,
+    ]
   );
 
   const goToEditConnection = useCallback(() => {
@@ -600,7 +610,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const response = await getServiceByFQN(
         serviceCategory,
         serviceFQN,
-        'owner,tags,domain'
+        `owner,tags,${isMetadataService ? '' : 'domain'}`
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
@@ -610,7 +620,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [serviceCategory, serviceFQN, getOtherDetails]);
+  }, [serviceCategory, serviceFQN, getOtherDetails, isMetadataService]);
 
   useEffect(() => {
     getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
@@ -774,6 +784,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const afterDeleteAction = useCallback(() => history.push('/'), []);
+
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as ServicesType;
+
+    setServiceDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
 
   const dataModalTab = useMemo(
     () => (
@@ -973,7 +992,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
-    if (serviceCategory !== ServiceCategory.METADATA_SERVICES) {
+    if (!isMetadataService) {
       tabs.push({
         name: getCountLabel(serviceCategory),
         key: getCountLabel(serviceCategory).toLowerCase(),
@@ -1056,6 +1075,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ingestionTab,
     testConnectionTab,
     activeTab,
+    isMetadataService,
   ]);
 
   const versionHandler = () => {
@@ -1092,10 +1112,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
+              afterDomainUpdateAction={afterDomainUpdateAction}
               allowSoftDelete={false}
               dataAsset={serviceDetails}
               entityType={entityType}
               permissions={servicePermission}
+              showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={() => Promise.resolve()}
