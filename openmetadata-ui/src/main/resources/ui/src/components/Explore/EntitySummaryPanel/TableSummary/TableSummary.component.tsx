@@ -245,7 +245,7 @@ function TableSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ? tags : []}
+          tags={tags ?? []}
         />
         <Divider className="m-y-xs" />
 
