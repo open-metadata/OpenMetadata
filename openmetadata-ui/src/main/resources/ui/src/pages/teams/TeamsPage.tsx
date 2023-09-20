@@ -672,12 +672,15 @@ const TeamsPage = () => {
         onShowDeletedTeamChange={toggleShowDeletedTeam}
         onTeamExpand={fetchAllTeamsAdvancedDetails}
       />
-      <AddTeamForm
-        isLoading={isLoading}
-        visible={isAddingTeam}
-        onCancel={() => setIsAddingTeam(false)}
-        onSave={(data) => createNewTeam(data as Team)}
-      />
+      {selectedTeam.teamType && (
+        <AddTeamForm
+          isLoading={isLoading}
+          parentTeamType={selectedTeam.teamType}
+          visible={isAddingTeam}
+          onCancel={() => setIsAddingTeam(false)}
+          onSave={(data) => createNewTeam(data)}
+        />
+      )}
     </>
   );
 };
