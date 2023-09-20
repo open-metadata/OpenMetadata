@@ -33,6 +33,7 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.DASHBOARD_DATA_MODEL
   | SearchIndex.GLOSSARY
   | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
 
 // if more value is added, also update its interface file at -> interface/types.d.ts

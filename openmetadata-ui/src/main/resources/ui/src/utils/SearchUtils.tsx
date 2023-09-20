@@ -30,6 +30,7 @@ import { getPartialNameFromTableFQN } from './CommonUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getEntityLink } from './TableUtils';
 
+import { SearchOutlined } from '@ant-design/icons';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
@@ -88,67 +89,73 @@ export const getQueryWithSlash = (query: string): string =>
 
 export const getGroupLabel = (index: string) => {
   let label = '';
-  let Icon: SvgComponent;
+  let GroupIcon;
   switch (index) {
     case SearchIndex.TOPIC:
       label = i18next.t('label.topic-plural');
-      Icon = IconTopic;
+      GroupIcon = IconTopic;
 
       break;
     case SearchIndex.DASHBOARD:
       label = i18next.t('label.dashboard-plural');
-      Icon = IconDashboard;
+      GroupIcon = IconDashboard;
 
       break;
     case SearchIndex.PIPELINE:
       label = i18next.t('label.pipeline-plural');
-      Icon = IconPipeline;
+      GroupIcon = IconPipeline;
 
       break;
     case SearchIndex.MLMODEL:
       label = i18next.t('label.ml-model-plural');
-      Icon = IconMlModal;
+      GroupIcon = IconMlModal;
 
       break;
     case SearchIndex.GLOSSARY:
       label = i18next.t('label.glossary-term-plural');
-      Icon = IconTable;
+      GroupIcon = IconTable;
 
       break;
     case SearchIndex.TAG:
       label = i18next.t('label.tag-plural');
-      Icon = IconTag;
+      GroupIcon = IconTag;
 
       break;
     case SearchIndex.CONTAINER:
       label = i18next.t('label.container-plural');
-      Icon = IconContainer;
+      GroupIcon = IconContainer;
 
       break;
 
     case SearchIndex.STORED_PROCEDURE:
       label = i18next.t('label.stored-procedure-plural');
-      Icon = IconStoredProcedure;
+      GroupIcon = IconStoredProcedure;
 
       break;
 
     case SearchIndex.DASHBOARD_DATA_MODEL:
       label = i18next.t('label.data-model-plural');
-      Icon = IconDashboard;
+      GroupIcon = IconDashboard;
+
+      break;
+
+    case SearchIndex.SEARCH_INDEX:
+      label = i18next.t('label.search-index-plural');
+      GroupIcon = SearchOutlined;
 
       break;
 
     case SearchIndex.TABLE:
     default:
       label = i18next.t('label.table-plural');
-      Icon = IconTable;
+      GroupIcon = IconTable;
 
       break;
   }
 
   const groupLabel = (
     <div className="d-flex items-center p-y-xs">
-      <Icon className="m-r-sm" height={16} width={16} />
+      <GroupIcon className="m-r-sm" height={16} width={16} />
       <p className="text-grey-muted text-xs">{label}</p>
     </div>
   );

@@ -121,6 +121,7 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.DASHBOARD_DATA_MODEL,
       SearchIndex.GLOSSARY,
       SearchIndex.TAG,
+      SearchIndex.SEARCH_INDEX,
     ],
   };
 

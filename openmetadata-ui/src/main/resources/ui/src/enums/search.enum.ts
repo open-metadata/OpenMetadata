@@ -33,6 +33,7 @@ export enum SearchIndex {
   DASHBOARD_SERCVICE = 'dashboard_service_search_index',
   ML_MODEL_SERVICE = 'mlmodel_service_search_index',
   DOMAIN = 'domain_search_index',
+  SEARCH_INDEX = 'search_entity_index',
   STORED_PROCEDURE = 'stored_procedure_search_index',
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
   DATA_PRODUCT = 'data_products_search_index',

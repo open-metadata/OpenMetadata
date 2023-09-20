@@ -25,6 +25,7 @@ import {
   PipelineSearchSource,
   QuerySearchSource,
   SearchHitBody,
+  SearchIndexSearchSource,
   StoredProcedureSearchSource,
   TableSearchSource,
   TagClassSearchSource,
@@ -55,6 +56,7 @@ export type SourceType = (
   | Pick<DashboardDataModelSearchSource, Fields>
   | Pick<StoredProcedureSearchSource, Fields | 'storedProcedureCode'>
   | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
+  | Pick<SearchIndexSearchSource, Fields>
   | Pick<
       Exclude<
         ExploreSearchSource,
@@ -67,6 +69,7 @@ export type SourceType = (
         | UserSearchSource
         | TeamSearchSource
         | TestCaseSearchSource
+        | SearchIndexSearchSource
         | StoredProcedureSearchSource
         | DashboardDataModelSearchSource
       >,

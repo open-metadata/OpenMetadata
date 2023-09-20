@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import {
   Table,
   TableType,
@@ -19,7 +20,7 @@ import {
 
 export interface TableSummaryProps {
   entityDetails: Table;
-  componentType?: string;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
 }
