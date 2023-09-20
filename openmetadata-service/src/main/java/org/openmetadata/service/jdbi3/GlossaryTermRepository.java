@@ -17,11 +17,13 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
@@ -32,22 +34,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.feed.CloseTask;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.FeedResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -108,18 +124,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity, boolean update) {
+    List<EntityReference> parentReviewers = null;
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
-            ? getByName(null, entity.getParent().getFullyQualifiedName(), getFields("owner"))
+            ? Entity.getEntity(entity.getParent(), "owner,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
+      parentReviewers = parentTerm.getReviewers();
       entity.setParent(parentTerm.getEntityReference());
     }
 
     // Validate glossary
-    Glossary glossary = Entity.getEntity(entity.getGlossary(), "", Include.NON_DELETED);
+    Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
+    parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
 
     validateHierarchy(entity);
 
@@ -128,6 +147,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // Validate reviewers
     EntityUtil.populateEntityReferences(entity.getReviewers());
+
+    if (!update || entity.getStatus() == null) {
+      // If parentTerm or glossary has reviewers set, the glossary term can only be created in `Draft` mode
+      entity.setStatus(!nullOrEmpty(parentReviewers) ? Status.DRAFT : Status.APPROVED);
+    }
   }
 
   @Override
@@ -191,6 +215,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
+  protected void postCreate(GlossaryTerm entity) {
+    if (entity.getStatus() == Status.DRAFT) {
+      // Create an approval task for glossary term in draft mode
+      createApprovalTask(entity, entity.getReviewers());
+    }
+  }
+
+  @Override
+  public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    if (original.getStatus() == Status.DRAFT) {
+      if (updated.getStatus() == Status.APPROVED) {
+        closeApprovalTask(updated, "Approved the glossary term");
+      } else if (updated.getStatus() == Status.REJECTED) {
+        closeApprovalTask(updated, "Rejected the glossary term");
+      }
+    }
+  }
+
+  @Override
+  protected void preDelete(GlossaryTerm entity, String deletedBy) {
+    // A glossary term in `Draft` state can only be deleted by the reviewers
+    if (Status.DRAFT.equals(entity.getStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
   @Override
   protected void postDelete(GlossaryTerm entity) {
     // Cleanup all the tag labels using this glossary term
@@ -208,6 +258,42 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       } else {
         searchClient.deleteEntityAndRemoveRelationships(
             JsonUtils.deepCopy(entity, GlossaryTerm.class), scriptTxt, "tags.tagFQN");
+      }
+    }
+  }
+
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isApprovalTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class ApprovalTaskWorkflow extends TaskWorkflow {
+    ApprovalTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
+      glossaryTerm.setStatus(Status.APPROVED);
+      return glossaryTerm;
+    }
+
+    @Override
+    protected void closeTask(String user, CloseTask closeTask) {
+      // Closing task results in glossary term going from `Draft` to `Rejected`
+      GlossaryTerm term = (GlossaryTerm) threadContext.getAboutEntity();
+      if (term.getStatus() == Status.DRAFT) {
+        String origJson = JsonUtils.pojoToJson(term);
+        term.setStatus(Status.REJECTED);
+        String updatedJson = JsonUtils.pojoToJson(term);
+        JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedJson);
+        EntityRepository<?> repository = threadContext.getEntityRepository();
+        repository.patch(null, term.getId(), user, patch);
       }
     }
   }
@@ -245,6 +331,52 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  private void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
+    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+    List<EntityReference> reviewers = term.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      // Updating user must be one of the reviewers
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(e -> e.getName().equals(updatedBy) || e.getFullyQualifiedName().equals(updatedBy));
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
+  }
+
+  private void createApprovalTask(GlossaryTerm entity, List<EntityReference> parentReviewers) {
+    TaskDetails taskDetails =
+        new TaskDetails()
+            .withAssignees(FeedResource.formatAssignees(parentReviewers))
+            .withType(TaskType.RequestApproval)
+            .withStatus(TaskStatus.Open);
+
+    EntityLink about = new EntityLink(entityType, entity.getFullyQualifiedName());
+    Thread thread =
+        new Thread()
+            .withId(UUID.randomUUID())
+            .withThreadTs(System.currentTimeMillis())
+            .withMessage("Approval required for ") // TODO fix this
+            .withCreatedBy(entity.getUpdatedBy())
+            .withAbout(about.getLinkString())
+            .withType(ThreadType.Task)
+            .withTask(taskDetails)
+            .withUpdatedBy(entity.getUpdatedBy())
+            .withUpdatedAt(System.currentTimeMillis());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+    feedRepository.create(thread);
+  }
+
+  private void closeApprovalTask(GlossaryTerm entity, String comment) {
+    EntityLink about = new EntityLink(GLOSSARY_TERM, entity.getFullyQualifiedName());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+    Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval);
+    if (TaskStatus.Open.equals(taskThread.getTask().getStatus())) {
+      feedRepository.closeTask(taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -273,7 +405,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
-      // TODO Only list of allowed reviewers can change the status from DRAFT to APPROVED
+      if (origTerm.getStatus() == updatedTerm.getStatus()) {
+        return;
+      }
+      // Only reviewers can change from DRAFT status to APPROVED/REJECTED status
+      if (origTerm.getStatus() == Status.DRAFT
+          && (updatedTerm.getStatus() == Status.APPROVED || updatedTerm.getStatus() == Status.REJECTED)) {
+        checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());
+      }
       recordChange("status", origTerm.getStatus(), updatedTerm.getStatus());
     }
 

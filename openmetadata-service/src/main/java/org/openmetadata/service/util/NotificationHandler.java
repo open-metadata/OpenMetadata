@@ -41,7 +41,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.socket.WebSocketManager;
 
@@ -63,8 +62,6 @@ public class NotificationHandler {
             handleNotifications(responseContext, collectionDAO);
           } catch (Exception ex) {
             LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
-          } finally {
-            JdbiUnitOfWorkProvider.getInstance().getHandleManager().clear();
           }
         });
   }

@@ -17,6 +17,7 @@ import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Query } from 'generated/entity/data/query';
 import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { Domain } from 'generated/entity/domains/domain';
 import { DashboardService } from 'generated/entity/services/dashboardService';
@@ -90,6 +91,9 @@ export interface DataBaseSchemaSearchSource
 export interface DatabaseSearchSource extends SearchSourceBase, Database {} // extends EntityInterface
 
 export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
+export interface StoredProcedureSearchSource
+  extends SearchSourceBase,
+    StoredProcedure {} // extends EntityInterface
 
 export interface SearchIndexSearchSource
   extends SearchSourceBase,
@@ -146,6 +150,7 @@ export type ExploreSearchSource =
   | UserSearchSource
   | TeamSearchSource
   | TagClassSearchSource
+  | StoredProcedureSearchSource
   | DashboardDataModelSearchSource
   | TestCaseSearchSource
   | DatabaseSearchSource
@@ -182,6 +187,8 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
   [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
+  [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
+  [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
 };
 

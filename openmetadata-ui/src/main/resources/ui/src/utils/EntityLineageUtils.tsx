@@ -790,7 +790,7 @@ export const getUpdatedEdgeWithPipeline = (
   edges: EntityLineage['downstreamEdges'],
   updatedLineageDetails: LineageDetails,
   selectedEdge: CustomEdgeData,
-  pipelineDetail: EntityReference | undefined
+  edgeDetails: EntityReference | undefined
 ) => {
   if (isUndefined(edges)) {
     return [];
@@ -806,8 +806,9 @@ export const getUpdatedEdgeWithPipeline = (
           ...updatedLineageDetails,
           pipeline: !isUndefined(updatedLineageDetails.pipeline)
             ? {
-                displayName: pipelineDetail?.displayName,
-                name: pipelineDetail?.name,
+                displayName: edgeDetails?.displayName,
+                name: edgeDetails?.name,
+                fullyQualifiedName: edgeDetails?.fullyQualifiedName,
                 ...updatedLineageDetails.pipeline,
               }
             : undefined,
@@ -822,7 +823,8 @@ export const getUpdatedEdgeWithPipeline = (
 export const getNewLineageConnectionDetails = (
   selectedEdgeValue: EntityLineageEdge | undefined,
   selectedPipelineId: string | undefined,
-  customEdgeData: CustomEdgeData
+  customEdgeData: CustomEdgeData,
+  type: EntityType
 ) => {
   const { source, sourceType, target, targetType } = customEdgeData;
   const updatedLineageDetails: LineageDetails = {
@@ -833,7 +835,7 @@ export const getNewLineageConnectionDetails = (
       ? undefined
       : {
           id: selectedPipelineId,
-          type: EntityType.PIPELINE,
+          type,
         },
   };
 

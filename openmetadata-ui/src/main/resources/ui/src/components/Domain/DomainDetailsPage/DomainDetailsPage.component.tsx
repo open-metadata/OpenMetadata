@@ -495,7 +495,7 @@ const DomainDetailsPage = ({
         </Col>
         <Col className="p-x-md" flex="280px">
           <div style={{ textAlign: 'right' }}>
-            {!isVersionsView && (
+            {!isVersionsView && domainPermission.Create && (
               <Dropdown
                 className="m-l-xs"
                 data-testid="domain-details-add-button-menu"
@@ -531,7 +531,7 @@ const DomainDetailsPage = ({
                 </Button>
               )}
 
-              {!isVersionsView && (
+              {!isVersionsView && manageButtonContent.length > 0 && (
                 <Dropdown
                   align={{ targetOffset: [-12, 0] }}
                   className="m-l-xs"

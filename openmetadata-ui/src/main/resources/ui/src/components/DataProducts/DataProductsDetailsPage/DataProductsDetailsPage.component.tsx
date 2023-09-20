@@ -429,7 +429,7 @@ const DataProductsDetailsPage = ({
         </Col>
         <Col className="p-x-md" flex="280px">
           <div style={{ textAlign: 'right' }}>
-            {!isVersionsView && (
+            {!isVersionsView && dataProductPermission.Create && (
               <Button
                 data-testid="data-product-details-add-button"
                 type="primary"
@@ -458,7 +458,7 @@ const DataProductsDetailsPage = ({
                 </Button>
               )}
 
-              {!isVersionsView && (
+              {!isVersionsView && manageButtonContent.length > 0 && (
                 <Dropdown
                   align={{ targetOffset: [-12, 0] }}
                   className="m-l-xs"

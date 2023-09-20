@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Typography } from 'antd';
 import { ReactComponent as DragIconDotted } from 'assets/svg/dots-six-bold.svg';
 import classNames from 'classnames';
 import { PRIMERY_COLOR } from 'constants/constants';
@@ -39,7 +40,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   };
 
   return (
-    <div className=" m-b-lg">
+    <div className=" m-b-lg text-center">
       <div
         className={classNames('sidebar-icon-container', {
           'cursor-not-allowed opacity-50': !draggable,
@@ -66,7 +67,9 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
           />
         </span>
       </div>
-      <p className="text-grey-body text-center text-xs p-t-xs">{label}</p>
+      <Typography.Text className="text-grey-body text-xs p-t-xs">
+        {label}
+      </Typography.Text>
     </div>
   );
 };

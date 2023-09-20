@@ -46,7 +46,9 @@ export type ExploreSearchIndex =
   | SearchIndex.CONTAINER
   | SearchIndex.GLOSSARY
   | SearchIndex.TAG
-  | SearchIndex.SEARCH_INDEX;
+  | SearchIndex.SEARCH_INDEX
+  | SearchIndex.STORED_PROCEDURE
+  | SearchIndex.DASHBOARD_DATA_MODEL;
 
 export type ExploreSearchIndexKey =
   | 'TABLE'

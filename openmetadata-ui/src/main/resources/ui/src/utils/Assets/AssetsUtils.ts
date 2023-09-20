@@ -25,6 +25,7 @@ import {
   patchDatabaseDetails,
   patchDatabaseSchemaDetails,
 } from 'rest/databaseAPI';
+import { getDataModelsByName, patchDataModelDetails } from 'rest/dataModelsAPI';
 import { getGlossaryTermByFQN, patchGlossaryTerm } from 'rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
@@ -37,6 +38,10 @@ import {
   patchDomainSupportedService,
 } from 'rest/serviceAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
+import {
+  getStoredProceduresByName,
+  patchStoredProceduresDetails,
+} from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
 import { getServiceCategoryFromEntityType } from 'utils/ServiceUtils';
@@ -62,6 +67,10 @@ export const getAPIfromSource = (
       return patchContainerDetails;
     case EntityType.SEARCH_INDEX:
       return patchSearchIndexDetails;
+    case EntityType.STORED_PROCEDURE:
+      return patchStoredProceduresDetails;
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return patchDataModelDetails;
     case EntityType.GLOSSARY_TERM:
       return patchGlossaryTerm;
     case EntityType.DATABASE_SCHEMA:
@@ -101,6 +110,10 @@ export const getEntityAPIfromSource = (
       return getTopicByFqn;
     case EntityType.CONTAINER:
       return getContainerByName;
+    case EntityType.STORED_PROCEDURE:
+      return getStoredProceduresByName;
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelsByName;
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermByFQN;
     case EntityType.DATABASE_SCHEMA:
@@ -131,6 +144,8 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.MLMODEL]: SearchIndex.MLMODEL,
     [EntityType.TOPIC]: SearchIndex.TOPIC,
     [EntityType.CONTAINER]: SearchIndex.CONTAINER,
+    [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
+    [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
   };
 
   if (

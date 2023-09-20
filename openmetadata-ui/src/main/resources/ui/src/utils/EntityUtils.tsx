@@ -586,25 +586,28 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     dataModelType,
     fullyQualifiedName,
   } = dataModelDetails;
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierFromTableTags(tags || []);
 
   const overview = [
     {
       name: i18next.t('label.owner'),
       value:
-        getOwnerNameWithProfilePic(owner) ??
+        getOwnerNameWithProfilePic(owner) ||
         i18next.t('label.no-entity', {
           entity: i18next.t('label.owner'),
         }),
       url: getOwnerValue(owner as EntityReference),
-      isLink: !isEmpty(owner?.name),
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+      isLink: owner?.name ? true : false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
     {
       name: `${i18next.t('label.data-model')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: displayName ?? NO_DATA,
+      value: displayName || NO_DATA,
       url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
       isLink: true,
       visible: [
@@ -621,7 +624,10 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
       ),
       isExternal: false,
       isLink: true,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
 
     {
@@ -629,14 +635,20 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
       value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       isExternal: false,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
     {
       name: i18next.t('label.data-model-type'),
       value: dataModelType,
       isLink: false,
       isExternal: false,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
   ];
 
@@ -654,19 +666,22 @@ const getStoredProcedureOverview = (
     FQN_SEPARATOR_CHAR
   ).split(FQN_SEPARATOR_CHAR);
 
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierFromTableTags(tags || []);
 
   const overview = [
     {
       name: i18next.t('label.owner'),
       value:
-        getOwnerNameWithProfilePic(owner) ??
+        getOwnerNameWithProfilePic(owner) ||
         i18next.t('label.no-entity', {
           entity: i18next.t('label.owner'),
         }),
       url: getOwnerValue(owner as EntityReference),
-      isLink: !isEmpty(owner?.name),
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+      isLink: owner?.name ? true : false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
     {
       name: i18next.t('label.service'),
@@ -699,13 +714,19 @@ const getStoredProcedureOverview = (
         )
       ),
       isLink: true,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
     {
       name: i18next.t('label.tier'),
       value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
     ...(isObject(storedProcedureCode)
       ? [
@@ -715,7 +736,10 @@ const getStoredProcedureOverview = (
               (storedProcedureCode as StoredProcedureCodeObject).language ??
               NO_DATA,
             isLink: false,
-            visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+            visible: [
+              DRAWER_NAVIGATION_OPTIONS.lineage,
+              DRAWER_NAVIGATION_OPTIONS.explore,
+            ],
           },
         ]
       : []),
@@ -1462,8 +1486,19 @@ export const getEntityBreadcrumbs = (
       });
     }
 
+    case EntityType.DOMAIN:
+      return [
+        {
+          name: i18next.t('label.domain-plural'),
+          url: getDomainPath(),
+        },
+      ];
+
     case EntityType.DATA_PRODUCT: {
       const data = entity as DataProduct;
+      if (!data.domain) {
+        return [];
+      }
 
       return [
         {

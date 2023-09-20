@@ -54,6 +54,10 @@ export const entityData = [
     type: EntityType.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
+  {
+    type: EntityType.DASHBOARD_DATA_MODEL,
+    label: t('label.data-model-plural'),
+  },
 ];
 
 export const POSITION_X = 150;
