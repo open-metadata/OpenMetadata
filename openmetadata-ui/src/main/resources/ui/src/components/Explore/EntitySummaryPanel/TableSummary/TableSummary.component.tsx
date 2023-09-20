@@ -80,35 +80,6 @@ function TableSummary({
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const tablePermission = await getEntityPermission(
-        ResourceEntity.TABLE,
-        tableDetails.id
-      );
-
-      setTablePermissions(tablePermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
-    }
-  }, [tableDetails.id, getEntityPermission, setTablePermissions]);
-
-  useEffect(() => {
-    if (tableDetails.id && !isTourPage) {
-      fetchResourcePermission().catch(() => {
-        // error handled in parent
-      });
-    }
-
-    if (isTourPage) {
-      setTablePermissions(mockTablePermission as OperationPermission);
-    }
-  }, [tableDetails.id]);
-
   const viewProfilerPermission = useMemo(
     () => tablePermissions.ViewDataProfile || tablePermissions.ViewAll,
     [tablePermissions]
@@ -247,23 +218,31 @@ function TableSummary({
     [columns, tableDetails]
   );
 
-  useEffect(() => {
-    if (!isEmpty(entityDetails)) {
-      const isTourPage = location.pathname.includes(ROUTES.TOUR);
-      setTableDetails(entityDetails);
-
+  const init = useCallback(async () => {
+    if (entityDetails.id && !isTourPage) {
+      const tablePermission = await getEntityPermission(
+        ResourceEntity.TABLE,
+        entityDetails.id
+      );
+      setTablePermissions(tablePermission);
       const shouldFetchProfilerData =
         !isTableDeleted &&
         entityDetails.service?.type === 'databaseService' &&
         !isTourPage &&
-        viewProfilerPermission;
+        tablePermission;
 
       if (shouldFetchProfilerData) {
         fetchProfilerData();
         fetchAllTests();
       }
+    } else {
+      setTablePermissions(mockTablePermission as OperationPermission);
     }
-  }, [entityDetails, viewProfilerPermission]);
+  }, [entityDetails.fullyQualifiedName, isTourPage, isTableDeleted]);
+
+  useEffect(() => {
+    init();
+  }, [entityDetails.id]);
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
@@ -279,15 +258,11 @@ function TableSummary({
 
         <Divider className="m-y-xs" />
 
-        {!isExplore ? (
-          <>
-            <SummaryTagsDescription
-              entityDetail={entityDetails}
-              tags={tags ? tags : []}
-            />
-            <Divider className="m-y-xs" />
-          </>
-        ) : null}
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={tags ? tags : []}
+        />
+        <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>

@@ -300,7 +300,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       <div className="w-full h-full">
         {tabItems.length > 0 && (
           <Layout hasSider className="bg-white">
-            <Sider className="bg-white border-right" width={230}>
+            <Sider className="bg-white border-right" width={250}>
               <Typography.Paragraph className="explore-data-header">
                 {t('label.data-asset-plural')}
               </Typography.Paragraph>
@@ -409,7 +409,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 pageTitle={t('label.explore')}
                 rightPanel={
                   showSummaryPanel &&
-                  entityDetails && (
+                  entityDetails &&
+                  !loading && (
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
