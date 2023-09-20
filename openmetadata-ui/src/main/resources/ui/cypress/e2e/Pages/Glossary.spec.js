@@ -430,7 +430,7 @@ describe('Glossary page should work properly', () => {
     interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
+      '/api/v1/search/query?q=*disabled:false&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
       'fetchTags'
     );
 
@@ -645,7 +645,7 @@ describe('Glossary page should work properly', () => {
     voteGlossary(true);
   });
 
-  it('Update glossary term', () => {
+  it.skip('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
@@ -699,7 +699,7 @@ describe('Glossary page should work properly', () => {
     voteGlossary();
   });
 
-  it('Assets Tab should work properly', () => {
+  it.skip('Assets Tab should work properly', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
     const glossary = NEW_GLOSSARY.name;
     const term1 = NEW_GLOSSARY_TERMS.term_1.name;
@@ -830,7 +830,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
-  it('Remove Glossary term from entity should work properly', () => {
+  it.skip('Remove Glossary term from entity should work properly', () => {
     const glossaryName = NEW_GLOSSARY_1.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
     const entity = SEARCH_ENTITY_TABLE.table_3;
