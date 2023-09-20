@@ -51,7 +51,6 @@ import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import {
-  ACTIVE_DOMAIN_STORAGE_KEY,
   DE_ACTIVE_COLOR,
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
@@ -109,7 +108,8 @@ const NavBar = ({
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
   const history = useHistory();
-  const { domainOptions } = useDomainProvider();
+  const { domainOptions, activeDomain, updateActiveDomain } =
+    useDomainProvider();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -124,7 +124,6 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
-  const activeDomain = localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? '';
 
   const entitiesSelect = useMemo(
     () => (
@@ -319,7 +318,7 @@ const NavBar = ({
   }, [profilePicture]);
 
   const handleDomainChange = useCallback(({ key }) => {
-    localStorage.setItem(ACTIVE_DOMAIN_STORAGE_KEY, key);
+    updateActiveDomain(key);
     refreshPage();
   }, []);
 

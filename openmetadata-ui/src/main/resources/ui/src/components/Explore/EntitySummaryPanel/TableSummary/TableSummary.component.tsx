@@ -33,24 +33,21 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { getLatestTableProfileByFqn } from 'rest/tableAPI';
-import { getListTestCase } from 'rest/testAPI';
+import {
+  getLatestTableProfileByFqn,
+  getTableDetailsByFQN,
+} from 'rest/tableAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { API_RES_MAX_SIZE, ROUTES } from '../../../../constants/constants';
-import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
+import { ROUTES } from '../../../../constants/constants';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Table } from '../../../../generated/entity/data/table';
-import { Include } from '../../../../generated/type/include';
+import { Table, TestSummary } from '../../../../generated/entity/data/table';
 import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
-import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { TableTestsType } from '../../../TableProfiler/TableProfiler.interface';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -68,10 +65,7 @@ function TableSummary({
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
-  const [tableTests, setTableTests] = useState<TableTestsType>({
-    tests: [],
-    results: INITIAL_TEST_RESULT_SUMMARY,
-  });
+  const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -85,27 +79,14 @@ function TableSummary({
 
   const fetchAllTests = async () => {
     try {
-      const { data } = await getListTestCase({
-        fields: 'testCaseResult',
-        entityLink: generateEntityLink(entityDetails?.fullyQualifiedName || ''),
-        includeAllTests: true,
-        limit: API_RES_MAX_SIZE,
-        include: Include.NonDeleted,
-      });
-      const tableTests: TableTestsType = {
-        tests: [],
-        results: { ...INITIAL_TEST_RESULT_SUMMARY },
-      };
-      data.forEach((test) => {
-        tableTests.tests.push(test);
+      const res = await getTableDetailsByFQN(
+        entityDetails.fullyQualifiedName ?? '',
+        'testSuite'
+      );
 
-        updateTestResults(
-          tableTests.results,
-          test.testCaseResult?.testCaseStatus || ''
-        );
-      });
-
-      setTableTests(tableTests);
+      if (res?.testSuite?.summary) {
+        setTestSuiteSummary(res?.testSuite?.summary);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -162,7 +143,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-passed-value">
-            {formTwoDigitNumber(tableTests.results.success)}
+            {formTwoDigitNumber(testSuiteSummary?.success ?? 0)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -172,7 +153,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-aborted-value">
-            {formTwoDigitNumber(tableTests.results.aborted)}
+            {formTwoDigitNumber(testSuiteSummary?.aborted ?? 0)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -182,7 +163,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-failed-value">
-            {formTwoDigitNumber(tableTests.results.failed)}
+            {formTwoDigitNumber(testSuiteSummary?.failed ?? 0)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -190,7 +171,7 @@ function TableSummary({
         </div>
       </div>
     );
-  }, [tableDetails, tableTests, viewProfilerPermission]);
+  }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
 
   const { columns } = tableDetails;
 
