@@ -132,7 +132,7 @@ const RequestTag = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType, entityFQN as string, setEntityData);
+    fetchEntityDetail(entityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {

@@ -152,8 +152,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  {currentVersionData.mlFeatures &&
-                  currentVersionData.mlFeatures?.length ? (
+                  {currentVersionData.mlFeatures?.length ? (
                     <Row data-testid="feature-list">
                       <Col span={24}>
                         <Divider className="m-y-md" />
