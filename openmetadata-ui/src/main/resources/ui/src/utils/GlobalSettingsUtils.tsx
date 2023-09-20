@@ -23,9 +23,9 @@ import { ReactComponent as ElasticSearchIcon } from 'assets/svg/elasticsearch.sv
 import { ReactComponent as EmailSettingsIcon } from 'assets/svg/email-settings.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as BellIcon } from 'assets/svg/ic-alert-bell.svg';
-import { ReactComponent as DatabaseIcon } from 'assets/svg/ic-custom-database.svg';
 import { ReactComponent as CustomLogoIcon } from 'assets/svg/ic-custom-logo.svg';
 import { ReactComponent as DataInsightReportIcon } from 'assets/svg/ic-data-insight-report.svg';
+import { ReactComponent as DatabaseIcon } from 'assets/svg/ic-database.svg';
 import { ReactComponent as SchemaIcon } from 'assets/svg/ic-schema.svg';
 import { ReactComponent as StorageIcon } from 'assets/svg/ic-storage.svg';
 import { ReactComponent as StoredProcedureIcon } from 'assets/svg/ic-stored-procedure.svg';
