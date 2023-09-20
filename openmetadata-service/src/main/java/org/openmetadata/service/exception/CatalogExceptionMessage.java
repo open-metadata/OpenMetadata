@@ -136,6 +136,10 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
+  public static String notReviewer(String name) {
+    return String.format("User '%s' is not a reviewer", name);
+  }
+
   public static String permissionDenied(
       String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
     if (roleName != null) {
