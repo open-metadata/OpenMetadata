@@ -1277,6 +1277,13 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
+        "SELECT fromFQN, fromType, json FROM field_relationship WHERE "
+            + "toFQNHash = :toFQNHash AND toType = :toType AND relation = :relation")
+    @RegisterRowMapper(FromFieldMapper.class)
+    List<Triple<String, String, String>> findFrom(
+        @BindFQN("toFQNHash") String toFQNHash, @Bind("toType") String toType, @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "fromFQNHash LIKE CONCAT(:fqnPrefixHash, '%') AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
@@ -1348,6 +1355,13 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
+
+    class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
+      @Override
+      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Triple.of(rs.getString("fromFQN"), rs.getString("fromType"), rs.getString("json"));
+      }
+    }
 
     class ToFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
