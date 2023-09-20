@@ -34,6 +34,10 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.pipeline'),
   },
   {
+    value: 'searchIndex',
+    label: t('label.search-index'),
+  },
+  {
     value: 'user',
     label: t('label.user'),
   },

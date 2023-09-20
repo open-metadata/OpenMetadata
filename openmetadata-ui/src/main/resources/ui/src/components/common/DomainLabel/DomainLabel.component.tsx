@@ -17,6 +17,7 @@ import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelecti
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { EntityReference } from 'generated/entity/type';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -31,8 +32,10 @@ import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.c
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabel = ({
+  afterDomainUpdateAction,
   hasPermission,
   domain,
+  domainDisplayName,
   entityType,
   entityFqn,
   entityId,
@@ -60,13 +63,14 @@ export const DomainLabel = ({
 
           // update the domain details here
           setActiveDomain(res.domain);
+          !isUndefined(afterDomainUpdateAction) && afterDomainUpdateAction(res);
         }
       } catch (err) {
         // Handle errors as needed
         showErrorToast(err as AxiosError);
       }
     },
-    [entityType, entityFqn]
+    [entityType, entityFqn, afterDomainUpdateAction]
   );
 
   useEffect(() => {
@@ -85,12 +89,14 @@ export const DomainLabel = ({
             width={16}
           />
         </Typography.Text>
-        {activeDomain ? (
+        {activeDomain || domainDisplayName ? (
           <Link
             className="text-primary font-medium text-xs no-underline"
             data-testid="domain-link"
-            to={getDomainPath(activeDomain.fullyQualifiedName)}>
-            {getEntityName(activeDomain)}
+            to={getDomainPath(activeDomain?.fullyQualifiedName)}>
+            {isUndefined(domainDisplayName)
+              ? getEntityName(activeDomain)
+              : domainDisplayName}
           </Link>
         ) : (
           <Typography.Text

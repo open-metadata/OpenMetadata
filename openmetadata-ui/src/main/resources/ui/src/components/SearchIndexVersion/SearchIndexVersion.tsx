@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,53 +11,51 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import VersionTable from 'components/VersionTable/VersionTable.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { ChangeDescription } from 'generated/entity/data/searchIndex';
 import { TagSource } from 'generated/type/tagLabel';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { toString } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import {
-  ChangeDescription,
-  Dashboard,
-  EntityReference,
-} from '../../generated/entity/data/dashboard';
+import { useHistory, useParams } from 'react-router-dom';
+import { getUpdatedSearchIndexFields } from 'utils/SearchIndexVersionUtils';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { DashboardVersionProp } from './DashboardVersion.interface';
+import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
 
-const DashboardVersion: FC<DashboardVersionProp> = ({
+const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   version,
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
-  slashedDashboardName,
+  searchIndexFQN,
+  breadCrumbList,
   versionList,
   deleted = false,
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
-}: DashboardVersionProp) => {
+}: SearchIndexVersionProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -77,11 +75,15 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       [changeDescription, owner, tier, domain]
     );
 
+  const fields = useMemo(() => {
+    return getUpdatedSearchIndexFields(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
   const handleTabChange = (activeKey: string) => {
     history.push(
       getVersionPathWithTab(
-        EntityType.DASHBOARD,
-        currentVersionData.fullyQualifiedName ?? '',
+        EntityType.SEARCH_INDEX,
+        searchIndexFQN,
         String(version),
         activeKey
       )
@@ -93,56 +95,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       currentVersionData.changeDescription as ChangeDescription
     );
   }, [currentVersionData]);
-
-  const tableColumn: ColumnsType<EntityReference> = useMemo(
-    () => [
-      {
-        title: t('label.chart-entity', {
-          entity: t('label.name'),
-        }),
-        dataIndex: 'name',
-        key: 'name',
-        render: (text, record) => (
-          <Link target="_blank" to={{ pathname: text }}>
-            <Space>
-              <span>{getEntityName(record)}</span>
-
-              <IconExternalLink width={16} />
-            </Space>
-          </Link>
-        ),
-      },
-      {
-        title: t('label.chart-entity', {
-          entity: t('label.type'),
-        }),
-        dataIndex: 'type',
-        key: 'type',
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewer markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
-      {
-        title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-      },
-      {
-        title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-      },
-    ],
-    []
-  );
 
   const tags = useMemo(() => {
     return getEntityVersionTags(currentVersionData, changeDescription);
@@ -167,9 +119,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
-        key: EntityTabs.DETAILS,
+        key: EntityTabs.FIELDS,
         label: (
-          <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
+          <TabsLabel id={EntityTabs.FIELDS} name={t('label.field-plural')} />
         ),
         children: (
           <Row gutter={[0, 16]} wrap={false}>
@@ -179,18 +131,18 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                   <DescriptionV1
                     isVersionView
                     description={description}
-                    entityType={EntityType.DASHBOARD}
+                    entityType={EntityType.SEARCH_INDEX}
                   />
                 </Col>
                 <Col span={24}>
-                  <Table
-                    bordered
-                    columns={tableColumn}
-                    data-testid="schema-table"
-                    dataSource={(currentVersionData as Dashboard)?.charts}
-                    pagination={false}
-                    rowKey="id"
-                    size="small"
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      searchIndexFQN,
+                      [FqnPart.SearchIndexField],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={fields}
+                    joins={[]}
                   />
                 </Col>
               </Row>
@@ -202,8 +154,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
-                    entityType={EntityType.DASHBOARD}
+                    entityFqn={searchIndexFQN}
+                    entityType={EntityType.SEARCH_INDEX}
                     key={tagType}
                     permission={false}
                     selectedTags={tags}
@@ -229,14 +181,14 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             entityDetails={
               currentVersionData as CustomPropertyProps['entityDetails']
             }
-            entityType={EntityType.DASHBOARD}
+            entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
     ],
-    [description, tableColumn, currentVersionData, entityPermissions]
+    [description, searchIndexFQN, fields, currentVersionData, entityPermissions]
   );
 
   return (
@@ -244,16 +196,16 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       {isVersionLoading ? (
         <Loader />
       ) : (
-        <div className={classNames('version-data')} data-testid="version-data">
+        <div className={classNames('version-data')}>
           <Row gutter={[0, 12]}>
             <Col span={24}>
               <DataAssetsVersionHeader
-                breadcrumbLinks={slashedDashboardName}
+                breadcrumbLinks={breadCrumbList}
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
-                entityType={EntityType.DASHBOARD}
+                entityType={EntityType.SEARCH_INDEX}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 serviceName={currentVersionData.service?.name}
@@ -264,8 +216,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             </Col>
             <Col span={24}>
               <Tabs
-                data-testid="tabs"
-                defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                defaultActiveKey={tab ?? EntityTabs.FIELDS}
                 items={tabItems}
                 onChange={handleTabChange}
               />
@@ -275,7 +226,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={toString(version)}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
@@ -284,4 +235,4 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
 };
 
-export default DashboardVersion;
+export default SearchIndexVersion;
