@@ -996,7 +996,7 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   @Override
   public void updateSearchEntityUpdated(EntityInterface entity, String scriptTxt, String field) {
-    if (entity == null) {
+    if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
       UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
