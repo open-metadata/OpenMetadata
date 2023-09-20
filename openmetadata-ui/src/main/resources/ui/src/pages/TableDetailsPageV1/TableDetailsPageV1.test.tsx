@@ -212,7 +212,7 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      `${COMMON_API_FIELDS},usageSummary,testSuite`
+      `${COMMON_API_FIELDS},usageSummary`
     );
   });
 
