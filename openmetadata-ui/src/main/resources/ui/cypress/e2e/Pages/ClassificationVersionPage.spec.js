@@ -33,7 +33,7 @@ describe('Classification version page should work properly', () => {
     interceptURL('GET', `/api/v1/permissions/classification/*`, 'permissions');
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*%20AND%20disabled%3Afalse&index=tag_search_index*`,
+      `/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*`,
       'suggestTag'
     );
     visitClassificationPage();
