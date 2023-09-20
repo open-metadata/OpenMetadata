@@ -123,6 +123,12 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
   },
+  [SearchIndex.SEARCH_INDEX]: {
+    label: i18n.t('label.search-index-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'searchIndexes',
+  },
 };
 
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [

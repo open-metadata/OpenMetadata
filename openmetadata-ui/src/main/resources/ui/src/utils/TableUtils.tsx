@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { FilterOutlined } from '@ant-design/icons';
+import Icon, { FilterOutlined, SearchOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
@@ -277,6 +277,7 @@ export const getEntityLink = (
       )}?activeTab=Data Quality`;
 
     case EntityType.SEARCH_INDEX:
+    case SearchIndex.SEARCH_INDEX:
       return getSearchIndexDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
@@ -346,6 +347,10 @@ export const getEntityIcon = (indexType: string) => {
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:
       return <IconTerm />;
+
+    case EntityType.SEARCH_INDEX:
+    case SearchIndex.SEARCH_INDEX:
+      return <SearchOutlined className="text-sm" />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

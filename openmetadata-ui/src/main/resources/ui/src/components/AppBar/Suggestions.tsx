@@ -35,6 +35,7 @@ import {
   MlModelSource,
   Option,
   PipelineSource,
+  SearchIndexSource,
   SearchSuggestions,
   TableSource,
   TagSource,
@@ -74,6 +75,9 @@ const Suggestions = ({
   const [glossarySuggestions, setGlossarySuggestions] = useState<
     GlossarySource[]
   >([]);
+  const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
+    SearchIndexSource[]
+  >([]);
   const [tagSuggestions, setTagSuggestions] = useState<TagSource[]>([]);
 
   const [storedProcedureSuggestions, setStoredProcedureSuggestions] = useState<
@@ -96,6 +100,9 @@ const Suggestions = ({
     setMlModelSuggestions(filterOptionsByIndex(options, SearchIndex.MLMODEL));
     setContainerSuggestions(
       filterOptionsByIndex(options, SearchIndex.CONTAINER)
+    );
+    setSearchIndexSuggestions(
+      filterOptionsByIndex(options, SearchIndex.SEARCH_INDEX)
     );
     setStoredProcedureSuggestions(
       filterOptionsByIndex(options, SearchIndex.STORED_PROCEDURE)
@@ -145,6 +152,10 @@ const Suggestions = ({
           {
             suggestions: containerSuggestions,
             searchIndex: SearchIndex.CONTAINER,
+          },
+          {
+            suggestions: searchIndexSuggestions,
+            searchIndex: SearchIndex.SEARCH_INDEX,
           },
           {
             suggestions: storedProcedureSuggestions,

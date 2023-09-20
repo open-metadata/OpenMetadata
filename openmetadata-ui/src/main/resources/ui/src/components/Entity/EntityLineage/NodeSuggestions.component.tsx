@@ -17,7 +17,6 @@ import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { PAGE_SIZE } from 'constants/constants';
 import { EntityType, FqnPart } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/type';
 import { capitalize, debounce } from 'lodash';
 import { FormattedTableData } from 'Models';
@@ -32,7 +31,10 @@ import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
 import { formatDataResponse } from 'utils/APIUtils';
 import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { getEntityNodeIcon } from 'utils/EntityLineageUtils';
+import {
+  getEntityNodeIcon,
+  getSearchIndexFromNodeType,
+} from 'utils/EntityLineageUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import './node-suggestion.less';
@@ -74,9 +76,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         '',
         '',
         '',
-        SearchIndex[
-          entityType as keyof typeof SearchIndex
-        ] as ExploreSearchIndex
+        getSearchIndexFromNodeType(entityType)
       );
       setData(formatDataResponse(data.data.hits.hits));
     } catch (error) {

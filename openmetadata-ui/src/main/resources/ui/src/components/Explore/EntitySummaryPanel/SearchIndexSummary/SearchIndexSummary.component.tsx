@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,83 +16,86 @@ import SummaryTagsDescription from 'components/common/SummaryTagsDescription/Sum
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import { TagLabel } from 'generated/type/tagLabel';
-import React, { useMemo } from 'react';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
+import { isEmpty } from 'lodash';
+import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTagValue } from 'utils/CommonUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
+import { getTagValue } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { SearchIndexSummaryProps } from './SearchIndexSummary.interface';
 
-interface MlModelSummaryProps {
-  entityDetails: Mlmodel;
-  componentType?: DRAWER_NAVIGATION_OPTIONS;
-  tags?: TagLabel[];
-  isLoading?: boolean;
-}
-
-function MlModelSummary({
+function SearchIndexSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
-}: MlModelSummaryProps) {
+}: SearchIndexSummaryProps) {
   const { t } = useTranslation();
-
-  const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.MLMODELS, entityDetails),
-    [entityDetails]
-  );
-
-  const formattedFeaturesData: BasicEntityInfo[] = useMemo(
-    () =>
-      getFormattedEntityData(
-        SummaryEntityType.MLFEATURE,
-        entityDetails.mlFeatures
-      ),
-    [entityDetails]
-  );
+  const [searchIndexDetails, setSearchIndexDetails] =
+    useState<SearchIndex>(entityDetails);
 
   const isExplore = useMemo(
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
     [componentType]
   );
 
-  return (
-    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <>
-        <Row className="m-md m-t-0" gutter={[0, 4]}>
-          <Col span={24}>
-            <CommonEntitySummaryInfo
-              componentType={componentType}
-              entityInfo={entityInfo}
-            />
-          </Col>
-        </Row>
-        <Divider className="m-y-xs" />
+  const { fields } = searchIndexDetails;
 
+  const formattedFieldsData: BasicEntityInfo[] = useMemo(
+    () => getFormattedEntityData(SummaryEntityType.FIELD, fields),
+    [fields, searchIndexDetails]
+  );
+
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.SEARCH_INDEX, searchIndexDetails),
+    [searchIndexDetails]
+  );
+
+  useEffect(() => {
+    if (!isEmpty(entityDetails)) {
+      setSearchIndexDetails(entityDetails);
+    }
+  }, [entityDetails]);
+
+  return (
+    <SummaryPanelSkeleton loading={isLoading ?? isEmpty(searchIndexDetails)}>
+      <>
         {!isExplore ? (
           <>
+            <Row className="m-md m-t-0" gutter={[0, 4]}>
+              <Col span={24}>
+                <CommonEntitySummaryInfo
+                  componentType={componentType}
+                  entityInfo={entityInfo}
+                />
+              </Col>
+            </Row>
+
+            <Divider className="m-y-xs" />
+
             <SummaryTagsDescription
               entityDetail={entityDetails}
-              tags={tags ? tags : []}
+              tags={tags ?? []}
             />
             <Divider className="m-y-xs" />
           </>
-        ) : (
+        ) : null}
+
+        {isExplore ? (
           <>
-            <Row className="m-md" gutter={[0, 8]}>
+            <Row className="m-md m-t-0" gutter={[0, 8]}>
               <Col span={24}>
                 <Typography.Text
                   className="summary-panel-section-title"
-                  data-testid="profiler-header">
+                  data-testid="tags-header">
                   {t('label.tag-plural')}
                 </Typography.Text>
               </Col>
@@ -114,18 +117,20 @@ function MlModelSummary({
             </Row>
             <Divider className="m-y-xs" />
           </>
-        )}
-
+        ) : null}
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
-              data-testid="features-header">
-              {t('label.feature-plural')}
+              data-testid="fields-header">
+              {t('label.field-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <SummaryList formattedEntityData={formattedFeaturesData} />
+            <SummaryList
+              entityType={SummaryEntityType.FIELD}
+              formattedEntityData={formattedFieldsData}
+            />
           </Col>
         </Row>
       </>
@@ -133,4 +138,4 @@ function MlModelSummary({
   );
 }
 
-export default MlModelSummary;
+export default SearchIndexSummary;

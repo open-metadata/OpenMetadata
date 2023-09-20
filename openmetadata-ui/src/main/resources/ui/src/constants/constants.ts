@@ -84,6 +84,7 @@ export const imageTypes = {
 };
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
+export const NO_DATA = '-';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -157,6 +158,7 @@ export const globalSearchOptions = [
   { value: SearchIndex.DASHBOARD_DATA_MODEL, label: t('label.data-model') },
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
+  { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
 ];
 
 export const versionTypes = [
