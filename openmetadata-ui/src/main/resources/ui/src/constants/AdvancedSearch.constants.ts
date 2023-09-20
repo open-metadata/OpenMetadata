@@ -100,7 +100,7 @@ export const DASHBOARD_DATA_MODEL_TYPE = [
   },
   {
     label: t('label.project'),
-    key: 'project',
+    key: 'project.keyword',
   },
 ];
 

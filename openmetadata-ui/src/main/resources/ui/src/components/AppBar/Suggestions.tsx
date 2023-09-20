@@ -24,6 +24,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import {
   filterOptionsByIndex,
   getGroupLabel,
@@ -224,7 +225,17 @@ const Suggestions = ({
   }
 
   if (options.length === 0) {
-    return <Typography.Text>{t('message.no-match-found')}</Typography.Text>;
+    return (
+      <Typography.Text>
+        <Transi18next
+          i18nKey="message.please-enter-to-find-data-assets"
+          renderElement={<strong />}
+          values={{
+            keyword: `"${searchText}"`,
+          }}
+        />
+      </Typography.Text>
+    );
   }
 
   return getEntitiesSuggestions();
