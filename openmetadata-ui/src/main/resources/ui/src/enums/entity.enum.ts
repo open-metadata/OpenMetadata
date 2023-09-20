@@ -182,14 +182,3 @@ export enum EntityAction {
   EXPORT = 'export',
   IMPORT = 'import',
 }
-
-export enum EntitySearchIndexKey {
-  table = 'TABLE',
-  topic = 'TOPIC',
-  dashboard = 'DASHBOARD',
-  mlModel = 'MLMODEL',
-  pipeline = 'PIPELINE',
-  container = 'CONTAINER',
-  storedProcedure = 'STORED_PROCEDURE',
-  dashboardDataModel = 'DASHBOARD_DATA_MODEL',
-}
