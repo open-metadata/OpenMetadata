@@ -68,7 +68,7 @@ export default function EntitySummaryPanel({
     setIsPermissionLoading(true);
 
     return entityDetails?.details?.id ?? '';
-  }, [entityDetails]);
+  }, [entityDetails?.details?.id]);
 
   const fetchResourcePermission = async (entityFqn: string) => {
     try {
