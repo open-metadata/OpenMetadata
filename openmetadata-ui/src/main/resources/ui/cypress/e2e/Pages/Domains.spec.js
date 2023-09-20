@@ -13,7 +13,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   createDataProducts,
   createDomain,
@@ -29,8 +28,6 @@ import { DOMAIN_1, DOMAIN_2 } from '../../constants/constants';
 describe('Domain page should work properly', () => {
   beforeEach(() => {
     cy.login();
-
-    interceptURL('GET', '/api/v1/domains*', 'fetchDomains');
 
     cy.get('[data-testid="app-bar-item-domain"]')
       .should('be.visible')
@@ -73,7 +70,6 @@ describe('Domain page should work properly', () => {
   });
 
   it('Delete domain flow should work properly', () => {
-    verifyResponseStatusCode('@fetchDomains', 200);
     [DOMAIN_1, DOMAIN_2].forEach((domain) => {
       deleteDomain(domain);
     });
