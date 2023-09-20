@@ -29,8 +29,11 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
+  | SearchIndex.STORED_PROCEDURE
+  | SearchIndex.DASHBOARD_DATA_MODEL
   | SearchIndex.GLOSSARY
   | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
@@ -41,7 +44,7 @@ export const formatDataResponse = (
     const newData = {} as FormattedTableData;
     const source = hit._source;
     newData.index = hit._index;
-    newData.id = hit._source.id;
+    newData.id = hit._source.id ?? '';
     newData.name = hit._source.name;
     newData.displayName = hit._source.displayName ?? '';
     newData.description = hit._source.description ?? '';

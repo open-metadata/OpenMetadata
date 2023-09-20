@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Space, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import classNames from 'classnames';
+import { Col, Divider, Row, Typography } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
@@ -29,12 +27,13 @@ import {
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Pipeline } from '../../../../generated/entity/data/pipeline';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface PipelineSummaryProps {
   entityDetails: Pipeline;
-  componentType?: string;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
 }
@@ -67,61 +66,10 @@ function PipelineSummary({
       <>
         <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
-            <Row gutter={[0, 4]}>
-              {entityInfo.map((info) => {
-                const isOwner = info.name === t('label.owner');
-
-                return info.visible?.includes(componentType) ? (
-                  <Col key={info.name} span={24}>
-                    <Row
-                      className={classNames('', {
-                        'p-b-md': isOwner,
-                      })}
-                      gutter={[16, 32]}>
-                      {!isOwner ? (
-                        <Col
-                          data-testid={
-                            info.dataTestId
-                              ? info.dataTestId
-                              : `${info.name}-label`
-                          }
-                          span={8}>
-                          <Typography.Text className="text-grey-muted">
-                            {info.name}
-                          </Typography.Text>
-                        </Col>
-                      ) : null}
-                      <Col data-testid={`${info.name}-value`} span={16}>
-                        {info.isLink ? (
-                          <Space align="start">
-                            <Typography.Link
-                              className="d-flex"
-                              data-testid="pipeline-link-name"
-                              href={info.url}
-                              target={info.isExternal ? '_blank' : '_self'}>
-                              {info.value}
-                              {info.isExternal ? (
-                                <IconExternalLink
-                                  className="m-l-xss"
-                                  width={12}
-                                />
-                              ) : null}
-                            </Typography.Link>
-                          </Space>
-                        ) : (
-                          <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
-                            {info.value}
-                          </Typography.Text>
-                        )}
-                      </Col>
-                    </Row>
-                  </Col>
-                ) : null;
-              })}
-            </Row>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
           </Col>
         </Row>
         <Divider className="m-y-xs" />

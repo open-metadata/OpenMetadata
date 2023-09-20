@@ -48,6 +48,7 @@ export type ListTestCaseParams = ListParams & {
   entityLink?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
+  orderByLastExecutionDate?: boolean;
 };
 
 export type ListTestDefinitionsParams = ListParams & {

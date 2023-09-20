@@ -414,7 +414,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.51.v20230217</version>
+      <version>9.4.52.v20230823</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>

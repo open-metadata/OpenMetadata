@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
@@ -31,8 +31,10 @@ import {
   SelectedEdge,
   SelectedNode,
 } from 'components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import {
   cloneDeep,
@@ -40,9 +42,9 @@ import {
   isEqual,
   isNil,
   isUndefined,
-  lowerCase,
   uniqueId,
   uniqWith,
+  upperCase,
 } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
@@ -788,7 +790,7 @@ export const getUpdatedEdgeWithPipeline = (
   edges: EntityLineage['downstreamEdges'],
   updatedLineageDetails: LineageDetails,
   selectedEdge: CustomEdgeData,
-  pipelineDetail: EntityReference | undefined
+  edgeDetails: EntityReference | undefined
 ) => {
   if (isUndefined(edges)) {
     return [];
@@ -804,8 +806,9 @@ export const getUpdatedEdgeWithPipeline = (
           ...updatedLineageDetails,
           pipeline: !isUndefined(updatedLineageDetails.pipeline)
             ? {
-                displayName: pipelineDetail?.displayName,
-                name: pipelineDetail?.name,
+                displayName: edgeDetails?.displayName,
+                name: edgeDetails?.name,
+                fullyQualifiedName: edgeDetails?.fullyQualifiedName,
                 ...updatedLineageDetails.pipeline,
               }
             : undefined,
@@ -820,7 +823,8 @@ export const getUpdatedEdgeWithPipeline = (
 export const getNewLineageConnectionDetails = (
   selectedEdgeValue: EntityLineageEdge | undefined,
   selectedPipelineId: string | undefined,
-  customEdgeData: CustomEdgeData
+  customEdgeData: CustomEdgeData,
+  type: EntityType
 ) => {
   const { source, sourceType, target, targetType } = customEdgeData;
   const updatedLineageDetails: LineageDetails = {
@@ -831,7 +835,7 @@ export const getNewLineageConnectionDetails = (
       ? undefined
       : {
           id: selectedPipelineId,
-          type: EntityType.PIPELINE,
+          type,
         },
   };
 
@@ -1369,7 +1373,7 @@ export const getEntityLineagePath = (
 
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
-  switch (lowerCase(label)) {
+  switch (label) {
     case EntityType.TABLE:
       return TableIcon;
     case EntityType.DASHBOARD:
@@ -1380,7 +1384,18 @@ export const getEntityNodeIcon = (label: string) => {
       return PipelineIcon;
     case EntityType.MLMODEL:
       return MlModelIcon;
+    case EntityType.SEARCH_INDEX:
+      return SearchOutlined;
     default:
       return TableIcon;
   }
+};
+
+export const getSearchIndexFromNodeType = (entityType: string) => {
+  const searchIndexKey = upperCase(entityType).replace(
+    ' ',
+    '_'
+  ) as keyof typeof SearchIndex;
+
+  return SearchIndex[searchIndexKey] as ExploreSearchIndex;
 };

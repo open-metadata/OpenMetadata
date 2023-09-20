@@ -140,8 +140,28 @@ export const SETTINGS_LEFT_PANEL = {
     url: `${BASE_URL}/settings/services/mlModels`,
   },
   metadata: {
-    testid: '[data-menu-id*="metadata"]',
+    testid: '[data-menu-id*="services.metadata"]',
     url: `${BASE_URL}/settings/services/metadata`,
+  },
+  storages: {
+    testid: '[data-menu-id*="services.storages"]',
+    url: `${BASE_URL}/settings/services/storages`,
+  },
+  searchService: {
+    testid: '[data-menu-id*="services.search"]',
+    url: `${BASE_URL}/settings/services/search`,
+  },
+  activityFeeds: {
+    testid: '[data-menu-id*="notifications.activityFeeds"]',
+    url: `${BASE_URL}/settings/notifications/activityFeeds`,
+  },
+  alerts: {
+    testid: '[data-menu-id*="notifications.alerts"]',
+    url: `${BASE_URL}/settings/notifications/alerts`,
+  },
+  dataInsightReport: {
+    testid: '[data-menu-id*="notifications.dataInsightReport"]',
+    url: `${BASE_URL}/settings/notifications/dataInsightReport`,
   },
   customAttributesTable: {
     testid: '[data-menu-id*="tables"]',
@@ -163,8 +183,20 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
     url: `${BASE_URL}/settings/customAttributes/mlModels`,
   },
+  customAttributesContainers: {
+    testid: '[data-menu-id*="customAttributes.containers"]',
+    url: `${BASE_URL}/settings/customAttributes/containers`,
+  },
+  customAttributesSearchIndex: {
+    testid: '[data-menu-id*="customAttributes.searchIndex"]',
+    url: `${BASE_URL}/settings/customAttributes/searchIndex`,
+  },
+  customAttributesStoredProcedure: {
+    testid: '[data-menu-id*="customAttributes.storedProcedure"]',
+    url: `${BASE_URL}/settings/customAttributes/storedProcedure`,
+  },
   search: {
-    testid: '[data-menu-id*="search"]',
+    testid: '[data-menu-id*="openMetadata.search"]',
     url: `${BASE_URL}/settings/openMetadata/search`,
   },
   bots: {

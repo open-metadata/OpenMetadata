@@ -107,13 +107,13 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   @SuppressWarnings("unused")
-  public void postUpdate(Classification entity) {
+  public void postUpdate(Classification original, Classification updated) {
     String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    if (entity.getDisabled() != null) {
-      scriptTxt = "ctx._source.disabled=" + entity.getDisabled();
+    if (updated.getDisabled() != null) {
+      scriptTxt = "ctx._source.disabled=" + updated.getDisabled();
     }
     searchClient.updateSearchEntityUpdated(
-        JsonUtils.deepCopy(entity, Classification.class), scriptTxt, "classification.fullyQualifiedName");
+        JsonUtils.deepCopy(updated, Classification.class), scriptTxt, "classification.fullyQualifiedName");
   }
 
   @Override
