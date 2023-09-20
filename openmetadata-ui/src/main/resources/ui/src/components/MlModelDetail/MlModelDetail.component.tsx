@@ -55,6 +55,7 @@ import { MlModelDetailProp } from './MlModelDetail.interface';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
+  updateMlModelDetailsState,
   mlModelDetail,
   fetchMlModel,
   followMlModelHandler,
@@ -536,6 +537,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateMlModelDetailsState}
             dataAsset={mlModelDetail}
             entityType={EntityType.MLMODEL}
             permissions={mlModelPermissions}

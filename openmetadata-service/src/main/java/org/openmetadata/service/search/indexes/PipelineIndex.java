@@ -3,15 +3,13 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.EntityReference;
@@ -60,6 +58,11 @@ public class PipelineIndex implements ElasticSearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.PIPELINE);
     doc.put("serviceType", pipeline.getServiceType());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            pipeline.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     return doc;
   }
 
@@ -74,6 +77,7 @@ public class PipelineIndex implements ElasticSearchIndex {
     fields.put(FIELD_DESCRIPTION, 1.0f);
     fields.put("tasks.name", 2.0f);
     fields.put("tasks.description", 1.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
     return fields;
   }
 }

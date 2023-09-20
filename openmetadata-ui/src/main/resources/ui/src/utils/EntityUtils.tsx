@@ -32,6 +32,7 @@ import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import { EntityField } from 'constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -39,7 +40,11 @@ import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
+import {
+  SearchIndex as SearchIndexAsset,
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from 'generated/entity/data/searchIndex';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
@@ -79,7 +84,6 @@ import {
   NO_DATA,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -957,11 +961,11 @@ export const getResourceEntityFromEntityType = (entityType: string) => {
  * @param {string} searchText - The text to search for.
  * @returns An array of columns that have been searched for a specific string.
  */
-export const searchInColumns = (
-  table: Column[],
+export const searchInColumns = <T extends Column | SearchIndexField>(
+  table: T[],
   searchText: string
-): Column[] => {
-  const searchedValue: Column[] = table.reduce((searchedCols, column) => {
+): T[] => {
+  const searchedValue: T[] = table.reduce((searchedCols, column) => {
     const searchLowerCase = lowerCase(searchText);
     const isContainData =
       lowerCase(column.name).includes(searchLowerCase) ||
@@ -971,7 +975,10 @@ export const searchInColumns = (
     if (isContainData) {
       return [...searchedCols, column];
     } else if (!isUndefined(column.children)) {
-      const searchedChildren = searchInColumns(column.children, searchText);
+      const searchedChildren = searchInColumns<T>(
+        column.children as T[],
+        searchText
+      );
       if (searchedChildren.length > 0) {
         return [
           ...searchedCols,
@@ -984,7 +991,7 @@ export const searchInColumns = (
     }
 
     return searchedCols;
-  }, [] as Column[]);
+  }, [] as T[]);
 
   return searchedValue;
 };
@@ -1294,6 +1301,7 @@ export const getEntityBreadcrumbs = (
     | StoredProcedure
     | Database
     | DatabaseSchema
+    | SearchIndexAsset
     | DataAssetsWithoutServiceField,
   entityType?: EntityType,
   includeCurrent = false
@@ -1499,6 +1507,7 @@ export const getEntityBreadcrumbs = (
         },
       ];
     }
+
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
     case EntityType.PIPELINE:

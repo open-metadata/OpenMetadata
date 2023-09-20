@@ -57,6 +57,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   slashedMlModelName,
   versionList,
@@ -73,10 +74,17 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const mlFeaturesData = useMemo(
     () => getMlFeatureVersionData(currentVersionData, changeDescription),
@@ -330,6 +338,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.MLMODEL}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

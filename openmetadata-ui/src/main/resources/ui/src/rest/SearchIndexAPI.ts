@@ -17,6 +17,7 @@ import {
   EntityReference,
   SearchIndex,
 } from 'generated/entity/data/searchIndex';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
@@ -120,6 +121,22 @@ export const getSampleDataBySearchIndexId = async (id: string) => {
   const response = await APIClient.get<SearchIndex>(
     `/searchIndexes/${id}/sampleData`
   );
+
+  return response.data;
+};
+
+export const getSearchIndexVersions = async (id: string) => {
+  const url = `/searchIndexes/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getSearchIndexVersion = async (id: string, version: string) => {
+  const url = `/searchIndexes/${id}/versions/${version}`;
+
+  const response = await APIClient.get<SearchIndex>(url);
 
   return response.data;
 };

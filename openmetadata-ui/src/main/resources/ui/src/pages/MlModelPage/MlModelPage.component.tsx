@@ -22,7 +22,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
@@ -287,6 +287,15 @@ const MlModelPage = () => {
     }
   };
 
+  const updateMlModelDetailsState = useCallback((data) => {
+    const updatedData = data as Mlmodel;
+
+    setMlModelDetail((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
@@ -318,6 +327,7 @@ const MlModelPage = () => {
       settingsUpdateHandler={settingsUpdateHandler}
       tagUpdateHandler={onTagUpdate}
       unFollowMlModelHandler={unFollowMlModel}
+      updateMlModelDetailsState={updateMlModelDetailsState}
       updateMlModelFeatures={updateMlModelFeatures}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
