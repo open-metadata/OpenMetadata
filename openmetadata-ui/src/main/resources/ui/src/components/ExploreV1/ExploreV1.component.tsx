@@ -48,10 +48,8 @@ import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  getSearchIndexFromPath,
-  tabsInfo,
-} from '../../constants/explore.constants';
+import { getSearchIndexFromPath } from 'utils/ExplorePage/ExplorePageUtils';
+import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   QueryFieldInterface,

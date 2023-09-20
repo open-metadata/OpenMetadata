@@ -136,16 +136,6 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'tags.tagFQN',
 ];
 
-export const getSearchIndexFromPath = (path: string): SearchIndex | null => {
-  for (const key in tabsInfo) {
-    if (tabsInfo[key as ExploreSearchIndex].path === path) {
-      return key as SearchIndex;
-    }
-  }
-
-  return null;
-};
-
 export const ALL_EXPLORE_SEARCH_INDEX =
   // eslint-disable-next-line max-len
   `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.CONTAINER},${SearchIndex.GLOSSARY},${SearchIndex.TAG},${SearchIndex.SEARCH_INDEX}` as SearchIndex;

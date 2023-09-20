@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
-import { PAGE_SIZE } from 'constants/constants';
+import { PAGE_SIZE_BASE } from 'constants/constants';
 import { ALL_EXPLORE_SEARCH_INDEX } from 'constants/explore.constants';
 import {
   ContainerSearchSource,
@@ -186,7 +186,7 @@ const Suggestions = ({
       const res = await searchData(
         searchText,
         1,
-        PAGE_SIZE,
+        PAGE_SIZE_BASE,
         '',
         '',
         '',

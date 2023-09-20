@@ -42,9 +42,6 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
   const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [domainLoading, setDomainLoading] = useState(false);
-  // const [activeDomain, setActiveDomain] = useState(
-
-  // );
   const { isAuthenticated } = useAuthContext();
   const localStorageData =
     localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
