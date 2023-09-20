@@ -52,6 +52,10 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Database Schema belongs to.",
       "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": [

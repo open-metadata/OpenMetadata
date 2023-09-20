@@ -12,11 +12,12 @@
  */
 
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { TableType, TagLabel } from '../../../../generated/entity/data/table';
 
 export interface DataModelSummaryProps {
   entityDetails: DashboardDataModel;
-  componentType?: string;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
 }

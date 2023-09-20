@@ -19,7 +19,8 @@ import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
-import React, { FC, ReactNode, useState } from 'react';
+import { isUndefined } from 'lodash';
+import React, { FC, ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
@@ -97,6 +98,19 @@ const ManageButton: FC<Props> = ({
     }
   };
 
+  const showAnnouncementOption = useMemo(
+    () =>
+      onAnnouncementClick &&
+      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
+      !deleted,
+    [onAnnouncementClick, entityType, deleted]
+  );
+
+  const showRenameOption = useMemo(
+    () => editDisplayNamePermission && onEditDisplayName && !deleted,
+    [editDisplayNamePermission, onEditDisplayName, deleted]
+  );
+
   const items: ItemType[] = [
     ...(deleted
       ? ([
@@ -130,8 +144,7 @@ const ManageButton: FC<Props> = ({
         ] as ItemType[])
       : []),
 
-    ...(onAnnouncementClick &&
-    ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
+    ...(showAnnouncementOption
       ? ([
           {
             label: (
@@ -150,14 +163,14 @@ const ManageButton: FC<Props> = ({
             ),
             onClick: (e) => {
               e.domEvent.stopPropagation();
-              onAnnouncementClick && onAnnouncementClick();
+              !isUndefined(onAnnouncementClick) && onAnnouncementClick();
             },
             key: 'announcement-button',
           },
         ] as ItemType[])
       : []),
 
-    ...(editDisplayNamePermission && onEditDisplayName
+    ...(showRenameOption
       ? ([
           {
             label: (

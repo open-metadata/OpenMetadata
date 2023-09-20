@@ -46,6 +46,8 @@ export const HOVER_CHART_OPACITY = 0.3;
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
+export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
+export const DEFAULT_DOMAIN_VALUE = 'All Domains';
 
 export const USER_DATA_SIZE = 4;
 export const INITIAL_PAGING_VALUE = 1;
@@ -82,6 +84,7 @@ export const imageTypes = {
 };
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
+export const NO_DATA = '-';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -151,8 +154,11 @@ export const globalSearchOptions = [
   { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
   { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
   { value: SearchIndex.CONTAINER, label: t('label.container') },
+  { value: SearchIndex.STORED_PROCEDURE, label: t('label.stored-procedure') },
+  { value: SearchIndex.DASHBOARD_DATA_MODEL, label: t('label.data-model') },
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
+  { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
 ];
 
 export const versionTypes = [

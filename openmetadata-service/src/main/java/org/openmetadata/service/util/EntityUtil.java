@@ -545,6 +545,10 @@ public final class EntityUtil {
     return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
   }
 
+  public static boolean isApprovalTask(TaskType taskType) {
+    return taskType == TaskType.RequestApproval;
+  }
+
   public static Column findColumn(List<Column> columns, String columnName) {
     return columns.stream()
         .filter(c -> c.getName().equals(columnName))
