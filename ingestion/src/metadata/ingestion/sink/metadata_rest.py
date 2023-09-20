@@ -69,6 +69,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.helpers import calculate_execution_time
+from metadata.utils.life_cycle_utils import patch_life_cycle
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -410,10 +411,8 @@ class MetadataRestSink(Sink):
         """
         Ingest the life cycle data
         """
-        destination = record.entity.copy(deep=True)
-        destination.lifeCycle = record.life_cycle
-        self.metadata.patch(
-            entity=type(record.entity), source=record.entity, destination=destination
+        patch_life_cycle(
+            metadata=self.metadata, entity=record.entity, life_cycle=record.life_cycle
         )
         return Either(right=record)
 

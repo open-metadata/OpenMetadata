@@ -18,6 +18,8 @@ import traceback
 from typing import Any, Optional
 
 from metadata.generated.schema.type.lifeCycle import LifeCycle
+from metadata.ingestion.api.models import Entity
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import utils_logger
 
 QUERY_TYPES_DICT = {
@@ -80,3 +82,23 @@ def get_query_type(create_query) -> Optional[str]:
         logger.debug(traceback.format_exc())
         logger.warning(f"Unexpected exception get the query type: {exc}")
     return None
+
+
+def patch_life_cycle(
+    metadata: Optional[OpenMetadata], entity: Entity, life_cycle: LifeCycle
+) -> None:
+    """
+    Patch life cycle data for a entity
+
+    :param entity: Entity to update the life cycle for
+    :param life_cycle_data: Life Cycle data to add
+    """
+    try:
+        destination = entity.copy(deep=True)
+        destination.lifeCycle = life_cycle
+        metadata.patch(entity=type(entity), source=entity, destination=destination)
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.__root__}: {exc}"
+        )
