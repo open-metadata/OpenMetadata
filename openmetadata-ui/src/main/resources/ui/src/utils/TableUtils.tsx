@@ -359,7 +359,7 @@ export const getEntityIcon = (indexType: string) => {
   }
 };
 
-export const makeRow = (column: Column) => {
+export const makeRow = <T extends Column | SearchIndexField>(column: T) => {
   return {
     description: column.description || '',
     // Sorting tags as the response of PATCH request does not return the sorted order
@@ -371,13 +371,13 @@ export const makeRow = (column: Column) => {
   };
 };
 
-export const makeData = (
-  columns: Column[] = []
-): Array<Column & { id: string }> => {
+export const makeData = <T extends Column | SearchIndexField>(
+  columns: T[] = []
+): Array<T & { id: string }> => {
   return columns.map((column) => ({
     ...makeRow(column),
     id: uniqueId(column.name),
-    children: column.children ? makeData(column.children) : undefined,
+    children: column.children ? makeData<T>(column.children as T[]) : undefined,
   }));
 };
 

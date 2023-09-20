@@ -380,6 +380,15 @@ const StoredProcedurePage = () => {
     []
   );
 
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as StoredProcedure;
+
+    setStoredProcedure((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
       history.push(getStoredProcedureDetailPath(storedProcedureFQN, activeKey));
@@ -669,6 +678,7 @@ const StoredProcedurePage = () => {
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={storedProcedure}
             entityType={EntityType.STORED_PROCEDURE}
             permissions={storedProcedurePermissions}

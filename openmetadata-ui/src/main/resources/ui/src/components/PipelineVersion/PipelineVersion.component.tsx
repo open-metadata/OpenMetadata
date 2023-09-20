@@ -47,6 +47,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   slashedPipelineName,
   versionList,
@@ -61,10 +62,17 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const pipelineVersionTableData = useMemo(
     () => getUpdatedPipelineTasks(currentVersionData, changeDescription),
@@ -261,6 +269,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.PIPELINE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

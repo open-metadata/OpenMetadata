@@ -507,6 +507,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     []
   );
 
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as DatabaseSchema;
+
+    setDatabaseSchema((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   const storedProcedurePagingHandler = useCallback(
     async ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
@@ -714,6 +723,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <DataAssetsHeader
                 isRecursiveDelete
                 afterDeleteAction={afterDeleteAction}
+                afterDomainUpdateAction={afterDomainUpdateAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permissions={databaseSchemaPermission}
