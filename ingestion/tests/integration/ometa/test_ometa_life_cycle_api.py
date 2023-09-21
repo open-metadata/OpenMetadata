@@ -46,7 +46,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.life_cycle_utils import patch_life_cycle
 
 
 class OMetaLifeCycleTest(TestCase):
@@ -191,9 +190,7 @@ class OMetaLifeCycleTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        patch_life_cycle(
-            metadata=self.metadata, entity=table_entity, life_cycle=self.life_cycle
-        )
+        self.metadata.patch_life_cycle(entity=table_entity, life_cycle=self.life_cycle)
 
     def test_life_cycle_get_methods(self):
         """
@@ -231,8 +228,7 @@ class OMetaLifeCycleTest(TestCase):
             accessedBy=self.updated_user_ref,
         )
 
-        patch_life_cycle(
-            metadata=self.metadata,
+        self.metadata.patch_life_cycle(
             entity=table_entity,
             life_cycle=LifeCycle(accessed=new_accessed, updated=new_updated),
         )

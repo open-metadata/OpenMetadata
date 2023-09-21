@@ -52,7 +52,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
-from metadata.utils.life_cycle_utils import get_query_type, patch_life_cycle
+from metadata.utils.life_cycle_utils import get_query_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp
 
@@ -385,9 +385,7 @@ class MetadataUsageBulkSink(BulkSink):
                 ):
                     life_cycle.accessed = access_details
 
-            patch_life_cycle(
-                metadata=self.metadata, entity=table_entity, life_cycle=life_cycle
-            )
+            self.metadata.patch_life_cycle(entity=table_entity, life_cycle=life_cycle)
 
         except Exception as err:
             error = f"Unable to get life cycle data for table {table_entity.fullyQualifiedName}: {err}"
