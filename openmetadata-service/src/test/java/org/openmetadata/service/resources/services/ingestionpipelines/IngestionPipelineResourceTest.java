@@ -173,7 +173,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Test
-  public void get_listPipelinesFiltered(TestInfo test) throws IOException {
+  void get_listPipelinesFiltered(TestInfo test) throws IOException {
 
     CreateIngestionPipeline createMessaging =
         new CreateIngestionPipeline()
@@ -196,7 +196,13 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     Map<String, String> paramsType = new HashMap<>();
     paramsType.put("pipelineType", "metadata");
     ResultList<IngestionPipeline> resListMeta = listEntities(paramsType, ADMIN_AUTH_HEADERS);
-    assertEquals(2, resListMeta.getData().size());
+    // We get at least the 2 pipelines created here
+    assertTrue(resListMeta.getData().size() >= 2);
+
+    Map<String, String> paramsMessagingService = new HashMap<>();
+    paramsMessagingService.put("service", REDPANDA_REFERENCE.getFullyQualifiedName());
+    ResultList<IngestionPipeline> redpandaIngestionList = listEntities(paramsMessagingService, ADMIN_AUTH_HEADERS);
+    assertEquals(1, redpandaIngestionList.getData().size());
   }
 
   @Test
