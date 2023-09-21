@@ -853,7 +853,7 @@ const TeamDetailsV1 = ({
 
     return (
       <>
-        {'Type - '}
+        {t('label.type') + ' - '}
         {currentTeam.teamType ? (
           showTypeSelector ? (
             <TeamTypeSelect
@@ -861,7 +861,7 @@ const TeamDetailsV1 = ({
               parentTeamType={
                 last(parentTeams)?.teamType ?? TeamType.Organization
               }
-              showGroupOption={Boolean(childTeams.length)}
+              showGroupOption={!childTeams.length}
               teamType={currentTeam.teamType ?? TeamType.Department}
               updateTeamType={
                 entityPermissions.EditAll ? updateTeamType : undefined
@@ -872,7 +872,7 @@ const TeamDetailsV1 = ({
               {currentTeam.teamType}
               {entityPermissions.EditAll && (
                 <Icon
-                  className={classNames('vertical-middle', {
+                  className={classNames('vertical-middle m-l-xs', {
                     'opacity-50': isGroupType,
                   })}
                   data-testid="edit-team-type-icon"

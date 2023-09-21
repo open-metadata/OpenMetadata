@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button as AntdButton, Button, Space } from 'antd';
+import { Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
@@ -20,16 +20,14 @@ import classNames from 'classnames';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
-import { TeamType } from '../../../generated/entity/teams/team';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
@@ -40,11 +38,7 @@ export interface GetInfoElementsProps {
   updateOwner?: (value: Table['owner']) => void;
   tier?: TagLabel;
   currentTier?: string;
-  teamType?: TeamType;
-  showGroupOption?: boolean;
-  isGroupType?: boolean;
   updateTier?: (value?: string) => void;
-  updateTeamType?: (type: TeamType) => void;
   currentOwner?: Dashboard['owner'];
   deleted?: boolean;
   allowTeamOwner?: boolean;
@@ -62,13 +56,9 @@ const InfoIcon = ({
 
 const EntitySummaryDetails = ({
   data,
-  isGroupType,
   tier,
-  teamType,
-  showGroupOption,
   updateOwner,
   updateTier,
-  updateTeamType,
   currentOwner,
   deleted = false,
   allowTeamOwner = true,
@@ -76,17 +66,6 @@ const EntitySummaryDetails = ({
   let retVal = <></>;
   const { t } = useTranslation();
   const displayVal = data.placeholderText || data.value;
-
-  const [showTypeSelector, setShowTypeSelector] = useState(false);
-
-  const handleShowTypeSelector = useCallback((value: boolean) => {
-    setShowTypeSelector(value);
-  }, []);
-
-  const handleUpdateTeamType = (type: TeamType) => {
-    updateTeamType?.(type);
-    handleShowTypeSelector(false);
-  };
 
   const ownerDropdown = allowTeamOwner ? (
     <UserTeamSelectableList
@@ -108,7 +87,7 @@ const EntitySummaryDetails = ({
     userDetails,
     isTier,
     isOwner,
-    isTeamType,
+
     isTeamOwner,
   } = useMemo(() => {
     const userDetails = getTeamsUser(data);
@@ -119,7 +98,6 @@ const EntitySummaryDetails = ({
       userDetails,
       isTier: data.key === 'Tier',
       isOwner: data.key === 'Owner',
-      isTeamType: data.key === 'TeamType',
       isTeamOwner: isString(data.value) ? data.value.includes('teams/') : false,
     };
   }, [data]);
@@ -196,13 +174,6 @@ const EntitySummaryDetails = ({
           ) : (
             <></>
           );
-      }
-
-      break;
-
-    case 'TeamType':
-      {
-        retVal = displayVal ? <>{`${t('label.type')} - `}</> : <></>;
       }
 
       break;
@@ -334,34 +305,6 @@ const EntitySummaryDetails = ({
                 </TierCard>
               ) : null}
             </Space>
-          ) : isTeamType ? (
-            showTypeSelector ? (
-              <TeamTypeSelect
-                handleShowTypeSelector={handleShowTypeSelector}
-                showGroupOption={showGroupOption ?? false}
-                teamType={teamType ?? TeamType.Department}
-                updateTeamType={handleUpdateTeamType}
-              />
-            ) : (
-              <>
-                {displayVal}
-                <AntdButton
-                  data-testid={`edit-${data.key}-icon`}
-                  disabled={isGroupType}
-                  title={
-                    isGroupType
-                      ? t('message.group-team-type-change-message')
-                      : t('label.edit-entity', {
-                          entity: t('label.team-type'),
-                        })
-                  }
-                  onClick={() => setShowTypeSelector(true)}>
-                  {updateTeamType ? (
-                    <EditIcon className="cursor-pointer" width={14} />
-                  ) : null}
-                </AntdButton>
-              </>
-            )
           ) : (
             <span>{displayVal}</span>
           )}
