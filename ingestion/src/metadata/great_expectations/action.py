@@ -162,7 +162,7 @@ class OpenMetadataValidationAction(ValidationAction):
             return table_name
 
         except KeyError:
-            raise ("No suite name present in validation_result_suite")
+            raise KeyError("No suite name present in validation_result_suite")
 
     @staticmethod
     def _get_checkpoint_batch_spec(
