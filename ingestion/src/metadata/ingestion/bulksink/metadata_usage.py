@@ -366,24 +366,13 @@ class MetadataUsageBulkSink(BulkSink):
                     accessedBy=user,
                     accessedByAProcess=process_user,
                 )
-                if query_type == "Created" and (
-                    not life_cycle.created
-                    or life_cycle.created.timestamp.__root__
+                life_cycle_attr = getattr(life_cycle, query_type)
+                if (
+                    not life_cycle_attr
+                    or life_cycle_attr.timestamp.__root__
                     < access_details.timestamp.__root__
                 ):
-                    life_cycle.created = access_details
-                elif query_type == "Updated" and (
-                    not life_cycle.updated
-                    or life_cycle.updated.timestamp.__root__
-                    < access_details.timestamp.__root__
-                ):
-                    life_cycle.updated = access_details
-                elif query_type == "Accessed" and (
-                    not life_cycle.accessed
-                    or life_cycle.accessed.timestamp.__root__
-                    < access_details.timestamp.__root__
-                ):
-                    life_cycle.accessed = access_details
+                    setattr(life_cycle, query_type, access_details)
 
             self.metadata.patch_life_cycle(entity=table_entity, life_cycle=life_cycle)
 
