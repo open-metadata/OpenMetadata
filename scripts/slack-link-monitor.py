@@ -24,3 +24,4 @@ except RuntimeError as err:
     raise err
 except Exception as err:
     logging.error(f"Something went wrong fetching the data - [{err}]")
+    raise err
