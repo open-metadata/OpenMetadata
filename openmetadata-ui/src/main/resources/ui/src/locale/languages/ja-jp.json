@@ -920,6 +920,7 @@
     "table-entity-text": "テーブル {{entityText}}",
     "table-lowercase": "テーブル",
     "table-lowercase-plural": "tables",
+    "table-partitioned": "Table Partitioned",
     "table-plural": "テーブル",
     "table-profile": "Table Profile",
     "table-tests-summary": "Table Tests Summary",

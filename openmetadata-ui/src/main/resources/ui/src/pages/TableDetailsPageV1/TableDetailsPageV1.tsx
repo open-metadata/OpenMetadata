@@ -88,6 +88,7 @@ import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from './PartitionedKeys/PartitionedKeys.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
@@ -528,6 +529,9 @@ const TableDetailsPageV1 = () => {
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <TableConstraints constraints={tableDetails?.tableConstraints} />
+            {tableDetails?.tablePartition ? (
+              <PartitionedKeys tablePartition={tableDetails.tablePartition} />
+            ) : null}
           </Space>
         </Col>
       </Row>
