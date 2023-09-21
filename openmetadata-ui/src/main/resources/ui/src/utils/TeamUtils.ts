@@ -98,9 +98,6 @@ export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
  */
 export const getWebhookIcon = (item: SUBSCRIPTION_WEBHOOK): SvgComponent => {
   switch (item) {
-    case SUBSCRIPTION_WEBHOOK.MS_TEAMS:
-      return MsTeamsIcon;
-
     case SUBSCRIPTION_WEBHOOK.SLACK:
       return SlackIcon;
 

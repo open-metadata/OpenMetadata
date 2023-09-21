@@ -205,7 +205,7 @@ const TeamDetailsV1 = ({
         : childTeamList.length,
     [childTeamList, isOrganization, currentTeam.childrenCount]
   );
-  const handleTabChange = (key: string) => {
+  const updateActiveTab = (key: string) => {
     history.push({ search: Qs.stringify({ activeTab: key }) });
   };
 
@@ -741,7 +741,7 @@ const TeamDetailsV1 = ({
 
   return (
     <div className="teams-layout" data-testid="team-details-container">
-      <Row className="user-profile-container" data-testid="user-profile">
+      <Row className="teams-profile-container">
         <Col className="p-b-md" span={23}>
           <TitleBreadcrumb className="p-l-sm" titleLinks={slashedTeamName} />
         </Col>
@@ -845,11 +845,9 @@ const TeamDetailsV1 = ({
 
       <div className="p-md">
         <Tabs
-          destroyInactiveTabPane
-          activeKey={currentTab}
-          data-testid="tabs"
+          defaultActiveKey={currentTab}
           items={tabs}
-          onChange={handleTabChange}
+          onChange={updateActiveTab}
         />
         {isFetchingAdvancedDetails ? (
           <Loader />

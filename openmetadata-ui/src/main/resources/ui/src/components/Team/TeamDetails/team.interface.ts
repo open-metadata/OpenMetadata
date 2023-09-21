@@ -68,7 +68,6 @@ export interface TeamsInfoProps {
   updateTeamType: (type: TeamType) => void;
   currentTeam: Team;
   heading?: string;
-  email?: string;
   currentUser?: User;
   entityPermissions: OperationPermission;
   joinTeam: () => void;

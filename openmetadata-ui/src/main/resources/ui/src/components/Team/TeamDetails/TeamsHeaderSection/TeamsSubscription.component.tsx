@@ -84,8 +84,8 @@ const TeamsSubscription = ({
     }));
   }, [webhooks]);
 
-  const cellItem = useCallback((key: string, value: Webhook) => {
-    return (
+  const cellItem = useCallback(
+    (key: string, value: Webhook) => (
       <div className="d-flex items-center w-full w-max-95">
         {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
         <Space className="w-full p-l-sm" direction="vertical" size={0}>
@@ -101,8 +101,9 @@ const TeamsSubscription = ({
           </Typography.Text>
         </Space>
       </div>
-    );
-  }, []);
+    ),
+    []
+  );
 
   const subscriptionRenderElement = useMemo(
     () =>
