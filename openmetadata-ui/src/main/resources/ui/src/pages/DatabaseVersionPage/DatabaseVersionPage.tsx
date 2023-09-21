@@ -86,29 +86,32 @@ function DatabaseVersionPage() {
     {} as EntityHistory
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
-    () =>
-      getBasicEntityInfoFromVersionData(
-        currentVersionData,
-        EntityType.DATABASE
-      ),
-    [currentVersionData]
-  );
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+    useMemo(
+      () =>
+        getBasicEntityInfoFromVersionData(
+          currentVersionData,
+          EntityType.DATABASE
+        ),
+      [currentVersionData]
+    );
 
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () =>
-      getCommonExtraInfoForVersionDetails(
-        currentVersionData.changeDescription as ChangeDescription,
-        owner,
-        tier
-      ),
-    [currentVersionData.changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          currentVersionData.changeDescription as ChangeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [currentVersionData.changeDescription, owner, tier, domain]
+    );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -294,6 +297,7 @@ function DatabaseVersionPage() {
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  domainDisplayName={domainDisplayName}
                   entityType={EntityType.DATABASE}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -337,6 +341,7 @@ function DatabaseVersionPage() {
     tabs,
     versionHandler,
     versionList,
+    domainDisplayName,
   ]);
 
   useEffect(() => {

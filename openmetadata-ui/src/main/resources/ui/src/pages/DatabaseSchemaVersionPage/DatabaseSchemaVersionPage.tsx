@@ -92,24 +92,27 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
-    () =>
-      getBasicEntityInfoFromVersionData(
-        currentVersionData,
-        EntityType.DATABASE_SCHEMA
-      ),
-    [currentVersionData]
-  );
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+    useMemo(
+      () =>
+        getBasicEntityInfoFromVersionData(
+          currentVersionData,
+          EntityType.DATABASE_SCHEMA
+        ),
+      [currentVersionData]
+    );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () =>
-      getCommonExtraInfoForVersionDetails(
-        currentVersionData.changeDescription as ChangeDescription,
-        owner,
-        tier
-      ),
-    [currentVersionData.changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          currentVersionData.changeDescription as ChangeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [currentVersionData.changeDescription, owner, tier, domain]
+    );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -278,6 +281,7 @@ function DatabaseSchemaVersionPage() {
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  domainDisplayName={domainDisplayName}
                   entityType={EntityType.DATABASE}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -321,6 +325,7 @@ function DatabaseSchemaVersionPage() {
     tabs,
     versionHandler,
     versionList,
+    domainDisplayName,
   ]);
 
   useEffect(() => {

@@ -16,6 +16,7 @@ import { DatabaseServiceType, TableType } from 'generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
@@ -90,6 +91,7 @@ export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {
   currentVersionData: mockData,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   slashedTableName: [],
   storedProcedureFQN:

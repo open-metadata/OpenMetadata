@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -18,6 +19,7 @@ import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
 import { SchemaType } from '../../generated/type/schema';
 
 export interface TopicDetailsProps {
+  updateTopicDetailsState?: (data: DataAssetWithDomains) => void;
   topicDetails: Topic;
   topicPermissions: OperationPermission;
   fetchTopic: () => void;
