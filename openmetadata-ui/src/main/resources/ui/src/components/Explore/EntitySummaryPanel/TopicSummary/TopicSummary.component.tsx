@@ -30,7 +30,7 @@ import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
+import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -84,10 +84,10 @@ function TopicSummary({
 
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
-      const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', [
-        'tags',
-        'owner',
-      ]);
+      const res = await getTopicByFqn(
+        getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
+        ['tags', 'owner']
+      );
 
       const { partitions, messageSchema } = res;
 

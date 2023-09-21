@@ -18,6 +18,7 @@ import ActivityFeedProvider, {
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -39,7 +40,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import StoredProcedureTab from 'pages/StoredProcedure/StoredProcedureTab';
@@ -66,11 +67,11 @@ import {
 } from 'rest/storedProceduresAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
-import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
 import {
   getDatabaseSchemaDetailsPath,
+  getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../constants/constants';
@@ -90,8 +91,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { databaseSchemaFQN, tab: activeTab = EntityTabs.TABLE } =
-    useParams<{ databaseSchemaFQN: string; tab: EntityTabs }>();
+  const { fqn: databaseSchemaFQN, tab: activeTab = EntityTabs.TABLE } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const history = useHistory();
   const isMounting = useRef(true);
 
@@ -494,9 +495,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getDatabaseSchemaVersionPath(
+        getVersionPathWithTab(
+          EntityType.DATABASE_SCHEMA,
           databaseSchemaFQN,
-          toString(currentVersion)
+          String(currentVersion),
+          EntityTabs.TABLE
         )
       );
   }, [currentVersion, databaseSchemaFQN]);
@@ -571,6 +574,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         databaseSchemaPermission.EditAll) &&
       !databaseSchema.deleted,
     [databaseSchemaPermission, databaseSchema]
+  );
+
+  const handelExtentionUpdate = useCallback(
+    async (schema: DatabaseSchema) => {
+      await saveUpdatedDatabaseSchemaData({
+        ...databaseSchema,
+        extension: schema.extension,
+      });
+    },
+    [saveUpdatedDatabaseSchemaData, databaseSchema]
   );
 
   const tabs: TabsProps['items'] = [
@@ -672,6 +685,28 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
           />
         </ActivityFeedProvider>
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CUSTOM_PROPERTIES}
+          name={t('label.custom-property-plural')}
+        />
+      ),
+      key: EntityTabs.CUSTOM_PROPERTIES,
+      children: (
+        <CustomPropertyTable
+          className=""
+          entityType={EntityType.DATABASE_SCHEMA}
+          handleExtensionUpdate={handelExtentionUpdate}
+          hasEditAccess={databaseSchemaPermission.ViewAll}
+          hasPermission={
+            databaseSchemaPermission.EditAll ||
+            databaseSchemaPermission.EditCustomFields
+          }
+          isVersionView={false}
+        />
       ),
     },
   ];

@@ -22,7 +22,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'columns,followers,joins,tags,owner,dataModel,tableConstraints,extension,viewDefinition,domain,dataProducts,votes';
+  'columns,followers,joins,tags,owner,dataModel,tableConstraints,viewDefinition,domain,dataProducts,votes';
 
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -152,7 +152,7 @@ jest.mock(
 jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
-    .mockImplementation(() => ({ datasetFQN: 'fqn', tab: 'schema' })),
+    .mockImplementation(() => ({ fqn: 'fqn', tab: 'schema' })),
   useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
