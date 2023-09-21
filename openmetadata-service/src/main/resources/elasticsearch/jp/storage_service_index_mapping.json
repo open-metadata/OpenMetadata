@@ -68,6 +68,9 @@
       "serviceType": {
         "type": "keyword"
       },
+      "entityType": {
+        "type": "keyword"
+      },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer_jp",

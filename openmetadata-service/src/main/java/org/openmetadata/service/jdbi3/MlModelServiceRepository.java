@@ -47,10 +47,9 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, MlModelService.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "service.fullyQualifiedName");
+            "service.id");
       } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, MlModelService.class), "", "service.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, MlModelService.class), "", "service.id");
       }
     }
   }

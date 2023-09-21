@@ -167,11 +167,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, TestSuite.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "testSuites.fullyQualifiedName");
+            "testSuites.id");
       } else {
         if (Boolean.TRUE.equals(entity.getExecutable())) {
-          searchClient.updateSearchEntityDeleted(
-              JsonUtils.deepCopy(entity, TestSuite.class), "", "testSuites.fullyQualifiedName");
+          searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, TestSuite.class), "", "testSuites.id");
         } else {
           String scriptTxt =
               "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";

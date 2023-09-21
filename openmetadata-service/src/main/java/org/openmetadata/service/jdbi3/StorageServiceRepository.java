@@ -19,6 +19,7 @@ public class StorageServiceRepository extends ServiceEntityRepository<StorageSer
         dao.storageServiceDAO(),
         StorageConnection.class,
         ServiceType.STORAGE);
+    supportsSearchIndex = true;
   }
 
   @Override
@@ -28,10 +29,9 @@ public class StorageServiceRepository extends ServiceEntityRepository<StorageSer
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, StorageService.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "service.fullyQualifiedName");
+            "service.id");
       } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, StorageService.class), "", "service.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, StorageService.class), "", "service.id");
       }
     }
   }

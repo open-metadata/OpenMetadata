@@ -148,6 +148,10 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.STORED_PROCEDURE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DATA_PRODUCT)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DATA_PRODUCTS_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.STORAGE_SERVICE_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.METADATA_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.METADATA_SERVICE_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }

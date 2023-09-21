@@ -112,12 +112,10 @@ public class DomainRepository extends EntityRepository<Domain> {
       String scriptTxt = "ctx._source.remove('domain')";
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Domain.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "domain.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, Domain.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "domain.id");
       } else {
         searchClient.deleteEntityAndRemoveRelationships(
-            JsonUtils.deepCopy(entity, Domain.class), scriptTxt, "domain.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, Domain.class), scriptTxt, "domain.id");
       }
     }
   }

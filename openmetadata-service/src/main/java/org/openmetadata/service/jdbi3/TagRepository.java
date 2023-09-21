@@ -36,7 +36,6 @@ import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -103,13 +102,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (supportsSearchIndex) {
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Tag.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
-      } else {
-        searchClient.deleteEntityAndRemoveRelationships(
-            JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
-      }
+      searchClient.deleteEntityAndRemoveRelationships(JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
     }
   }
 

@@ -17,6 +17,24 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_analyzer_jp" : {
+          "tokenizer" : "kuromoji_tokenizer",
+          "type" : "custom",
+          "filter" : [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
+          ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -34,10 +52,15 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -47,10 +70,15 @@
       },
       "displayName": {
         "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -59,11 +87,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
-      },
-      "entityType": {
-        "type": "keyword"
+        "analyzer": "om_analyzer_jp"
       },
       "pipelines": {
         "properties": {
@@ -102,6 +126,16 @@
           }
         }
       },
+      "version": {
+        "type": "float"
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "updatedBy": {
+        "type": "text"
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -121,19 +155,6 @@
           }
         }
       },
-      "version": {
-        "type": "float"
-      },
-      "updatedAt": {
-        "type": "date",
-        "format": "epoch_second"
-      },
-      "updatedBy": {
-        "type": "text"
-      },
-      "href": {
-        "type": "text"
-      },
       "owner": {
         "properties": {
           "id": {
@@ -150,6 +171,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -183,51 +205,11 @@
       "deleted": {
         "type": "text"
       },
-      "domain" : {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
+      "href": {
+        "type": "text"
+      },
+      "provider" : {
+        "type": "text"
       }
     }
   }

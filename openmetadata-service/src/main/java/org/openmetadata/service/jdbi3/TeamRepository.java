@@ -230,12 +230,9 @@ public class TeamRepository extends EntityRepository<Team> {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Team.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "parents.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, Team.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "parents.id");
       } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Team.class), "", "parents.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, Team.class), "", "parents.id");
       }
     }
   }

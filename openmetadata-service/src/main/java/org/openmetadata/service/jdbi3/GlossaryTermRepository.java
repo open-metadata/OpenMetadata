@@ -68,7 +68,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
@@ -215,7 +214,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
+  @Override
   protected void postCreate(GlossaryTerm entity) {
+    if (supportsSearchIndex) {
+      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, GlossaryTerm.class));
+    }
     if (entity.getStatus() == Status.DRAFT) {
       // Create an approval task for glossary term in draft mode
       createApprovalTask(entity, entity.getReviewers());
@@ -224,6 +227,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    if (supportsSearchIndex) {
+      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, GlossaryTerm.class), scriptTxt, "");
+    }
     if (original.getStatus() == Status.DRAFT) {
       if (updated.getStatus() == Status.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");
@@ -252,13 +259,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (supportsSearchIndex) {
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
-      } else {
-        searchClient.deleteEntityAndRemoveRelationships(
-            JsonUtils.deepCopy(entity, GlossaryTerm.class), scriptTxt, "tags.tagFQN");
-      }
+      searchClient.deleteEntityAndRemoveRelationships(
+          JsonUtils.deepCopy(entity, GlossaryTerm.class), scriptTxt, "tags.tagFQN");
     }
   }
 

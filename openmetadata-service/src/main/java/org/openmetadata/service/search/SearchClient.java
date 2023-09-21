@@ -1,6 +1,25 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
+
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.ParseException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
@@ -20,26 +39,6 @@ import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.client.RequestOptions;
-
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.InputStream;
-import java.text.ParseException;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
-import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
 
 public interface SearchClient {
   String GLOBAL_SEARCH_ALIAS = "SearchAlias";
@@ -88,7 +87,7 @@ public interface SearchClient {
 
   void updateSearchEntityUpdated(EntityInterface entity, String script, String field);
 
-  void updateSearchByQuery(EntityInterface entity, String script, String field,Object data);
+  void updateSearchByQuery(EntityInterface entity, String script, String field, Object data);
 
   void close();
 

@@ -113,7 +113,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       scriptTxt = "ctx._source.disabled=" + updated.getDisabled();
     }
     searchClient.updateSearchEntityUpdated(
-        JsonUtils.deepCopy(updated, Classification.class), scriptTxt, "classification.fullyQualifiedName");
+        JsonUtils.deepCopy(updated, Classification.class), scriptTxt, "classification.id");
   }
 
   @Override
@@ -123,10 +123,10 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, Classification.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "classification.fullyQualifiedName");
+            "classification.id");
       } else {
         searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Classification.class), "", "classification.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, Classification.class), "", "classification.id");
       }
     }
   }

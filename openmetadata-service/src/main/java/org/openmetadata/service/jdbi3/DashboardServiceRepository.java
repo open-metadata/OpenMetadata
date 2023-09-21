@@ -45,10 +45,9 @@ public class DashboardServiceRepository extends ServiceEntityRepository<Dashboar
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, DashboardService.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "service.fullyQualifiedName");
+            "service.id");
       } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, DashboardService.class), "", "service.fullyQualifiedName");
+        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, DashboardService.class), "", "service.id");
       }
     }
   }

@@ -13,6 +13,11 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.resources.EntityResource.searchClient;
+
+import java.util.Collections;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -26,12 +31,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-
-import java.util.Collections;
-import java.util.List;
-
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
@@ -123,17 +122,32 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void postUpdate(DatabaseSchema original, DatabaseSchema updated) {
     if (supportsSearchIndex) {
-      if (updated.getOwner() != null) {
-        String scriptTxt =
-            "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
+      if (original.getOwner() == null && updated.getOwner() != null) {
+        String scriptTxt = "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
         searchClient.updateSearchByQuery(
-            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id",updated.getOwner());
+            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getOwner());
       }
-      if (updated.getDomain() != null) {
-        String scriptTxt =
-            "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
+      if (original.getDomain() == null && updated.getDomain() != null) {
+        String scriptTxt = "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
         searchClient.updateSearchByQuery(
-            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id",updated.getDomain());
+            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getDomain());
+      }
+      if (original.getOwner() != null && updated.getOwner() == null) {
+        String scriptTxt =
+            String.format(
+                "if(ctx._source.owner.id == '%s'){ ctx._source.remove('owner')}",
+                original.getOwner().getId().toString());
+        searchClient.updateSearchByQuery(
+            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getOwner());
+      }
+      if (original.getDomain() != null && updated.getDomain() == null) {
+        String scriptTxt =
+            String.format(
+                "if(ctx._source.domain.id == '%s'){ ctx._source.remove('domain')}",
+                original.getDomain().getId().toString());
+        ;
+        searchClient.updateSearchByQuery(
+            JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getDomain());
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
       searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "");
@@ -147,10 +161,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, DatabaseSchema.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "databaseSchema.fullyQualifiedName");
+            "databaseSchema.id");
       } else {
         searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, DatabaseSchema.class), "", "databaseSchema.fullyQualifiedName");
+            JsonUtils.deepCopy(entity, DatabaseSchema.class), "", "databaseSchema.id");
       }
     }
   }
