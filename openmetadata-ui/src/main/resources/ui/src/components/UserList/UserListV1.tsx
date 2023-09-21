@@ -136,15 +136,8 @@ const UserListV1: FC<UserListV1Props> = ({
             {showRestore && (
               <Tooltip placement="bottom" title={t('label.restore')}>
                 <Button
-                  icon={
-                    <IconRestore
-                      data-testid={`restore-user-btn-${
-                        record.displayName || record.name
-                      }`}
-                      name={t('label.restore')}
-                      width="16px"
-                    />
-                  }
+                  data-testid={`restore-user-btn-${record.name}`}
+                  icon={<IconRestore name={t('label.restore')} width="16px" />}
                   type="text"
                   onClick={() => {
                     setSelectedUser(record);

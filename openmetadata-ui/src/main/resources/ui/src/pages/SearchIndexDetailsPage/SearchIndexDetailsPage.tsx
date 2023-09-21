@@ -649,6 +649,15 @@ function SearchIndexDetailsPage() {
     []
   );
 
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as SearchIndex;
+
+    setSearchIndexDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (entityFQN) {
       fetchResourcePermission(entityFQN);
@@ -705,6 +714,7 @@ function SearchIndexDetailsPage() {
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={searchIndexDetails}
             entityType={EntityType.SEARCH_INDEX}
             permissions={searchIndexPermissions}

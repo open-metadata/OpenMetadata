@@ -83,14 +83,7 @@
         "type": "keyword"
       },
       "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
+        "type": "completion"
       },
       "owner": {
         "properties": {

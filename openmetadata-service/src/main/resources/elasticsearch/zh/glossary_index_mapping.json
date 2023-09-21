@@ -38,6 +38,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "domain" : {
         "properties": {
           "id": {

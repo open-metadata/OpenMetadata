@@ -845,6 +845,15 @@ const TableDetailsPageV1 = () => {
     []
   );
 
+  const updateTableDetailsState = useCallback((data) => {
+    const updatedData = data as Table;
+
+    setTableDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
@@ -915,6 +924,7 @@ const TableDetailsPageV1 = () => {
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}

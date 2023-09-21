@@ -25,7 +25,12 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
@@ -241,6 +246,15 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const updateTopicDetailsState = useCallback((data) => {
+    const updatedData = data as Topic;
+
+    setTopicDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     fetchResourcePermission(topicFQN);
   }, [topicFQN]);
@@ -274,6 +288,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       topicDetails={topicDetails}
       topicPermissions={topicPermissions}
       unFollowTopicHandler={unFollowTopic}
+      updateTopicDetailsState={updateTopicDetailsState}
       versionHandler={versionHandler}
       onTopicUpdate={onTopicUpdate}
       onUpdateVote={updateVote}

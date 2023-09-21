@@ -31,6 +31,7 @@ import { DataTypeTopic, SchemaType } from 'generated/type/schema';
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
@@ -91,6 +92,7 @@ export const topicVersionMockProps: TopicVersionProp = {
   currentVersionData: mockTopicData,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   slashedTopicName: [],
   topicFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',
