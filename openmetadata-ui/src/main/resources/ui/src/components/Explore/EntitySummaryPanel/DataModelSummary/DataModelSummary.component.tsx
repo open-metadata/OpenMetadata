@@ -41,11 +41,6 @@ const DataModelSummary = ({
   const [dataModelDetails, setDataModelDetails] =
     useState<DashboardDataModel>(entityDetails);
 
-  const isExplore = useMemo(
-    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
-    [componentType]
-  );
-
   const entityInfo = useMemo(
     () =>
       getEntityOverview(ExplorePageTabs.DASHBOARD_DATA_MODEL, dataModelDetails),
@@ -77,16 +72,10 @@ const DataModelSummary = ({
 
         <Divider className="m-y-xs" />
 
-        {!isExplore ? (
-          <>
-            <SummaryTagsDescription
-              entityDetail={entityDetails}
-              tags={tags ? tags : []}
-            />
-            <Divider className="m-y-xs" />
-          </>
-        ) : null}
-
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={tags ?? []}
+        />
         <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>
