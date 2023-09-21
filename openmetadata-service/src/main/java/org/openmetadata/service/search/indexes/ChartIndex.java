@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,6 +33,10 @@ public class ChartIndex implements ElasticSearchIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(chart.getName()).weight(10).build());
     suggest.add(SearchSuggest.builder().input(chart.getFullyQualifiedName()).weight(5).build());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            chart.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.CHART);
     return doc;

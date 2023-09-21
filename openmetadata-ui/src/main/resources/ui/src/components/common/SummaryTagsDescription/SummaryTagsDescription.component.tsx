@@ -31,7 +31,9 @@ const SummaryTagsDescription = ({
     <>
       <Row className="m-md" gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text className="summary-panel-section-title">
+          <Typography.Text
+            className="summary-panel-section-title"
+            data-testid="tags-header">
             {t('label.tag-plural')}
           </Typography.Text>
         </Col>
@@ -56,7 +58,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
-            data-testid="schema-header">
+            data-testid="description-header">
             {t('label.description')}
           </Typography.Text>
         </Col>

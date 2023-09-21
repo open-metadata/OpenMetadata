@@ -97,7 +97,7 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.lifeCycle import LifeCycle
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
@@ -122,6 +122,7 @@ from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -1374,25 +1375,66 @@ class SampleDataSource(
 
     def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:
         """Iterate over all the life cycle data and ingest them"""
-        for life_cycle in self.life_cycle_data["lifeCycleData"]:
+        for table_life_cycle in self.life_cycle_data["lifeCycleData"]:
             table = self.metadata.get_by_name(
-                entity=Table, fqn=life_cycle["fqn"], fields=["lifeCycle"]
+                entity=Table, fqn=table_life_cycle["fqn"], fields=["lifeCycle"]
             )
-            life_cycle = LifeCycle(**(life_cycle["lifeCycle"]))
+            life_cycle = table_life_cycle["lifeCycle"]
+            life_cycle_data = LifeCycle()
+            life_cycle_data.created = AccessDetails(
+                timestamp=convert_timestamp_to_milliseconds(
+                    int(
+                        (
+                            datetime.now()
+                            - timedelta(days=life_cycle["created"]["days"])
+                        ).timestamp()
+                    )
+                ),
+                accessedByAProcess=life_cycle["created"].get("accessedByAProcess"),
+            )
 
-            if life_cycle.created.accessedBy:
-                created_by = self.get_accessed_by(life_cycle.created.accessedBy.name)
-                life_cycle.created.accessedBy.id = created_by.id
+            life_cycle_data.updated = AccessDetails(
+                timestamp=convert_timestamp_to_milliseconds(
+                    int(
+                        (
+                            datetime.now()
+                            - timedelta(days=life_cycle["updated"]["days"])
+                        ).timestamp()
+                    )
+                ),
+                accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
+            )
 
-            if life_cycle.updated.accessedBy:
-                updated_by = self.get_accessed_by(life_cycle.updated.accessedBy.name)
-                life_cycle.created.accessedBy.id = updated_by.id
+            life_cycle_data.accessed = AccessDetails(
+                timestamp=convert_timestamp_to_milliseconds(
+                    int(
+                        (
+                            datetime.now()
+                            - timedelta(days=life_cycle["accessed"]["days"])
+                        ).timestamp()
+                    )
+                ),
+                accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
+            )
 
-            if life_cycle.accessed.accessedBy:
-                accessed_by = self.get_accessed_by(life_cycle.accessed.accessedBy.name)
-                life_cycle.accessed.accessedBy.id = accessed_by.id
+            if life_cycle["created"].get("accessedBy"):
+                life_cycle_data.created.accessedBy = self.get_accessed_by(
+                    life_cycle["created"]["accessedBy"]["name"]
+                )
 
-            life_cycle_request = OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+            if life_cycle["updated"].get("accessedBy"):
+                life_cycle_data.updated.accessedBy = self.get_accessed_by(
+                    life_cycle["updated"]["accessedBy"]["name"]
+                )
+
+            if life_cycle["accessed"].get("accessedBy"):
+                life_cycle_data.accessed.accessedBy = self.get_accessed_by(
+                    life_cycle["accessed"]["accessedBy"]["name"]
+                )
+
+            life_cycle_request = OMetaLifeCycleData(
+                entity=table, life_cycle=life_cycle_data
+            )
             yield Either(right=life_cycle_request)
 
     def get_accessed_by(self, accessed_by) -> EntityReference:

@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { isEmpty } from 'lodash';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -489,7 +488,6 @@ export const visitEntityDetailsPage = (
     `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
     'explorePageTabSearch'
   );
-  interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
   const id = dataTestId ?? `${serviceName}-${term}`;
 
@@ -501,7 +499,7 @@ export const visitEntityDetailsPage = (
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  cy.wait('@searchQuery').then(() => {
+  cy.wait('@explorePageSearch').then(() => {
     cy.wait(500);
     cy.get('body').then(($body) => {
       // checking if requested term is available in search suggestion
@@ -633,36 +631,26 @@ export const softDeleteUser = (username, isAdmin) => {
 export const restoreUser = (username) => {
   // Click on deleted user toggle
   interceptURL('GET', '/api/v1/users*', 'deletedUser');
-  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
+  cy.get('[data-testid="show-deleted"]').click();
   verifyResponseStatusCode('@deletedUser', 200);
 
-  cy.get(`[data-testid="restore-user-btn-${username}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get(`[data-testid="restore-user-btn-${username}"]`).click();
   cy.get('.ant-modal-body > p').should(
     'contain',
     `Are you sure you want to restore ${username}?`
   );
   interceptURL('PUT', '/api/v1/users', 'restoreUser');
-  cy.get('.ant-modal-footer > .ant-btn-primary')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('.ant-modal-footer > .ant-btn-primary').click();
   verifyResponseStatusCode('@restoreUser', 200);
   toastNotification('User restored successfully');
 
   // Verifying the restored user
-  cy.get('.ant-switch').should('exist').should('be.visible').click();
+  cy.get('[data-testid="show-deleted"]').click();
 
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
-  cy.get('[data-testid="searchbar"]')
-    .should('exist')
-    .should('be.visible')
-    .type(username);
+  cy.get('[data-testid="searchbar"]').type(username);
   verifyResponseStatusCode('@searchUser', 200);
-
-  cy.get('.ant-table-row > :nth-child(1)').should('contain', username);
+  cy.get(`[data-testid=${username}]`).should('exist');
 };
 
 export const deleteSoftDeletedUser = (username) => {
@@ -1211,36 +1199,16 @@ export const deleteEntity = (
   toastNotification(`${successMessageEntityName} deleted successfully!`, false);
 };
 
-const navigateToService = (serviceName, serviceCategory) => {
-  cy.get('[data-testid="services-container"]').then(($body) => {
-    // Find if the service name is present in the list
-    const serviceTitle = $body.find(
-      `[data-testid="service-name-${serviceName}"]`
-    );
-    // If the service is not present
-    if (isEmpty(serviceTitle)) {
-      interceptURL(
-        'GET',
-        `/api/v1/services/${serviceCategory}*`,
-        'getServices'
-      );
-
-      cy.get('[data-testid="next"]').click();
-
-      verifyResponseStatusCode('@getServices', 200);
-
-      navigateToService(serviceName);
-    } else {
-      cy.get(`[data-testid="service-name-${serviceName}"]`).click();
-    }
-  });
-};
-
 export const visitServiceDetailsPage = (
   settingsMenuId,
   serviceCategory,
   serviceName
 ) => {
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
   cy.get('[data-testid="app-bar-item-settings"]').click();
@@ -1259,7 +1227,11 @@ export const visitServiceDetailsPage = (
     'getServiceDetails'
   );
 
-  navigateToService(serviceName, serviceCategory);
+  cy.get('[data-testid="searchbar"]').type(serviceName);
+
+  verifyResponseStatusCode('@searchService', 200);
+
+  cy.get(`[data-testid="service-name-${serviceName}"]`).click();
 
   verifyResponseStatusCode('@getServiceDetails', 200);
 };

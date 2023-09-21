@@ -157,6 +157,6 @@
       "$ref": "../../type/lifeCycle.json"
     }
   },
-  "required": ["name","storedProcedureCode"],
+  "required": ["id","name","storedProcedureCode"],
   "additionalProperties": false
 }

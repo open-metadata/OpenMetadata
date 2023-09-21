@@ -21,11 +21,7 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { ListView } from 'components/ListView/ListView.component';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import {
-  getServiceDetailsPath,
-  PAGE_SIZE,
-  pagingObject,
-} from 'constants/constants';
+import { getServiceDetailsPath, pagingObject } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/type';
@@ -116,6 +112,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       after,
       before,
       filters,
+      limit,
     }: {
       search?: string;
       limit?: number;
@@ -133,7 +130,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           } = await searchService({
             search,
             searchIndex,
-            limit: pageSize,
+            limit: limit ?? pageSize,
             currentPage,
             filters,
           });
@@ -145,7 +142,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         } else {
           const { data, paging } = await getServices({
             serviceName,
-            limit: pageSize,
+            limit: limit ?? pageSize,
             after,
             before,
           });
@@ -466,7 +463,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         {showPagination(paging) && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}
             onShowSizeChange={handlePageSizeChange}

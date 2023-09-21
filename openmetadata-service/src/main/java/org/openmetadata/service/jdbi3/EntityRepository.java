@@ -701,10 +701,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @SuppressWarnings("unused")
-  public void postUpdate(T entity) {
+  protected void postUpdate(T original, T updated) {
     if (supportsSearchIndex) {
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(entity, entityClass), scriptTxt, "");
+      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), scriptTxt, "");
     }
   }
 
@@ -775,7 +775,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    postUpdate(entity);
+    postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -1100,12 +1100,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
       }
-    }
-  }
-
-  private void validateLifecycle(T entity) {
-    if (entity.getLifeCycle() == null) {
-      return;
     }
   }
 
@@ -1754,6 +1748,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Store the updated entity
       storeUpdate();
+      postUpdate(original, updated);
     }
 
     public void entitySpecificUpdate() {
@@ -1951,7 +1946,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (original.getLifeCycle() == updated.getLifeCycle()) return;
+      if (original.getLifeCycle() == updated.getLifeCycle() || updated.getLifeCycle() == null) return;
 
       if (original.getLifeCycle() == null) {
         original.setLifeCycle(new LifeCycle());

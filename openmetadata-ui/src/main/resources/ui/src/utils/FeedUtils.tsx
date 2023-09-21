@@ -575,7 +575,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
   ) {
     displayName = getPartialNameFromFQN(entityFQN, ['service']);
   } else if (
-    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM, EntityType.DOMAIN].includes(
       entityType as EntityType
     )
   ) {

@@ -44,6 +44,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -137,6 +138,19 @@ class OMetaLifeCycleTest(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
+        cls.life_cycle = LifeCycle(
+            created=AccessDetails(
+                timestamp=1693569600000, accessedBy=cls.created_user_ref
+            ),
+            updated=AccessDetails(
+                timestamp=1693665000000,
+                accessedBy=cls.updated_user_ref,
+            ),
+            accessed=AccessDetails(
+                timestamp=1693755900000, accessedByAProcess="OpenMetadata"
+            ),
+        )
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -166,3 +180,62 @@ class OMetaLifeCycleTest(TestCase):
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.databaseSchema.id, self.entity.databaseSchema.id)
         self.assertEqual(res.owner, None)
+
+    def test_ingest_life_cycle(self):
+        """
+        Test the life cycle API
+        """
+
+        table_entity = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName
+        )
+
+        self.metadata.patch_life_cycle(entity=table_entity, life_cycle=self.life_cycle)
+
+    def test_life_cycle_get_methods(self):
+        """
+        We can fetch a Table by name/id and pass the field for lifeCycle
+        """
+
+        # test the get_by_name api
+        res = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["lifeCycle"]
+        )
+        self.assertEqual(res.lifeCycle, self.life_cycle)
+
+        # test the get_by_iod api
+        res_id = self.metadata.get_by_id(
+            entity=Table, entity_id=str(res.id.__root__), fields=["lifeCycle"]
+        )
+        self.assertEqual(res_id.lifeCycle, self.life_cycle)
+
+    def test_update_life_cycle(self):
+        """
+        Test the update of life cycle fields for a entity
+        Only the latest information should get updated for the life cycle fields.
+        """
+
+        table_entity = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName
+        )
+        new_accessed = AccessDetails(
+            timestamp=1694015100000,
+            accessedBy=self.updated_user_ref,
+        )
+
+        new_updated = AccessDetails(
+            timestamp=1693578600000,
+            accessedBy=self.updated_user_ref,
+        )
+
+        self.metadata.patch_life_cycle(
+            entity=table_entity,
+            life_cycle=LifeCycle(accessed=new_accessed, updated=new_updated),
+        )
+
+        res = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["lifeCycle"]
+        )
+        self.assertEqual(self.life_cycle.created, res.lifeCycle.created)
+        self.assertEqual(new_accessed, res.lifeCycle.accessed)
+        self.assertNotEqual(new_updated, res.lifeCycle.updated)

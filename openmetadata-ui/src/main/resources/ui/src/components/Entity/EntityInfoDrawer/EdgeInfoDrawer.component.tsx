@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
 import { getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
@@ -83,11 +84,14 @@ const EdgeInfoDrawer = ({
         value: targetHandle ? getNameFromFQN(targetHandle) : undefined,
       },
       pipeline: {
-        key: t('label.pipeline'),
+        key: t('label.edge'),
         value: data?.pipeline ? getEntityName(data?.pipeline) : undefined,
         link:
           data?.pipeline &&
-          getEntityLink(data?.pipeline.type, data?.pipeline.fullyQualifiedName),
+          getEntityLink(
+            data?.pipeline.type,
+            getEncodedFqn(data?.pipeline.fullyQualifiedName)
+          ),
       },
       functionInfo: {
         key: t('label.function'),
