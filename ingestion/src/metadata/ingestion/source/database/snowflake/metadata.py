@@ -42,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
@@ -98,6 +99,7 @@ from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
@@ -487,7 +489,16 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                 )
             ).get(table.name.__root__)
             if life_cycle_data:
-                logger.info("found lifecycle data")
+                life_cycle = LifeCycle(
+                    created=AccessDetails(
+                        timestamp=convert_timestamp_to_milliseconds(
+                            life_cycle_data.created_at.timestamp()
+                        )
+                    )
+                )
+                yield Either(
+                    right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+                )
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

@@ -410,10 +410,8 @@ class MetadataRestSink(Sink):
         """
         Ingest the life cycle data
         """
-        destination = record.entity.copy(deep=True)
-        destination.lifeCycle = record.life_cycle
-        self.metadata.patch(
-            entity=type(record.entity), source=record.entity, destination=destination
+        self.metadata.patch_life_cycle(
+            entity=record.entity, life_cycle=record.life_cycle
         )
         return Either(right=record)
 
