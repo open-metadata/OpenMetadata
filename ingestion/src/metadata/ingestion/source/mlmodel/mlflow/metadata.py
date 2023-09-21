@@ -69,7 +69,7 @@ class MlflowSource(MlModelServiceSource):
         """
         List and filters models from the registry
         """
-        for model in cast(RegisteredModel, self.client.list_registered_models()):
+        for model in cast(RegisteredModel, self.client.search_registered_models()):
             if filter_by_mlmodel(
                 self.source_config.mlModelFilterPattern, mlmodel_name=model.name
             ):
