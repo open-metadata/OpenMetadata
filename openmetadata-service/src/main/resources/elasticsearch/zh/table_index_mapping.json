@@ -76,6 +76,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "tableType": {
+        "type": "keyword"
+      },
       "columns": {
         "properties": {
           "name": {
