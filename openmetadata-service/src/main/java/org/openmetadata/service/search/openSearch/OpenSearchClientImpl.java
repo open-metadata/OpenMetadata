@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -46,6 +47,8 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -114,6 +117,7 @@ import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.index.query.QueryStringQueryBuilder;
 import org.opensearch.index.query.RangeQueryBuilder;
+import org.opensearch.index.query.ScriptQueryBuilder;
 import org.opensearch.index.query.TermQueryBuilder;
 import org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
 import org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
@@ -803,6 +807,63 @@ public class OpenSearchClientImpl implements SearchClient {
     updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     try {
       updateElasticSearch(updateRequest);
+    } catch (DocumentMissingException ex) {
+      handleDocumentMissingException(contextInfo, ex);
+    } catch (OpenSearchException e) {
+      handleOpenSearchException(contextInfo, e);
+    } catch (IOException ie) {
+      handleIOException(contextInfo, ie);
+    }
+  }
+
+  @Override
+  public void updateSearchEntityCreated(EntityTimeSeriesInterface entity) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
+    String contextInfo = String.format("Entity Info : %s", entity);
+    String entityTimeSeriesType;
+    if (entity instanceof ReportData) {
+      // Report data type is an entity itself where each report data type has its own index
+      entityTimeSeriesType = ((ReportData) entity).getReportDataType().toString();
+    } else {
+      entityTimeSeriesType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    }
+    SearchIndexDefinition.ElasticSearchIndexType indexType =
+        IndexUtil.getIndexMappingByEntityType(entityTimeSeriesType);
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityTimeSeriesType, entity);
+    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
+    updateRequest.docAsUpsert(true);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+    try {
+      updateElasticSearch(updateRequest);
+    } catch (DocumentMissingException ex) {
+      handleDocumentMissingException(contextInfo, ex);
+    } catch (OpenSearchException e) {
+      handleOpenSearchException(contextInfo, e);
+    } catch (IOException ie) {
+      handleIOException(contextInfo, ie);
+    }
+  }
+
+  @Override
+  public void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params) {
+    if (index == null) {
+      LOG.error("Index is null");
+      return;
+    }
+    String contextInfo = String.format("Index Info : %s", index);
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(index);
+    Script script =
+        new Script(ScriptType.INLINE, org.elasticsearch.script.Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
+    ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
+    DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
+    deleteByQueryRequest.setQuery(scriptQuery);
+    deleteByQueryRequest.setRefresh(true);
+    try {
+      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
     } catch (DocumentMissingException ex) {
       handleDocumentMissingException(contextInfo, ex);
     } catch (OpenSearchException e) {
