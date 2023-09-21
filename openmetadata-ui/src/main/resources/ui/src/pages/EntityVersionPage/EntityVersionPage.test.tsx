@@ -20,7 +20,7 @@ import EntityVersionPage from './EntityVersionPage.component';
 let mockParams = {
   entityType: 'table',
   version: '0.1',
-  entityFQN: 'bigquery_gcp.shopify.raw_product_catalog',
+  fqn: 'bigquery_gcp.shopify.raw_product_catalog',
 };
 
 jest.mock('react-router-dom', () => ({
@@ -123,7 +123,7 @@ describe('Test EntityVersionPage component', () => {
     mockParams = {
       entityType: 'dashboard',
       version: '0.2',
-      entityFQN: 'sample_superset.forecast_sales_performance',
+      fqn: 'sample_superset.forecast_sales_performance',
     };
 
     await act(async () => {
@@ -143,7 +143,7 @@ describe('Test EntityVersionPage component', () => {
     mockParams = {
       entityType: 'pipeline',
       version: '0.1',
-      entityFQN: 'sample_airflow.snowflake_etl',
+      fqn: 'sample_airflow.snowflake_etl',
     };
 
     await act(async () => {
@@ -163,7 +163,7 @@ describe('Test EntityVersionPage component', () => {
     mockParams = {
       entityType: 'topic',
       version: '0.1',
-      entityFQN: 'sample_kafka.sales',
+      fqn: 'sample_kafka.sales',
     };
 
     await act(async () => {
@@ -181,7 +181,7 @@ describe('Test EntityVersionPage component', () => {
     mockParams = {
       entityType: 'mlmodel',
       version: '0.1',
-      entityFQN: 'mlflow_svc.eta_predictions',
+      fqn: 'mlflow_svc.eta_predictions',
     };
 
     await act(async () => {
@@ -199,7 +199,7 @@ describe('Test EntityVersionPage component', () => {
     mockParams = {
       entityType: 'container',
       version: '0.1',
-      entityFQN: 's3_storage_sample.transactions',
+      fqn: 's3_storage_sample.transactions',
     };
 
     await act(async () => {
@@ -219,7 +219,7 @@ describe('Test EntityVersionPage component', () => {
     mockParams = {
       entityType: 'dashboardDataModel',
       version: '0.1',
-      entityFQN: 'data_model.sales',
+      fqn: 'data_model.sales',
     };
 
     await act(async () => {

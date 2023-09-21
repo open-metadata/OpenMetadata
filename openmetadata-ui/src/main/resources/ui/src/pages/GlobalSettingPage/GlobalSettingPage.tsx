@@ -42,7 +42,8 @@ import './global-setting-page.style.less';
 const GlobalSettingPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
+  const { tab, settingCategory } =
+    useParams<{ tab: string; settingCategory: string }>();
 
   const { permissions } = usePermissionProvider();
 

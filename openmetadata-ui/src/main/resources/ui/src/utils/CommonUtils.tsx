@@ -846,7 +846,7 @@ export const getEntityDetailLink = (
 
       break;
 
-    case EntityType.USER_NAME:
+    case EntityType.USER:
       path = getUserPath(fqn, tab, subTab);
 
       break;

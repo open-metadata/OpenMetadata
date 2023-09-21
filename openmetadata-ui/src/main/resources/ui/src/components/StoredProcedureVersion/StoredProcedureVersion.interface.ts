@@ -13,14 +13,13 @@
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface StoredProcedureVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: StoredProcedure;
   isVersionLoading: boolean;
   owner: StoredProcedure['owner'];
   domain: StoredProcedure['domain'];

@@ -59,8 +59,17 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const EditIngestionPage = () => {
   const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
-  const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
-    useParams<{ [key: string]: string }>();
+  const {
+    ingestionFQN,
+    ingestionType,
+    fqn: serviceFQN,
+    serviceCategory,
+  } = useParams<{
+    ingestionFQN: string;
+    ingestionType: string;
+    fqn: string;
+    serviceCategory: string;
+  }>();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionData, setIngestionData] = useState<IngestionPipeline>(

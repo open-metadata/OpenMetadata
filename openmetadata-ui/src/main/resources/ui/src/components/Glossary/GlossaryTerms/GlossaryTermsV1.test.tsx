@@ -81,11 +81,12 @@ describe('Test Glossary-term component', () => {
 
     expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
     expect(glossaryTerm).toBeInTheDocument();
-    expect(tabs).toHaveLength(3);
+    expect(tabs).toHaveLength(4);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
       'label.overview',
       'label.glossary-term-plural0',
-      'label.asset-plural1', // 1 added as its count for assets
+      'label.asset-plural0', // 1 added as its count for assets
+      'label.custom-property-plural',
     ]);
   });
 });

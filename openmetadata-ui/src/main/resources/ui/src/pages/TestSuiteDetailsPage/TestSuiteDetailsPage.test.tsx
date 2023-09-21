@@ -67,9 +67,7 @@ jest.mock('hooks/authHooks', () => {
 jest.mock('react-router-dom', () => {
   return {
     useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),
-    useParams: jest
-      .fn()
-      .mockImplementation(() => ({ testSuiteFQN: 'testSuiteFQN' })),
+    useParams: jest.fn().mockImplementation(() => ({ fqn: 'testSuiteFQN' })),
   };
 });
 jest.mock('rest/testAPI', () => {
