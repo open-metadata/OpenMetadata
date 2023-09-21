@@ -1499,19 +1499,47 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           },
         };
 
-        const updatedEdges = edges.map((edge) => {
-          if (edge.id === selectedEdgeInfo.id) {
-            return updatedSelectedEdgeInfo;
-          }
+        const updatedEdges = edges.map((edge) =>
+          edge.id === selectedEdgeInfo.id ? updatedSelectedEdgeInfo : edge
+        );
 
-          // Otherwise, leave the edge unchanged
-          return edge;
-        });
         setEdges(updatedEdges);
         setSelectedEdgeInfo(updatedSelectedEdgeInfo);
+
+        const { fromEntity, toEntity } = selectedEdgeInfo.data.edge;
+
+        setUpdatedLineageData((pre) => {
+          if (!pre) {
+            return;
+          }
+
+          const downEdges = pre.downstreamEdges?.map((item) => {
+            if (item.toEntity === toEntity && item.fromEntity === fromEntity) {
+              item.lineageDetails = updatedEdgeDetails.edge.lineageDetails;
+            }
+
+            return item;
+          });
+
+          const upEdges = pre.upstreamEdges?.map((item) => {
+            if (item.toEntity === toEntity && item.fromEntity === fromEntity) {
+              item.lineageDetails = updatedEdgeDetails.edge.lineageDetails;
+            }
+
+            return item;
+          });
+
+          const newData = {
+            ...pre,
+            downstreamEdges: downEdges || [],
+            upstreamEdges: upEdges || [],
+          };
+
+          return newData;
+        });
       }
     },
-    [edges, selectedEdgeInfo]
+    [edges, selectedEdgeInfo, updatedLineageData, setUpdatedLineageData]
   );
 
   /**
