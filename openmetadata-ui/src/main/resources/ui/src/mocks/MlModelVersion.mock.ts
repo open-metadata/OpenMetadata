@@ -19,6 +19,7 @@ import {
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
@@ -171,6 +172,7 @@ export const mlModelVersionMockProps: MlModelVersionProp = {
   currentVersionData: mockMlModelDetails,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   slashedMlModelName: [],
   versionList: mockVersionList,

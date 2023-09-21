@@ -47,6 +47,102 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
+      "fields": {
+        "properties": {
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "dataType": {
+            "type": "text"
+          },
+          "dataTypeDisplay": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text",
+            "index_options": "docs",
+            "analyzer": "om_analyzer",
+            "norms": false
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "tags": {
+            "properties": {
+              "tagFQN": {
+                "type": "keyword"
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "children": {
+            "properties": {
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "dataType": {
+                "type": "text"
+              },
+              "dataTypeDisplay": {
+                "type": "text"
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "tags": {
+                "properties": {
+                  "tagFQN": {
+                    "type": "keyword"
+                  },
+                  "labelType": {
+                    "type": "keyword"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "source": {
+                    "type": "keyword"
+                  },
+                  "state": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
