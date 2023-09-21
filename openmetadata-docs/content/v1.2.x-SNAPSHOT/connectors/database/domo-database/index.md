@@ -63,7 +63,7 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 - **Secret Token**: Secret Token to Connect DOMO Database.
 - **Access Token**: Access to Connect to DOMO Database.
 - **Api Host**: API Host to Connect to DOMO Database instance.
-- **SandBox Domain**: Connect to SandBox Domain.
+- **Instance Domain**: URL to connect to your Domo instance UI. For example `https://<your>.domo.com`.
 
 {% /extraContent %}
 

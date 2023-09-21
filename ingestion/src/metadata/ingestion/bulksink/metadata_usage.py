@@ -38,6 +38,8 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import StackTraceError
@@ -50,7 +52,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
-from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
+from metadata.utils.life_cycle_utils import get_query_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp
 
@@ -348,10 +350,31 @@ class MetadataUsageBulkSink(BulkSink):
         the query being processed.
         """
         try:
-            # Temporary clean up this method to be implemented following the new schema
-            life_cycle = (  # pylint: disable=unused-variable
-                init_empty_life_cycle_properties()
-            )
+            life_cycle = LifeCycle()
+            for create_query in table_usage.sqlQueries:
+                user = None
+                process_user = None
+                if create_query.users:
+                    user = self.metadata.get_entity_reference(
+                        entity=User, fqn=create_query.users[0]
+                    )
+                elif create_query.usedBy:
+                    process_user = create_query.usedBy[0]
+                query_type = get_query_type(create_query=create_query)
+                access_details = AccessDetails(
+                    timestamp=create_query.queryDate.__root__,
+                    accessedBy=user,
+                    accessedByAProcess=process_user,
+                )
+                life_cycle_attr = getattr(life_cycle, query_type)
+                if (
+                    not life_cycle_attr
+                    or life_cycle_attr.timestamp.__root__
+                    < access_details.timestamp.__root__
+                ):
+                    setattr(life_cycle, query_type, access_details)
+
+            self.metadata.patch_life_cycle(entity=table_entity, life_cycle=life_cycle)
 
         except Exception as err:
             error = f"Unable to get life cycle data for table {table_entity.fullyQualifiedName}: {err}"
