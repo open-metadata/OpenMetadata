@@ -494,7 +494,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     if (isDataQuality && isUndefined(testSuite)) {
       fetchTestSuiteDetails();
     }
-  }, [isDataQuality]);
+  }, [isDataQuality, testSuite]);
 
   useEffect(() => {
     const fetchTest =
