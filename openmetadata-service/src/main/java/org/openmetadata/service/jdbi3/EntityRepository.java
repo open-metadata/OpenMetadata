@@ -1103,12 +1103,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateLifecycle(T entity) {
-    if (entity.getLifeCycle() == null) {
-      return;
-    }
-  }
-
   public void storeExtension(EntityInterface entity) {
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
@@ -1952,7 +1946,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (original.getLifeCycle() == updated.getLifeCycle()) return;
+      if (original.getLifeCycle() == updated.getLifeCycle() || updated.getLifeCycle() == null) return;
 
       if (original.getLifeCycle() == null) {
         original.setLifeCycle(new LifeCycle());
