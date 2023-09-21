@@ -117,6 +117,8 @@ const AssetsTabs = forwardRef(
         return `(domain.fullyQualifiedName:"${fqn}")`;
       } else if (type === AssetsOfEntity.DATA_PRODUCT) {
         return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.TEAM) {
+        return `(owner.fullyQualifiedName:"${fqn}")`;
       } else {
         return `(tags.tagFQN:"${glossaryName}")`;
       }
