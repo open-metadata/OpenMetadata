@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { TeamType } from 'generated/api/teams/createTeam';
+import { User } from 'generated/entity/teams/user';
+import { EntityReference } from 'generated/entity/type';
+import { MessagingProvider } from 'generated/type/profile';
 import { Team } from '../../../generated/entity/teams/team';
 
 export interface TeamHierarchyProps {
@@ -54,4 +59,32 @@ export enum TeamsPageTab {
   ASSETS = 'assets',
   ROLES = 'roles',
   POLICIES = 'policies',
+}
+
+export interface TeamsInfoProps {
+  isGroupType: boolean;
+  isOrganization: boolean;
+  childTeamsCount: number;
+  updateTeamType: (type: TeamType) => void;
+  currentTeam: Team;
+  heading?: string;
+  email?: string;
+  currentUser?: User;
+  entityPermissions: OperationPermission;
+  joinTeam: () => void;
+  handleHeadingSave: () => Promise<void>;
+  deleteUserHandler: (id: string, leave?: boolean) => void;
+  onChangeHeading: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  updateOwner?: (owner?: EntityReference) => void;
+  handleUpdateEmail: (value: string) => Promise<void>;
+}
+
+export interface TeamsSubscriptionProps {
+  subscription?: MessagingProvider;
+  updateTeamSubscription: (value: SubscriptionWebhook[]) => Promise<void>;
+}
+
+export interface SubscriptionWebhook {
+  webhook: string;
+  endpoint: string;
 }

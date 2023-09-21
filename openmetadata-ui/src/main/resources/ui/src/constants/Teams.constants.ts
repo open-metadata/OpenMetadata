@@ -20,3 +20,32 @@ export const TABLE_CONSTANTS = {
     row: DraggableBodyRow,
   },
 };
+
+export enum SUBSCRIPTION_WEBHOOK_LABEL {
+  msTeams = 'Ms Teams',
+  slack = 'Slack',
+  gChat = 'G Chat',
+  generic = 'Generic',
+}
+
+export enum SUBSCRIPTION_WEBHOOK {
+  MS_TEAMS = 'msTeams',
+  SLACK = 'slack',
+  G_CHAT = 'gChat',
+  GENERIC = 'generic',
+}
+
+export const SUBSCRIPTION_WEBHOOK_OPTIONS = [
+  {
+    label: SUBSCRIPTION_WEBHOOK_LABEL.msTeams,
+    value: SUBSCRIPTION_WEBHOOK.MS_TEAMS,
+  },
+  {
+    label: SUBSCRIPTION_WEBHOOK_LABEL.slack,
+    value: SUBSCRIPTION_WEBHOOK.SLACK,
+  },
+  {
+    label: SUBSCRIPTION_WEBHOOK_LABEL.gChat,
+    value: SUBSCRIPTION_WEBHOOK.G_CHAT,
+  },
+];

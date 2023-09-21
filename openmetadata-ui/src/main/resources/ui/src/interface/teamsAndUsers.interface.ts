@@ -102,7 +102,6 @@ export interface TeamDetailsProp {
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
   isTeamMemberLoading: number;
-  hasAccess: boolean;
   isFetchingAdvancedDetails: boolean;
   isFetchingAllTeamAdvancedDetails: boolean;
   entityPermissions: OperationPermission;
