@@ -13,8 +13,10 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Divider, Drawer, Row, Typography } from 'antd';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import { EntityType } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
@@ -23,7 +25,6 @@ import { getEncodedFqn } from 'utils/StringsUtils';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
 import {
@@ -37,11 +38,20 @@ const EdgeInfoDrawer = ({
   visible,
   onClose,
   nodes,
+  hasEditAccess,
+  onEdgeDescriptionUpdate,
 }: EdgeInfoDrawerInfo) => {
   const [edgeData, setEdgeData] = useState<EdgeInformationType>();
   const [mysqlQuery, setMysqlQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDescriptionEditable, setIsDescriptionEditable] =
+    useState<boolean>(false);
+
   const { t } = useTranslation();
+
+  const edgeEntity = useMemo(() => {
+    return edge.data.edge;
+  }, [edge]);
 
   const getEdgeInfo = () => {
     const { source, target, data, sourceHandle, targetHandle } = edge;
@@ -101,6 +111,39 @@ const EdgeInfoDrawer = ({
     setIsLoading(false);
   };
 
+  const edgeDescription = useMemo(() => {
+    return edgeEntity?.lineageDetails?.description ?? '';
+  }, [edgeEntity]);
+
+  const onDescriptionUpdate = useCallback(
+    async (updatedHTML: string) => {
+      if (edgeDescription !== updatedHTML && edgeEntity) {
+        const lineageDetails = {
+          ...edgeEntity.lineageDetails,
+          description: updatedHTML,
+        };
+        const updatedEdgeDetails = {
+          edge: {
+            fromEntity: {
+              id: edgeEntity.fromEntity,
+              type: edge.data.sourceType,
+            },
+            toEntity: {
+              id: edgeEntity.toEntity,
+              type: edge.data.sourceType,
+            },
+            lineageDetails,
+          },
+        };
+        await onEdgeDescriptionUpdate(updatedEdgeDetails);
+        setIsDescriptionEditable(false);
+      } else {
+        setIsDescriptionEditable(false);
+      }
+    },
+    [edgeDescription, edgeEntity, edge.data]
+  );
+
   useEffect(() => {
     setIsLoading(true);
     getEdgeInfo();
@@ -145,20 +188,17 @@ const EdgeInfoDrawer = ({
             )}
           <Col span={24}>
             <Divider />
-            <Typography.Paragraph className="summary-panel-section-title">
-              {`${t('label.description')}:`}
-            </Typography.Paragraph>
-            {edge?.data.edge?.description?.trim() ? (
-              <RichTextEditorPreviewer
-                markdown={edge?.data.edge?.description}
-              />
-            ) : (
-              <Typography.Paragraph className=" m-b-0">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </Typography.Paragraph>
-            )}
+            <DescriptionV1
+              description={edgeDescription}
+              entityName="Edge"
+              entityType={EntityType.GLOSSARY}
+              hasEditAccess={hasEditAccess}
+              isEdit={isDescriptionEditable}
+              showCommentsIcon={false}
+              onCancel={() => setIsDescriptionEditable(false)}
+              onDescriptionEdit={() => setIsDescriptionEditable(true)}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
           </Col>
           <Col span={24}>
             <Divider />

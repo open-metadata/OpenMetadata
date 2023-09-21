@@ -65,7 +65,7 @@ import ReactFlow, {
   useNodesState,
 } from 'reactflow';
 import { getDataModelDetails } from 'rest/dataModelsAPI';
-import { getLineageByFQN } from 'rest/lineageAPI';
+import { getLineageByFQN, updateLineageEdge } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
 import {
@@ -1484,6 +1484,36 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const onEdgeDescriptionUpdate = useCallback(
+    async (updatedEdgeDetails: AddLineage) => {
+      await updateLineageEdge(updatedEdgeDetails);
+      if (selectedEdgeInfo) {
+        const updatedSelectedEdgeInfo = {
+          ...selectedEdgeInfo,
+          data: {
+            ...selectedEdgeInfo.data,
+            edge: {
+              ...selectedEdgeInfo.data.edge,
+              lineageDetails: updatedEdgeDetails.edge.lineageDetails,
+            },
+          },
+        };
+
+        const updatedEdges = edges.map((edge) => {
+          if (edge.id === selectedEdgeInfo.id) {
+            return updatedSelectedEdgeInfo;
+          }
+
+          // Otherwise, leave the edge unchanged
+          return edge;
+        });
+        setEdges(updatedEdges);
+        setSelectedEdgeInfo(updatedSelectedEdgeInfo);
+      }
+    },
+    [edges, selectedEdgeInfo]
+  );
+
   /**
    * Handle updated lineage nodes
    * Change newly added node label based on entity:EntityReference
@@ -1683,12 +1713,14 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           (selectedEdgeInfo ? (
             <EdgeInfoDrawer
               edge={selectedEdgeInfo}
+              hasEditAccess={hasEditAccess}
               nodes={nodes}
               visible={isDrawerOpen}
               onClose={() => {
                 setIsDrawerOpen(false);
                 setSelectedEdgeInfo(undefined);
               }}
+              onEdgeDescriptionUpdate={onEdgeDescriptionUpdate}
             />
           ) : (
             <EntityInfoDrawer
