@@ -28,7 +28,6 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    baseUrl: 'http://localhost:8585',
     specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
   },
 });
