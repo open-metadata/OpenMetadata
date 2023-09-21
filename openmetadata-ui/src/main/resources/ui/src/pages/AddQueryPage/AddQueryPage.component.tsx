@@ -47,7 +47,7 @@ import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const AddQueryPage = () => {
   const { t } = useTranslation();
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<

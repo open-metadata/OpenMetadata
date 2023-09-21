@@ -105,7 +105,7 @@ const Users = ({
     () => (
       <ActivityFeedProvider user={userData.id}>
         <ActivityFeedTab
-          entityType={EntityType.USER_NAME}
+          entityType={EntityType.USER}
           fqn={username}
           onFeedUpdate={noop}
         />

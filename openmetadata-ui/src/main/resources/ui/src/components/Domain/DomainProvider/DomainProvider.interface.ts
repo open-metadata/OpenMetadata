@@ -15,8 +15,10 @@ import { Domain } from 'generated/entity/domains/domain';
 
 export interface DomainContextType {
   domains: Domain[];
+  activeDomain: string;
   domainLoading: boolean;
   domainOptions: ItemType[];
   updateDomains: (domainsArr: Domain[]) => void;
+  updateActiveDomain: (activeDomain: string) => void;
   refreshDomains: () => void;
 }

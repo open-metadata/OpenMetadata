@@ -47,6 +47,12 @@ public class TableIndex implements ColumnIndex {
       owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
       table.setOwner(owner);
     }
+    if (table.getDomain() != null) {
+      EntityReference domain = table.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      table.setDomain(domain);
+    }
     Map<String, Object> doc = JsonUtils.getMap(table);
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();

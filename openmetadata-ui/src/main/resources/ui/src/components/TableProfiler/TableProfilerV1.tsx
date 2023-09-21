@@ -119,7 +119,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     return searchData as { activeTab: string; activeColumnFqn: string };
   }, [location.search, isTourOpen]);
 
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const [table, setTable] = useState<Table>();
   const { profile, columns } = useMemo(() => {
     return { profile: table?.profile, columns: table?.columns || [] };
