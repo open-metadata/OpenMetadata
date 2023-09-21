@@ -108,7 +108,7 @@ This is a sample config for DomoDatabase:
 
 {% codeInfo srNumber=5 %}
 
-**SandBox Domain**: Connect to SandBox Domain.
+**Instance Domain**: URL to connect to your Domo instance UI. For example `https://<your>.domo.com`.
 
 {% /codeInfo %}
 
@@ -186,7 +186,7 @@ source:
       apiHost: api.domo.com
 ```
 ```yaml {% srNumber=5 %}
-      sandboxDomain: https://<api_domo>.domo.com
+      instancexDomain: https://<your>.domo.com
 ```
 ```yaml {% srNumber=6 %}
       # database: database
