@@ -93,7 +93,7 @@ const Suggestions = ({
 
   const isMounting = useRef(true);
 
-  const setSuggestions = (options: Array<Option>) => {
+  const updateSuggestions = (options: Array<Option>) => {
     setTableSuggestions(filterOptionsByIndex(options, SearchIndex.TABLE));
     setTopicSuggestions(filterOptionsByIndex(options, SearchIndex.TOPIC));
     setDashboardSuggestions(
@@ -195,7 +195,7 @@ const Suggestions = ({
 
       if (res.data) {
         setOptions(res.data.hits.hits as unknown as Option[]);
-        setSuggestions(res.data.hits.hits as unknown as Option[]);
+        updateSuggestions(res.data.hits.hits as unknown as Option[]);
       }
     } catch (err) {
       showErrorToast(
