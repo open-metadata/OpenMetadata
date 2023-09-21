@@ -24,7 +24,10 @@ import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
-import { AssetsFilterOptions } from 'constants/Assets.constants';
+import {
+  AssetsFilterOptions,
+  ASSETS_INDEXES,
+} from 'constants/Assets.constants';
 import { PAGE_SIZE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -125,16 +128,7 @@ const AssetsTabs = forwardRef(
     }, [type, glossaryName, fqn]);
 
     const searchIndexes = useMemo(() => {
-      const indexesToFetch = [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.STORED_PROCEDURE,
-        SearchIndex.DASHBOARD_DATA_MODEL,
-      ];
+      const indexesToFetch = [...ASSETS_INDEXES];
       if (type !== AssetsOfEntity.GLOSSARY) {
         indexesToFetch.push(SearchIndex.GLOSSARY);
       }

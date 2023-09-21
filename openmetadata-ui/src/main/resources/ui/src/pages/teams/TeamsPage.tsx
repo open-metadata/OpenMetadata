@@ -23,8 +23,8 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { TeamsPageTab } from 'components/Team/TeamDetails/team.interface';
 import TeamDetailsV1 from 'components/Team/TeamDetails/TeamDetailsV1';
+import { ASSETS_INDEXES } from 'constants/Assets.constants';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { myDataSearchIndex } from 'constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -272,7 +272,7 @@ const TeamsPage = () => {
           `owner.id:${selectedTeam.id}`,
           '',
           '',
-          myDataSearchIndex
+          ASSETS_INDEXES
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);
