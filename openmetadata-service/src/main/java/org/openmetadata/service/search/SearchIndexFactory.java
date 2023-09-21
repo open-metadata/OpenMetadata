@@ -131,8 +131,8 @@ public class SearchIndexFactory {
         return new StoredProcedureIndex((StoredProcedure) entity);
       case Entity.DATA_PRODUCT:
         return new DataProductIndex((DataProduct) entity);
-	  case Entity.METADATA_SERVICE:
-		return new MetadataServiceIndex((MetadataService) entity);
+      case Entity.METADATA_SERVICE:
+        return new MetadataServiceIndex((MetadataService) entity);
       case Entity.ENTITY_REPORT_DATA:
         return new EntityReportDataIndex((ReportData) entity);
       case Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA:
