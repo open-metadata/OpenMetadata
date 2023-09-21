@@ -34,6 +34,7 @@ import { getCountBadge } from 'utils/CommonUtils';
 import {
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
+  DASHBOARD_DATA_MODEL_TYPE,
   DASHBOARD_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
@@ -73,7 +74,7 @@ export const getDropDownItems = (index: string) => {
     case SearchIndex.STORED_PROCEDURE:
       return [...COMMON_DROPDOWN_ITEMS];
     case SearchIndex.DASHBOARD_DATA_MODEL:
-      return [...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
     case SearchIndex.GLOSSARY:
       return [...GLOSSARY_DROPDOWN_ITEMS];
     case SearchIndex.TAG:

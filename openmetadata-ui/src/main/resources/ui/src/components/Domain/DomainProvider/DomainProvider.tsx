@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ItemType, MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
-import { DEFAULT_DOMAIN_VALUE, PAGE_SIZE_LARGE } from 'constants/constants';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import {
+  ACTIVE_DOMAIN_STORAGE_KEY,
+  DEFAULT_DOMAIN_VALUE,
+  PAGE_SIZE_LARGE,
+} from 'constants/constants';
 import { Domain } from 'generated/entity/domains/domain';
 import React, {
   FC,
@@ -37,6 +42,9 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
   const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [domainLoading, setDomainLoading] = useState(false);
+  const { isAuthenticated } = useAuthContext();
+  const localStorageData =
+    localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
 
   const domainOptions = useMemo(() => {
     const options: ItemType[] = [
@@ -54,6 +62,17 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
 
     return options;
   }, [domains]);
+
+  const activeDomain = useMemo(() => {
+    const activeDomainOption = domainOptions.find(
+      (item) => item?.key === localStorageData
+    );
+
+    return (
+      ((activeDomainOption as MenuItemType)?.label as string) ??
+      localStorageData
+    );
+  }, [domainOptions]);
 
   const fetchDomainList = async () => {
     setDomainLoading(true);
@@ -77,19 +96,35 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
     fetchDomainList();
   };
 
+  const updateActiveDomain = (activeDomainKey: string) => {
+    localStorage.setItem(ACTIVE_DOMAIN_STORAGE_KEY, activeDomainKey);
+    refreshDomains();
+  };
+
   const domainContextObj = useMemo(() => {
     return {
       domains,
+      activeDomain,
       domainOptions,
       domainLoading,
       updateDomains,
       refreshDomains,
+      updateActiveDomain,
     };
-  }, [domains, domainOptions, domainLoading, updateDomains, refreshDomains]);
+  }, [
+    domains,
+    activeDomain,
+    domainOptions,
+    domainLoading,
+    updateDomains,
+    refreshDomains,
+  ]);
 
   useEffect(() => {
-    fetchDomainList();
-  }, []);
+    if (isAuthenticated) {
+      fetchDomainList();
+    }
+  }, [isAuthenticated]);
 
   return (
     <DomainContext.Provider value={domainContextObj}>

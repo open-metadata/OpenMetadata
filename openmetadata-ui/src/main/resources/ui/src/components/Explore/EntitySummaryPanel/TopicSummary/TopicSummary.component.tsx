@@ -15,7 +15,6 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getTeamAndUserDetailsPath } from 'constants/constants';
 import { ClientErrors } from 'enums/axios.enum';
 import { isArray, isEmpty } from 'lodash';
@@ -23,7 +22,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { getTagValue } from 'utils/CommonUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
@@ -169,43 +167,11 @@ function TopicSummary({
         </Row>
         <Divider className="m-y-xs" />
 
-        {!isExplore ? (
-          <>
-            <SummaryTagsDescription
-              entityDetail={entityDetails}
-              tags={tags ? tags : []}
-            />
-            <Divider className="m-y-xs" />
-          </>
-        ) : (
-          <>
-            <Row className="m-md" gutter={[0, 8]}>
-              <Col span={24}>
-                <Typography.Text
-                  className="summary-panel-section-title"
-                  data-testid="profiler-header">
-                  {t('label.tag-plural')}
-                </Typography.Text>
-              </Col>
-
-              <Col className="flex-grow" span={24}>
-                {entityDetails.tags && entityDetails.tags.length > 0 ? (
-                  <TagsViewer
-                    sizeCap={2}
-                    tags={(entityDetails.tags || []).map((tag) =>
-                      getTagValue(tag)
-                    )}
-                  />
-                ) : (
-                  <Typography.Text className="text-grey-body">
-                    {t('label.no-tags-added')}
-                  </Typography.Text>
-                )}
-              </Col>
-            </Row>
-            <Divider className="m-y-xs" />
-          </>
-        )}
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={tags ?? []}
+        />
+        <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
